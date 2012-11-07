@@ -49,6 +49,7 @@ const SlotsEnabled = true
 
 // Config file stuff
 var once sync.Once
+
 type configMap map[string]interface{}
 
 var config configMap
