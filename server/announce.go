@@ -17,19 +17,19 @@ func whitelisted(peerId string, db *cdb.Database) bool {
 
 	var widLen int
 	var i int
-	var bad bool
+	var matched bool
 
 	for _, whitelistedId := range db.Whitelist {
 		widLen = len(whitelistedId)
 		if widLen <= len(peerId) {
-			bad = false
+			matched = true
 			for i = 0; i < widLen; i++ {
 				if peerId[i] != whitelistedId[i] {
-					bad = true
+					matched = false
 					break
 				}
 			}
-			if !bad {
+			if matched {
 				return true
 			}
 		}
