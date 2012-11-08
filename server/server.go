@@ -159,18 +159,22 @@ func (handler *httpHandler) respond(r *http.Request, buf *bytes.Buffer) {
 	if !exists {
 		ip, exists = params.get("ipv4")
 		if !exists {
-			// Assume RemoteAddr is in the form ip:port, and if IPv6 is used things could get messy
-			portIndex := len(r.RemoteAddr) - 1
-			for ; portIndex >= 0; portIndex-- { // Yes, I know about strings.LastIndex()
-				if r.RemoteAddr[portIndex] == ':' {
-					break
-				}
-			}
-			if portIndex != -1 {
-				ip = r.RemoteAddr[0:portIndex]
+			ips, exists := r.Header["X-Real-Ip"]
+			if exists && len(ips) > 0 {
+				ip = ips[0]
 			} else {
-				failure("Failed to parse IP address", buf)
-				return
+				portIndex := len(r.RemoteAddr) - 1
+				for ; portIndex >= 0; portIndex-- {
+					if r.RemoteAddr[portIndex] == ':' {
+						break
+					}
+				}
+				if portIndex != -1 {
+					ip = r.RemoteAddr[0:portIndex]
+				} else {
+					failure("Failed to parse IP address", buf)
+					return
+				}
 			}
 		}
 	}
