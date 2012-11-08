@@ -115,6 +115,7 @@ func announce(params *queryParams, user *cdb.User, ip string, db *cdb.Database, 
 			delete(torrent.Leechers, peerId)
 			atomic.AddInt64(&user.UsedSlots, -1)
 		}
+		shouldFlushTorrent = true
 		seeding = true
 	} else { // Previously completed (probably)
 		peer, exists = torrent.Seeders[peerId]
@@ -129,6 +130,7 @@ func announce(params *queryParams, user *cdb.User, ip string, db *cdb.Database, 
 				torrent.Seeders[peerId] = peer
 				delete(torrent.Leechers, peerId)
 				atomic.AddInt64(&user.UsedSlots, -1)
+				shouldFlushTorrent = true
 				// completed = true // TODO: not sure if this will result in over-reported snatches
 			}
 		}
