@@ -33,6 +33,8 @@ func (db *Database) serialize() {
 	defer torrentFile.Close()
 	defer userFile.Close()
 
+	start := time.Now()
+
 	log.Printf("Serializing database to cache file")
 
 	db.TorrentsMutex.RLock()
@@ -42,6 +44,8 @@ func (db *Database) serialize() {
 	db.UsersMutex.RLock()
 	gob.NewEncoder(userFile).Encode(db.Users)
 	db.UsersMutex.RUnlock()
+
+	log.Printf("Done serializing (%dms)\n", time.Now().Sub(start).Nanoseconds()/1000000)
 }
 
 func (db *Database) deserialize() {

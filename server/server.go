@@ -228,7 +228,7 @@ func (handler *httpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		handler.respond(r, buf)
 	}
 
-	/* 
+	/*
 	 * Could do gzip here, but I'm not sure if it's worth it for compact responses.
 	 * Also, according to the Ocelot source code:
 	 *   "gzip compression actually makes announce returns larger from our testing."
