@@ -2,8 +2,6 @@ package config
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
 	"log"
 	"os"
 	"sync"
@@ -64,11 +62,6 @@ func Section(s string) configMap {
 	return config.Section(s)
 }
 
-func GetDsn(s string) (string, error) {
-	once.Do(readConfig)
-	return config.GetDsn(s)
-}
-
 func (m configMap) Get(s string) string {
 	result, _ := m[s].(string)
 	return result
@@ -94,36 +87,4 @@ func readConfig() {
 		log.Fatalf("Error parsing config file: %s", err)
 		return
 	}
-}
-
-func (m configMap) GetDsn(s string) (string, error) {
-	c := m.Section(s)
-
-	if len(c) == 0 {
-		return "", errors.New("could not find key " + s)
-	}
-
-	var dsn string
-	socket, unix := c["unix"]
-
-	if unix {
-		dsn = fmt.Sprintf("%s:%s@unix(%s)/%s?charset=%s",
-			c["username"],
-			c["password"],
-			socket,
-			c["database"],
-			c["encoding"],
-		)
-	} else {
-		dsn = fmt.Sprintf("%s:%s@tcp(%s:%v)/%s?charset=%s",
-			c["username"],
-			c["password"],
-			c["host"],
-			c["port"],
-			c["database"],
-			c["encoding"],
-		)
-	}
-
-	return dsn, nil
 }

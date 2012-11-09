@@ -3,6 +3,7 @@ package database
 import (
 	"chihaya/config"
 	"log"
+	"io"
 	"time"
 )
 
@@ -25,32 +26,48 @@ func (db *Database) loadUsers() {
 	for !db.terminate {
 		db.waitGroup.Add(1)
 
-		start := time.Now()
-
 		var err error
 		var count uint
-		rows := db.query(db.loadUsersStmt)
+		result := db.query(db.loadUsersStmt)
+		start := time.Now()
 
-		newUsers := make(map[string]*User)
+		newUsers := make(map[string]*User, len(db.Users))
+
+		row := &rowWrapper{result.MakeRow()}
+
+		id := result.Map("ID")
+		torrentPass := result.Map("torrent_pass")
+		downMultiplier := result.Map("DownMultiplier")
+		upMultiplier := result.Map("UpMultiplier")
+		slots := result.Map("Slots")
 
 		db.UsersMutex.Lock()
-		for rows.Next() {
-			u := &User{}
-			var torrentPass string
-			err = rows.Scan(&u.Id, &torrentPass, &u.DownMultiplier, &u.UpMultiplier, &u.Slots)
-			if err != nil {
+
+		for {
+			err = result.ScanRow(row.r)
+			if err == io.EOF {
+				break
+			} else if err != nil {
 				log.Panicf("Error scanning user rows: %v", err)
 			}
 
+			torrentPass := row.Str(torrentPass)
+
 			old, exists := db.Users[torrentPass]
 			if exists && old != nil {
-				old.Id = u.Id
-				old.DownMultiplier = u.DownMultiplier
-				old.UpMultiplier = u.UpMultiplier
-				old.Slots = u.Slots
+				old.Id = row.Uint64(id)
+				old.DownMultiplier = row.Float64(downMultiplier)
+				old.UpMultiplier = row.Float64(upMultiplier)
+				old.Slots = row.Int64(slots)
 				newUsers[torrentPass] = old
 			} else {
-				newUsers[torrentPass] = u
+				newUsers[torrentPass] = &User{
+					Id: row.Uint64(id),
+					UpMultiplier: row.Float64(downMultiplier),
+					DownMultiplier: row.Float64(upMultiplier),
+					Slots: row.Int64(slots),
+					UsedSlots: 0,
+				}
 			}
 			count++
 		}
@@ -68,35 +85,50 @@ func (db *Database) loadTorrents() {
 	for !db.terminate {
 		db.waitGroup.Add(1)
 
-		start := time.Now()
-
 		var err error
 		var count uint
-		rows := db.query(db.loadTorrentsStmt)
+		result := db.query(db.loadTorrentsStmt)
+		start := time.Now()
 
 		newTorrents := make(map[string]*Torrent)
 
+		row := &rowWrapper{result.MakeRow()}
+
+		id := result.Map("ID")
+		infoHash := result.Map("info_hash")
+		downMultiplier := result.Map("DownMultiplier")
+		upMultiplier := result.Map("UpMultiplier")
+		snatched := result.Map("Snatched")
+
 		db.TorrentsMutex.Lock()
 
-		for rows.Next() {
-			t := &Torrent{}
-			var infoHash string
-			err = rows.Scan(&t.Id, &infoHash, &t.DownMultiplier, &t.UpMultiplier, &t.Snatched)
-			if err != nil {
+		for {
+			err = result.ScanRow(row.r)
+			if err == io.EOF {
+				break
+			} else if err != nil {
 				log.Panicf("Error scanning torrent rows: %v", err)
 			}
 
+			infoHash := row.Str(infoHash)
+
 			old, exists := db.Torrents[infoHash]
 			if exists && old != nil {
-				old.Id = t.Id
-				old.DownMultiplier = t.DownMultiplier
-				old.UpMultiplier = t.UpMultiplier
-				old.Snatched = t.Snatched
+				old.Id = row.Uint64(id)
+				old.DownMultiplier = row.Float64(downMultiplier)
+				old.UpMultiplier = row.Float64(upMultiplier)
+				old.Snatched = row.Uint(snatched)
 				newTorrents[infoHash] = old
 			} else {
-				t.Seeders = make(map[string]*Peer)
-				t.Leechers = make(map[string]*Peer)
-				newTorrents[infoHash] = t
+				newTorrents[infoHash] = &Torrent{
+					Id: row.Uint64(id),
+					UpMultiplier: row.Float64(downMultiplier),
+					DownMultiplier: row.Float64(upMultiplier),
+					Snatched: row.Uint(snatched),
+
+					Seeders: make(map[string]*Peer),
+					Leechers: make(map[string]*Peer),
+				}
 			}
 			count++
 		}
@@ -114,19 +146,21 @@ func (db *Database) loadWhitelist() {
 	for !db.terminate {
 		db.waitGroup.Add(1)
 
-		start := time.Now()
-
 		var err error
 		var count int
-		rows := db.query(db.loadWhitelistStmt)
+		result := db.query(db.loadWhitelistStmt)
+		start := time.Now()
+
+		row := result.MakeRow()
 
 		db.WhitelistMutex.Lock()
 		db.Whitelist = db.Whitelist[0:1] // Effectively clear the whitelist
 
-		for rows.Next() {
-			var peerId string
-			err = rows.Scan(&peerId)
-			if err != nil {
+		for {
+			err = result.ScanRow(row)
+			if err == io.EOF {
+				break
+			} else if err != nil {
 				log.Panicf("Error scanning whitelist rows: %v", err)
 			}
 			if count >= cap(db.Whitelist) {
@@ -136,7 +170,7 @@ func (db *Database) loadWhitelist() {
 			} else if count >= len(db.Whitelist) {
 				db.Whitelist = db.Whitelist[0 : count+1]
 			}
-			db.Whitelist[count] = peerId
+			db.Whitelist[count] = row.Str(0)
 			count++
 		}
 

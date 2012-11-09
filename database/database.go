@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"chihaya/config"
 	"chihaya/util"
-	_ "code.google.com/p/go-mysql-driver/mysql"
-	"database/sql"
+	"github.com/ziutek/mymysql/mysql"
+	_ "github.com/ziutek/mymysql/thrsafe"
 	"log"
 	"sync"
 )
@@ -50,12 +50,12 @@ type User struct {
 type Database struct {
 	terminate bool
 
-	sqlDb *sql.DB
+	sqlDb mysql.Conn
 
-	loadUsersStmt       *sql.Stmt
-	loadTorrentsStmt    *sql.Stmt
-	loadWhitelistStmt   *sql.Stmt
-	cleanStalePeersStmt *sql.Stmt
+	loadUsersStmt       mysql.Stmt
+	loadTorrentsStmt    mysql.Stmt
+	loadWhitelistStmt   mysql.Stmt
+	cleanStalePeersStmt mysql.Stmt
 
 	Users      map[string]*User // 32 bytes
 	UsersMutex sync.RWMutex
@@ -80,10 +80,20 @@ type Database struct {
 func (db *Database) Init() {
 	var err error
 	db.terminate = false
-	dsn, _ := config.GetDsn("database")
-	db.sqlDb, err = sql.Open("mysql", dsn)
+
+	databaseConfig := config.Section("database")
+
+	db.sqlDb = mysql.New(databaseConfig["proto"].(string),
+		"",
+		databaseConfig["addr"].(string),
+		databaseConfig["username"].(string),
+		databaseConfig["password"].(string),
+		databaseConfig["database"].(string),
+	)
+
+	err = db.sqlDb.Connect()
 	if err != nil {
-		log.Fatalf("Couldn't connect to database (%s): %s", dsn, err)
+		log.Fatalf("Couldn't connect to database at %s:%s - %s", databaseConfig["proto"], databaseConfig["addr"], err)
 	}
 
 	maxBuffers := config.TorrentFlushBufferSize + config.UserFlushBufferSize + config.TransferHistoryFlushBufferSize +
@@ -122,7 +132,7 @@ func (db *Database) Terminate() {
 	db.serialize()
 }
 
-func (db *Database) prepareStatement(sql string) *sql.Stmt {
+func (db *Database) prepareStatement(sql string) mysql.Stmt {
 	stmt, err := db.sqlDb.Prepare(sql)
 	if err != nil {
 		log.Fatalf("%s for SQL: %s", err, sql)
@@ -130,33 +140,30 @@ func (db *Database) prepareStatement(sql string) *sql.Stmt {
 	return stmt
 }
 
-func (db *Database) query(stmt *sql.Stmt, args ...interface{}) *sql.Rows {
-	rows, err := stmt.Query(args...)
-	if err != nil {
-		log.Panicf("SQL error: %v", err)
-	}
-	return rows
-}
+/*
+ * mymysql uses different semantics than the database/sql interface
+ * For some reason (for prepared statements), mymysql's Exec is the equivalent of Query, and Run is the equivalent of Exec.
+ * However, you still use Query for string queries on the database object..
+ */
 
-func (db *Database) exec(stmt *sql.Stmt, args ...interface{}) sql.Result {
-	result, err := stmt.Exec(args...)
-	if err != nil {
-		log.Panicf("SQL error: %v", err)
-	}
-	return result
-}
-
-func (db *Database) execBuffer(query *bytes.Buffer) sql.Result {
-	result, err := db.sqlDb.Exec(query.String())
+func (db *Database) query(stmt mysql.Stmt, args ...interface{}) mysql.Result {
+	result, err := stmt.Run(args...)
 	if err != nil {
 		log.Panicf("SQL error: %v", err)
 	}
 	return result
 }
 
-func (db *Database) execString(query string) sql.Result {
-	//log.Println(query)
-	result, err := db.sqlDb.Exec(query)
+func (db *Database) exec(stmt mysql.Stmt, args ...interface{}) mysql.Result {
+	result, err := stmt.Run(args...)
+	if err != nil {
+		log.Panicf("SQL error: %v", err)
+	}
+	return result
+}
+
+func (db *Database) execBuffer(query *bytes.Buffer) mysql.Result {
+	_, result, err := db.sqlDb.Query(query.String())
 	if err != nil {
 		log.Panicf("SQL error: %v", err)
 	}

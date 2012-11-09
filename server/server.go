@@ -22,6 +22,7 @@ type httpHandler struct {
 	bufferPool *util.BufferPool
 	waitGroup  sync.WaitGroup
 	startTime  time.Time
+	terminate  bool
 
 	// Internal stats
 	deltaRequests int64
@@ -195,6 +196,9 @@ var handler *httpHandler
 var listener net.Listener
 
 func (handler *httpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if handler.terminate {
+		return
+	}
 	handler.waitGroup.Add(1)
 	defer handler.waitGroup.Done()
 
@@ -288,6 +292,7 @@ func Start() {
 func Stop() {
 	// Closing the listener stops accepting connections and causes Serve to return
 	listener.Close()
+	handler.terminate = true
 }
 
 func collectStatistics() {
@@ -300,5 +305,9 @@ func collectStatistics() {
 
 		log.Printf("Throughput last minute: %4f req/s\n", handler.throughput)
 		lastTime = time.Now()
+
+		if handler.terminate {
+			log.Printf("Waiting for connections to close and stats flushing to finish. This can take a while, so please be patient!")
+		}
 	}
 }

@@ -67,7 +67,7 @@ func (db *Database) flushTorrents() {
 			}
 		}
 
-		if config.LogFlushes {
+		if config.LogFlushes && !db.terminate {
 			log.Printf("[torrents] Flushing %d\n", count)
 		}
 
@@ -113,7 +113,7 @@ func (db *Database) flushUsers() {
 			}
 		}
 
-		if config.LogFlushes {
+		if config.LogFlushes && !db.terminate {
 			log.Printf("[users_main] Flushing %d\n", count)
 		}
 
@@ -160,7 +160,7 @@ func (db *Database) flushTransferHistory() {
 			}
 		}
 
-		if config.LogFlushes {
+		if config.LogFlushes && !db.terminate {
 			log.Printf("[transfer_history] Flushing %d\n", count)
 		}
 
@@ -208,7 +208,7 @@ func (db *Database) flushTransferIps() {
 			}
 		}
 
-		if config.LogFlushes {
+		if config.LogFlushes && !db.terminate {
 			log.Printf("[transfer_ips] Flushing %d\n", count)
 		}
 
@@ -253,7 +253,7 @@ func (db *Database) flushSnatches() {
 			}
 		}
 
-		if config.LogFlushes {
+		if config.LogFlushes && !db.terminate {
 			log.Printf("[snatches] Flushing %d\n", count)
 		}
 
@@ -317,7 +317,7 @@ func (db *Database) purgeInactivePeers() {
 
 		// Then set them to inactive in the database
 		result := db.exec(db.cleanStalePeersStmt, oldestActive)
-		rows, _ := result.RowsAffected()
+		rows := result.AffectedRows()
 
 		if rows > 0 {
 			log.Printf("Updated %d inactive peers in database\n", rows)
