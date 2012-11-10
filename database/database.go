@@ -157,7 +157,7 @@ func (db *Database) exec(stmt mysql.Stmt, args ...interface{}) (result mysql.Res
 	var err error
 	var tries int
 
-	for tries = 0; tries < 20; tries++ {
+	for tries = 0; tries < config.MaxDeadlockRetries; tries++ {
 		result, err = stmt.Run(args...)
 		if err != nil {
 			if merr, isMysqlError := err.(*mysql.Error); isMysqlError {
@@ -182,7 +182,7 @@ func (db *Database) execBuffer(query *bytes.Buffer) (result mysql.Result) {
 	var err error
 	var tries int
 
-	for tries = 0; tries < 20; tries++ {
+	for tries = 0; tries < config.MaxDeadlockRetries; tries++ {
 		result, err = db.sqlDb.Start(query.String())
 		if err != nil {
 			if merr, isMysqlError := err.(*mysql.Error); isMysqlError {

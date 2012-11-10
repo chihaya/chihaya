@@ -36,6 +36,9 @@ var FlushSleepInterval = 200 * time.Millisecond
 // Time to wait before retrying the query when the database deadlocks
 var DeadlockWaitTime = 1000 * time.Millisecond
 
+// Maximum times to retry a deadlocked query before giving up
+var MaxDeadlockRetries = 20
+
 // Buffer sizes, see @Database.startFlushing()
 var (
 	TorrentFlushBufferSize         = 10000
