@@ -8,6 +8,7 @@ import (
 	_ "github.com/ziutek/mymysql/thrsafe"
 	"log"
 	"sync"
+	"time"
 )
 
 type Peer struct {
@@ -143,29 +144,61 @@ func (db *Database) prepareStatement(sql string) mysql.Stmt {
 /*
  * mymysql uses different semantics than the database/sql interface
  * For some reason (for prepared statements), mymysql's Exec is the equivalent of Query, and Run is the equivalent of Exec.
- * However, you still use Query for string queries on the database object..
+ * For the connection object, Query is still Query, but Start is Exec
+ *
+ * This is really confusing, which is why these wrapper functions are named as such
  */
 
 func (db *Database) query(stmt mysql.Stmt, args ...interface{}) mysql.Result {
-	result, err := stmt.Run(args...)
-	if err != nil {
-		log.Panicf("SQL error: %v", err)
-	}
-	return result
+	return db.exec(stmt, args...)
 }
 
-func (db *Database) exec(stmt mysql.Stmt, args ...interface{}) mysql.Result {
-	result, err := stmt.Run(args...)
-	if err != nil {
-		log.Panicf("SQL error: %v", err)
+func (db *Database) exec(stmt mysql.Stmt, args ...interface{}) (result mysql.Result) {
+	var err error
+	var tries int
+
+	for tries = 0; tries < 20; tries++ {
+		result, err = stmt.Run(args...)
+		if err != nil {
+			if merr, isMysqlError := err.(*mysql.Error); isMysqlError {
+				if merr.Code == 1213 || merr.Code == 1205 {
+					log.Printf("!!! DEADLOCK !!! Retrying in %dms (%d/20)", config.DeadlockWaitTime.Nanoseconds()/1000000, tries)
+					time.Sleep(config.DeadlockWaitTime)
+					continue
+				} else {
+					log.Printf("!!! CRITICAL !!! SQL error: %v", err)
+				}
+			} else {
+				log.Panicf("Error executing SQL: %v", err)
+			}
+		}
+		return
 	}
-	return result
+	log.Printf("!!! CRITICAL !!! Deadlocked %d times, giving up!", tries)
+	return
 }
 
-func (db *Database) execBuffer(query *bytes.Buffer) mysql.Result {
-	_, result, err := db.sqlDb.Query(query.String())
-	if err != nil {
-		log.Panicf("SQL error: %v", err)
+func (db *Database) execBuffer(query *bytes.Buffer) (result mysql.Result) {
+	var err error
+	var tries int
+
+	for tries = 0; tries < 20; tries++ {
+		result, err = db.sqlDb.Start(query.String())
+		if err != nil {
+			if merr, isMysqlError := err.(*mysql.Error); isMysqlError {
+				if merr.Code == 1213 || merr.Code == 1205 {
+					log.Printf("!!! DEADLOCK !!! Retrying in %dms (%d/20)", config.DeadlockWaitTime.Nanoseconds()/1000000, tries)
+					time.Sleep(config.DeadlockWaitTime)
+					continue
+				} else {
+					log.Printf("!!! CRITICAL !!! SQL error: %v", err)
+				}
+			} else {
+				log.Panicf("Error executing SQL: %v", err)
+			}
+		}
+		return
 	}
-	return result
+	log.Printf("!!! CRITICAL !!! Deadlocked %d times, giving up!", tries)
+	return
 }

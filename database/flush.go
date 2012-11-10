@@ -343,7 +343,7 @@ func (db *Database) verifyUsedSlotsCache() {
 		db.waitGroup.Add(1)
 		start := time.Now()
 
-		log.Printf("Started verifying used slot cache (this may take a while)")
+		log.Printf("Starting to verify used slot cache (this may take a while)")
 
 		inconsistent := 0
 
