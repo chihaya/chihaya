@@ -19,7 +19,8 @@ Database configuration is done in `config.json`, which you'll need to create wit
 		"username": "user",
 		"password": "pass",
 		"database": "database",
-		"unix": "/var/run/mysqld/mysqld.sock",
+		"proto": "unix",
+		"addr": "/var/run/mysqld/mysqld.sock",
 		"encoding": "utf8"
 	},
 
@@ -27,7 +28,7 @@ Database configuration is done in `config.json`, which you'll need to create wit
 }
 ```
 
-Either specify `unix` to use a unix socket or `host` and `port` to use a tcp socket. `addr` specifies the address to bind the server to.
+`addr` specifies the address to bind the server to. Possible values for `database.proto` are `unix` and `tcp`.
 
 Running
 -------
