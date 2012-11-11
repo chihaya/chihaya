@@ -240,7 +240,9 @@ func (handler *httpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	 * TODO: investigate this
 	 */
 
+	r.Close = true
 	w.Header().Add("Content-Type", "text/plain")
+	w.Header().Add("Connection", "close")
 	w.Header().Add("Content-Length", strconv.Itoa(buf.Len()))
 
 	// It would probably be good to use real response codes, but no common client actually cares
@@ -274,6 +276,7 @@ func Start() {
 	if err != nil {
 		panic(err)
 	}
+
 	/*
 	 * Behind the scenes, this works by spawning a new goroutine for each client.
 	 * This is pretty fast and scalable since goroutines are nice and efficient.
