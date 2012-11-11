@@ -125,7 +125,9 @@ func (db *Database) Terminate() {
 	}()
 
 	db.waitGroup.Wait()
+	db.mainConn.mutex.Lock()
 	db.mainConn.Close()
+	db.mainConn.mutex.Unlock()
 	db.serialize()
 }
 
