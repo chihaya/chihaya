@@ -111,3 +111,7 @@ func (db *Database) RecordSnatch(peer *Peer, now int64) {
 
 	db.snatchChannel <- sn
 }
+
+func (db *Database) VerifyUsedSlots(user *User) {
+	db.slotVerificationChannel <- user
+}

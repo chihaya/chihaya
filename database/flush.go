@@ -5,7 +5,6 @@ import (
 	"chihaya/config"
 	"chihaya/util"
 	"log"
-	"runtime"
 	"sync/atomic"
 	"time"
 )
@@ -33,6 +32,7 @@ func (db *Database) startFlushing() {
 	db.transferHistoryChannel = make(chan *bytes.Buffer, config.TransferHistoryFlushBufferSize)
 	db.transferIpsChannel = make(chan *bytes.Buffer, config.TransferIpsFlushBufferSize)
 	db.snatchChannel = make(chan *bytes.Buffer, config.SnatchFlushBufferSize)
+	db.slotVerificationChannel = make(chan *User, 100)
 
 	go db.flushTorrents()
 	go db.flushUsers()
@@ -41,7 +41,7 @@ func (db *Database) startFlushing() {
 	go db.flushSnatches()
 
 	go db.purgeInactivePeers()
-	go db.verifyUsedSlotsCache()
+	go db.startUsedSlotsVerification()
 }
 
 func (db *Database) flushTorrents() {
@@ -348,57 +348,46 @@ func (db *Database) purgeInactivePeers() {
 }
 
 /*
- * This is here because deleting a torrent that a user is leeching will cause their slot count to be incorrect
- *
- * Note that when there are *a lot* of leechers, this can get SLOW. TODO: make this function unnecessary
+ * Deleting a torrent that a user is leeching will cause their slot count to be incorrect,
+ * so the count is verified every so often
  */
-func (db *Database) verifyUsedSlotsCache() {
+func (db *Database) startUsedSlotsVerification() {
 	if !config.SlotsEnabled {
 		log.Printf("Slots disabled, skipping slot verification")
 		return
 	}
-	time.Sleep(10 * time.Second)
 
 	var slots int64
 	for !db.terminate {
-		db.waitGroup.Add(1)
-		start := time.Now()
-
-		log.Printf("Starting to verify used slot cache (this will take a while)")
-
-		inconsistent := 0
-
-		db.UsersMutex.RLock()
-		for _, user := range db.Users {
-			if user.Slots == -1 {
-				// Although slots used are still calculated for users with no restriction,
-				// we don't care as much about consistency for them. If they suddenly get a restriction,
-				// their slot count will be cleaned up on the next verification
-				continue
-			}
-			slots = 0
-			db.TorrentsMutex.RLock() // Unlock and lock in here to allow pending requests to continue processing
-			for _, torrent := range db.Torrents {
-				for _, peer := range torrent.Leechers {
-					if peer.UserId == user.Id {
-						slots++
-					}
-				}
-			}
-			db.TorrentsMutex.RUnlock()
-			if user.UsedSlots != slots {
-				if user.UsedSlots < slots {
-					log.Printf("!!! WARNING/BUG !!! Negative UsedSlots value (%d < %d) for user %d\n", user.UsedSlots, slots, user.Id)
-				}
-				atomic.StoreInt64(&user.UsedSlots, slots)
-				inconsistent++
-			}
-			runtime.Gosched() // Low priority routine, so let other stuff happen
+		user := <-db.slotVerificationChannel
+		if user == nil {
+			break
 		}
-		db.UsersMutex.RUnlock()
+		if user.Slots == -1 {
+			continue
+		}
 
-		log.Printf("Slot cache verification complete (%d fixed, %dms)\n", inconsistent, time.Now().Sub(start).Nanoseconds()/1000000)
+		db.waitGroup.Add(1)
+		userId := user.Id
+
+		slots = 0
+		db.TorrentsMutex.RLock()
+		for _, torrent := range db.Torrents {
+			for _, peer := range torrent.Leechers {
+				if peer.UserId == userId {
+					slots++
+				}
+			}
+		}
+		db.TorrentsMutex.RUnlock()
+		if user.UsedSlots != slots {
+			if user.UsedSlots < slots {
+				log.Printf("!!! WARNING/BUG !!! Negative UsedSlots value (%d < %d) for user %d\n", user.UsedSlots, slots, user.Id)
+			}
+			atomic.StoreInt64(&user.UsedSlots, slots)
+			log.Printf("Fixed used slot cache for user %d", userId)
+		}
+
 		db.waitGroup.Done()
-		time.Sleep(config.VerifyUsedSlotsInterval)
 	}
 }

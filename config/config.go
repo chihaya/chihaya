@@ -27,7 +27,7 @@ var (
 	DatabaseSerializationInterval = 68 * time.Second
 	PurgeInactiveInterval         = 83 * time.Second
 
-	VerifyUsedSlotsInterval = 60 * time.Minute
+	VerifyUsedSlotsInterval = int64(60 * 60) // in seconds
 )
 
 // Time to sleep between flushes if the buffer is less than half full

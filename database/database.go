@@ -46,6 +46,8 @@ type User struct {
 	DownMultiplier float64
 	Slots          int64
 	UsedSlots      int64
+
+	SlotsLastChecked int64
 }
 
 type DatabaseConnection struct {
@@ -72,11 +74,12 @@ type Database struct {
 	Whitelist      []string
 	WhitelistMutex sync.RWMutex
 
-	torrentChannel         chan *bytes.Buffer
-	userChannel            chan *bytes.Buffer
-	transferHistoryChannel chan *bytes.Buffer
-	transferIpsChannel     chan *bytes.Buffer
-	snatchChannel          chan *bytes.Buffer
+	torrentChannel          chan *bytes.Buffer
+	userChannel             chan *bytes.Buffer
+	transferHistoryChannel  chan *bytes.Buffer
+	transferIpsChannel      chan *bytes.Buffer
+	snatchChannel           chan *bytes.Buffer
+	slotVerificationChannel chan *User
 
 	waitGroup sync.WaitGroup
 

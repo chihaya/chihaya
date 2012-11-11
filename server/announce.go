@@ -375,6 +375,14 @@ func announce(params *queryParams, user *cdb.User, ip string, db *cdb.Database, 
 	if shouldFlushPeer {
 		db.RecordTransferHistory(peer, rawDeltaUpload, rawDeltaDownload, deltaTime, deltaSnatch, active)
 		db.RecordUser(user, rawDeltaUpload, rawDeltaDownload, deltaUpload, deltaDownload)
+
+		// Although slots used are still calculated for users with no restriction,
+		// we don't care as much about consistency for them. If they suddenly get a restriction,
+		// their slot count will be cleaned up on their next announce
+		if user.SlotsLastChecked+config.VerifyUsedSlotsInterval < now && user.Slots != -1 && config.SlotsEnabled {
+			db.VerifyUsedSlots(user)
+			atomic.StoreInt64(&user.SlotsLastChecked, now)
+		}
 	}
 	if shouldFlushAddr {
 		db.RecordTransferIp(peer)
