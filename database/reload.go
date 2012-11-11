@@ -14,8 +14,6 @@ import (
  *   - The number of simultaneous readers is arbitrarily high
  *   - Writing is blocked until all current readers release the mutex
  *   - Once a writer locks the mutex, new readers block until the writer unlocks it
- *
- * When writing, mutexes are only locked after the database call returns, so contention should be minimal.
  */
 func (db *Database) startReloading() {
 	go func() {
@@ -34,9 +32,10 @@ func (db *Database) loadUsers() {
 	var err error
 	var count uint
 
+	db.UsersMutex.Lock()
 	db.mainConn.mutex.Lock()
-	result := db.mainConn.query(db.loadUsersStmt)
 	start := time.Now()
+	result := db.mainConn.query(db.loadUsersStmt)
 
 	newUsers := make(map[string]*User, len(db.Users))
 
@@ -47,8 +46,6 @@ func (db *Database) loadUsers() {
 	downMultiplier := result.Map("DownMultiplier")
 	upMultiplier := result.Map("UpMultiplier")
 	slots := result.Map("Slots")
-
-	db.UsersMutex.Lock()
 
 	for {
 		err = result.ScanRow(row.r)
@@ -90,9 +87,10 @@ func (db *Database) loadTorrents() {
 	var err error
 	var count uint
 
+	db.TorrentsMutex.Lock()
 	db.mainConn.mutex.Lock()
-	result := db.mainConn.query(db.loadTorrentsStmt)
 	start := time.Now()
+	result := db.mainConn.query(db.loadTorrentsStmt)
 
 	newTorrents := make(map[string]*Torrent)
 
@@ -103,8 +101,6 @@ func (db *Database) loadTorrents() {
 	downMultiplier := result.Map("DownMultiplier")
 	upMultiplier := result.Map("UpMultiplier")
 	snatched := result.Map("Snatched")
-
-	db.TorrentsMutex.Lock()
 
 	for {
 		err = result.ScanRow(row.r)
@@ -148,13 +144,13 @@ func (db *Database) loadWhitelist() {
 	var err error
 	var count int
 
+	db.WhitelistMutex.Lock()
 	db.mainConn.mutex.Lock()
-	result := db.mainConn.query(db.loadWhitelistStmt)
 	start := time.Now()
+	result := db.mainConn.query(db.loadWhitelistStmt)
 
 	row := result.MakeRow()
 
-	db.WhitelistMutex.Lock()
 	db.Whitelist = db.Whitelist[0:1] // Effectively clear the whitelist
 
 	for {

@@ -330,7 +330,7 @@ func (db *Database) purgeInactivePeers() {
 		}
 		db.TorrentsMutex.Unlock()
 
-		log.Printf("Purged %d inactive peers from memory (%d ms)\n", count, time.Now().Sub(start).Nanoseconds()/1000000)
+		log.Printf("Purged %d inactive peers from memory (%dms)\n", count, time.Now().Sub(start).Nanoseconds()/1000000)
 
 		// Then set them to inactive in the database
 		db.mainConn.mutex.Lock()
@@ -362,7 +362,7 @@ func (db *Database) verifyUsedSlotsCache() {
 		db.waitGroup.Add(1)
 		start := time.Now()
 
-		log.Printf("Starting to verify used slot cache (this may take a while)")
+		log.Printf("Starting to verify used slot cache (this will take a while)")
 
 		inconsistent := 0
 
