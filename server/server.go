@@ -214,8 +214,6 @@ func (handler *httpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	//log.Println(r.URL)
 
-	panic("test")
-
 	if r.URL.Path == "/stats" {
 		db := handler.db
 		peers := 0
