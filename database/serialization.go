@@ -49,12 +49,12 @@ func (db *Database) serialize() {
 }
 
 func (db *Database) deserialize() {
-	torrentFile, err := os.OpenFile("torrent-cache.gob", os.O_RDONLY, 0600)
+	torrentFile, err := os.OpenFile("torrent-cache.gob", os.O_RDONLY, 0)
 	if err != nil {
 		log.Println("Torrent cache missing, skipping deserialization")
 		return
 	}
-	userFile, err := os.OpenFile("user-cache.gob", os.O_RDONLY, 0600)
+	userFile, err := os.OpenFile("user-cache.gob", os.O_RDONLY, 0)
 	if err != nil {
 		log.Println("User cache missing, skipping deserialization")
 		return
