@@ -357,6 +357,8 @@ func (db *Database) verifyUsedSlotsCache() {
 		log.Printf("Slots disabled, skipping slot verification")
 		return
 	}
+	time.Sleep(10 * time.Second)
+
 	var slots int64
 	for !db.terminate {
 		db.waitGroup.Add(1)
