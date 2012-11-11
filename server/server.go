@@ -202,10 +202,19 @@ func (handler *httpHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	handler.waitGroup.Add(1)
 	defer handler.waitGroup.Done()
 
+	defer func() {
+		err := recover()
+		if err != nil {
+			log.Printf("!!! ServeHTTP panic !!! %v", err)
+		}
+	}()
+
 	buf := handler.bufferPool.Take()
 	defer handler.bufferPool.Give(buf)
 
 	//log.Println(r.URL)
+
+	panic("test")
 
 	if r.URL.Path == "/stats" {
 		db := handler.db
