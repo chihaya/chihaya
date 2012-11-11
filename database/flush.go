@@ -17,6 +17,8 @@ import (
  * This way, rather than thrashing and missing flushes, clients are simply forced to wait longer.
  *
  * This tradeoff can be adjusted by tweaking the various xFlushBufferSize values to suit the server.
+ *
+ * Each flush routine now gets its own database connection to maximize a.
  */
 
 /*
@@ -47,6 +49,7 @@ func (db *Database) flushTorrents() {
 	db.waitGroup.Add(1)
 	defer db.waitGroup.Done()
 	var count int
+	conn := OpenDatabaseConnection()
 
 	for {
 		length := util.Max(1, len(db.torrentChannel))
@@ -75,7 +78,7 @@ func (db *Database) flushTorrents() {
 			query.WriteString("\nON DUPLICATE KEY UPDATE Snatched = Snatched + VALUES(Snatched), " +
 				"Seeders = VALUES(Seeders), Leechers = VALUES(Leechers);")
 
-			db.execBuffer(&query)
+			conn.execBuffer(&query)
 
 			if length < (config.TorrentFlushBufferSize >> 1) {
 				time.Sleep(config.FlushSleepInterval)
@@ -86,6 +89,8 @@ func (db *Database) flushTorrents() {
 			time.Sleep(time.Second)
 		}
 	}
+
+	conn.Close()
 }
 
 func (db *Database) flushUsers() {
@@ -93,6 +98,7 @@ func (db *Database) flushUsers() {
 	db.waitGroup.Add(1)
 	defer db.waitGroup.Done()
 	var count int
+	conn := OpenDatabaseConnection()
 
 	for {
 		length := util.Max(1, len(db.userChannel))
@@ -121,7 +127,7 @@ func (db *Database) flushUsers() {
 			query.WriteString("\nON DUPLICATE KEY UPDATE Uploaded = Uploaded + VALUES(Uploaded), " +
 				"Downloaded = Downloaded + VALUES(Downloaded), rawdl = rawdl + VALUES(rawdl), rawup = rawup + VALUES(rawup);")
 
-			db.execBuffer(&query)
+			conn.execBuffer(&query)
 
 			if length < (config.UserFlushBufferSize >> 1) {
 				time.Sleep(config.FlushSleepInterval)
@@ -132,6 +138,8 @@ func (db *Database) flushUsers() {
 			time.Sleep(time.Second)
 		}
 	}
+
+	conn.Close()
 }
 
 func (db *Database) flushTransferHistory() {
@@ -139,6 +147,7 @@ func (db *Database) flushTransferHistory() {
 	db.waitGroup.Add(1)
 	defer db.waitGroup.Done()
 	var count int
+	conn := OpenDatabaseConnection()
 
 	for {
 		length := util.Max(1, len(db.transferHistoryChannel))
@@ -170,7 +179,7 @@ func (db *Database) flushTransferHistory() {
 				"seeding = VALUES(seeding), seedtime = seedtime + VALUES(seedtime), last_announce = VALUES(last_announce), " +
 				"active = VALUES(active), snatched = snatched + VALUES(snatched), remaining = VALUES(remaining);")
 
-			db.execBuffer(&query)
+			conn.execBuffer(&query)
 
 			if length < (config.TransferHistoryFlushBufferSize >> 1) {
 				time.Sleep(config.FlushSleepInterval)
@@ -181,6 +190,8 @@ func (db *Database) flushTransferHistory() {
 			time.Sleep(time.Second)
 		}
 	}
+
+	conn.Close()
 }
 
 func (db *Database) flushTransferIps() {
@@ -188,6 +199,7 @@ func (db *Database) flushTransferIps() {
 	db.waitGroup.Add(1)
 	defer db.waitGroup.Done()
 	var count int
+	conn := OpenDatabaseConnection()
 
 	for {
 		length := util.Max(1, len(db.transferIpsChannel))
@@ -215,7 +227,7 @@ func (db *Database) flushTransferIps() {
 		if count > 0 {
 			query.WriteString("\nON DUPLICATE KEY UPDATE ip = VALUES(ip), port = VALUES(port);")
 
-			db.execBuffer(&query)
+			conn.execBuffer(&query)
 
 			if length < (config.TransferIpsFlushBufferSize >> 1) {
 				time.Sleep(config.FlushSleepInterval)
@@ -226,6 +238,8 @@ func (db *Database) flushTransferIps() {
 			time.Sleep(time.Second)
 		}
 	}
+
+	conn.Close()
 }
 
 func (db *Database) flushSnatches() {
@@ -233,6 +247,7 @@ func (db *Database) flushSnatches() {
 	db.waitGroup.Add(1)
 	defer db.waitGroup.Done()
 	var count int
+	conn := OpenDatabaseConnection()
 
 	for {
 		length := util.Max(1, len(db.snatchChannel))
@@ -260,7 +275,7 @@ func (db *Database) flushSnatches() {
 		if count > 0 {
 			query.WriteString("\nON DUPLICATE KEY UPDATE snatched_time = VALUES(snatched_time);")
 
-			db.execBuffer(&query)
+			conn.execBuffer(&query)
 
 			if length < (config.SnatchFlushBufferSize >> 1) {
 				time.Sleep(config.FlushSleepInterval)
@@ -271,6 +286,8 @@ func (db *Database) flushSnatches() {
 			time.Sleep(time.Second)
 		}
 	}
+
+	conn.Close()
 }
 
 func (db *Database) purgeInactivePeers() {
@@ -316,8 +333,10 @@ func (db *Database) purgeInactivePeers() {
 		log.Printf("Purged %d inactive peers from memory (%d ms)\n", count, time.Now().Sub(start).Nanoseconds()/1000000)
 
 		// Then set them to inactive in the database
-		result := db.exec(db.cleanStalePeersStmt, oldestActive)
+		db.mainConn.mutex.Lock()
+		result := db.mainConn.exec(db.cleanStalePeersStmt, oldestActive)
 		rows := result.AffectedRows()
+		db.mainConn.mutex.Unlock()
 
 		if rows > 0 {
 			log.Printf("Updated %d inactive peers in database\n", rows)
@@ -372,7 +391,7 @@ func (db *Database) verifyUsedSlotsCache() {
 				atomic.StoreInt64(&user.UsedSlots, slots)
 				inconsistent++
 			}
-			runtime.Gosched() // Yield because this is low priority
+			runtime.Gosched() // Low priority routine, so let other stuff happen
 		}
 		db.UsersMutex.RUnlock()
 

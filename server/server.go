@@ -305,9 +305,5 @@ func collectStatistics() {
 
 		log.Printf("Throughput last minute: %4f req/s\n", handler.throughput)
 		lastTime = time.Now()
-
-		if handler.terminate {
-			log.Printf("Waiting for connections to close and stats flushing to finish. This can take a while, so please be patient!")
-		}
 	}
 }

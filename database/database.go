@@ -5,7 +5,7 @@ import (
 	"chihaya/config"
 	"chihaya/util"
 	"github.com/ziutek/mymysql/mysql"
-	_ "github.com/ziutek/mymysql/thrsafe"
+	_ "github.com/ziutek/mymysql/native"
 	"log"
 	"sync"
 	"time"
@@ -48,10 +48,15 @@ type User struct {
 	UsedSlots      int64
 }
 
+type DatabaseConnection struct {
+	sqlDb mysql.Conn
+	mutex sync.Mutex
+}
+
 type Database struct {
 	terminate bool
 
-	sqlDb mysql.Conn
+	mainConn *DatabaseConnection // Used for reloading and misc queries
 
 	loadUsersStmt       mysql.Stmt
 	loadTorrentsStmt    mysql.Stmt
@@ -79,23 +84,9 @@ type Database struct {
 }
 
 func (db *Database) Init() {
-	var err error
 	db.terminate = false
 
-	databaseConfig := config.Section("database")
-
-	db.sqlDb = mysql.New(databaseConfig["proto"].(string),
-		"",
-		databaseConfig["addr"].(string),
-		databaseConfig["username"].(string),
-		databaseConfig["password"].(string),
-		databaseConfig["database"].(string),
-	)
-
-	err = db.sqlDb.Connect()
-	if err != nil {
-		log.Fatalf("Couldn't connect to database at %s:%s - %s", databaseConfig["proto"], databaseConfig["addr"], err)
-	}
+	db.mainConn = OpenDatabaseConnection()
 
 	maxBuffers := config.TorrentFlushBufferSize + config.UserFlushBufferSize + config.TransferHistoryFlushBufferSize +
 		config.TransferIpsFlushBufferSize + config.SnatchFlushBufferSize
@@ -103,10 +94,10 @@ func (db *Database) Init() {
 	// Used for recording updates, so the max required size should be < 128 bytes. See record.go for details
 	db.bufferPool = util.NewBufferPool(maxBuffers, 128)
 
-	db.loadUsersStmt = db.prepareStatement("SELECT ID, torrent_pass, DownMultiplier, UpMultiplier, Slots FROM users_main")
-	db.loadTorrentsStmt = db.prepareStatement("SELECT ID, info_hash, DownMultiplier, UpMultiplier, Snatched FROM torrents")
-	db.loadWhitelistStmt = db.prepareStatement("SELECT peer_id FROM xbt_client_whitelist")
-	db.cleanStalePeersStmt = db.prepareStatement("UPDATE transfer_history SET active = '0' WHERE last_announce < ?")
+	db.loadUsersStmt = db.mainConn.prepareStatement("SELECT ID, torrent_pass, DownMultiplier, UpMultiplier, Slots FROM users_main")
+	db.loadTorrentsStmt = db.mainConn.prepareStatement("SELECT ID, info_hash, DownMultiplier, UpMultiplier, Snatched FROM torrents")
+	db.loadWhitelistStmt = db.mainConn.prepareStatement("SELECT peer_id FROM xbt_client_whitelist")
+	db.cleanStalePeersStmt = db.mainConn.prepareStatement("UPDATE transfer_history SET active = '0' WHERE last_announce < ?")
 
 	db.Users = make(map[string]*User)
 	db.Torrents = make(map[string]*Torrent)
@@ -128,12 +119,40 @@ func (db *Database) Terminate() {
 	close(db.transferIpsChannel)
 	close(db.snatchChannel)
 
-	db.waitGroup.Wait()
+	go func() {
+		time.Sleep(10 * time.Second)
+		log.Printf("Waiting for database flushing to finish. This can take a few minutes, please be patient!")
+	}()
 
+	db.waitGroup.Wait()
+	db.mainConn.Close()
 	db.serialize()
 }
 
-func (db *Database) prepareStatement(sql string) mysql.Stmt {
+func OpenDatabaseConnection() (db *DatabaseConnection) {
+	db = &DatabaseConnection{}
+	databaseConfig := config.Section("database")
+
+	db.sqlDb = mysql.New(databaseConfig["proto"].(string),
+		"",
+		databaseConfig["addr"].(string),
+		databaseConfig["username"].(string),
+		databaseConfig["password"].(string),
+		databaseConfig["database"].(string),
+	)
+
+	err := db.sqlDb.Connect()
+	if err != nil {
+		log.Fatalf("Couldn't connect to database at %s:%s - %s", databaseConfig["proto"], databaseConfig["addr"], err)
+	}
+	return
+}
+
+func (db *DatabaseConnection) Close() error {
+	return db.sqlDb.Close()
+}
+
+func (db *DatabaseConnection) prepareStatement(sql string) mysql.Stmt {
 	stmt, err := db.sqlDb.Prepare(sql)
 	if err != nil {
 		log.Fatalf("%s for SQL: %s", err, sql)
@@ -149,11 +168,11 @@ func (db *Database) prepareStatement(sql string) mysql.Stmt {
  * This is really confusing, which is why these wrapper functions are named as such
  */
 
-func (db *Database) query(stmt mysql.Stmt, args ...interface{}) mysql.Result {
+func (db *DatabaseConnection) query(stmt mysql.Stmt, args ...interface{}) mysql.Result {
 	return db.exec(stmt, args...)
 }
 
-func (db *Database) exec(stmt mysql.Stmt, args ...interface{}) (result mysql.Result) {
+func (db *DatabaseConnection) exec(stmt mysql.Stmt, args ...interface{}) (result mysql.Result) {
 	var err error
 	var tries int
 
@@ -178,7 +197,7 @@ func (db *Database) exec(stmt mysql.Stmt, args ...interface{}) (result mysql.Res
 	return
 }
 
-func (db *Database) execBuffer(query *bytes.Buffer) (result mysql.Result) {
+func (db *DatabaseConnection) execBuffer(query *bytes.Buffer) (result mysql.Result) {
 	var err error
 	var tries int
 
