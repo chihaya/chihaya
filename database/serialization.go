@@ -63,6 +63,8 @@ func (db *Database) deserialize() {
 	defer torrentFile.Close()
 	defer userFile.Close()
 
+	start := time.Now()
+
 	log.Printf("Deserializing database from cache file")
 
 	decoder := gob.NewDecoder(torrentFile)
@@ -84,7 +86,7 @@ func (db *Database) deserialize() {
 
 	if err != nil {
 		log.Println("!!! CRITICAL !!! Failed to deserialize user cache! You may need to delete it.", err)
-		panic("Torrent deserialization failed")
+		panic("User deserialization failed")
 	}
 
 	db.TorrentsMutex.RLock()
@@ -99,5 +101,5 @@ func (db *Database) deserialize() {
 	users := len(db.Users)
 	db.UsersMutex.RUnlock()
 
-	log.Printf("Loaded %d users, %d torrents, %d peers\n", users, torrents, peers)
+	log.Printf("Loaded %d users, %d torrents, %d peers (%dms)\n", users, torrents, peers, time.Now().Sub(start).Nanoseconds()/1000000)
 }
