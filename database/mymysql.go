@@ -1,8 +1,8 @@
 package database
 
 import (
-	"log"
 	"github.com/ziutek/mymysql/mysql"
+	"log"
 )
 
 /*

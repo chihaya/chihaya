@@ -2,8 +2,8 @@ package database
 
 import (
 	"chihaya/config"
-	"log"
 	"io"
+	"log"
 	"time"
 )
 
@@ -69,11 +69,11 @@ func (db *Database) loadUsers() {
 			newUsers[torrentPass] = old
 		} else {
 			newUsers[torrentPass] = &User{
-				Id: row.Uint64(id),
-				UpMultiplier: row.Float64(downMultiplier),
+				Id:             row.Uint64(id),
+				UpMultiplier:   row.Float64(downMultiplier),
 				DownMultiplier: row.Float64(upMultiplier),
-				Slots: row.Int64(slots),
-				UsedSlots: 0,
+				Slots:          row.Int64(slots),
+				UsedSlots:      0,
 			}
 		}
 		count++
@@ -125,12 +125,12 @@ func (db *Database) loadTorrents() {
 			newTorrents[infoHash] = old
 		} else {
 			newTorrents[infoHash] = &Torrent{
-				Id: row.Uint64(id),
-				UpMultiplier: row.Float64(downMultiplier),
+				Id:             row.Uint64(id),
+				UpMultiplier:   row.Float64(downMultiplier),
 				DownMultiplier: row.Float64(upMultiplier),
-				Snatched: row.Uint(snatched),
+				Snatched:       row.Uint(snatched),
 
-				Seeders: make(map[string]*Peer),
+				Seeders:  make(map[string]*Peer),
 				Leechers: make(map[string]*Peer),
 			}
 		}
