@@ -18,7 +18,7 @@ import (
  *
  * This tradeoff can be adjusted by tweaking the various xFlushBufferSize values to suit the server.
  *
- * Each flush routine now gets its own database connection to maximize a.
+ * Each flush routine now gets its own database connection to maximize update throughput.
  */
 
 /*
