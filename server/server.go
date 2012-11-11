@@ -260,12 +260,6 @@ func Start() {
 	bufferPool := util.NewBufferPool(500, 500)
 	handler.bufferPool = bufferPool
 
-	listener, err = net.Listen("tcp", config.Get("addr"))
-
-	if err != nil {
-		panic(err)
-	}
-
 	server := &http.Server{
 		Handler:     handler,
 		ReadTimeout: 20 * time.Second,
@@ -275,6 +269,11 @@ func Start() {
 
 	handler.db.Init()
 
+	listener, err = net.Listen("tcp", config.Get("addr"))
+
+	if err != nil {
+		panic(err)
+	}
 	/*
 	 * Behind the scenes, this works by spawning a new goroutine for each client.
 	 * This is pretty fast and scalable since goroutines are nice and efficient.
