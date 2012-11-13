@@ -175,8 +175,11 @@ func announce(params *queryParams, user *cdb.User, ip string, db *cdb.Database, 
 		shouldFlushPeer = true
 	}
 
+	var deltaDownload int64
+	if !config.GlobalFreeleech {
+		deltaDownload = int64(float64(rawDeltaDownload) * user.DownMultiplier * torrent.DownMultiplier)
+	}
 	deltaUpload := int64(float64(rawDeltaUpload) * user.UpMultiplier * torrent.UpMultiplier)
-	deltaDownload := int64(float64(rawDeltaDownload) * user.DownMultiplier * torrent.DownMultiplier)
 
 	peer.Uploaded = uploaded
 	peer.Downloaded = downloaded

@@ -63,6 +63,7 @@ type Database struct {
 	loadUsersStmt       mysql.Stmt
 	loadTorrentsStmt    mysql.Stmt
 	loadWhitelistStmt   mysql.Stmt
+	loadFreeleechStmt   mysql.Stmt
 	cleanStalePeersStmt mysql.Stmt
 
 	Users      map[string]*User // 32 bytes
@@ -100,6 +101,7 @@ func (db *Database) Init() {
 	db.loadUsersStmt = db.mainConn.prepareStatement("SELECT ID, torrent_pass, DownMultiplier, UpMultiplier, Slots FROM users_main")
 	db.loadTorrentsStmt = db.mainConn.prepareStatement("SELECT ID, info_hash, DownMultiplier, UpMultiplier, Snatched FROM torrents")
 	db.loadWhitelistStmt = db.mainConn.prepareStatement("SELECT peer_id FROM xbt_client_whitelist")
+	db.loadFreeleechStmt = db.mainConn.prepareStatement("SELECT mod_setting FROM mod_core WHERE mod_option='global_freeleech'")
 	db.cleanStalePeersStmt = db.mainConn.prepareStatement("UPDATE transfer_history SET active = '0' WHERE last_announce < ?")
 
 	db.Users = make(map[string]*User)
@@ -121,6 +123,7 @@ func (db *Database) Terminate() {
 	close(db.transferHistoryChannel)
 	close(db.transferIpsChannel)
 	close(db.snatchChannel)
+	close(db.slotVerificationChannel)
 
 	go func() {
 		time.Sleep(10 * time.Second)

@@ -8,14 +8,8 @@ import (
 	"time"
 )
 
-/*
-READ_DB_FREQUENCY = 30
-WRITE_MARSHALL_FREQUENCY = 60
-WRITE_DB_FREQUENCY = 5
-CLEAN_FREQUENCY = 120
-MIN_INTERVAL = 900
-ANNOUNCE_INTERVAL = 2700
-*/
+// Loaded from the database
+var GlobalFreeleech = false
 
 // Intervals
 var (

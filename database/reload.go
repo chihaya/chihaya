@@ -17,11 +17,18 @@ import (
  */
 func (db *Database) startReloading() {
 	go func() {
+		count := 0
 		for !db.terminate {
 			db.waitGroup.Add(1)
 			db.loadUsers()
 			db.loadTorrents()
-			db.loadWhitelist()
+			db.loadConfig()
+
+			if count % 10 == 0 {
+				db.loadWhitelist()
+			}
+
+			count++
 			db.waitGroup.Done()
 			time.Sleep(config.DatabaseReloadInterval)
 		}
@@ -138,6 +145,20 @@ func (db *Database) loadTorrents() {
 	db.TorrentsMutex.Unlock()
 
 	log.Printf("Torrent load complete (%d rows, %dms)", count, time.Now().Sub(start).Nanoseconds()/1000000)
+}
+
+func (db *Database) loadConfig() {
+	db.mainConn.mutex.Lock()
+	result := db.mainConn.query(db.loadFreeleechStmt)
+	for {
+		row, err := result.GetRow()
+		if err != nil || row == nil {
+			break
+		} else {
+			config.GlobalFreeleech = row.Bool(0)
+		}
+	}
+	db.mainConn.mutex.Unlock()
 }
 
 func (db *Database) loadWhitelist() {
