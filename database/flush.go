@@ -150,6 +150,7 @@ func (db *Database) flushTransferHistory() {
 	conn := OpenDatabaseConnection()
 
 	for {
+		db.transferHistoryWaitGroup.Add(1)
 		length := util.Max(1, len(db.transferHistoryChannel))
 		query.Reset()
 
@@ -180,13 +181,16 @@ func (db *Database) flushTransferHistory() {
 				"active = VALUES(active), snatched = snatched + VALUES(snatched), remaining = VALUES(remaining);")
 
 			conn.execBuffer(&query)
+			db.transferHistoryWaitGroup.Done()
 
 			if length < (config.TransferHistoryFlushBufferSize >> 1) {
 				time.Sleep(config.FlushSleepInterval)
 			}
 		} else if db.terminate {
+			db.transferHistoryWaitGroup.Done()
 			break
 		} else {
+			db.transferHistoryWaitGroup.Done()
 			time.Sleep(time.Second)
 		}
 	}
@@ -331,6 +335,9 @@ func (db *Database) purgeInactivePeers() {
 		db.TorrentsMutex.Unlock()
 
 		log.Printf("Purged %d inactive peers from memory (%dms)\n", count, time.Now().Sub(start).Nanoseconds()/1000000)
+
+		// Wait on flushing to prevent a race condition where the user has announced but their announce time hasn't been flushed yet
+		db.transferHistoryWaitGroup.Wait()
 
 		// Then set them to inactive in the database
 		db.mainConn.mutex.Lock()

@@ -82,7 +82,8 @@ type Database struct {
 	snatchChannel           chan *bytes.Buffer
 	slotVerificationChannel chan *User
 
-	waitGroup sync.WaitGroup
+	waitGroup                sync.WaitGroup
+	transferHistoryWaitGroup sync.WaitGroup
 
 	bufferPool *util.BufferPool
 }

@@ -24,7 +24,7 @@ func (db *Database) startReloading() {
 			db.loadTorrents()
 			db.loadConfig()
 
-			if count % 10 == 0 {
+			if count%10 == 0 {
 				db.loadWhitelist()
 			}
 
