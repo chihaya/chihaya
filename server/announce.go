@@ -73,7 +73,6 @@ func announce(params *queryParams, user *cdb.User, ip string, db *cdb.Database, 
 	// Optional parameters
 	event, _ := params.get("event")
 	shouldFlushTorrent := false
-	shouldFlushPeer := false
 	shouldFlushAddr := false
 
 	var numWantStr string
@@ -147,7 +146,6 @@ func announce(params *queryParams, user *cdb.User, ip string, db *cdb.Database, 
 		}
 
 		shouldFlushTorrent = true
-		shouldFlushPeer = true
 		peer.Id = peerId
 		peer.UserId = user.Id
 		peer.TorrentId = torrent.Id
@@ -171,9 +169,6 @@ func announce(params *queryParams, user *cdb.User, ip string, db *cdb.Database, 
 	if rawDeltaDownload < 0 {
 		rawDeltaDownload = 0
 	}
-	if rawDeltaUpload != 0 || rawDeltaDownload != 0 {
-		shouldFlushPeer = true
-	}
 
 	var deltaDownload int64
 	if !config.GlobalFreeleech {
@@ -189,7 +184,6 @@ func announce(params *queryParams, user *cdb.User, ip string, db *cdb.Database, 
 	var deltaTime int64
 	if seeding {
 		deltaTime = now - peer.LastAnnounce
-		shouldFlushPeer = true
 	}
 	peer.LastAnnounce = now
 
@@ -208,12 +202,10 @@ func announce(params *queryParams, user *cdb.User, ip string, db *cdb.Database, 
 
 		active = false
 		shouldFlushTorrent = true
-		shouldFlushPeer = true
 	} else if completed {
 		db.RecordSnatch(peer, now)
 		deltaSnatch = 1
 		shouldFlushTorrent = true
-		shouldFlushPeer = true
 	}
 
 	/*
@@ -257,20 +249,19 @@ func announce(params *queryParams, user *cdb.User, ip string, db *cdb.Database, 
 	if shouldFlushTorrent {
 		db.RecordTorrent(torrent, deltaSnatch)
 	}
-	if shouldFlushPeer {
-		db.RecordTransferHistory(peer, rawDeltaUpload, rawDeltaDownload, deltaTime, deltaSnatch, active)
-		db.RecordUser(user, rawDeltaUpload, rawDeltaDownload, deltaUpload, deltaDownload)
-
-		// Although slots used are still calculated for users with no restriction,
-		// we don't care as much about consistency for them. If they suddenly get a restriction,
-		// their slot count will be cleaned up on their next announce
-		if user.SlotsLastChecked+config.VerifyUsedSlotsInterval < now && user.Slots != -1 && config.SlotsEnabled {
-			db.VerifyUsedSlots(user)
-			atomic.StoreInt64(&user.SlotsLastChecked, now)
-		}
-	}
 	if shouldFlushAddr {
 		db.RecordTransferIp(peer)
+	}
+
+	db.RecordTransferHistory(peer, rawDeltaUpload, rawDeltaDownload, deltaTime, deltaSnatch, active)
+	db.RecordUser(user, rawDeltaUpload, rawDeltaDownload, deltaUpload, deltaDownload)
+
+	// Although slots used are still calculated for users with no restriction,
+	// we don't care as much about consistency for them. If they suddenly get a restriction,
+	// their slot count will be cleaned up on their next announce
+	if user.SlotsLastChecked+config.VerifyUsedSlotsInterval < now && user.Slots != -1 && config.SlotsEnabled {
+		db.VerifyUsedSlots(user)
+		atomic.StoreInt64(&user.SlotsLastChecked, now)
 	}
 
 	// Generate response
