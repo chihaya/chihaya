@@ -99,7 +99,7 @@ func (db *Database) Init() {
 	// Used for recording updates, so the max required size should be < 128 bytes. See record.go for details
 	db.bufferPool = util.NewBufferPool(maxBuffers, 128)
 
-	db.loadUsersStmt = db.mainConn.prepareStatement("SELECT ID, torrent_pass, DownMultiplier, UpMultiplier, Slots FROM users_main")
+	db.loadUsersStmt = db.mainConn.prepareStatement("SELECT ID, torrent_pass, DownMultiplier, UpMultiplier, Slots FROM users_main WHERE Enabled='1'")
 	db.loadTorrentsStmt = db.mainConn.prepareStatement("SELECT ID, info_hash, DownMultiplier, UpMultiplier, Snatched FROM torrents")
 	db.loadWhitelistStmt = db.mainConn.prepareStatement("SELECT peer_id FROM xbt_client_whitelist")
 	db.loadFreeleechStmt = db.mainConn.prepareStatement("SELECT mod_setting FROM mod_core WHERE mod_option='global_freeleech'")
