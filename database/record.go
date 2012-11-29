@@ -117,3 +117,9 @@ func (db *Database) RecordSnatch(peer *Peer, now int64) {
 func (db *Database) VerifyUsedSlots(user *User) {
 	db.slotVerificationChannel <- user
 }
+
+func (db *Database) UnPrune(torrent *Torrent) {
+	db.mainConn.mutex.Lock()
+	db.mainConn.exec(db.unPruneTorrentStmt, torrent.Id)
+	db.mainConn.mutex.Unlock()
+}

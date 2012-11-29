@@ -108,6 +108,7 @@ func (db *Database) loadTorrents() {
 	downMultiplier := result.Map("DownMultiplier")
 	upMultiplier := result.Map("UpMultiplier")
 	snatched := result.Map("Snatched")
+	status := result.Map("Status")
 
 	for {
 		err = result.ScanRow(row.r)
@@ -125,6 +126,7 @@ func (db *Database) loadTorrents() {
 			old.DownMultiplier = row.Float64(downMultiplier)
 			old.UpMultiplier = row.Float64(upMultiplier)
 			old.Snatched = row.Uint(snatched)
+			old.Status = row.Int64(status)
 			newTorrents[infoHash] = old
 		} else {
 			newTorrents[infoHash] = &Torrent{
@@ -132,6 +134,7 @@ func (db *Database) loadTorrents() {
 				UpMultiplier:   row.Float64(downMultiplier),
 				DownMultiplier: row.Float64(upMultiplier),
 				Snatched:       row.Uint(snatched),
+				Status:         row.Int64(snatched),
 
 				Seeders:  make(map[string]*Peer),
 				Leechers: make(map[string]*Peer),

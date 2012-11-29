@@ -5,6 +5,7 @@ import (
 	"chihaya/config"
 	cdb "chihaya/database"
 	"chihaya/util"
+	"fmt"
 	"log"
 	"strconv"
 	"sync/atomic"
@@ -64,7 +65,15 @@ func announce(params *queryParams, user *cdb.User, ip string, db *cdb.Database, 
 
 	torrent, exists := db.Torrents[infoHash]
 	if !exists {
-		failure("Unregistered torrent", buf)
+		failure("This torrent does not exist", buf)
+		return
+	}
+
+	if torrent.Status == 1 && left == 0 {
+		db.UnPrune(torrent)
+		torrent.Status = 0
+	} else if torrent.Status != 0 {
+		failure(fmt.Sprintf("This torrent does not exist (status: %d, left: %d)", torrent.Status, left), buf)
 		return
 	}
 

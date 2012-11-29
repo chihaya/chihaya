@@ -38,6 +38,7 @@ type Torrent struct {
 	Leechers map[string]*Peer
 
 	Snatched   uint
+	Status     int64
 	LastAction int64
 }
 
@@ -66,6 +67,7 @@ type Database struct {
 	loadWhitelistStmt   mysql.Stmt
 	loadFreeleechStmt   mysql.Stmt
 	cleanStalePeersStmt mysql.Stmt
+	unPruneTorrentStmt  mysql.Stmt
 
 	Users      map[string]*User // 32 bytes
 	UsersMutex sync.RWMutex
@@ -101,10 +103,11 @@ func (db *Database) Init() {
 	db.bufferPool = util.NewBufferPool(maxBuffers, 128)
 
 	db.loadUsersStmt = db.mainConn.prepareStatement("SELECT ID, torrent_pass, DownMultiplier, UpMultiplier, Slots FROM users_main WHERE Enabled='1'")
-	db.loadTorrentsStmt = db.mainConn.prepareStatement("SELECT ID, info_hash, DownMultiplier, UpMultiplier, Snatched FROM torrents")
+	db.loadTorrentsStmt = db.mainConn.prepareStatement("SELECT ID, info_hash, DownMultiplier, UpMultiplier, Snatched, Status FROM torrents")
 	db.loadWhitelistStmt = db.mainConn.prepareStatement("SELECT peer_id FROM xbt_client_whitelist")
 	db.loadFreeleechStmt = db.mainConn.prepareStatement("SELECT mod_setting FROM mod_core WHERE mod_option='global_freeleech'")
 	db.cleanStalePeersStmt = db.mainConn.prepareStatement("UPDATE transfer_history SET active = '0' WHERE last_announce < ?")
+	db.unPruneTorrentStmt = db.mainConn.prepareStatement("UPDATE torrents SET Status=0 WHERE ID = ?")
 
 	db.Users = make(map[string]*User)
 	db.Torrents = make(map[string]*Torrent)
