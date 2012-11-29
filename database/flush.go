@@ -55,7 +55,7 @@ func (db *Database) flushTorrents() {
 		length := util.Max(1, len(db.torrentChannel))
 		query.Reset()
 
-		query.WriteString("INSERT INTO torrents (ID, Snatched, Seeders, Leechers) VALUES\n")
+		query.WriteString("INSERT INTO torrents (ID, Snatched, Seeders, Leechers, last_action) VALUES\n")
 
 		for count = 0; count < length; count++ {
 			b := <-db.torrentChannel
@@ -76,7 +76,8 @@ func (db *Database) flushTorrents() {
 
 		if count > 0 {
 			query.WriteString("\nON DUPLICATE KEY UPDATE Snatched = Snatched + VALUES(Snatched), " +
-				"Seeders = VALUES(Seeders), Leechers = VALUES(Leechers);")
+				"Seeders = VALUES(Seeders), Leechers = VALUES(Leechers), " +
+				"last_action = IF(last_action < VALUES(last_action), VALUES(last_action), last_action);")
 
 			conn.execBuffer(&query)
 

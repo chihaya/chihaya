@@ -26,6 +26,8 @@ func (db *Database) RecordTorrent(torrent *Torrent, deltaSnatch uint64) {
 	tq.WriteString(strconv.FormatInt(int64(len(torrent.Seeders)), 10))
 	tq.WriteString("','")
 	tq.WriteString(strconv.FormatInt(int64(len(torrent.Leechers)), 10))
+	tq.WriteString("','")
+	tq.WriteString(strconv.FormatInt(torrent.LastAction, 10))
 	tq.WriteString("')")
 
 	db.torrentChannel <- tq

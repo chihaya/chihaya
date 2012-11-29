@@ -40,8 +40,6 @@ func whitelisted(peerId string, db *cdb.Database) bool {
 func announce(params *queryParams, user *cdb.User, ip string, db *cdb.Database, buf *bytes.Buffer) {
 	var exists bool
 
-	now := time.Now().Unix()
-
 	// Mandatory parameters
 	infoHash, _ := params.get("info_hash")
 	peerId, _ := params.get("peer_id")
@@ -70,9 +68,10 @@ func announce(params *queryParams, user *cdb.User, ip string, db *cdb.Database, 
 		return
 	}
 
+	now := time.Now().Unix()
+
 	// Optional parameters
 	event, _ := params.get("event")
-	shouldFlushTorrent := false
 	shouldFlushAddr := false
 
 	var numWantStr string
@@ -114,7 +113,6 @@ func announce(params *queryParams, user *cdb.User, ip string, db *cdb.Database, 
 			delete(torrent.Leechers, peerId)
 			atomic.AddInt64(&user.UsedSlots, -1)
 		}
-		shouldFlushTorrent = true
 		seeding = true
 	} else { // Previously completed (probably)
 		peer, exists = torrent.Seeders[peerId]
@@ -129,7 +127,6 @@ func announce(params *queryParams, user *cdb.User, ip string, db *cdb.Database, 
 				torrent.Seeders[peerId] = peer
 				delete(torrent.Leechers, peerId)
 				atomic.AddInt64(&user.UsedSlots, -1)
-				shouldFlushTorrent = true
 				// completed = true // TODO: not sure if this will result in over-reported snatches
 			}
 		}
@@ -145,7 +142,6 @@ func announce(params *queryParams, user *cdb.User, ip string, db *cdb.Database, 
 			}
 		}
 
-		shouldFlushTorrent = true
 		peer.Id = peerId
 		peer.UserId = user.Id
 		peer.TorrentId = torrent.Id
@@ -186,6 +182,7 @@ func announce(params *queryParams, user *cdb.User, ip string, db *cdb.Database, 
 		deltaTime = now - peer.LastAnnounce
 	}
 	peer.LastAnnounce = now
+	torrent.LastAction = now
 
 	// Handle events
 	var deltaSnatch uint64
@@ -201,11 +198,9 @@ func announce(params *queryParams, user *cdb.User, ip string, db *cdb.Database, 
 		}
 
 		active = false
-		shouldFlushTorrent = true
 	} else if completed {
 		db.RecordSnatch(peer, now)
 		deltaSnatch = 1
-		shouldFlushTorrent = true
 	}
 
 	/*
@@ -246,15 +241,13 @@ func announce(params *queryParams, user *cdb.User, ip string, db *cdb.Database, 
 	}
 
 	// If the channels are already full, record* blocks until a flush occurs
-	if shouldFlushTorrent {
-		db.RecordTorrent(torrent, deltaSnatch)
-	}
+	db.RecordTorrent(torrent, deltaSnatch)
+	db.RecordTransferHistory(peer, rawDeltaUpload, rawDeltaDownload, deltaTime, deltaSnatch, active)
+	db.RecordUser(user, rawDeltaUpload, rawDeltaDownload, deltaUpload, deltaDownload)
+
 	if shouldFlushAddr {
 		db.RecordTransferIp(peer)
 	}
-
-	db.RecordTransferHistory(peer, rawDeltaUpload, rawDeltaDownload, deltaTime, deltaSnatch, active)
-	db.RecordUser(user, rawDeltaUpload, rawDeltaDownload, deltaUpload, deltaDownload)
 
 	// Although slots used are still calculated for users with no restriction,
 	// we don't care as much about consistency for them. If they suddenly get a restriction,

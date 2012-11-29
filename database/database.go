@@ -37,7 +37,8 @@ type Torrent struct {
 	Seeders  map[string]*Peer
 	Leechers map[string]*Peer
 
-	Snatched uint
+	Snatched   uint
+	LastAction int64
 }
 
 type User struct {
