@@ -70,6 +70,7 @@ func announce(params *queryParams, user *cdb.User, ip string, db *cdb.Database, 
 	}
 
 	if torrent.Status == 1 && left == 0 {
+		log.Printf("Unpruning torrent %d", torrent.Id)
 		db.UnPrune(torrent)
 		torrent.Status = 0
 	} else if torrent.Status != 0 {

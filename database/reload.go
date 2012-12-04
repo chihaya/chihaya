@@ -134,7 +134,7 @@ func (db *Database) loadTorrents() {
 				UpMultiplier:   row.Float64(downMultiplier),
 				DownMultiplier: row.Float64(upMultiplier),
 				Snatched:       row.Uint(snatched),
-				Status:         row.Int64(snatched),
+				Status:         row.Int64(status),
 
 				Seeders:  make(map[string]*Peer),
 				Leechers: make(map[string]*Peer),
