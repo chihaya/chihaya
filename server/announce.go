@@ -109,7 +109,7 @@ func announce(params *queryParams, user *cdb.User, ip string, db *cdb.Database, 
 	} else {
 		numWant64, _ := strconv.ParseInt(numWantStr, 10, 32)
 		numWant = int(numWant64)
-		if numWant > 50 || numWant < 1 {
+		if numWant > 50 || numWant < 0 {
 			numWant = 50
 		}
 	}

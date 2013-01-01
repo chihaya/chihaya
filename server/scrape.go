@@ -15,7 +15,6 @@
  * along with Chihaya.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 package server
 
 import (
