@@ -1,6 +1,8 @@
 chihaya
 =======
 
+Don't expect this to work with your database right out of the box; it uses a different schema than gazelle.
+
 Compiling
 ---------
 
