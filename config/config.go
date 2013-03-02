@@ -33,7 +33,6 @@ var (
 	AnnounceInterval    = 30 * time.Minute
 	MinAnnounceInterval = 15 * time.Minute
 
-	// IMO it's best to offset these to distribute load
 	DatabaseReloadInterval        = 45 * time.Second
 	DatabaseSerializationInterval = 68 * time.Second
 	PurgeInactiveInterval         = 83 * time.Second
@@ -42,9 +41,9 @@ var (
 )
 
 // Time to sleep between flushes if the buffer is less than half full
-var FlushSleepInterval = 200 * time.Millisecond
+var FlushSleepInterval = 3000 * time.Millisecond
 
-// Time to wait before retrying the query when the database deadlocks
+// Initial time to wait before retrying the query when the database deadlocks (ramps linearly)
 var DeadlockWaitTime = 1000 * time.Millisecond
 
 // Maximum times to retry a deadlocked query before giving up
@@ -55,8 +54,8 @@ var (
 	TorrentFlushBufferSize         = 10000
 	UserFlushBufferSize            = 10000
 	TransferHistoryFlushBufferSize = 10000
-	TransferIpsFlushBufferSize     = 10000
-	SnatchFlushBufferSize          = 1000
+	TransferIpsFlushBufferSize     = 1000
+	SnatchFlushBufferSize          = 100
 )
 
 const LogFlushes = true

@@ -123,7 +123,7 @@ func (db *Database) Init() {
 	db.loadTorrentsStmt = db.mainConn.prepareStatement("SELECT ID, info_hash, DownMultiplier, UpMultiplier, Snatched, Status FROM torrents")
 	db.loadWhitelistStmt = db.mainConn.prepareStatement("SELECT peer_id FROM xbt_client_whitelist")
 	db.loadFreeleechStmt = db.mainConn.prepareStatement("SELECT mod_setting FROM mod_core WHERE mod_option='global_freeleech'")
-	db.cleanStalePeersStmt = db.mainConn.prepareStatement("UPDATE transfer_history SET active = '0' WHERE last_announce < ?")
+	db.cleanStalePeersStmt = db.mainConn.prepareStatement("UPDATE transfer_history SET active = '0' WHERE last_announce < ? AND active='1'")
 	db.unPruneTorrentStmt = db.mainConn.prepareStatement("UPDATE torrents SET Status=0 WHERE ID = ?")
 
 	db.Users = make(map[string]*User)
@@ -205,14 +205,16 @@ func (db *DatabaseConnection) query(stmt mysql.Stmt, args ...interface{}) mysql.
 func (db *DatabaseConnection) exec(stmt mysql.Stmt, args ...interface{}) (result mysql.Result) {
 	var err error
 	var tries int
+	var wait int64
 
 	for tries = 0; tries < config.MaxDeadlockRetries; tries++ {
 		result, err = stmt.Run(args...)
 		if err != nil {
 			if merr, isMysqlError := err.(*mysql.Error); isMysqlError {
 				if merr.Code == 1213 || merr.Code == 1205 {
-					log.Printf("!!! DEADLOCK !!! Retrying in %dms (%d/20)", config.DeadlockWaitTime.Nanoseconds()/1000000, tries)
-					time.Sleep(config.DeadlockWaitTime)
+					wait = config.DeadlockWaitTime.Nanoseconds() * int64(tries + 1)
+					log.Printf("!!! DEADLOCK !!! Retrying in %dms (%d/20)", wait / 1000000, tries)
+					time.Sleep(time.Duration(wait))
 					continue
 				} else {
 					log.Printf("!!! CRITICAL !!! SQL error: %v", err)
@@ -230,14 +232,16 @@ func (db *DatabaseConnection) exec(stmt mysql.Stmt, args ...interface{}) (result
 func (db *DatabaseConnection) execBuffer(query *bytes.Buffer) (result mysql.Result) {
 	var err error
 	var tries int
+	var wait int64
 
 	for tries = 0; tries < config.MaxDeadlockRetries; tries++ {
 		result, err = db.sqlDb.Start(query.String())
 		if err != nil {
 			if merr, isMysqlError := err.(*mysql.Error); isMysqlError {
 				if merr.Code == 1213 || merr.Code == 1205 {
-					log.Printf("!!! DEADLOCK !!! Retrying in %dms (%d/20)", config.DeadlockWaitTime.Nanoseconds()/1000000, tries)
-					time.Sleep(config.DeadlockWaitTime)
+					wait = config.DeadlockWaitTime.Nanoseconds() * int64(tries + 1)
+					log.Printf("!!! DEADLOCK !!! Retrying in %dms (%d/20)", wait / 1000000, tries)
+					time.Sleep(time.Duration(wait))
 					continue
 				} else {
 					log.Printf("!!! CRITICAL !!! SQL error: %v", err)

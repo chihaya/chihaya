@@ -313,6 +313,8 @@ func (db *Database) flushSnatches() {
 }
 
 func (db *Database) purgeInactivePeers() {
+	time.Sleep(2 * time.Second)
+
 	for !db.terminate {
 		db.waitGroup.Add(1)
 
@@ -359,12 +361,13 @@ func (db *Database) purgeInactivePeers() {
 
 		// Then set them to inactive in the database
 		db.mainConn.mutex.Lock()
+		start = time.Now()
 		result := db.mainConn.exec(db.cleanStalePeersStmt, oldestActive)
 		rows := result.AffectedRows()
 		db.mainConn.mutex.Unlock()
 
 		if rows > 0 {
-			log.Printf("Updated %d inactive peers in database\n", rows)
+			log.Printf("Updated %d inactive peers in database (%dms)\n", rows, time.Now().Sub(start).Nanoseconds()/1000000)
 		}
 
 		db.waitGroup.Done()
