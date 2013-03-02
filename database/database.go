@@ -212,8 +212,8 @@ func (db *DatabaseConnection) exec(stmt mysql.Stmt, args ...interface{}) (result
 		if err != nil {
 			if merr, isMysqlError := err.(*mysql.Error); isMysqlError {
 				if merr.Code == 1213 || merr.Code == 1205 {
-					wait = config.DeadlockWaitTime.Nanoseconds() * int64(tries + 1)
-					log.Printf("!!! DEADLOCK !!! Retrying in %dms (%d/20)", wait / 1000000, tries)
+					wait = config.DeadlockWaitTime.Nanoseconds() * int64(tries+1)
+					log.Printf("!!! DEADLOCK !!! Retrying in %dms (%d/20)", wait/1000000, tries)
 					time.Sleep(time.Duration(wait))
 					continue
 				} else {
@@ -239,8 +239,8 @@ func (db *DatabaseConnection) execBuffer(query *bytes.Buffer) (result mysql.Resu
 		if err != nil {
 			if merr, isMysqlError := err.(*mysql.Error); isMysqlError {
 				if merr.Code == 1213 || merr.Code == 1205 {
-					wait = config.DeadlockWaitTime.Nanoseconds() * int64(tries + 1)
-					log.Printf("!!! DEADLOCK !!! Retrying in %dms (%d/20)", wait / 1000000, tries)
+					wait = config.DeadlockWaitTime.Nanoseconds() * int64(tries+1)
+					log.Printf("!!! DEADLOCK !!! Retrying in %dms (%d/20)", wait/1000000, tries)
 					time.Sleep(time.Duration(wait))
 					continue
 				} else {
