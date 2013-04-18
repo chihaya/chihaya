@@ -1,0 +1,12 @@
+{
+    "database": {
+        "username": "user",
+        "password": "pass",
+        "database": "database",
+        "proto": "unix",
+        "addr": "/var/run/mysqld/mysqld.sock",
+        "encoding": "utf8"
+    },
+
+    "addr": ":34000"
+}
