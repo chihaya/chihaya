@@ -21,75 +21,72 @@ import (
 	"encoding/json"
 	"log"
 	"os"
-	"sync"
 	"time"
 )
 
-// Loaded from the database
-var GlobalFreeleech = false
+type TrackerDuration struct {
+	time.Duration
+}
 
-// Intervals
-var (
-	AnnounceInterval    = 30 * time.Minute
-	MinAnnounceInterval = 15 * time.Minute
+func (d *TrackerDuration) MarshalJSON() ([]byte, error) {
+	return json.Marshal(d.String())
+}
 
-	DatabaseReloadInterval        = 45 * time.Second
-	DatabaseSerializationInterval = 68 * time.Second
-	PurgeInactiveInterval         = 83 * time.Second
+func (d *TrackerDuration) UnmarshalJSON(b []byte) error {
+	var str string
+	err := json.Unmarshal(b, &str)
+	d.Duration, err = time.ParseDuration(str)
+	return err
+}
 
-	VerifyUsedSlotsInterval = int64(60 * 60) // in seconds
-)
+type TrackerIntervals struct {
+	Announce    TrackerDuration `json:"announce"`
+	MinAnnounce TrackerDuration `json:"min_announce"`
 
-// Time to sleep between flushes if the buffer is less than half full
-var FlushSleepInterval = 3000 * time.Millisecond
+	DatabaseReload        TrackerDuration `json:"database_reload"`
+	DatabaseSerialization TrackerDuration `json:"database_serialization"`
+	PurgeInactive         TrackerDuration `json:"purge_inactive"`
 
-// Initial time to wait before retrying the query when the database deadlocks (ramps linearly)
-var DeadlockWaitTime = 1000 * time.Millisecond
+	VerifyUsedSlots int64 `json:"verify_used_slots"`
 
-// Maximum times to retry a deadlocked query before giving up
-var MaxDeadlockRetries = 20
+	FlushSleep TrackerDuration `json:"flush_sleep"`
+
+	// Initial time to wait before retrying the query when the database deadlocks (ramps linearly)
+	DeadlockWait TrackerDuration `json:"deadlock_wait"`
+}
 
 // Buffer sizes, see @Database.startFlushing()
-var (
-	TorrentFlushBufferSize         = 10000
-	UserFlushBufferSize            = 10000
-	TransferHistoryFlushBufferSize = 10000
-	TransferIpsFlushBufferSize     = 1000
-	SnatchFlushBufferSize          = 100
-)
-
-const LogFlushes = true
-const SlotsEnabled = true
-
-// Config file stuff
-var once sync.Once
-
-type configMap map[string]interface{}
-
-var config configMap
-
-func Get(s string) string {
-	once.Do(readConfig)
-	return config.Get(s)
+type TrackerFlushBufferSizes struct {
+	Torrent         int `json:"torrent"`
+	User            int `json:"user"`
+	TransferHistory int `json:"transfer_history"`
+	TransferIps     int `json:"transfer_ips"`
+	Snatch          int `json:"snatch"`
 }
 
-func Section(s string) configMap {
-	once.Do(readConfig)
-	return config.Section(s)
+type TrackerDatabase struct {
+	Username string `json:"user"`
+	Password string `json:"pass"`
+	Database string `json:"database"`
+	Proto    string `json:"proto"`
+	Addr     string `json:"addr"`
+	Encoding string `json:"encoding"`
 }
 
-func (m configMap) Get(s string) string {
-	result, _ := m[s].(string)
-	return result
+type TrackerConfig struct {
+	Database           TrackerDatabase         `json:"database"`
+	GlobalFreeleech    bool                    `json:"global_freeleach"` // Loaded from the database
+	Intervals          TrackerIntervals        `json:"intervals"`
+	FlushSizes         TrackerFlushBufferSizes `json:"sizes"`
+	MaxDeadlockRetries int                     `json:"max_deadlock_retries"` // Maximum times to retry a deadlocked query before giving up
+	LogFlushes         bool                    `json:"log_flushes"`
+	SlotsEnabled       bool                    `json:"slots_enabled"`
+	BindAddress        string                  `json:"addr"`
 }
 
-func (m configMap) Section(s string) configMap {
-	result, _ := m[s].(map[string]interface{})
-	return configMap(result)
-}
+var Config TrackerConfig
 
-func readConfig() {
-	configFile := "config.json"
+func ReadConfig(configFile string) {
 	f, err := os.Open(configFile)
 
 	if err != nil {
@@ -97,7 +94,7 @@ func readConfig() {
 		return
 	}
 
-	err = json.NewDecoder(f).Decode(&config)
+	err = json.NewDecoder(f).Decode(&Config)
 
 	if err != nil {
 		log.Fatalf("Error parsing config file: %s", err)

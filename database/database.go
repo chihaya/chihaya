@@ -113,8 +113,8 @@ func (db *Database) Init() {
 
 	db.mainConn = OpenDatabaseConnection()
 
-	maxBuffers := config.TorrentFlushBufferSize + config.UserFlushBufferSize + config.TransferHistoryFlushBufferSize +
-		config.TransferIpsFlushBufferSize + config.SnatchFlushBufferSize
+	maxBuffers := config.Config.FlushSizes.Torrent + config.Config.FlushSizes.User + config.Config.FlushSizes.TransferHistory +
+		config.Config.FlushSizes.TransferIps + config.Config.FlushSizes.Snatch
 
 	// Used for recording updates, so the max required size should be < 128 bytes. See record.go for details
 	db.bufferPool = util.NewBufferPool(maxBuffers, 128)
@@ -161,19 +161,18 @@ func (db *Database) Terminate() {
 
 func OpenDatabaseConnection() (db *DatabaseConnection) {
 	db = &DatabaseConnection{}
-	databaseConfig := config.Section("database")
 
-	db.sqlDb = mysql.New(databaseConfig["proto"].(string),
+	db.sqlDb = mysql.New(config.Config.Database.Proto,
 		"",
-		databaseConfig["addr"].(string),
-		databaseConfig["username"].(string),
-		databaseConfig["password"].(string),
-		databaseConfig["database"].(string),
+		config.Config.Database.Addr,
+		config.Config.Database.Username,
+		config.Config.Database.Password,
+		config.Config.Database.Database,
 	)
 
 	err := db.sqlDb.Connect()
 	if err != nil {
-		log.Fatalf("Couldn't connect to database at %s:%s - %s", databaseConfig["proto"], databaseConfig["addr"], err)
+		log.Fatalf("Couldn't connect to database at %s:%s - %s", config.Config.Database.Proto, config.Config.Database.Addr, err)
 	}
 	return
 }
@@ -207,12 +206,12 @@ func (db *DatabaseConnection) exec(stmt mysql.Stmt, args ...interface{}) (result
 	var tries int
 	var wait int64
 
-	for tries = 0; tries < config.MaxDeadlockRetries; tries++ {
+	for tries = 0; tries < config.Config.MaxDeadlockRetries; tries++ {
 		result, err = stmt.Run(args...)
 		if err != nil {
 			if merr, isMysqlError := err.(*mysql.Error); isMysqlError {
 				if merr.Code == 1213 || merr.Code == 1205 {
-					wait = config.DeadlockWaitTime.Nanoseconds() * int64(tries+1)
+					wait = config.Config.Intervals.DeadlockWait.Nanoseconds() * int64(tries+1)
 					log.Printf("!!! DEADLOCK !!! Retrying in %dms (%d/20)", wait/1000000, tries)
 					time.Sleep(time.Duration(wait))
 					continue
@@ -234,12 +233,12 @@ func (db *DatabaseConnection) execBuffer(query *bytes.Buffer) (result mysql.Resu
 	var tries int
 	var wait int64
 
-	for tries = 0; tries < config.MaxDeadlockRetries; tries++ {
+	for tries = 0; tries < config.Config.MaxDeadlockRetries; tries++ {
 		result, err = db.sqlDb.Start(query.String())
 		if err != nil {
 			if merr, isMysqlError := err.(*mysql.Error); isMysqlError {
 				if merr.Code == 1213 || merr.Code == 1205 {
-					wait = config.DeadlockWaitTime.Nanoseconds() * int64(tries+1)
+					wait = config.Config.Intervals.DeadlockWait.Nanoseconds() * int64(tries+1)
 					log.Printf("!!! DEADLOCK !!! Retrying in %dms (%d/20)", wait/1000000, tries)
 					time.Sleep(time.Duration(wait))
 					continue
