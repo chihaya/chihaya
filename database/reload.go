@@ -47,7 +47,7 @@ func (db *Database) startReloading() {
 
 			count++
 			db.waitGroup.Done()
-			time.Sleep(config.DatabaseReloadInterval)
+			time.Sleep(config.Config.Intervals.DatabaseReload.Duration)
 		}
 	}()
 }
@@ -175,7 +175,7 @@ func (db *Database) loadConfig() {
 		if err != nil || row == nil {
 			break
 		} else {
-			config.GlobalFreeleech = row.Bool(0)
+			config.Config.GlobalFreeleech = row.Bool(0)
 		}
 	}
 	db.mainConn.mutex.Unlock()

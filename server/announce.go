@@ -162,7 +162,7 @@ func announce(params *queryParams, user *cdb.User, ip string, db *cdb.Database, 
 
 	// Update peer info/stats
 	if newPeer {
-		if user.Slots != -1 && config.SlotsEnabled && !seeding {
+		if user.Slots != -1 && config.Config.SlotsEnabled && !seeding {
 			if user.UsedSlots >= user.Slots {
 				failure("You don't have enough slots free. Stop downloading something and try again.", buf)
 				return
@@ -194,7 +194,7 @@ func announce(params *queryParams, user *cdb.User, ip string, db *cdb.Database, 
 	}
 
 	var deltaDownload int64
-	if !config.GlobalFreeleech {
+	if !config.Config.GlobalFreeleech {
 		deltaDownload = int64(float64(rawDeltaDownload) * user.DownMultiplier * torrent.DownMultiplier)
 	}
 	deltaUpload := int64(float64(rawDeltaUpload) * user.UpMultiplier * torrent.UpMultiplier)
@@ -279,7 +279,7 @@ func announce(params *queryParams, user *cdb.User, ip string, db *cdb.Database, 
 	// Although slots used are still calculated for users with no restriction,
 	// we don't care as much about consistency for them. If they suddenly get a restriction,
 	// their slot count will be cleaned up on their next announce
-	if user.SlotsLastChecked+config.VerifyUsedSlotsInterval < now && user.Slots != -1 && config.SlotsEnabled {
+	if user.SlotsLastChecked+config.Config.Intervals.VerifyUsedSlots < now && user.Slots != -1 && config.Config.SlotsEnabled {
 		db.VerifyUsedSlots(user)
 		atomic.StoreInt64(&user.SlotsLastChecked, now)
 	}
@@ -294,9 +294,9 @@ func announce(params *queryParams, user *cdb.User, ip string, db *cdb.Database, 
 	util.Bencode("incomplete", buf)
 	util.Bencode(leechCount, buf)
 	util.Bencode("interval", buf)
-	util.Bencode(config.AnnounceInterval, buf)
+	util.Bencode(config.Config.Intervals.Announce.Duration, buf)
 	util.Bencode("min interval", buf)
-	util.Bencode(config.MinAnnounceInterval, buf)
+	util.Bencode(config.Config.Intervals.MinAnnounce.Duration, buf)
 
 	if numWant > 0 && active {
 		util.Bencode("peers", buf)
