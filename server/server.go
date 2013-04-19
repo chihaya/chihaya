@@ -295,7 +295,7 @@ func Start() {
 
 	handler.db.Init()
 
-	listener, err = net.Listen("tcp", config.Get("addr"))
+	listener, err = net.Listen("tcp", config.Config.BindAddress)
 
 	if err != nil {
 		panic(err)
