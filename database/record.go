@@ -3,9 +3,10 @@
 // which can be found in the LICENSE file.
 
 import (
-	"chihaya/util"
 	"encoding/base64"
 	"strconv"
+
+	"github.com/kotokoko/chihaya/util"
 )
 
 /*

@@ -3,10 +3,11 @@
 // which can be found in the LICENSE file.
 
 import (
-	"chihaya/config"
 	"io"
 	"log"
 	"time"
+
+	"github.com/kotokoko/chihaya/config"
 )
 
 /*
