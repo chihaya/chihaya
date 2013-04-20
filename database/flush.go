@@ -1,19 +1,17 @@
-/*
- * This file is part of Chihaya.
- *
- * Chihaya is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * Chihaya is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with Chihaya.  If not, see <http://www.gnu.org/licenses/>.
- */
+// This file is part of Chihaya.
+//
+// Chihaya is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Chihaya is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Chihaya.  If not, see <http://www.gnu.org/licenses/>.
 
 package database
 
@@ -69,7 +67,7 @@ func (db *Database) flushTorrents() {
 	conn := OpenDatabaseConnection()
 
 	for {
-		length := util.Max(1, len(db.torrentChannel))
+		length := util.MaxInt(1, len(db.torrentChannel))
 		query.Reset()
 
 		query.WriteString("INSERT INTO torrents (ID, Snatched, Seeders, Leechers, last_action) VALUES\n")
@@ -119,7 +117,7 @@ func (db *Database) flushUsers() {
 	conn := OpenDatabaseConnection()
 
 	for {
-		length := util.Max(1, len(db.userChannel))
+		length := util.MaxInt(1, len(db.userChannel))
 		query.Reset()
 
 		query.WriteString("INSERT INTO users_main (ID, Uploaded, Downloaded, rawdl, rawup) VALUES\n")
@@ -169,7 +167,7 @@ func (db *Database) flushTransferHistory() {
 
 	for {
 		db.transferHistoryWaitGroup.Add(1)
-		length := util.Max(1, len(db.transferHistoryChannel))
+		length := util.MaxInt(1, len(db.transferHistoryChannel))
 		query.Reset()
 
 		query.WriteString("INSERT INTO transfer_history (uid, fid, uploaded, downloaded, " +
@@ -224,7 +222,7 @@ func (db *Database) flushTransferIps() {
 	conn := OpenDatabaseConnection()
 
 	for {
-		length := util.Max(1, len(db.transferIpsChannel))
+		length := util.MaxInt(1, len(db.transferIpsChannel))
 		query.Reset()
 
 		query.WriteString("INSERT INTO transfer_ips (uid, fid, peer_id, starttime, ip, port) VALUES\n")
@@ -272,7 +270,7 @@ func (db *Database) flushSnatches() {
 	conn := OpenDatabaseConnection()
 
 	for {
-		length := util.Max(1, len(db.snatchChannel))
+		length := util.MaxInt(1, len(db.snatchChannel))
 		query.Reset()
 
 		query.WriteString("INSERT INTO transfer_history (uid, fid, snatched_time) VALUES\n")
