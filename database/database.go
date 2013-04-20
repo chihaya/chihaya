@@ -2,6 +2,7 @@
 // Use of this source code is governed by the BSD 2-Clause license,
 // which can be found in the LICENSE file.
 
+// Package database implements all database interactions used by a Chihaya server.
 package database
 
 import (
