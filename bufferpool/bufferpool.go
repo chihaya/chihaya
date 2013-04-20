@@ -2,14 +2,16 @@
 // Use of this source code is governed by the BSD 2-Clause license,
 // which can be found in the LICENSE file.
 
-package util
+// Package bufferpool implements a limited-size pool of reusable,
+// equally-sized buffers.
+package bufferpool
 
 import (
 	"bytes"
 )
 
-// BufferPool allows one to easily reuse a limited-sized pool of equally sized
-// buffers.
+// BufferPool allows one to easily reuse a limited-sized pool of reusable,
+// equally sized buffers.
 type BufferPool struct {
 	bufSize int
 	pool    chan *bytes.Buffer

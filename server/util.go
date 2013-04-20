@@ -2,7 +2,7 @@
 // Use of this source code is governed by the BSD 2-Clause license,
 // which can be found in the LICENSE file.
 
-package util
+package server
 
 import (
 	"bytes"
@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func Bencode(data interface{}, buf *bytes.Buffer) {
+func bencode(data interface{}, buf *bytes.Buffer) {
 	switch v := data.(type) {
 	case string:
 		buf.WriteString(strconv.Itoa(len(v)))
@@ -58,4 +58,12 @@ func Bencode(data interface{}, buf *bytes.Buffer) {
 		log.Printf("%T\n", v)
 		panic("Tried to bencode an unsupported type!")
 	}
+}
+
+// MinInt returns the smaller of the two integers provided.
+func minInt(a int, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

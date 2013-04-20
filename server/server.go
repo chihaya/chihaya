@@ -18,14 +18,14 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/kotokoko/chihaya/bufferpool"
 	"github.com/kotokoko/chihaya/config"
 	cdb "github.com/kotokoko/chihaya/database"
-	"github.com/kotokoko/chihaya/util"
 )
 
 type httpHandler struct {
 	db         *cdb.Database
-	bufferPool *util.BufferPool
+	bufferPool *bufferpool.BufferPool
 	waitGroup  sync.WaitGroup
 	startTime  time.Time
 	terminate  bool
@@ -272,7 +272,7 @@ func Start() {
 
 	handler = &httpHandler{db: &cdb.Database{}, startTime: time.Now()}
 
-	bufferPool := util.NewBufferPool(500, 500)
+	bufferPool := bufferpool.NewBufferPool(500, 500)
 	handler.bufferPool = bufferPool
 
 	server := &http.Server{

@@ -14,7 +14,6 @@ import (
 
 	"github.com/kotokoko/chihaya/config"
 	cdb "github.com/kotokoko/chihaya/database"
-	"github.com/kotokoko/chihaya/util"
 )
 
 func whitelisted(peerId string, db *cdb.Database) bool {
@@ -277,17 +276,17 @@ func announce(params *queryParams, user *cdb.User, ip string, db *cdb.Database, 
 	leechCount := len(torrent.Leechers)
 
 	buf.WriteRune('d')
-	util.Bencode("complete", buf)
-	util.Bencode(seedCount, buf)
-	util.Bencode("incomplete", buf)
-	util.Bencode(leechCount, buf)
-	util.Bencode("interval", buf)
-	util.Bencode(config.Config.Intervals.Announce.Duration, buf)
-	util.Bencode("min interval", buf)
-	util.Bencode(config.Config.Intervals.MinAnnounce.Duration, buf)
+	bencode("complete", buf)
+	bencode(seedCount, buf)
+	bencode("incomplete", buf)
+	bencode(leechCount, buf)
+	bencode("interval", buf)
+	bencode(config.Config.Intervals.Announce.Duration, buf)
+	bencode("min interval", buf)
+	bencode(config.Config.Intervals.MinAnnounce.Duration, buf)
 
 	if numWant > 0 && active {
-		util.Bencode("peers", buf)
+		bencode("peers", buf)
 
 		compactString, exists := params.get("compact")
 		compact := exists && compactString == "1"
@@ -297,9 +296,9 @@ func announce(params *queryParams, user *cdb.User, ip string, db *cdb.Database, 
 
 		if compact {
 			if seeding {
-				peerCount = util.MinInt(numWant, leechCount)
+				peerCount = minInt(numWant, leechCount)
 			} else {
-				peerCount = util.MinInt(numWant, leechCount+seedCount-1)
+				peerCount = minInt(numWant, leechCount+seedCount-1)
 			}
 			buf.WriteString(strconv.Itoa(peerCount * 6))
 			buf.WriteRune(':')
@@ -316,12 +315,12 @@ func announce(params *queryParams, user *cdb.User, ip string, db *cdb.Database, 
 					buf.Write(leech.Addr)
 				} else {
 					buf.WriteRune('d')
-					util.Bencode("ip", buf)
-					util.Bencode(leech.Ip, buf)
-					util.Bencode("peer id", buf)
-					util.Bencode(leech.Id, buf)
-					util.Bencode("port", buf)
-					util.Bencode(leech.Port, buf)
+					bencode("ip", buf)
+					bencode(leech.Ip, buf)
+					bencode("peer id", buf)
+					bencode(leech.Id, buf)
+					bencode("port", buf)
+					bencode(leech.Port, buf)
 					buf.WriteRune('e')
 				}
 				count++
@@ -346,12 +345,12 @@ func announce(params *queryParams, user *cdb.User, ip string, db *cdb.Database, 
 					buf.Write(seed.Addr)
 				} else {
 					buf.WriteRune('d')
-					util.Bencode("ip", buf)
-					util.Bencode(seed.Ip, buf)
-					util.Bencode("peer id", buf)
-					util.Bencode(seed.Id, buf)
-					util.Bencode("port", buf)
-					util.Bencode(seed.Port, buf)
+					bencode("ip", buf)
+					bencode(seed.Ip, buf)
+					bencode("peer id", buf)
+					bencode(seed.Id, buf)
+					bencode("port", buf)
+					bencode(seed.Port, buf)
 					buf.WriteRune('e')
 				}
 				count++
@@ -366,12 +365,12 @@ func announce(params *queryParams, user *cdb.User, ip string, db *cdb.Database, 
 						buf.Write(leech.Addr)
 					} else {
 						buf.WriteRune('d')
-						util.Bencode("ip", buf)
-						util.Bencode(leech.Ip, buf)
-						util.Bencode("peer id", buf)
-						util.Bencode(leech.Id, buf)
-						util.Bencode("port", buf)
-						util.Bencode(leech.Port, buf)
+						bencode("ip", buf)
+						bencode(leech.Ip, buf)
+						bencode("peer id", buf)
+						bencode(leech.Id, buf)
+						bencode("port", buf)
+						bencode(leech.Port, buf)
 						buf.WriteRune('e')
 					}
 					count++

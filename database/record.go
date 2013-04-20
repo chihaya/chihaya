@@ -7,8 +7,6 @@ package database
 import (
 	"encoding/base64"
 	"strconv"
-
-	"github.com/kotokoko/chihaya/util"
 )
 
 /*
@@ -67,7 +65,7 @@ func (db *Database) RecordTransferHistory(peer *Peer, rawDeltaUpload int64, rawD
 	th.WriteString("','")
 	th.WriteString(strconv.FormatInt(rawDeltaDownload, 10))
 	th.WriteString("','")
-	th.WriteString(util.Btoa(peer.Seeding))
+	th.WriteString(btoa(peer.Seeding))
 	th.WriteString("','")
 	th.WriteString(strconv.FormatInt(peer.StartTime, 10))
 	th.WriteString("','")
@@ -75,7 +73,7 @@ func (db *Database) RecordTransferHistory(peer *Peer, rawDeltaUpload int64, rawD
 	th.WriteString("','")
 	th.WriteString(strconv.FormatInt(deltaTime, 10))
 	th.WriteString("','")
-	th.WriteString(util.Btoa(active))
+	th.WriteString(btoa(active))
 	th.WriteString("','")
 	th.WriteString(strconv.FormatUint(deltaSnatch, 10))
 	th.WriteString("','")

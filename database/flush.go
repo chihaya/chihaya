@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/kotokoko/chihaya/config"
-	"github.com/kotokoko/chihaya/util"
 )
 
 /*
@@ -57,7 +56,7 @@ func (db *Database) flushTorrents() {
 	conn := OpenDatabaseConnection()
 
 	for {
-		length := util.MaxInt(1, len(db.torrentChannel))
+		length := maxInt(1, len(db.torrentChannel))
 		query.Reset()
 
 		query.WriteString("INSERT INTO torrents (ID, Snatched, Seeders, Leechers, last_action) VALUES\n")
@@ -107,7 +106,7 @@ func (db *Database) flushUsers() {
 	conn := OpenDatabaseConnection()
 
 	for {
-		length := util.MaxInt(1, len(db.userChannel))
+		length := maxInt(1, len(db.userChannel))
 		query.Reset()
 
 		query.WriteString("INSERT INTO users_main (ID, Uploaded, Downloaded, rawdl, rawup) VALUES\n")
@@ -157,7 +156,7 @@ func (db *Database) flushTransferHistory() {
 
 	for {
 		db.transferHistoryWaitGroup.Add(1)
-		length := util.MaxInt(1, len(db.transferHistoryChannel))
+		length := maxInt(1, len(db.transferHistoryChannel))
 		query.Reset()
 
 		query.WriteString("INSERT INTO transfer_history (uid, fid, uploaded, downloaded, " +
@@ -212,7 +211,7 @@ func (db *Database) flushTransferIps() {
 	conn := OpenDatabaseConnection()
 
 	for {
-		length := util.MaxInt(1, len(db.transferIpsChannel))
+		length := maxInt(1, len(db.transferIpsChannel))
 		query.Reset()
 
 		query.WriteString("INSERT INTO transfer_ips (uid, fid, peer_id, starttime, ip, port) VALUES\n")
@@ -260,7 +259,7 @@ func (db *Database) flushSnatches() {
 	conn := OpenDatabaseConnection()
 
 	for {
-		length := util.MaxInt(1, len(db.snatchChannel))
+		length := maxInt(1, len(db.snatchChannel))
 		query.Reset()
 
 		query.WriteString("INSERT INTO transfer_history (uid, fid, snatched_time) VALUES\n")
