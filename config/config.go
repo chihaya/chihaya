@@ -39,11 +39,11 @@ type TrackerIntervals struct {
 
 	FlushSleep TrackerDuration `json:"flush_sleep"`
 
-	// Initial time to wait before retrying the query when the database deadlocks (ramps linearly)
+	// Initial time to wait before retrying a query when the db deadlocks (ramps linearly)
 	DeadlockWait TrackerDuration `json:"deadlock_wait"`
 }
 
-// Buffer sizes, see @Database.startFlushing()
+// See github.com/chihaya/database/Database.startFlushing() for more info.
 type TrackerFlushBufferSizes struct {
 	Torrent         int `json:"torrent"`
 	User            int `json:"user"`
@@ -62,31 +62,40 @@ type TrackerDatabase struct {
 }
 
 type TrackerConfig struct {
-	Database           TrackerDatabase         `json:"database"`
-	GlobalFreeleech    bool                    `json:"global_freeleach"` // Loaded from the database
-	Intervals          TrackerIntervals        `json:"intervals"`
-	FlushSizes         TrackerFlushBufferSizes `json:"sizes"`
-	MaxDeadlockRetries int                     `json:"max_deadlock_retries"` // Maximum times to retry a deadlocked query before giving up
-	LogFlushes         bool                    `json:"log_flushes"`
-	SlotsEnabled       bool                    `json:"slots_enabled"`
-	BindAddress        string                  `json:"addr"`
+	Database     TrackerDatabase         `json:"database"`
+	Intervals    TrackerIntervals        `json:"intervals"`
+	FlushSizes   TrackerFlushBufferSizes `json:"sizes"`
+	LogFlushes   bool                    `json:"log_flushes"`
+	SlotsEnabled bool                    `json:"slots_enabled"`
+	BindAddress  string                  `json:"addr"`
+
+	// When true disregards download. This value is loaded from the database.
+	GlobalFreeleech bool `json:"global_freeleach"`
+
+	// Maximum times to retry a deadlocked query before giving up.
+	MaxDeadlockRetries int `json:"max_deadlock_retries"`
 }
 
 var Config TrackerConfig
 
-func ReadConfig(configFile string) {
-	f, err := os.Open(configFile)
-	defer f.Close()
+const ConfigFileName = "config.json"
 
+// loadConfig loads a configuration and exits if there is a failure.
+func loadConfig() {
+	f, err := os.Open(ConfigFileName)
 	if err != nil {
 		log.Fatalf("Error opening config file: %s", err)
 		return
 	}
+	defer f.Close()
 
 	err = json.NewDecoder(f).Decode(&Config)
-
 	if err != nil {
 		log.Fatalf("Error parsing config file: %s", err)
 		return
 	}
+}
+
+func init() {
+	loadConfig()
 }

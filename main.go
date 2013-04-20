@@ -12,7 +12,6 @@ import (
 	"runtime"
 	"runtime/pprof"
 
-	"github.com/kotokoko/chihaya/config"
 	"github.com/kotokoko/chihaya/server"
 )
 
@@ -34,8 +33,6 @@ func main() {
 		}
 		pprof.StartCPUProfile(f)
 	}
-
-	config.ReadConfig("config.json")
 
 	go func() {
 		c := make(chan os.Signal, 1)
