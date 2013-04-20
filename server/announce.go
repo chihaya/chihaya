@@ -309,9 +309,9 @@ func announce(params *queryParams, user *cdb.User, ip string, db *cdb.Database, 
 
 		if compact {
 			if seeding {
-				peerCount = util.Min(numWant, leechCount)
+				peerCount = util.MinInt(numWant, leechCount)
 			} else {
-				peerCount = util.Min(numWant, leechCount+seedCount-1)
+				peerCount = util.MinInt(numWant, leechCount+seedCount-1)
 			}
 			buf.WriteString(strconv.Itoa(peerCount * 6))
 			buf.WriteRune(':')
