@@ -12,6 +12,10 @@ import (
 	"time"
 )
 
+const ConfigFileName = "config.json"
+
+var Config TrackerConfig
+
 type TrackerDuration struct {
 	time.Duration
 }
@@ -27,6 +31,7 @@ func (d *TrackerDuration) UnmarshalJSON(b []byte) error {
 	return err
 }
 
+// TrackerIntervals represents the intervals object in a config file.
 type TrackerIntervals struct {
 	Announce    TrackerDuration `json:"announce"`
 	MinAnnounce TrackerDuration `json:"min_announce"`
@@ -39,11 +44,12 @@ type TrackerIntervals struct {
 
 	FlushSleep TrackerDuration `json:"flush_sleep"`
 
-	// Initial time to wait before retrying a query when the db deadlocks (ramps linearly)
+	// Initial wait time before retrying a query when the db deadlocks (ramps linearly)
 	DeadlockWait TrackerDuration `json:"deadlock_wait"`
 }
 
-// See github.com/chihaya/database/Database.startFlushing() for more info.
+// TrackerFlushBufferSizes represents the buffer_sizes object in a config file.
+// See github.com/kotokoko/chihaya/database/Database.startFlushing() for more info.
 type TrackerFlushBufferSizes struct {
 	Torrent         int `json:"torrent"`
 	User            int `json:"user"`
@@ -52,6 +58,7 @@ type TrackerFlushBufferSizes struct {
 	Snatch          int `json:"snatch"`
 }
 
+// TrackerDatabase represents the database object in a config file.
 type TrackerDatabase struct {
 	Username string `json:"user"`
 	Password string `json:"pass"`
@@ -61,6 +68,7 @@ type TrackerDatabase struct {
 	Encoding string `json:"encoding"`
 }
 
+// TrackerConfig represents a whole Chihaya config file.
 type TrackerConfig struct {
 	Database     TrackerDatabase         `json:"database"`
 	Intervals    TrackerIntervals        `json:"intervals"`
@@ -75,10 +83,6 @@ type TrackerConfig struct {
 	// Maximum times to retry a deadlocked query before giving up.
 	MaxDeadlockRetries int `json:"max_deadlock_retries"`
 }
-
-var Config TrackerConfig
-
-const ConfigFileName = "config.json"
 
 // loadConfig loads a configuration and exits if there is a failure.
 func loadConfig() {
