@@ -4,14 +4,15 @@
 
 import (
 	"bytes"
-	"chihaya/config"
-	cdb "chihaya/database"
-	"chihaya/util"
 	"fmt"
 	"log"
 	"strconv"
 	"sync/atomic"
 	"time"
+
+	"github.com/kotokoko/chihaya/config"
+	cdb "github.com/kotokoko/chihaya/database"
+	"github.com/kotokoko/chihaya/util"
 )
 
 func whitelisted(peerId string, db *cdb.Database) bool {

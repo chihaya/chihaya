@@ -3,8 +3,9 @@
 // which can be found in the LICENSE file.
 
 import (
-	"github.com/ziutek/mymysql/mysql"
 	"log"
+
+	"github.com/ziutek/mymysql/mysql"
 )
 
 /*

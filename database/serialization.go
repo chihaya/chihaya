@@ -3,11 +3,12 @@
 // which can be found in the LICENSE file.
 
 import (
-	"chihaya/config"
 	"encoding/gob"
 	"log"
 	"os"
 	"time"
+
+	"github.com/kotokoko/chihaya/config"
 )
 
 func (db *Database) startSerializing() {
