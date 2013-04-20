@@ -17,13 +17,14 @@ package database
 
 import (
 	"bytes"
-	"chihaya/config"
-	"chihaya/util"
-	"github.com/ziutek/mymysql/mysql"
-	_ "github.com/ziutek/mymysql/native"
 	"log"
 	"sync"
 	"time"
+
+	"github.com/kotokoko/chihaya/config"
+	"github.com/kotokoko/chihaya/util"
+	"github.com/ziutek/mymysql/mysql"
+	_ "github.com/ziutek/mymysql/native"
 )
 
 type Peer struct {

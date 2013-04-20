@@ -16,10 +16,11 @@
 package database
 
 import (
-	"chihaya/config"
 	"io"
 	"log"
 	"time"
+
+	"github.com/kotokoko/chihaya/config"
 )
 
 /*

@@ -17,9 +17,6 @@ package server
 
 import (
 	"bytes"
-	"chihaya/config"
-	cdb "chihaya/database"
-	"chihaya/util"
 	"fmt"
 	"log"
 	"net"
@@ -30,6 +27,10 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/kotokoko/chihaya/config"
+	cdb "github.com/kotokoko/chihaya/database"
+	"github.com/kotokoko/chihaya/util"
 )
 
 type httpHandler struct {

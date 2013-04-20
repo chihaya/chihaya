@@ -16,14 +16,15 @@
 package main
 
 import (
-	"chihaya/config"
-	"chihaya/server"
 	"flag"
 	"log"
 	"os"
 	"os/signal"
 	"runtime"
 	"runtime/pprof"
+
+	"github.com/kotokoko/chihaya/config"
+	"github.com/kotokoko/chihaya/server"
 )
 
 var profile bool

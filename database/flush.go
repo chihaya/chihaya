@@ -17,11 +17,12 @@ package database
 
 import (
 	"bytes"
-	"chihaya/config"
-	"chihaya/util"
 	"log"
 	"sync/atomic"
 	"time"
+
+	"github.com/kotokoko/chihaya/config"
+	"github.com/kotokoko/chihaya/util"
 )
 
 /*

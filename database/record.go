@@ -16,9 +16,10 @@
 package database
 
 import (
-	"chihaya/util"
 	"encoding/base64"
 	"strconv"
+
+	"github.com/kotokoko/chihaya/util"
 )
 
 /*
