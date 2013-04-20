@@ -76,6 +76,7 @@ var Config TrackerConfig
 
 func ReadConfig(configFile string) {
 	f, err := os.Open(configFile)
+	defer f.Close()
 
 	if err != nil {
 		log.Fatalf("Error opening config file: %s", err)
