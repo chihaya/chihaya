@@ -17,16 +17,40 @@ Database configuration is done in `config.json`, which you'll need to create wit
 
 ```json
 {
-	"database": {
-		"username": "user",
-		"password": "pass",
-		"database": "database",
-		"proto": "unix",
-		"addr": "/var/run/mysqld/mysqld.sock",
-		"encoding": "utf8"
-	},
+    "database": {
+        "username": "user",
+        "password": "pass",
+        "database": "database",
+        "proto": "unix",
+        "addr": "/var/run/mysqld/mysqld.sock",
+        "encoding": "utf8"
+    },
 
-	"addr": ":34000"
+    "intervals": {
+        "announce": "30m",
+        "min_announce": "15m",
+        "database_reload": "45s",
+        "database_serialization": "68s",
+        "purge_inactive": "83s",
+        "verify_used_slots": 3600,
+        "flush_sleep": "3000ms",
+        "dead_lock_wait": "1000ms"
+    },
+
+    "max_deadlock_retries": 20,
+
+    "buffer_sizes": {
+        "torrent_flush_buffer": 10000,
+        "user_flush_buffer": 10000,
+        "transfer_history_flush_buffer": 10000,
+        "transfer_ips_flush_buffer": 1000,
+        "snatch_flush_buffer": 100
+    },
+
+    "log_flushes": true,
+    "slots_enabled": true,
+
+    "addr": ":34000"
 }
 ```
 
@@ -36,3 +60,4 @@ Running
 -------
 
 `./chihaya` to run normally, `./chihaya -profile` to generate pprof data for analysis.
+
