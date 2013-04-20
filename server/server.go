@@ -272,7 +272,7 @@ func Start() {
 
 	handler = &httpHandler{db: &cdb.Database{}, startTime: time.Now()}
 
-	bufferPool := bufferpool.NewBufferPool(500, 500)
+	bufferPool := bufferpool.New(500, 500)
 	handler.bufferPool = bufferPool
 
 	server := &http.Server{

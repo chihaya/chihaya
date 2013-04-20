@@ -106,7 +106,7 @@ func (db *Database) Init() {
 		config.Config.FlushSizes.TransferIps + config.Config.FlushSizes.Snatch
 
 	// Used for recording updates, so the max required size should be < 128 bytes. See record.go for details
-	db.bufferPool = bufferpool.NewBufferPool(maxBuffers, 128)
+	db.bufferPool = bufferpool.New(maxBuffers, 128)
 
 	db.loadUsersStmt = db.mainConn.prepareStatement("SELECT ID, torrent_pass, DownMultiplier, UpMultiplier, Slots FROM users_main WHERE Enabled='1'")
 	db.loadTorrentsStmt = db.mainConn.prepareStatement("SELECT ID, info_hash, DownMultiplier, UpMultiplier, Snatched, Status FROM torrents")

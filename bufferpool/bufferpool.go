@@ -17,9 +17,9 @@ type BufferPool struct {
 	pool    chan *bytes.Buffer
 }
 
-// NewBufferPool returns a newly allocated BufferPool with the given pool size
+// New returns a newly allocated BufferPool with the given pool size
 // and buffer size.
-func NewBufferPool(size int, bufSize int) *BufferPool {
+func New(size int, bufSize int) *BufferPool {
 	return &BufferPool{
 		bufSize,
 		make(chan *bytes.Buffer, size),
