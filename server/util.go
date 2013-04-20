@@ -44,13 +44,13 @@ func bencode(data interface{}, buf *bytes.Buffer) {
 			buf.WriteString(strconv.Itoa(len(key)))
 			buf.WriteRune(':')
 			buf.WriteString(key)
-			Bencode(val, buf)
+			bencode(val, buf)
 		}
 		buf.WriteRune('e')
 	case []string:
 		buf.WriteRune('l')
 		for _, val := range v {
-			Bencode(val, buf)
+			bencode(val, buf)
 		}
 		buf.WriteRune('e')
 	default:
