@@ -8,6 +8,7 @@ package bufferpool
 
 import (
 	"bytes"
+	"errors"
 )
 
 // BufferPool allows one to easily reuse a limited-sized pool of reusable,
@@ -41,9 +42,16 @@ func (pool *BufferPool) Take() (buf *bytes.Buffer) {
 
 // Give is used to attempt to add a buffer to the pool. This may or may not
 // be added to the pool depending on factors such as the pool being full.
-func (pool *BufferPool) Give(buf *bytes.Buffer) {
+func (pool *BufferPool) Give(buf *bytes.Buffer) error {
+	if buf.Len() != pool.bufSize {
+		return errors.New("Gave an incorrectly sized buffer to the pool.")
+	}
+
 	select {
 	case pool.pool <- buf:
+		// Everything went smoothly!
 	default:
+		return errors.New("Gave a buffer to a full pool.")
 	}
+	return nil
 }
