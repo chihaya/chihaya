@@ -16,7 +16,7 @@ import (
 func (db *Database) startSerializing() {
 	go func() {
 		for !db.terminate {
-			time.Sleep(config.Config.Intervals.DatabaseSerialization.Duration)
+			time.Sleep(config.Intervals.DatabaseSerialization.Duration)
 			db.serialize()
 		}
 	}()

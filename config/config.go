@@ -14,17 +14,39 @@ import (
 
 const ConfigFileName = "config.json"
 
-var Config TrackerConfig
+var (
+	// TrackerDatabase represents the database object in a config file.
+	Database trackerDatabase
 
-type TrackerDuration struct {
+	// TrackerIntervals represents the intervals object in a config file.
+	Intervals trackerIntervals
+
+	// TrackerFlushBufferSizes represents the buffer_sizes object in a config file.
+	// See github.com/kotokoko/chihaya/database/Database.startFlushing() for more info.
+	FlushSizes trackerFlushBufferSizes
+
+	LogFlushes bool
+
+	SlotsEnabled bool
+
+	BindAddress string
+
+	// When true disregards download. This value is loaded from the database.
+	GlobalFreeleech bool
+
+	// Maximum times to retry a deadlocked query before giving up.
+	MaxDeadlockRetries int
+)
+
+type trackerDuration struct {
 	time.Duration
 }
 
-func (d *TrackerDuration) MarshalJSON() ([]byte, error) {
+func (d *trackerDuration) MarshalJSON() ([]byte, error) {
 	return json.Marshal(d.String())
 }
 
-func (d *TrackerDuration) UnmarshalJSON(b []byte) error {
+func (d *trackerDuration) UnmarshalJSON(b []byte) error {
 	var str string
 	err := json.Unmarshal(b, &str)
 	d.Duration, err = time.ParseDuration(str)
@@ -32,25 +54,25 @@ func (d *TrackerDuration) UnmarshalJSON(b []byte) error {
 }
 
 // TrackerIntervals represents the intervals object in a config file.
-type TrackerIntervals struct {
-	Announce    TrackerDuration `json:"announce"`
-	MinAnnounce TrackerDuration `json:"min_announce"`
+type trackerIntervals struct {
+	Announce    trackerDuration `json:"announce"`
+	MinAnnounce trackerDuration `json:"min_announce"`
 
-	DatabaseReload        TrackerDuration `json:"database_reload"`
-	DatabaseSerialization TrackerDuration `json:"database_serialization"`
-	PurgeInactive         TrackerDuration `json:"purge_inactive"`
+	DatabaseReload        trackerDuration `json:"database_reload"`
+	DatabaseSerialization trackerDuration `json:"database_serialization"`
+	PurgeInactive         trackerDuration `json:"purge_inactive"`
 
 	VerifyUsedSlots int64 `json:"verify_used_slots"`
 
-	FlushSleep TrackerDuration `json:"flush_sleep"`
+	FlushSleep trackerDuration `json:"flush_sleep"`
 
 	// Initial wait time before retrying a query when the db deadlocks (ramps linearly)
-	DeadlockWait TrackerDuration `json:"deadlock_wait"`
+	DeadlockWait trackerDuration `json:"deadlock_wait"`
 }
 
 // TrackerFlushBufferSizes represents the buffer_sizes object in a config file.
 // See github.com/kotokoko/chihaya/database/Database.startFlushing() for more info.
-type TrackerFlushBufferSizes struct {
+type trackerFlushBufferSizes struct {
 	Torrent         int `json:"torrent"`
 	User            int `json:"user"`
 	TransferHistory int `json:"transfer_history"`
@@ -59,7 +81,7 @@ type TrackerFlushBufferSizes struct {
 }
 
 // TrackerDatabase represents the database object in a config file.
-type TrackerDatabase struct {
+type trackerDatabase struct {
 	Username string `json:"user"`
 	Password string `json:"pass"`
 	Database string `json:"database"`
@@ -69,10 +91,10 @@ type TrackerDatabase struct {
 }
 
 // TrackerConfig represents a whole Chihaya config file.
-type TrackerConfig struct {
-	Database     TrackerDatabase         `json:"database"`
-	Intervals    TrackerIntervals        `json:"intervals"`
-	FlushSizes   TrackerFlushBufferSizes `json:"sizes"`
+type trackerConfig struct {
+	Database     trackerDatabase         `json:"database"`
+	Intervals    trackerIntervals        `json:"intervals"`
+	FlushSizes   trackerFlushBufferSizes `json:"sizes"`
 	LogFlushes   bool                    `json:"log_flushes"`
 	SlotsEnabled bool                    `json:"slots_enabled"`
 	BindAddress  string                  `json:"addr"`
@@ -93,11 +115,21 @@ func loadConfig() {
 	}
 	defer f.Close()
 
-	err = json.NewDecoder(f).Decode(&Config)
+	config := &trackerConfig{}
+	err = json.NewDecoder(f).Decode(&config)
 	if err != nil {
 		log.Fatalf("Error parsing config file: %s", err)
 		return
 	}
+
+	Database = config.Database
+	Intervals = config.Intervals
+	FlushSizes = config.FlushSizes
+	LogFlushes = config.LogFlushes
+	SlotsEnabled = config.SlotsEnabled
+	BindAddress = config.BindAddress
+	GlobalFreeleech = config.GlobalFreeleech
+	MaxDeadlockRetries = config.MaxDeadlockRetries
 }
 
 func init() {
