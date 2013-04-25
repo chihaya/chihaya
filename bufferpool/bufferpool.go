@@ -14,16 +14,16 @@ import (
 // BufferPool allows one to easily reuse a limited-sized pool of reusable,
 // equally sized buffers.
 type BufferPool struct {
-	bufSize int
-	pool    chan *bytes.Buffer
+	bufferSize int
+	pool       chan *bytes.Buffer
 }
 
 // New returns a newly allocated BufferPool with the given pool size
 // and buffer size.
-func New(size int, bufSize int) *BufferPool {
+func New(poolSize, bufferSize int) *BufferPool {
 	return &BufferPool{
-		bufSize,
-		make(chan *bytes.Buffer, size),
+		bufferSize,
+		make(chan *bytes.Buffer, poolSize),
 	}
 }
 
@@ -34,7 +34,7 @@ func (pool *BufferPool) Take() (buf *bytes.Buffer) {
 	case buf = <-pool.pool:
 		buf.Reset()
 	default:
-		internalBuf := make([]byte, 0, pool.bufSize)
+		internalBuf := make([]byte, 0, pool.bufferSize)
 		buf = bytes.NewBuffer(internalBuf)
 	}
 	return
@@ -43,7 +43,7 @@ func (pool *BufferPool) Take() (buf *bytes.Buffer) {
 // Give is used to attempt to add a buffer to the pool. This may or may not
 // be added to the pool depending on factors such as the pool being full.
 func (pool *BufferPool) Give(buf *bytes.Buffer) error {
-	if buf.Len() != pool.bufSize {
+	if buf.Len() != pool.bufferSize {
 		return errors.New("Gave an incorrectly sized buffer to the pool.")
 	}
 
