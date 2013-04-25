@@ -9,24 +9,19 @@ import (
 )
 
 func TestTakeFromEmpty(t *testing.T) {
-	poolSize := 1
-	bufSize := 1
-	bp := bufferpool.New(poolSize, bufSize)
+	bp := bufferpool.New(1, 1)
 	poolBuf := bp.Take()
-	newBuf := bytes.NewBuffer(make([]byte, 0, bufSize))
-	if !bytes.Equal(poolBuf.Bytes(), newBuf.Bytes()) {
+	if !bytes.Equal(poolBuf.Bytes(), []byte("")) {
 		t.Fatalf("Buffer from empty bufferpool was allocated incorrectly.")
 	}
 }
 
 func TestTakeFromFilled(t *testing.T) {
-	poolSize := 1
-	bufSize := 1
-	bp := bufferpool.New(poolSize, bufSize)
+	bp := bufferpool.New(1, 1)
 	bp.Give(bytes.NewBuffer([]byte("X")))
 	reusedBuf := bp.Take()
 	if !bytes.Equal(reusedBuf.Bytes(), []byte("")) {
-		t.Fatalf("Buffer from empty bufferpool was recycled incorrectly.")
+		t.Fatalf("Buffer from filled bufferpool was recycled incorrectly.")
 	}
 }
 
