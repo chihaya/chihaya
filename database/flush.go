@@ -31,11 +31,11 @@ import (
  */
 
 func (db *Database) startFlushing() {
-	db.torrentChannel = make(chan *bytes.Buffer, config.FlushSizes.Torrent)
-	db.userChannel = make(chan *bytes.Buffer, config.FlushSizes.User)
-	db.transferHistoryChannel = make(chan *bytes.Buffer, config.FlushSizes.TransferHistory)
-	db.transferIpsChannel = make(chan *bytes.Buffer, config.FlushSizes.TransferIps)
-	db.snatchChannel = make(chan *bytes.Buffer, config.FlushSizes.Snatch)
+	db.torrentChannel = make(chan *bytes.Buffer, config.Loaded.FlushSizes.Torrent)
+	db.userChannel = make(chan *bytes.Buffer, config.Loaded.FlushSizes.User)
+	db.transferHistoryChannel = make(chan *bytes.Buffer, config.Loaded.FlushSizes.TransferHistory)
+	db.transferIpsChannel = make(chan *bytes.Buffer, config.Loaded.FlushSizes.TransferIps)
+	db.snatchChannel = make(chan *bytes.Buffer, config.Loaded.FlushSizes.Snatch)
 	db.slotVerificationChannel = make(chan *User, 100)
 
 	go db.flushTorrents()
@@ -74,7 +74,7 @@ func (db *Database) flushTorrents() {
 			}
 		}
 
-		if config.LogFlushes && !db.terminate {
+		if config.Loaded.LogFlushes && !db.terminate {
 			log.Printf("[torrents] Flushing %d\n", count)
 		}
 
@@ -85,8 +85,8 @@ func (db *Database) flushTorrents() {
 
 			conn.execBuffer(&query)
 
-			if length < (config.FlushSizes.Torrent >> 1) {
-				time.Sleep(config.Intervals.FlushSleep.Duration)
+			if length < (config.Loaded.FlushSizes.Torrent >> 1) {
+				time.Sleep(config.Loaded.Intervals.FlushSleep.Duration)
 			}
 		} else if db.terminate {
 			break
@@ -124,7 +124,7 @@ func (db *Database) flushUsers() {
 			}
 		}
 
-		if config.LogFlushes && !db.terminate {
+		if config.Loaded.LogFlushes && !db.terminate {
 			log.Printf("[users_main] Flushing %d\n", count)
 		}
 
@@ -134,8 +134,8 @@ func (db *Database) flushUsers() {
 
 			conn.execBuffer(&query)
 
-			if length < (config.FlushSizes.User >> 1) {
-				time.Sleep(config.Intervals.FlushSleep.Duration)
+			if length < (config.Loaded.FlushSizes.User >> 1) {
+				time.Sleep(config.Loaded.Intervals.FlushSleep.Duration)
 			}
 		} else if db.terminate {
 			break
@@ -175,7 +175,7 @@ func (db *Database) flushTransferHistory() {
 			}
 		}
 
-		if config.LogFlushes && !db.terminate {
+		if config.Loaded.LogFlushes && !db.terminate {
 			log.Printf("[transfer_history] Flushing %d\n", count)
 		}
 
@@ -188,8 +188,8 @@ func (db *Database) flushTransferHistory() {
 			conn.execBuffer(&query)
 			db.transferHistoryWaitGroup.Done()
 
-			if length < (config.FlushSizes.TransferHistory >> 1) {
-				time.Sleep(config.Intervals.FlushSleep.Duration)
+			if length < (config.Loaded.FlushSizes.TransferHistory >> 1) {
+				time.Sleep(config.Loaded.Intervals.FlushSleep.Duration)
 			}
 		} else if db.terminate {
 			db.transferHistoryWaitGroup.Done()
@@ -229,7 +229,7 @@ func (db *Database) flushTransferIps() {
 			}
 		}
 
-		if config.LogFlushes && !db.terminate {
+		if config.Loaded.LogFlushes && !db.terminate {
 			log.Printf("[transfer_ips] Flushing %d\n", count)
 		}
 
@@ -238,8 +238,8 @@ func (db *Database) flushTransferIps() {
 
 			conn.execBuffer(&query)
 
-			if length < (config.FlushSizes.TransferIps >> 1) {
-				time.Sleep(config.Intervals.FlushSleep.Duration)
+			if length < (config.Loaded.FlushSizes.TransferIps >> 1) {
+				time.Sleep(config.Loaded.Intervals.FlushSleep.Duration)
 			}
 		} else if db.terminate {
 			break
@@ -277,7 +277,7 @@ func (db *Database) flushSnatches() {
 			}
 		}
 
-		if config.LogFlushes && !db.terminate {
+		if config.Loaded.LogFlushes && !db.terminate {
 			log.Printf("[snatches] Flushing %d\n", count)
 		}
 
@@ -286,8 +286,8 @@ func (db *Database) flushSnatches() {
 
 			conn.execBuffer(&query)
 
-			if length < (config.FlushSizes.Snatch >> 1) {
-				time.Sleep(config.Intervals.FlushSleep.Duration)
+			if length < (config.Loaded.FlushSizes.Snatch >> 1) {
+				time.Sleep(config.Loaded.Intervals.FlushSleep.Duration)
 			}
 		} else if db.terminate {
 			break
@@ -309,7 +309,7 @@ func (db *Database) purgeInactivePeers() {
 		now := start.Unix()
 		count := 0
 
-		oldestActive := now - 2*int64(config.Intervals.Announce.Seconds())
+		oldestActive := now - 2*int64(config.Loaded.Intervals.Announce.Seconds())
 
 		// First, remove inactive peers from memory
 		db.TorrentsMutex.Lock()
@@ -358,7 +358,7 @@ func (db *Database) purgeInactivePeers() {
 		}
 
 		db.waitGroup.Done()
-		time.Sleep(config.Intervals.PurgeInactive.Duration)
+		time.Sleep(config.Loaded.Intervals.PurgeInactive.Duration)
 	}
 }
 
@@ -367,7 +367,7 @@ func (db *Database) purgeInactivePeers() {
  * so the count is verified every so often
  */
 func (db *Database) startUsedSlotsVerification() {
-	if !config.SlotsEnabled {
+	if !config.Loaded.SlotsEnabled {
 		log.Printf("Slots disabled, skipping slot verification")
 		return
 	}
