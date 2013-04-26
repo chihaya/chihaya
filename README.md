@@ -1,6 +1,8 @@
 chihaya
 =======
 
+[![Build Status](https://travis-ci.org/kotokoko/chihaya.png?branch=master)](https://travis-ci.org/kotokoko/chihaya)
+
 Due to the many inconsistencies AB has with Gazelle, Chihaya is not ready for general use. Currently the way Chihaya finds out about new and deleted data is by polling the database server, which is highly inefficent and introduces a race condition when data is deleted from the source (due to `INSERT INTO x ON DUPLICATE KEY UPDATE` being used). Once [Batter](https://github.com/wafflesfm/batter) is ready for use, Chihaya will be updated to use a pubsub architecture for loading these data changes.
 
 Compiling
