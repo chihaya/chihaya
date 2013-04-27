@@ -1,7 +1,7 @@
 {
     "database": {
-        "username": "user",
-        "password": "pass",
+        "user": "username",
+        "pass": "password",
         "database": "database",
         "proto": "unix",
         "addr": "/var/run/mysqld/mysqld.sock",
