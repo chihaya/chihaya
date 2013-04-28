@@ -4,7 +4,7 @@
         "pass": "",
         "database": "sample_database",
         "proto": "tcp",
-        "addr": "127.0.0.1",
+        "addr": "127.0.0.1:3306",
         "encoding": "utf8"
     },
 
