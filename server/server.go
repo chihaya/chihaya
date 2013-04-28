@@ -68,9 +68,10 @@ func failure(err string, buf *bytes.Buffer) {
 
 /*
  * URL.Query() is rather slow, so I rewrote it
+ * Note that this returns the last unique key-value pair, unlike URL.Parse()
  * Since the only parameter that can have multiple values is info_hash for scrapes, handle this specifically
  */
-func (handler *httpHandler) parseQuery(query string) (ret *queryParams, err error) {
+func parseQuery(query string) (ret *queryParams, err error) {
 	ret = &queryParams{make(map[string]string), nil}
 	queryLen := len(query)
 
@@ -85,7 +86,7 @@ func (handler *httpHandler) parseQuery(query string) (ret *queryParams, err erro
 	var firstInfoHash string
 
 	for i := 0; i < queryLen; i++ {
-		separator := query[i] == '&' || query[i] == ';'
+		separator := query[i] == '&' || query[i] == ';' || query[i] == '?'
 		if separator || i == queryLen-1 { // ';' is a valid separator as per W3C spec
 			if onKey {
 				keyStart = i + 1
@@ -147,7 +148,7 @@ func (handler *httpHandler) respond(r *http.Request, buf *bytes.Buffer) {
 
 	passkey := dir[1:33]
 
-	params, err := handler.parseQuery(r.URL.RawQuery)
+	params, err := parseQuery(r.URL.RawQuery)
 
 	if err != nil {
 		failure("Error parsing query", buf)
