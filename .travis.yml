@@ -2,3 +2,7 @@ language: go
 
 script:
     - go test -v ./...
+
+before_script:
+    - cp config.json.example config.json
+    - mysql -e 'create database sample_database;'
