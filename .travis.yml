@@ -4,5 +4,8 @@ script:
     - go test -v ./...
 
 before_script:
-    - cp config.json.example $GOPATH/src/github.com/kotokoko/chihaya/config.json
+    - cp config.json.example config.json
+    - cp -rfv ./* $GOPATH/src/github.com/kotoko/chihaya/*
+    - go build -v github.com/kotokoko/chihaya
+    - go install -v github.com/kotokoko/chihaya
     - mysql -e 'create database sample_database;'

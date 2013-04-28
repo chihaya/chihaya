@@ -3,7 +3,7 @@ package server
 import (
 	"bytes"
 	"github.com/kotokoko/chihaya/bufferpool"
-	chihayaDatabase "github.com/kotokoko/chihaya/database"
+	"github.com/kotokoko/chihaya/database"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -13,10 +13,10 @@ import (
 	"time"
 )
 
-var testUser chihayaDatabase.User
+var testUser database.User
 
 //requires db to be correctly setup and for config.json to be valid
-var testHandler = &httpHandler{db: &chihayaDatabase.Database{}, startTime: time.Now()}
+var testHandler = &httpHandler{db: &database.Database{}, startTime: time.Now()}
 var dbInit = false
 
 //works around db access
