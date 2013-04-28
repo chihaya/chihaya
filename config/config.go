@@ -12,7 +12,8 @@ import (
 	"time"
 )
 
-const ConfigFileName = "config.json"
+
+const ConfigFileName = "$GOPATH/src/github.com/kotokoko/chihaya/config.json"
 
 var Loaded TrackerConfig
 
@@ -86,7 +87,8 @@ type TrackerConfig struct {
 
 // ReloadConfig loads the config file and exits if there is a failure.
 func ReloadConfig() {
-	f, err := os.Open(ConfigFileName)
+	expandedFileName := os.ExpandEnv(ConfigFileName)
+	f, err := os.Open(expandedFileName)
 	if err != nil {
 		log.Fatalf("Error opening config file: %s", err)
 		return
