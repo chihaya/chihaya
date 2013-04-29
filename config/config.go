@@ -85,23 +85,25 @@ type TrackerConfig struct {
 	MaxDeadlockRetries int `json:"max_deadlock_retries"`
 }
 
-// ReloadConfig loads the config file and exits if there is a failure.
-func ReloadConfig() {
+// ReloadConfig loads the config file from the CWD.
+func ReloadConfig() (err error) {
 	expandedFileName := os.ExpandEnv(ConfigFileName)
 	f, err := os.Open(expandedFileName)
 	if err != nil {
-		log.Fatalf("Error opening config file: %s", err)
 		return
 	}
 	defer f.Close()
 
 	err = json.NewDecoder(f).Decode(&Loaded)
 	if err != nil {
-		log.Fatalf("Error parsing config file: %s", err)
 		return
 	}
+	return
 }
 
 func init() {
-	ReloadConfig()
+	err := ReloadConfig()
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
 }
