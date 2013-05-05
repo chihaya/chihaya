@@ -2,3 +2,10 @@ language: go
 
 script:
     - go test -v ./...
+
+before_script:
+    - cp config.json.example config.json
+    - cp -rfv ./* $GOPATH/src/github.com/kotokoko/chihaya/
+    - go build -v github.com/kotokoko/chihaya
+    - go install -v github.com/kotokoko/chihaya
+    - ./mySQL_sample_setup.sh 
