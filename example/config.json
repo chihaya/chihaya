@@ -1,0 +1,19 @@
+{
+
+    "addr": ":34000"
+    "announce": "30m",
+    "min_announce": "15m",
+    "freelech": false,
+    "private": true,
+    "bufferpool_size": 500,
+
+    "storage": {
+        "driver": "redis",
+        "addr": "127.0.0.1:6379",
+        "user": "root",
+        "pass": "",
+    },
+
+    "whitelist": [],
+
+}
