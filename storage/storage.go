@@ -1,15 +1,19 @@
+// Copyright 2013 The Chihaya Authors. All rights reserved.
+// Use of this source code is governed by the BSD 2-Clause license,
+// which can be found in the LICENSE file.
+
 package storage
 
 import (
 	"fmt"
 
-	"github.com/jzelinskie/chihaya/config"
+	"github.com/pushrax/chihaya/config"
 )
 
 var drivers = make(map[string]StorageDriver)
 
 type StorageDriver interface {
-	New(*config.StorageConfig) (Storage, error)
+	New(*config.Storage) (Storage, error)
 }
 
 func Register(name string, driver StorageDriver) {
@@ -22,12 +26,12 @@ func Register(name string, driver StorageDriver) {
 	drivers[name] = driver
 }
 
-func New(name string, conf *config.Storage) (Storage, error) {
-	driver, ok := drivers[name]
+func New(conf *config.Storage) (Storage, error) {
+	driver, ok := drivers[conf.Driver]
 	if !ok {
 		return nil, fmt.Errorf(
 			"storage: unknown driver %q (forgotten import?)",
-			name,
+			conf.Driver,
 		)
 	}
 	store, err := driver.New(conf)
@@ -40,8 +44,8 @@ func New(name string, conf *config.Storage) (Storage, error) {
 type Storage interface {
 	Shutdown() error
 
-	FindUser(passkey []byte) (*User, bool, error)
-	FindTorrent(infohash []byte) (*Torrent, bool, error)
+	FindUser(passkey string) (*User, bool, error)
+	FindTorrent(infohash string) (*Torrent, bool, error)
 	UnpruneTorrent(torrent *Torrent) error
 
 	RecordUser(

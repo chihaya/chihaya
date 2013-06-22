@@ -1,3 +1,7 @@
+// Copyright 2013 The Chihaya Authors. All rights reserved.
+// Use of this source code is governed by the BSD 2-Clause license,
+// which can be found in the LICENSE file.
+
 package config
 
 import (
@@ -12,14 +16,12 @@ type Config struct {
 	Private   bool    `json:"private"`
 	Freeleech bool    `json:"freeleech"`
 
-	Announce       Duration `json:"announce"`
-	MinAnnounce    Duration `json:"min_announce"`
-	BufferPoolSize int      `json:"bufferpool_size"`
+	Announce    Duration `json:"announce"`
+	MinAnnounce Duration `json:"min_announce"`
 
 	Whitelist []string `json:"whitelist"`
 }
 
-// StorageConfig represents the settings used for storage or cache.
 type Storage struct {
 	Driver   string `json:"driver"`
 	Protocol string `json:"protocol"`

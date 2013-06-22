@@ -1,7 +1,13 @@
+// Copyright 2013 The Chihaya Authors. All rights reserved.
+// Use of this source code is governed by the BSD 2-Clause license,
+// which can be found in the LICENSE file.
+
 package server
 
 import (
 	"errors"
+	"net/http"
+	"net/url"
 	"strconv"
 )
 
@@ -11,11 +17,11 @@ type parsedQuery struct {
 }
 
 func (pq *parsedQuery) getUint64(key string) (uint64, bool) {
-	str, exists := pq[key]
+	str, exists := pq.params[key]
 	if !exists {
 		return 0, false
 	}
-	val, err := strconv.Uint64(str, 10, 64)
+	val, err := strconv.ParseUint(str, 10, 64)
 	if err != nil {
 		return 0, false
 	}
@@ -54,11 +60,11 @@ func parseQuery(query string) (*parsedQuery, error) {
 
 			keyStr, err := url.QueryUnescape(query[keyStart : keyEnd+1])
 			if err != nil {
-				return err
+				return nil, err
 			}
 			valStr, err := url.QueryUnescape(query[valStart : valEnd+1])
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			pq.params[keyStr] = valStr
@@ -67,7 +73,7 @@ func parseQuery(query string) (*parsedQuery, error) {
 				if hasInfohash {
 					// Multiple infohashes
 					if pq.infohashes == nil {
-						pq.infohashes = []string{firstInfoHash}
+						pq.infohashes = []string{firstInfohash}
 					}
 					pq.infohashes = append(pq.infohashes, valStr)
 				} else {
@@ -87,15 +93,15 @@ func parseQuery(query string) (*parsedQuery, error) {
 			valEnd = i
 		}
 	}
-	return
+	return pq, nil
 }
 
 func validateParsedQuery(pq *parsedQuery) error {
-	infohash, ok := pq["info_hash"]
+	infohash, ok := pq.params["info_hash"]
 	if infohash == "" {
 		return errors.New("infohash does not exist")
 	}
-	peerId, ok := pq["peer_id"]
+	peerId, ok := pq.params["peer_id"]
 	if peerId == "" {
 		return errors.New("peerId does not exist")
 	}
@@ -116,4 +122,30 @@ func validateParsedQuery(pq *parsedQuery) error {
 		return errors.New("left does not exist")
 	}
 	return nil
+}
+
+func (pq *parsedQuery) determineIP(r *http.Request) (string, error) {
+	ip, ok := pq.params["ip"]
+	if !ok {
+		ip, ok = pq.params["ipv4"]
+		if !ok {
+			ips, ok := r.Header["X-Real-Ip"]
+			if ok && len(ips) > 0 {
+				ip = ips[0]
+			} else {
+				portIndex := len(r.RemoteAddr) - 1
+				for ; portIndex >= 0; portIndex-- {
+					if r.RemoteAddr[portIndex] == ':' {
+						break
+					}
+				}
+				if portIndex != -1 {
+					ip = r.RemoteAddr[0:portIndex]
+				} else {
+					return "", errors.New("Failed to parse IP address")
+				}
+			}
+		}
+	}
+	return ip, nil
 }

@@ -1,58 +1,59 @@
+// Copyright 2013 The Chihaya Authors. All rights reserved.
+// Use of this source code is governed by the BSD 2-Clause license,
+// which can be found in the LICENSE file.
+
 package server
 
 import (
-	"bytes"
 	"errors"
-	"log"
+	"fmt"
+	"net/http"
+	"path"
 
-	"github.com/jzelinskie/chihaya/config"
-	"github.com/jzelinskie/chihaya/storage"
+	"github.com/pushrax/chihaya/config"
 )
 
-func (h *handler) serveAnnounce(w *http.ResponseWriter, r *http.Request) {
-	buf := h.bufferpool.Take()
-	defer h.bufferpool.Give(buf)
-	defer h.writeResponse(&w, r, buf)
-
-	user, err := validatePasskey(dir, h.storage)
+func (h *handler) serveAnnounce(w http.ResponseWriter, r *http.Request) {
+	passkey, action := path.Split(r.URL.Path)
+	user, err := validatePasskey(passkey, h.storage)
 	if err != nil {
-		fail(err, buf)
+		fail(err, w)
 		return
 	}
 
 	pq, err := parseQuery(r.URL.RawQuery)
 	if err != nil {
-		fail(errors.New("Error parsing query"), buf)
+		fail(errors.New("Error parsing query"), w)
 		return
 	}
 
-	ip, err := determineIP(r, pq)
+	ip, err := pq.determineIP(r)
 	if err != nil {
-		fail(err, buf)
+		fail(err, w)
 		return
 	}
 
-	err := validateParsedQuery(pq)
+	err = validateParsedQuery(pq)
 	if err != nil {
-		fail(errors.New("Malformed request"), buf)
+		fail(errors.New("Malformed request"), w)
 		return
 	}
 
-	if !whitelisted(peerId, h.conf) {
-		fail(errors.New("Your client is not approved"), buf)
+	if !whitelisted(pq.params["peerId"], h.conf) {
+		fail(errors.New("Your client is not approved"), w)
 		return
 	}
 
-	torrent, exists, err := h.storage.FindTorrent(infohash)
+	torrent, exists, err := h.storage.FindTorrent(pq.params["infohash"])
 	if err != nil {
 		panic("server: failed to find torrent")
 	}
 	if !exists {
-		fail(errors.New("This torrent does not exist"), buf)
+		fail(errors.New("This torrent does not exist"), w)
 		return
 	}
 
-	if torrent.Status == 1 && left == 0 {
+	if left, _ := pq.getUint64("left"); torrent.Status == 1 && left == 0 {
 		err := h.storage.UnpruneTorrent(torrent)
 		if err != nil {
 			panic("server: failed to unprune torrent")
@@ -65,17 +66,15 @@ func (h *handler) serveAnnounce(w *http.ResponseWriter, r *http.Request) {
 				torrent.Status,
 				left,
 			),
-			buf,
+			w,
 		)
 		return
 	}
 
-	//go
+	// TODO
 }
 
-func whitelisted(peerId string, conf config.Config) bool {
-	// TODO Decide if whitelist should be in storage or config
-}
-
-func newPeer() {
+func whitelisted(peerId string, conf *config.Config) bool {
+	// TODO
+	return false
 }

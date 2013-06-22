@@ -1,8 +1,13 @@
+// Copyright 2013 The Chihaya Authors. All rights reserved.
+// Use of this source code is governed by the BSD 2-Clause license,
+// which can be found in the LICENSE file.
+
 package server
 
 import (
-	"bytes"
 	"errors"
+	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"path"
@@ -10,61 +15,81 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/jzelinskie/bufferpool"
-
-	"github.com/jzelinskie/chihaya/config"
-	"github.com/jzelinskie/chihaya/storage"
+	"github.com/pushrax/chihaya/config"
+	"github.com/pushrax/chihaya/storage"
 )
 
 type Server struct {
+	conf       *config.Config
+	listener   net.Listener
+	storage    storage.Storage
+	terminated *bool
+	waitgroup  *sync.WaitGroup
+
 	http.Server
-	listener *net.Listener
 }
 
-func New(conf *config.Config) {
-	return &Server{
-		Addr:    conf.Addr,
-		Handler: newHandler(conf),
+func New(conf *config.Config) (*Server, error) {
+	var (
+		wg         sync.WaitGroup
+		terminated bool
+	)
+
+	store, err := storage.New(&conf.Storage)
+	if err != nil {
+		return nil, err
 	}
+
+	handler := &handler{
+		conf:       conf,
+		storage:    store,
+		terminated: &terminated,
+		waitgroup:  &wg,
+	}
+
+	s := &Server{
+		conf:       conf,
+		storage:    store,
+		terminated: &terminated,
+		waitgroup:  &wg,
+	}
+
+	s.Server.Addr = conf.Addr
+	s.Server.Handler = handler
+	return s, nil
 }
 
 func (s *Server) Start() error {
-	s.listener, err = net.Listen("tcp", config.Addr)
+	listener, err := net.Listen("tcp", s.conf.Addr)
 	if err != nil {
 		return err
 	}
-	s.Handler.terminated = false
+	*s.terminated = false
 	s.Serve(s.listener)
-	s.Handler.waitgroup.Wait()
-	s.Handler.storage.Shutdown()
+	s.waitgroup.Wait()
 	return nil
 }
 
 func (s *Server) Stop() error {
-	s.Handler.waitgroup.Wait()
-	s.Handler.terminated = true
-	return s.Handler.listener.Close()
+	*s.terminated = true
+	s.waitgroup.Wait()
+	err := s.storage.Shutdown()
+	if err != nil {
+		return err
+	}
+	return s.listener.Close()
 }
 
 type handler struct {
-	bufferpool    *bufferpool.BufferPool
 	conf          *config.Config
 	deltaRequests int64
-	storage       *storage.Storage
-	terminated    bool
-	waitgroup     sync.WaitGroup
-}
-
-func newHandler(conf *config.Config) {
-	return &Handler{
-		bufferpool: bufferpool.New(conf.BufferPoolSize, 500),
-		conf:       conf,
-		storage:    storage.New(&conf.Storage),
-	}
+	storage       storage.Storage
+	terminated    *bool
+	waitgroup     *sync.WaitGroup
 }
 
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if h.terminated {
+	if *h.terminated {
 		return
 	}
 
@@ -72,46 +97,54 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer h.waitgroup.Done()
 
 	if r.URL.Path == "/stats" {
-		h.serveStats(&w, r)
+		h.serveStats(w, r)
 		return
 	}
 
-	dir, action := path.Split(requestPath)
+	passkey, action := path.Split(r.URL.Path)
 	switch action {
 	case "announce":
-		h.serveAnnounce(&w, r)
+		h.serveAnnounce(w, r)
 		return
 	case "scrape":
 		// TODO
-		h.serveScrape(&w, r)
+		h.serveScrape(w, r)
 		return
 	default:
-		buf := h.bufferpool.Take()
-		fail(errors.New("Unknown action"), buf)
-		h.writeResponse(&w, r, buf)
+		written := fail(errors.New("Unknown action"), w)
+		h.finalizeResponse(w, r, written)
 		return
 	}
 }
 
-func writeResponse(w *http.ResponseWriter, r *http.Request, buf *bytes.Buffer) {
+func (h *handler) finalizeResponse(
+	w http.ResponseWriter,
+	r *http.Request,
+	written int,
+) {
 	r.Close = true
 	w.Header().Add("Content-Type", "text/plain")
 	w.Header().Add("Connection", "close")
-	w.Header().Add("Content-Length", strconv.Itoa(buf.Len()))
-	w.Write(buf.Bytes())
+	w.Header().Add("Content-Length", strconv.Itoa(written))
 	w.(http.Flusher).Flush()
-	atomic.AddInt64(h.deltaRequests, 1)
+	atomic.AddInt64(&h.deltaRequests, 1)
 }
 
-func fail(err error, buf *bytes.Buffer) {
-	buf.WriteString("d14:failure reason")
-	buf.WriteString(strconv.Itoa(len(err)))
-	buf.WriteRune(':')
-	buf.WriteString(err)
-	buf.WriteRune('e')
+func fail(err error, w http.ResponseWriter) int {
+	e := err.Error()
+	message := fmt.Sprintf(
+		"%s%s%s%s%s",
+		"d14:failure reason",
+		strconv.Itoa(len(e)),
+		':',
+		e,
+		'e',
+	)
+	written, _ := io.WriteString(w, message)
+	return written
 }
 
-func validatePasskey(dir string, s *storage.Storage) (storage.User, error) {
+func validatePasskey(dir string, s storage.Storage) (*storage.User, error) {
 	if len(dir) != 34 {
 		return nil, errors.New("Your passkey is invalid")
 	}
@@ -126,30 +159,4 @@ func validatePasskey(dir string, s *storage.Storage) (storage.User, error) {
 	}
 
 	return user, nil
-}
-
-func determineIP(r *http.Request, pq *parsedQuery) (string, error) {
-	ip, ok := pq.params["ip"]
-	if !ok {
-		ip, ok = pq.params["ipv4"]
-		if !ok {
-			ips, ok := r.Header["X-Real-Ip"]
-			if ok && len(ips) > 0 {
-				ip = ips[0]
-			} else {
-				portIndex := len(r.RemoteAddr) - 1
-				for ; portIndex >= 0; portIndex-- {
-					if r.RemoteAddr[portIndex] == ':' {
-						break
-					}
-				}
-				if portIndex != -1 {
-					ip = r.RemoteAddr[0:portIndex]
-				} else {
-					return "", errors.New("Failed to parse IP address")
-				}
-			}
-		}
-	}
-	return &ip, nil
 }

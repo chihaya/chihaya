@@ -1,11 +1,10 @@
 {
 
-    "addr": ":34000"
+    "addr": ":34000",
     "announce": "30m",
     "min_announce": "15m",
     "freelech": false,
     "private": true,
-    "bufferpool_size": 500,
 
     "storage": {
         "driver": "redis",

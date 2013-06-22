@@ -12,8 +12,8 @@ import (
 	"runtime"
 	"runtime/pprof"
 
-	"github.com/jzelinskie/chihaya/config"
-	"github.com/jzelinskie/chihaya/server"
+	"github.com/pushrax/chihaya/config"
+	"github.com/pushrax/chihaya/server"
 )
 
 var (
@@ -31,7 +31,7 @@ func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	if configFile != "" {
-		conf, err := config.Parse(configFile)
+		conf, err := config.New(configFile)
 		if err != nil {
 			log.Fatalf("Failed to parse configuration file: %s\n", err)
 		}

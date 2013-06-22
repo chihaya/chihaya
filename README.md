@@ -1,7 +1,7 @@
 chihaya
 =======
 
-[![Build Status](https://travis-ci.org/jzelinskie/chihaya.png?branch=master)](https://travis-ci.org/jzelinskie/chihaya)
+[![Build Status](https://travis-ci.org/pushrax/chihaya.png?branch=master)](https://travis-ci.org/pushrax/chihaya)
 
 chihaya is a high-performance [BitTorrent tracker](http://en.wikipedia.org/wiki/BitTorrent_tracker) written in the Go programming language.
 It isn't quite ready for prime-time just yet, but these are the features that it'll have:
@@ -15,7 +15,7 @@ It isn't quite ready for prime-time just yet, but these are the features that it
 Installing
 ----------
 
-    $ go install github.com/jzelinskie/chihaya
+    $ go install github.com/pushrax/chihaya
 
 
 Configuration
