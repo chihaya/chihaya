@@ -14,134 +14,114 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/pushrax/chihaya/config"
 	"github.com/pushrax/chihaya/storage"
 )
 
 type Server struct {
-	conf       *config.Config
-	listener   net.Listener
-	storage    storage.Storage
-	terminated *bool
-	waitgroup  *sync.WaitGroup
+	conf     *config.Config
+	listener net.Listener
+	storage  storage.Storage
+
+	serving   bool
+	startTime time.Time
+
+	deltaRequests int64
+	rpm           int64
+
+	waitgroup sync.WaitGroup
 
 	http.Server
 }
 
 func New(conf *config.Config) (*Server, error) {
-	var (
-		wg         sync.WaitGroup
-		terminated bool
-	)
-
 	store, err := storage.New(&conf.Storage)
 	if err != nil {
 		return nil, err
 	}
 
-	handler := &handler{
-		conf:       conf,
-		storage:    store,
-		terminated: &terminated,
-		waitgroup:  &wg,
-	}
-
 	s := &Server{
-		conf:       conf,
-		storage:    store,
-		terminated: &terminated,
-		waitgroup:  &wg,
+		conf:    conf,
+		storage: store,
+		Server: http.Server{
+			Addr: conf.Addr,
+		},
 	}
+	s.Server.Handler = s
 
-	s.Server.Addr = conf.Addr
-	s.Server.Handler = handler
 	return s, nil
 }
 
-func (s *Server) Start() error {
-	listener, err := net.Listen("tcp", s.conf.Addr)
+func (s *Server) ListenAndServe() error {
+	listener, err := net.Listen("tcp", s.Addr)
+	s.listener = listener
 	if err != nil {
 		return err
 	}
-	*s.terminated = false
+	s.serving = true
+	s.startTime = time.Now()
+
+	go s.updateRPM()
 	s.Serve(s.listener)
+
 	s.waitgroup.Wait()
 	return nil
 }
 
 func (s *Server) Stop() error {
-	*s.terminated = true
+	s.serving = false
 	s.waitgroup.Wait()
-	err := s.storage.Shutdown()
+	err := s.storage.Close()
 	if err != nil {
 		return err
 	}
 	return s.listener.Close()
 }
 
-type handler struct {
-	conf          *config.Config
-	deltaRequests int64
-	storage       storage.Storage
-	terminated    *bool
-	waitgroup     *sync.WaitGroup
-}
-
-func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if *h.terminated {
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if !s.serving {
 		return
 	}
 
-	h.waitgroup.Add(1)
-	defer h.waitgroup.Done()
+	s.waitgroup.Add(1)
+	defer s.waitgroup.Done()
+	defer atomic.AddInt64(&s.deltaRequests, 1)
+	defer finalizeResponse(w, r)
 
-	if r.URL.Path == "/stats" {
-		h.serveStats(w, r)
-		return
-	}
-
-	passkey, action := path.Split(r.URL.Path)
+	_, action := path.Split(r.URL.Path)
 	switch action {
 	case "announce":
-		h.serveAnnounce(w, r)
+		s.serveAnnounce(w, r)
 		return
 	case "scrape":
-		// TODO
-		h.serveScrape(w, r)
+		s.serveScrape(w, r)
 		return
 	default:
-		written := fail(errors.New("Unknown action"), w)
-		h.finalizeResponse(w, r, written)
+		fail(errors.New("Unknown action"), w, r)
 		return
 	}
 }
 
-func (h *handler) finalizeResponse(
-	w http.ResponseWriter,
-	r *http.Request,
-	written int,
-) {
+func finalizeResponse(w http.ResponseWriter, r *http.Request) {
 	r.Close = true
 	w.Header().Add("Content-Type", "text/plain")
 	w.Header().Add("Connection", "close")
-	w.Header().Add("Content-Length", strconv.Itoa(written))
 	w.(http.Flusher).Flush()
-	atomic.AddInt64(&h.deltaRequests, 1)
 }
 
-func fail(err error, w http.ResponseWriter) int {
-	e := err.Error()
+func fail(err error, w http.ResponseWriter, r *http.Request) {
+	errmsg := err.Error()
 	message := fmt.Sprintf(
 		"%s%s%s%s%s",
 		"d14:failure reason",
-		strconv.Itoa(len(e)),
-		':',
-		e,
-		'e',
+		strconv.Itoa(len(errmsg)),
+		":",
+		errmsg,
+		"e",
 	)
-	written, _ := io.WriteString(w, message)
-	return written
+	io.WriteString(w, message)
 }
 
 func validatePasskey(dir string, s storage.Storage) (*storage.User, error) {

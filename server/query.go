@@ -124,6 +124,7 @@ func validateParsedQuery(pq *parsedQuery) error {
 	return nil
 }
 
+// TODO IPv6 support
 func (pq *parsedQuery) determineIP(r *http.Request) (string, error) {
 	ip, ok := pq.params["ip"]
 	if !ok {

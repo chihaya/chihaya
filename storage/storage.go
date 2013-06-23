@@ -42,7 +42,7 @@ func New(conf *config.Storage) (Storage, error) {
 }
 
 type Storage interface {
-	Shutdown() error
+	Close() error
 
 	FindUser(passkey string) (*User, bool, error)
 	FindTorrent(infohash string) (*Torrent, bool, error)

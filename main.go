@@ -18,24 +18,17 @@ import (
 
 var (
 	profile    bool
-	configFile string
+	configPath string
 )
 
 func init() {
 	flag.BoolVar(&profile, "profile", false, "Generate profiling data for pprof into chihaya.cpu")
-	flag.StringVar(&configFile, "config", "", "The location of a valid configuration file.")
+	flag.StringVar(&configPath, "config", "", "The location of a valid configuration file.")
 }
 
 func main() {
 	flag.Parse()
 	runtime.GOMAXPROCS(runtime.NumCPU())
-
-	if configFile != "" {
-		conf, err := config.New(configFile)
-		if err != nil {
-			log.Fatalf("Failed to parse configuration file: %s\n", err)
-		}
-	}
 
 	if profile {
 		log.Println("Running with profiling enabled")
@@ -47,6 +40,13 @@ func main() {
 		pprof.StartCPUProfile(f)
 	}
 
+	if configPath == "" {
+		log.Fatalf("Must specify a configuration file")
+	}
+	conf, err := config.New(configPath)
+	if err != nil {
+		log.Fatalf("Failed to parse configuration file: %s\n", err)
+	}
 	s := server.New(conf)
 
 	go func() {
@@ -68,7 +68,7 @@ func main() {
 		os.Exit(0)
 	}()
 
-	err = s.Start()
+	err = s.ListenAndServe()
 	if err != nil {
 		log.Fatalf("Failed to start server: %s\n", err)
 	}
