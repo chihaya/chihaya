@@ -96,7 +96,7 @@ func parseQuery(query string) (*parsedQuery, error) {
 	return pq, nil
 }
 
-func validateParsedQuery(pq *parsedQuery) error {
+func (pq *parsedQuery) validate() error {
 	infohash, ok := pq.params["info_hash"]
 	if infohash == "" {
 		return errors.New("infohash does not exist")

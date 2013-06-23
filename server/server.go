@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net"
 	"net/http"
 	"path"
@@ -46,7 +47,8 @@ func New(conf *config.Config) (*Server, error) {
 		conf:    conf,
 		storage: store,
 		Server: http.Server{
-			Addr: conf.Addr,
+			Addr:        conf.Addr,
+			ReadTimeout: conf.ReadTimeout.Duration,
 		},
 	}
 	s.Server.Handler = s
@@ -90,6 +92,11 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer atomic.AddInt64(&s.deltaRequests, 1)
 	defer finalizeResponse(w, r)
 
+	if r.URL.Path == "/stats" {
+		s.serveStats(w, r)
+		return
+	}
+
 	_, action := path.Split(r.URL.Path)
 	switch action {
 	case "announce":
@@ -99,7 +106,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.serveScrape(w, r)
 		return
 	default:
-		fail(errors.New("Unknown action"), w, r)
+		fail(errors.New("Unknown action"), w)
 		return
 	}
 }
@@ -111,7 +118,7 @@ func finalizeResponse(w http.ResponseWriter, r *http.Request) {
 	w.(http.Flusher).Flush()
 }
 
-func fail(err error, w http.ResponseWriter, r *http.Request) {
+func fail(err error, w http.ResponseWriter) {
 	errmsg := err.Error()
 	message := fmt.Sprintf(
 		"%s%s%s%s%s",
@@ -132,7 +139,7 @@ func validatePasskey(dir string, s storage.Storage) (*storage.User, error) {
 
 	user, exists, err := s.FindUser(passkey)
 	if err != nil {
-		return nil, err
+		log.Panicf("server: %s", err)
 	}
 	if !exists {
 		return nil, errors.New("Passkey not found")

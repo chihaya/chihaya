@@ -10,38 +10,36 @@ import (
 	"log"
 	"net/http"
 	"path"
-
-	"github.com/pushrax/chihaya/config"
 )
 
 func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 	passkey, _ := path.Split(r.URL.Path)
 	user, err := validatePasskey(passkey, s.storage)
 	if err != nil {
-		fail(err, w, r)
+		fail(err, w)
 		return
 	}
 
 	pq, err := parseQuery(r.URL.RawQuery)
 	if err != nil {
-		fail(errors.New("Error parsing query"), w, r)
+		fail(errors.New("Error parsing query"), w)
 		return
 	}
 
 	ip, err := pq.determineIP(r)
 	if err != nil {
-		fail(err, w, r)
+		fail(err, w)
 		return
 	}
 
-	err = validateParsedQuery(pq)
+	err = pq.validate()
 	if err != nil {
-		fail(errors.New("Malformed request"), w, r)
+		fail(errors.New("Malformed request"), w)
 		return
 	}
 
-	if !whitelisted(pq.params["peerId"], s.conf) {
-		fail(errors.New("Your client is not approved"), w, r)
+	if !s.conf.Whitelisted(pq.params["peerId"]) {
+		fail(errors.New("Your client is not approved"), w)
 		return
 	}
 
@@ -50,7 +48,7 @@ func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		log.Panicf("server: %s", err)
 	}
 	if !exists {
-		fail(errors.New("This torrent does not exist"), w, r)
+		fail(errors.New("This torrent does not exist"), w)
 		return
 	}
 
@@ -68,34 +66,9 @@ func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 				left,
 			),
 			w,
-			r,
 		)
 		return
 	}
 
 	// TODO continue
-}
-
-func whitelisted(peerId string, conf *config.Config) bool {
-	var (
-		widLen  int
-		matched bool
-	)
-
-	for _, whitelistedId := range conf.Whitelist {
-		widLen = len(whitelistedId)
-		if widLen <= len(peerId) {
-			matched = true
-			for i := 0; i < widLen; i++ {
-				if peerId[i] != whitelistedId[i] {
-					matched = false
-					break
-				}
-			}
-			if matched {
-				return true
-			}
-		}
-	}
-	return false
 }
