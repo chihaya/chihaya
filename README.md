@@ -27,4 +27,4 @@ The [`storage`](http://godoc.org/github.com/pushrax/chihaya/storage) package wor
 
 ##contributing
 
-If you're interested in contributing, please contact us in **#chihaya on [freenode](http://freenode.net/)**([webchat](http://webchat.freenode.net?channels=chihaya)) or post to the issue tracker. Please don't offer a pull request with no prior communication attempts (unless it's small), as it will most likely lead to confusion and time wasted for everyone. And remember: good gophers always use gofmt!asted for everyone. And remember: good gophers always use gofmt!
+If you're interested in contributing, please contact us in **#chihaya on [freenode](http://freenode.net/)**([webchat](http://webchat.freenode.net?channels=chihaya)) or post to the issue tracker. Please don't offer a pull request with no prior communication attempts (unless it's small), as it will most likely lead to confusion and time wasted for everyone. And remember: good gophers always use gofmt!
