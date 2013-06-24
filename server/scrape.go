@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"path"
 	"strconv"
@@ -20,13 +21,13 @@ func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request) {
 	passkey, _ := path.Split(r.URL.Path)
 	_, err := validatePasskey(passkey, s.storage)
 	if err != nil {
-		fail(err, w)
+		fail(err, w, r)
 		return
 	}
 
 	pq, err := parseQuery(r.URL.RawQuery)
 	if err != nil {
-		fail(errors.New("Error parsing query"), w)
+		fail(errors.New("Error parsing query"), w, r)
 		return
 	}
 
@@ -36,7 +37,7 @@ func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request) {
 		for _, infohash := range pq.infohashes {
 			torrent, exists, err := s.storage.FindTorrent(infohash)
 			if err != nil {
-				panic("server: failed to find torrent")
+				log.Panicf("server: %s", err)
 			}
 			if exists {
 				bencode(w, infohash)
@@ -46,7 +47,7 @@ func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request) {
 	} else if infohash, exists := pq.params["info_hash"]; exists {
 		torrent, exists, err := s.storage.FindTorrent(infohash)
 		if err != nil {
-			panic("server: failed to find torrent")
+			log.Panicf("server: %s", err)
 		}
 		if exists {
 			bencode(w, infohash)
@@ -54,7 +55,11 @@ func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	io.WriteString(w, "e")
-	finalizeResponse(w, r)
+
+	r.Close = true
+	w.Header().Add("Content-Type", "text/plain")
+	w.Header().Add("Connection", "close")
+	w.(http.Flusher).Flush()
 }
 
 func writeScrapeInfo(w io.Writer, torrent *storage.Torrent) {
@@ -69,6 +74,7 @@ func writeScrapeInfo(w io.Writer, torrent *storage.Torrent) {
 }
 
 func bencode(w io.Writer, data interface{}) {
+	// A massive switch is faster than reflection
 	switch v := data.(type) {
 	case string:
 		str := fmt.Sprintf("%s:%s", strconv.Itoa(len(v)), v)

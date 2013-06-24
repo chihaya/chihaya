@@ -23,7 +23,12 @@ func (s *Server) serveStats(w http.ResponseWriter, r *http.Request) {
 		config.Duration{time.Now().Sub(s.startTime)},
 		s.rpm,
 	})
-	w.Write(stats)
+
+	length, _ := w.Write(stats)
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Length", string(length))
+	w.Header().Set("Connection", "close")
+	w.(http.Flusher).Flush()
 }
 
 func (s *Server) updateRPM() {

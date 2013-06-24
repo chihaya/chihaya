@@ -14,32 +14,32 @@ import (
 
 func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 	passkey, _ := path.Split(r.URL.Path)
-	user, err := validatePasskey(passkey, s.storage)
+	_, err := validatePasskey(passkey, s.storage)
 	if err != nil {
-		fail(err, w)
+		fail(err, w, r)
 		return
 	}
 
 	pq, err := parseQuery(r.URL.RawQuery)
 	if err != nil {
-		fail(errors.New("Error parsing query"), w)
+		fail(errors.New("Error parsing query"), w, r)
 		return
 	}
 
-	ip, err := pq.determineIP(r)
+	_, err = pq.determineIP(r)
 	if err != nil {
-		fail(err, w)
+		fail(err, w, r)
 		return
 	}
 
 	err = pq.validate()
 	if err != nil {
-		fail(errors.New("Malformed request"), w)
+		fail(errors.New("Malformed request"), w, r)
 		return
 	}
 
 	if !s.conf.Whitelisted(pq.params["peerId"]) {
-		fail(errors.New("Your client is not approved"), w)
+		fail(errors.New("Your client is not approved"), w, r)
 		return
 	}
 
@@ -48,7 +48,7 @@ func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		log.Panicf("server: %s", err)
 	}
 	if !exists {
-		fail(errors.New("This torrent does not exist"), w)
+		fail(errors.New("This torrent does not exist"), w, r)
 		return
 	}
 
@@ -66,6 +66,7 @@ func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 				left,
 			),
 			w,
+			r,
 		)
 		return
 	}

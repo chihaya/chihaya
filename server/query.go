@@ -97,27 +97,27 @@ func parseQuery(query string) (*parsedQuery, error) {
 }
 
 func (pq *parsedQuery) validate() error {
-	infohash, ok := pq.params["info_hash"]
+	infohash, _ := pq.params["info_hash"]
 	if infohash == "" {
 		return errors.New("infohash does not exist")
 	}
-	peerId, ok := pq.params["peer_id"]
+	peerId, _ := pq.params["peer_id"]
 	if peerId == "" {
 		return errors.New("peerId does not exist")
 	}
-	port, ok := pq.getUint64("port")
+	_, ok := pq.getUint64("port")
 	if ok == false {
 		return errors.New("port does not exist")
 	}
-	uploaded, ok := pq.getUint64("uploaded")
+	_, ok = pq.getUint64("uploaded")
 	if ok == false {
 		return errors.New("uploaded does not exist")
 	}
-	downloaded, ok := pq.getUint64("downloaded")
+	_, ok = pq.getUint64("downloaded")
 	if ok == false {
 		return errors.New("downloaded does not exist")
 	}
-	left, ok := pq.getUint64("left")
+	_, ok = pq.getUint64("left")
 	if ok == false {
 		return errors.New("left does not exist")
 	}

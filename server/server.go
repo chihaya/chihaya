@@ -2,6 +2,7 @@
 // Use of this source code is governed by the BSD 2-Clause license,
 // which can be found in the LICENSE file.
 
+// Package server implements a BitTorrent tracker
 package server
 
 import (
@@ -90,7 +91,6 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.waitgroup.Add(1)
 	defer s.waitgroup.Done()
 	defer atomic.AddInt64(&s.deltaRequests, 1)
-	defer finalizeResponse(w, r)
 
 	if r.URL.Path == "/stats" {
 		s.serveStats(w, r)
@@ -106,19 +106,12 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.serveScrape(w, r)
 		return
 	default:
-		fail(errors.New("Unknown action"), w)
+		fail(errors.New("Unknown action"), w, r)
 		return
 	}
 }
 
-func finalizeResponse(w http.ResponseWriter, r *http.Request) {
-	r.Close = true
-	w.Header().Add("Content-Type", "text/plain")
-	w.Header().Add("Connection", "close")
-	w.(http.Flusher).Flush()
-}
-
-func fail(err error, w http.ResponseWriter) {
+func fail(err error, w http.ResponseWriter, r *http.Request) {
 	errmsg := err.Error()
 	message := fmt.Sprintf(
 		"%s%s%s%s%s",
@@ -128,7 +121,12 @@ func fail(err error, w http.ResponseWriter) {
 		errmsg,
 		"e",
 	)
-	io.WriteString(w, message)
+	length, _ := io.WriteString(w, message)
+	r.Close = true
+	w.Header().Add("Content-Type", "text/plain")
+	w.Header().Add("Content-Length", string(length))
+	w.Header().Add("Connection", "close")
+	w.(http.Flusher).Flush()
 }
 
 func validatePasskey(dir string, s storage.Storage) (*storage.User, error) {
