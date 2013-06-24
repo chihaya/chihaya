@@ -26,6 +26,11 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 	return err
 }
 
+type Client struct {
+	Name   string `json:"name"`
+	PeerID string `json:"peer_id"`
+}
+
 type Storage struct {
 	Driver   string `json:"driver"`
 	Protocol string `json:"protocol"`
@@ -47,7 +52,7 @@ type Config struct {
 	MinAnnounce Duration `json:"min_announce"`
 	ReadTimeout Duration `json:"read_timeout"`
 
-	Whitelist []string `json:"whitelist"`
+	Whitelist []Client `json:"whitelist"`
 }
 
 func New(path string) (*Config, error) {
@@ -66,18 +71,13 @@ func New(path string) (*Config, error) {
 	return conf, nil
 }
 
-func (c *Config) Whitelisted(peerId string) bool {
-	var (
-		widLen  int
-		matched bool
-	)
-
-	for _, whitelistedId := range c.Whitelist {
-		widLen = len(whitelistedId)
-		if widLen <= len(peerId) {
+func (c *Config) Whitelisted(peerId string) (matched bool) {
+	for _, client := range c.Whitelist {
+		length := len(client.PeerID)
+		if length <= len(peerId) {
 			matched = true
-			for i := 0; i < widLen; i++ {
-				if peerId[i] != whitelistedId[i] {
+			for i := 0; i < length; i++ {
+				if peerId[i] != client.PeerID[i] {
 					matched = false
 					break
 				}
