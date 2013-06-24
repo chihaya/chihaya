@@ -25,7 +25,7 @@ import (
 type Server struct {
 	conf     *config.Config
 	listener net.Listener
-	storage  storage.Storage
+	storage  storage.Conn
 
 	serving   bool
 	startTime time.Time
@@ -39,7 +39,7 @@ type Server struct {
 }
 
 func New(conf *config.Config) (*Server, error) {
-	store, err := storage.New(&conf.Storage)
+	store, err := storage.Open(&conf.Storage)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +129,7 @@ func fail(err error, w http.ResponseWriter, r *http.Request) {
 	w.(http.Flusher).Flush()
 }
 
-func validatePasskey(dir string, s storage.Storage) (*storage.User, error) {
+func validatePasskey(dir string, s storage.Conn) (*storage.User, error) {
 	if len(dir) != 34 {
 		return nil, errors.New("Your passkey is invalid")
 	}

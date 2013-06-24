@@ -15,7 +15,7 @@ import (
 var drivers = make(map[string]StorageDriver)
 
 type StorageDriver interface {
-	New(*config.Storage) (Storage, error)
+	New(*config.Storage) (Conn, error)
 }
 
 func Register(name string, driver StorageDriver) {
@@ -28,7 +28,7 @@ func Register(name string, driver StorageDriver) {
 	drivers[name] = driver
 }
 
-func New(conf *config.Storage) (Storage, error) {
+func Open(conf *config.Storage) (Conn, error) {
 	driver, ok := drivers[conf.Driver]
 	if !ok {
 		return nil, fmt.Errorf(
@@ -43,7 +43,7 @@ func New(conf *config.Storage) (Storage, error) {
 	return store, nil
 }
 
-type Storage interface {
+type Conn interface {
 	Close() error
 
 	FindUser(passkey string) (*User, bool, error)

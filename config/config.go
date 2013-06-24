@@ -33,12 +33,16 @@ type Client struct {
 
 type Storage struct {
 	Driver   string `json:"driver"`
-	Protocol string `json:"protocol"`
+	Network  string `json:"network`
 	Addr     string `json:"addr"`
 	Username string `json:"user"`
 	Password string `json:"pass"`
-	Schema   string `json:"schema"`
-	Encoding string `json:"encoding"`
+	Schema   string `json:"schema,omitempty"`
+	Encoding string `json:"encoding,omitempty"`
+
+	ConnectTimeout *Duration `json:"conn_timeout,omitempty"`
+	ReadTimeout    *Duration `json:"read_timeout,omitempty"`
+	WriteTimeout   *Duration `json:"write_timeout,omitempty"`
 }
 
 type Config struct {
