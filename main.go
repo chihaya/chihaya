@@ -47,7 +47,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to parse configuration file: %s\n", err)
 	}
-	s := server.New(conf)
+	s, err := server.New(conf)
+	if err != nil {
+		log.Fatalf("Failed to create server: %s\n", err)
+	}
 
 	go func() {
 		c := make(chan os.Signal, 1)
