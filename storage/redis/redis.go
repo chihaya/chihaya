@@ -5,6 +5,8 @@
 package redis
 
 import (
+	"time"
+
 	"github.com/garyburd/redigo/redis"
 
 	"github.com/pushrax/chihaya/config"
@@ -14,35 +16,108 @@ import (
 type driver struct{}
 
 func (d *driver) New(conf *config.Storage) (storage.Conn, error) {
-	var (
-		conn redis.Conn
-		err  error
-	)
-
-	if conf.ConnectTimeout != nil &&
-		conf.ReadTimeout != nil &&
-		conf.WriteTimeout != nil {
-
-		conn, err = redis.DialTimeout(
-			conf.Network,
-			conf.Addr,
-			conf.ConnectTimeout.Duration,
-			conf.ReadTimeout.Duration,
-			conf.WriteTimeout.Duration,
-		)
-	} else {
-		conn, err = redis.Dial(conf.Network, conf.Addr)
-	}
-	if err != nil {
-		return nil, err
-	}
 	return &Conn{
-		conn,
+		conf: conf,
+		pool: &redis.Pool{
+			MaxIdle:     3,
+			IdleTimeout: 240 * time.Second,
+			Dial: func() (redis.Conn, error) {
+				var (
+					conn redis.Conn
+					err  error
+				)
+
+				if conf.ConnectTimeout != nil &&
+					conf.ReadTimeout != nil &&
+					conf.WriteTimeout != nil {
+
+					conn, err = redis.DialTimeout(
+						conf.Network,
+						conf.Addr,
+						conf.ConnectTimeout.Duration,
+						conf.ReadTimeout.Duration,
+						conf.WriteTimeout.Duration,
+					)
+				} else {
+					conn, err = redis.Dial(conf.Network, conf.Addr)
+				}
+				if err != nil {
+					return nil, err
+				}
+				return conn, nil
+			},
+			TestOnBorrow: func(c redis.Conn, t time.Time) error {
+				_, err := c.Do("PING")
+				return err
+			},
+		},
 	}, nil
 }
 
 type Conn struct {
-	conn redis.Conn
+	conf *config.Storage
+	pool *redis.Pool
+}
+
+func (c *Conn) Close() error {
+	return c.pool.Close()
+}
+
+func (c *Conn) FindUser(passkey string) (*storage.User, bool, error) {
+	conn := c.pool.Get()
+	defer c.pool.Close()
+
+	key := c.conf.Prefix + "User:" + passkey
+
+	exists, err := redis.Bool(conn.Do("EXISTS", key))
+	if err != nil {
+		return nil, false, err
+	}
+	if !exists {
+		return nil, false, nil
+	}
+
+	reply, err := redis.Values(conn.Do("HGETALL", key))
+	if err != nil {
+		return nil, false, err
+	}
+	user := &storage.User{}
+	err = redis.ScanStruct(reply, user)
+	if err != nil {
+		return nil, false, err
+	}
+	return user, true, nil
+}
+
+func (c *Conn) FindTorrent(infohash string) (*storage.Torrent, bool, error) {
+	conn := c.pool.Get()
+	defer c.pool.Close()
+
+	key := c.conf.Prefix + "Torrent:" + infohash
+
+	exists, err := redis.Bool(conn.Do("EXISTS", key))
+	if err != nil {
+		return nil, false, err
+	}
+	if !exists {
+		return nil, false, nil
+	}
+
+	reply, err := redis.Values(conn.Do("HGETALL", key))
+	if err != nil {
+		return nil, false, err
+	}
+	torrent := &storage.Torrent{}
+	err = redis.ScanStruct(reply, torrent)
+	if err != nil {
+		return nil, false, err
+	}
+	return torrent, true, nil
+}
+
+func (c *Conn) UnpruneTorrent(torrent *storage.Torrent) error {
+	// TODO
+	return nil
 }
 
 func init() {

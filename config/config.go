@@ -39,6 +39,7 @@ type Storage struct {
 	Password string `json:"pass"`
 	Schema   string `json:"schema,omitempty"`
 	Encoding string `json:"encoding,omitempty"`
+	Prefix   string `json:"prefix,omitempty"`
 
 	ConnectTimeout *Duration `json:"conn_timeout,omitempty"`
 	ReadTimeout    *Duration `json:"read_timeout,omitempty"`

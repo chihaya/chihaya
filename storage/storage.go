@@ -12,13 +12,13 @@ import (
 	"github.com/pushrax/chihaya/config"
 )
 
-var drivers = make(map[string]StorageDriver)
+var drivers = make(map[string]Driver)
 
-type StorageDriver interface {
+type Driver interface {
 	New(*config.Storage) (Conn, error)
 }
 
-func Register(name string, driver StorageDriver) {
+func Register(name string, driver Driver) {
 	if driver == nil {
 		panic("storage: Register driver is nil")
 	}
@@ -50,22 +50,24 @@ type Conn interface {
 	FindTorrent(infohash string) (*Torrent, bool, error)
 	UnpruneTorrent(torrent *Torrent) error
 
-	RecordUser(
-		user *User,
-		rawDeltaUpload int64,
-		rawDeltaDownload int64,
-		deltaUpload int64,
-		deltaDownload int64,
-	) error
-	RecordSnatch(peer *Peer, now int64) error
-	RecordTorrent(torrent *Torrent, deltaSnatch uint64) error
-	RecordTransferIP(peer *Peer) error
-	RecordTransferHistory(
-		peer *Peer,
-		rawDeltaUpload int64,
-		rawDeltaDownload int64,
-		deltaTime int64,
-		deltaSnatch uint64,
-		active bool,
-	) error
+	/*
+		RecordUser(
+			user *User,
+			rawDeltaUpload int64,
+			rawDeltaDownload int64,
+			deltaUpload int64,
+			deltaDownload int64,
+		) error
+		RecordSnatch(peer *Peer, now int64) error
+		RecordTorrent(torrent *Torrent, deltaSnatch uint64) error
+		RecordTransferIP(peer *Peer) error
+		RecordTransferHistory(
+			peer *Peer,
+			rawDeltaUpload int64,
+			rawDeltaDownload int64,
+			deltaTime int64,
+			deltaSnatch uint64,
+			active bool,
+		) error
+	*/
 }

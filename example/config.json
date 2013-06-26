@@ -7,6 +7,7 @@
     "addr": "127.0.0.1:6379",
     "user": "root",
     "pass": "",
+    "prefix": "test:",
 
     "conn_timeout": "5s",
     "read_timeout": "5s",
