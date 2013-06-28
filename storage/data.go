@@ -5,12 +5,12 @@
 package storage
 
 type Peer struct {
-	Id        string
-	UserId    uint64
-	TorrentId uint64
+	ID        string
+	UserID    uint64
+	TorrentID uint64
 
 	Port uint
-	Ip   string
+	IP   string
 	Addr []byte
 
 	Uploaded   uint64
@@ -18,13 +18,13 @@ type Peer struct {
 	Left       uint64
 	Seeding    bool
 
-	StartTime    int64 // Unix Timestamp
-	LastAnnounce int64
+	StartTimeUnix int64
+	LastAnnounce  int64
 }
 
 type Torrent struct {
-	Id             uint64
-	InfoHash       string
+	ID             uint64
+	Infohash       string
 	UpMultiplier   float64
 	DownMultiplier float64
 
@@ -37,7 +37,7 @@ type Torrent struct {
 }
 
 type User struct {
-	Id             uint64
+	ID             uint64
 	Passkey        string
 	UpMultiplier   float64
 	DownMultiplier float64

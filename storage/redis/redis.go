@@ -85,12 +85,12 @@ func (c *Conn) FindUser(passkey string) (*storage.User, bool, error) {
 
 	reply, err := redis.Values(conn.Do("HGETALL", key))
 	if err != nil {
-		return nil, false, err
+		return nil, true, err
 	}
 	user := &storage.User{}
 	err = redis.ScanStruct(reply, user)
 	if err != nil {
-		return nil, false, err
+		return nil, true, err
 	}
 	return user, true, nil
 }
@@ -111,12 +111,12 @@ func (c *Conn) FindTorrent(infohash string) (*storage.Torrent, bool, error) {
 
 	reply, err := redis.Values(conn.Do("HGETALL", key))
 	if err != nil {
-		return nil, false, err
+		return nil, true, err
 	}
 	torrent := &storage.Torrent{}
 	err = redis.ScanStruct(reply, torrent)
 	if err != nil {
-		return nil, false, err
+		return nil, true, err
 	}
 	return torrent, true, nil
 }
