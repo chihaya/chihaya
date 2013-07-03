@@ -15,7 +15,7 @@ import (
 var drivers = make(map[string]Driver)
 
 type Driver interface {
-	New(*config.Storage) (Conn, error)
+	New(*config.Storage) Pool
 }
 
 func Register(name string, driver Driver) {
@@ -28,7 +28,7 @@ func Register(name string, driver Driver) {
 	drivers[name] = driver
 }
 
-func Open(conf *config.Storage) (Conn, error) {
+func Open(conf *config.Storage) (Pool, error) {
 	driver, ok := drivers[conf.Driver]
 	if !ok {
 		return nil, fmt.Errorf(
@@ -36,38 +36,29 @@ func Open(conf *config.Storage) (Conn, error) {
 			conf.Driver,
 		)
 	}
-	store, err := driver.New(conf)
-	if err != nil {
-		return nil, err
-	}
-	return store, nil
+	pool := driver.New(conf)
+	return pool, nil
 }
 
+// ConnPool represents a pool of connections to the data store.
+type Pool interface {
+	Close() error
+	Get() Conn
+}
+
+// Conn represents a single connection to the data store.
 type Conn interface {
 	Close() error
 
+	NewTx() (Tx, error)
+
 	FindUser(passkey string) (*User, bool, error)
 	FindTorrent(infohash string) (*Torrent, bool, error)
-	UnpruneTorrent(torrent *Torrent) error
+}
 
-	/*
-		RecordUser(
-			user *User,
-			rawDeltaUpload int64,
-			rawDeltaDownload int64,
-			deltaUpload int64,
-			deltaDownload int64,
-		) error
-		RecordSnatch(peer *Peer, now int64) error
-		RecordTorrent(torrent *Torrent, deltaSnatch uint64) error
-		RecordTransferIP(peer *Peer) error
-		RecordTransferHistory(
-			peer *Peer,
-			rawDeltaUpload int64,
-			rawDeltaDownload int64,
-			deltaTime int64,
-			deltaSnatch uint64,
-			active bool,
-		) error
-	*/
+// Tx represents a data store transaction.
+type Tx interface {
+	Commit() error
+
+	UnpruneTorrent(torrent *Torrent) error
 }

@@ -10,11 +10,15 @@ import (
 	"log"
 	"net/http"
 	"path"
+	"strconv"
 )
 
 func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
+	conn := s.connPool.Get()
+	defer conn.Close()
+
 	passkey, _ := path.Split(r.URL.Path)
-	_, err := validatePasskey(passkey, s.storage)
+	_, err := validatePasskey(passkey, conn)
 	if err != nil {
 		fail(err, w, r)
 		return
@@ -32,18 +36,18 @@ func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = pq.validate()
+	err = pq.validateAnnounceParams()
 	if err != nil {
 		fail(errors.New("Malformed request"), w, r)
 		return
 	}
 
-	if !s.conf.Whitelisted(pq.params["peerId"]) {
+	if !s.conf.ClientWhitelisted(pq.params["peer_id"]) {
 		fail(errors.New("Your client is not approved"), w, r)
 		return
 	}
 
-	torrent, exists, err := s.storage.FindTorrent(pq.params["infohash"])
+	torrent, exists, err := conn.FindTorrent(pq.params["infohash"])
 	if err != nil {
 		log.Panicf("server: %s", err)
 	}
@@ -52,8 +56,13 @@ func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	tx, err := conn.NewTx()
+	if err != nil {
+		log.Panicf("server: %s", err)
+	}
+
 	if left, _ := pq.getUint64("left"); torrent.Status == 1 && left == 0 {
-		err := s.storage.UnpruneTorrent(torrent)
+		err := tx.UnpruneTorrent(torrent)
 		if err != nil {
 			log.Panicf("server: %s", err)
 		}
@@ -69,6 +78,16 @@ func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 			r,
 		)
 		return
+	}
+
+	var numWant int
+	if numWantStr, exists := pq.params["numWant"]; exists {
+		numWant, err := strconv.Atoi(numWantStr)
+		if err != nil {
+			numWant = s.conf.DefaultNumWant
+		}
+	} else {
+		numWant = s.conf.DefaultNumWant
 	}
 
 	// TODO continue

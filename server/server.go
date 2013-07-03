@@ -25,7 +25,7 @@ import (
 type Server struct {
 	conf     *config.Config
 	listener net.Listener
-	storage  storage.Conn
+	connPool storage.Pool
 
 	serving   bool
 	startTime time.Time
@@ -39,14 +39,14 @@ type Server struct {
 }
 
 func New(conf *config.Config) (*Server, error) {
-	store, err := storage.Open(&conf.Storage)
+	pool, err := storage.Open(&conf.Storage)
 	if err != nil {
 		return nil, err
 	}
 
 	s := &Server{
 		conf:    conf,
-		storage: store,
+		storage: pool,
 		Server: http.Server{
 			Addr:        conf.Addr,
 			ReadTimeout: conf.ReadTimeout.Duration,

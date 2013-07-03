@@ -53,9 +53,10 @@ type Config struct {
 	Private   bool `json:"private"`
 	Freeleech bool `json:"freeleech"`
 
-	Announce    Duration `json:"announce"`
-	MinAnnounce Duration `json:"min_announce"`
-	ReadTimeout Duration `json:"read_timeout"`
+	Announce       Duration `json:"announce"`
+	MinAnnounce    Duration `json:"min_announce"`
+	ReadTimeout    Duration `json:"read_timeout"`
+	DefaultNumWant int      `json:"default_num_want"`
 
 	Whitelist []Client `json:"whitelist"`
 }
@@ -76,13 +77,13 @@ func New(path string) (*Config, error) {
 	return conf, nil
 }
 
-func (c *Config) Whitelisted(peerId string) (matched bool) {
+func (c *Config) ClientWhitelisted(peerID string) (matched bool) {
 	for _, client := range c.Whitelist {
 		length := len(client.PeerID)
-		if length <= len(peerId) {
+		if length <= len(peerID) {
 			matched = true
 			for i := 0; i < length; i++ {
-				if peerId[i] != client.PeerID[i] {
+				if peerID[i] != client.PeerID[i] {
 					matched = false
 					break
 				}

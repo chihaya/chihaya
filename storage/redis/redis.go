@@ -15,16 +15,16 @@ import (
 
 type driver struct{}
 
-func (d *driver) New(conf *config.Storage) (storage.Conn, error) {
-	return &Conn{
+func (d *driver) New(conf *config.Storage) storage.Pool {
+	return &Pool{
 		conf: conf,
-		pool: &redis.Pool{
+		pool: redis.Pool{
 			MaxIdle:      3,
 			IdleTimeout:  240 * time.Second,
 			Dial:         makeDialFunc(conf),
 			TestOnBorrow: testOnBorrow,
 		},
-	}, nil
+	}
 }
 
 func makeDialFunc(conf *config.Storage) func() (redis.Conn, error) {
@@ -60,22 +60,31 @@ func testOnBorrow(c redis.Conn, t time.Time) error {
 	return err
 }
 
-type Conn struct {
+type Pool struct {
 	conf *config.Storage
-	pool *redis.Pool
+	pool redis.Pool
 }
 
-func (c *Conn) Close() error {
-	return c.pool.Close()
+func (p *Pool) Get() storage.Conn {
+	return &Conn{
+		conf: p.conf,
+		Conn: p.pool.Get(),
+	}
+}
+
+func (p *Pool) Close() error {
+	return p.pool.Close()
+}
+
+type Conn struct {
+	conf *config.Storage
+	redis.Conn
 }
 
 func (c *Conn) FindUser(passkey string) (*storage.User, bool, error) {
-	conn := c.pool.Get()
-	defer c.pool.Close()
-
 	key := c.conf.Prefix + "User:" + passkey
 
-	exists, err := redis.Bool(conn.Do("EXISTS", key))
+	exists, err := redis.Bool(c.Do("EXISTS", key))
 	if err != nil {
 		return nil, false, err
 	}
@@ -83,7 +92,7 @@ func (c *Conn) FindUser(passkey string) (*storage.User, bool, error) {
 		return nil, false, nil
 	}
 
-	reply, err := redis.Values(conn.Do("HGETALL", key))
+	reply, err := redis.Values(c.Do("HGETALL", key))
 	if err != nil {
 		return nil, true, err
 	}
@@ -96,12 +105,9 @@ func (c *Conn) FindUser(passkey string) (*storage.User, bool, error) {
 }
 
 func (c *Conn) FindTorrent(infohash string) (*storage.Torrent, bool, error) {
-	conn := c.pool.Get()
-	defer c.pool.Close()
-
 	key := c.conf.Prefix + "Torrent:" + infohash
 
-	exists, err := redis.Bool(conn.Do("EXISTS", key))
+	exists, err := redis.Bool(c.Do("EXISTS", key))
 	if err != nil {
 		return nil, false, err
 	}
@@ -109,7 +115,7 @@ func (c *Conn) FindTorrent(infohash string) (*storage.Torrent, bool, error) {
 		return nil, false, nil
 	}
 
-	reply, err := redis.Values(conn.Do("HGETALL", key))
+	reply, err := redis.Values(c.Do("HGETALL", key))
 	if err != nil {
 		return nil, true, err
 	}
@@ -121,8 +127,32 @@ func (c *Conn) FindTorrent(infohash string) (*storage.Torrent, bool, error) {
 	return torrent, true, nil
 }
 
-func (c *Conn) UnpruneTorrent(torrent *storage.Torrent) error {
-	// TODO
+type Tx struct {
+	conn *Conn
+}
+
+func (c *Conn) NewTx() (storage.Tx, error) {
+	err := c.Send("MULTI")
+	if err != nil {
+		return nil, err
+	}
+	return &Tx{c}, nil
+}
+
+func (t *Tx) UnpruneTorrent(torrent *storage.Torrent) error {
+	key := t.conn.conf.Prefix + "Torrent:" + torrent.Infohash
+	err := t.conn.Send("HSET " + key + " Status 0")
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (t *Tx) Commit() error {
+	_, err := t.conn.Do("EXEC")
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

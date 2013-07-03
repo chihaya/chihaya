@@ -6,6 +6,7 @@ package server
 
 import (
 	"errors"
+	"github.com/pushrax/chihaya/config"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -96,7 +97,7 @@ func parseQuery(query string) (*parsedQuery, error) {
 	return pq, nil
 }
 
-func (pq *parsedQuery) validate() error {
+func (pq *parsedQuery) validateAnnounceParams() error {
 	infohash, _ := pq.params["info_hash"]
 	if infohash == "" {
 		return errors.New("infohash does not exist")
@@ -126,27 +127,23 @@ func (pq *parsedQuery) validate() error {
 
 // TODO IPv6 support
 func (pq *parsedQuery) determineIP(r *http.Request) (string, error) {
-	ip, ok := pq.params["ip"]
-	if !ok {
-		ip, ok = pq.params["ipv4"]
-		if !ok {
-			ips, ok := r.Header["X-Real-Ip"]
-			if ok && len(ips) > 0 {
-				ip = ips[0]
-			} else {
-				portIndex := len(r.RemoteAddr) - 1
-				for ; portIndex >= 0; portIndex-- {
-					if r.RemoteAddr[portIndex] == ':' {
-						break
-					}
-				}
-				if portIndex != -1 {
-					ip = r.RemoteAddr[0:portIndex]
-				} else {
-					return "", errors.New("Failed to parse IP address")
-				}
+	if ip, ok := pq.params["ip"]; ok {
+		return ip, nil
+	} else if ip, ok := pq.params["ipv4"]; ok {
+		return ip, nil
+	} else if ips, ok := pq.params["X-Real-Ip"]; ok && len(ips) > 0 {
+		return string(ips[0]), nil
+	} else {
+		portIndex := len(r.RemoteAddr) - 1
+		for ; portIndex >= 0; portIndex-- {
+			if r.RemoteAddr[portIndex] == ':' {
+				break
 			}
 		}
+		if portIndex != -1 {
+			return r.RemoteAddr[0:portIndex], nil
+		} else {
+			return "", errors.New("Failed to parse IP address")
+		}
 	}
-	return ip, nil
 }
