@@ -14,11 +14,8 @@ import (
 )
 
 func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
-	conn := s.connPool.Get()
-	defer conn.Close()
-
 	passkey, _ := path.Split(r.URL.Path)
-	_, err := validatePasskey(passkey, conn)
+	_, err := s.validatePasskey(passkey)
 	if err != nil {
 		fail(err, w, r)
 		return
@@ -42,12 +39,16 @@ func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !s.conf.ClientWhitelisted(pq.params["peer_id"]) {
+	ok, err := s.dataStore.ClientWhitelisted(pq.params["peer_id"])
+	if err != nil {
+		log.Panicf("server: %s", err)
+	}
+	if !ok {
 		fail(errors.New("Your client is not approved"), w, r)
 		return
 	}
 
-	torrent, exists, err := conn.FindTorrent(pq.params["infohash"])
+	torrent, exists, err := s.dataStore.FindTorrent(pq.params["infohash"])
 	if err != nil {
 		log.Panicf("server: %s", err)
 	}
@@ -56,7 +57,7 @@ func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tx, err := conn.NewTx()
+	tx, err := s.dataStore.Begin()
 	if err != nil {
 		log.Panicf("server: %s", err)
 	}

@@ -19,7 +19,7 @@ import (
 
 func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request) {
 	passkey, _ := path.Split(r.URL.Path)
-	_, err := validatePasskey(passkey, s.storage)
+	_, err := s.validatePasskey(passkey)
 	if err != nil {
 		fail(err, w, r)
 		return
@@ -35,7 +35,7 @@ func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request) {
 	bencode(w, "files")
 	if pq.infohashes != nil {
 		for _, infohash := range pq.infohashes {
-			torrent, exists, err := s.storage.FindTorrent(infohash)
+			torrent, exists, err := s.dataStore.FindTorrent(infohash)
 			if err != nil {
 				log.Panicf("server: %s", err)
 			}
@@ -45,7 +45,7 @@ func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	} else if infohash, exists := pq.params["info_hash"]; exists {
-		torrent, exists, err := s.storage.FindTorrent(infohash)
+		torrent, exists, err := s.dataStore.FindTorrent(infohash)
 		if err != nil {
 			log.Panicf("server: %s", err)
 		}

@@ -7,6 +7,7 @@ package config
 
 import (
 	"encoding/json"
+	"io"
 	"os"
 	"time"
 )
@@ -26,11 +27,7 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 	return err
 }
 
-type Client struct {
-	Name   string `json:"name"`
-	PeerID string `json:"peer_id"`
-}
-
+// Storage represents the configuration for any storage.DS.
 type Storage struct {
 	Driver   string `json:"driver"`
 	Network  string `json:"network`
@@ -41,11 +38,12 @@ type Storage struct {
 	Encoding string `json:"encoding,omitempty"`
 	Prefix   string `json:"prefix,omitempty"`
 
-	ConnectTimeout *Duration `json:"conn_timeout,omitempty"`
-	ReadTimeout    *Duration `json:"read_timeout,omitempty"`
-	WriteTimeout   *Duration `json:"write_timeout,omitempty"`
+	MaxIdleConn int       `json:"max_idle_conn"`
+	IdleTimeout *Duration `json:"idle_timeout"`
+	ConnTimeout *Duration `json:"conn_timeout"`
 }
 
+// Config represents a configuration for a server.Server.
 type Config struct {
 	Addr    string  `json:"addr"`
 	Storage Storage `json:"storage"`
@@ -57,11 +55,11 @@ type Config struct {
 	MinAnnounce    Duration `json:"min_announce"`
 	ReadTimeout    Duration `json:"read_timeout"`
 	DefaultNumWant int      `json:"default_num_want"`
-
-	Whitelist []Client `json:"whitelist"`
 }
 
-func New(path string) (*Config, error) {
+// Open is a shortcut to open a file, read it, and generate a Config.
+// It supports relative and absolute paths.
+func Open(path string) (*Config, error) {
 	expandedPath := os.ExpandEnv(path)
 	f, err := os.Open(expandedPath)
 	if err != nil {
@@ -69,29 +67,19 @@ func New(path string) (*Config, error) {
 	}
 	defer f.Close()
 
-	conf := &Config{}
-	err = json.NewDecoder(f).Decode(conf)
+	conf, err := New(f)
 	if err != nil {
 		return nil, err
 	}
 	return conf, nil
 }
 
-func (c *Config) ClientWhitelisted(peerID string) (matched bool) {
-	for _, client := range c.Whitelist {
-		length := len(client.PeerID)
-		if length <= len(peerID) {
-			matched = true
-			for i := 0; i < length; i++ {
-				if peerID[i] != client.PeerID[i] {
-					matched = false
-					break
-				}
-			}
-			if matched {
-				return true
-			}
-		}
+// New decodes JSON from a Reader into a Config.
+func New(raw io.Reader) (*Config, error) {
+	conf := &Config{}
+	err := json.NewDecoder(raw).Decode(conf)
+	if err != nil {
+		return nil, err
 	}
-	return false
+	return conf, nil
 }

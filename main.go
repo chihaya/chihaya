@@ -43,7 +43,7 @@ func main() {
 	if configPath == "" {
 		log.Fatalf("Must specify a configuration file")
 	}
-	conf, err := config.New(configPath)
+	conf, err := config.Open(configPath)
 	if err != nil {
 		log.Fatalf("Failed to parse configuration file: %s\n", err)
 	}

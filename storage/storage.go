@@ -7,17 +7,24 @@
 package storage
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/pushrax/chihaya/config"
 )
 
-var drivers = make(map[string]Driver)
+var (
+	drivers   = make(map[string]Driver)
+	ErrTxDone = errors.New("storage: Transaction has already been committed or rolled back")
+)
 
 type Driver interface {
-	New(*config.Storage) Pool
+	New(*config.Storage) DS
 }
 
+// Register makes a database driver available by the provided name.
+// If Register is called twice with the same name or if driver is nil,
+// it panics.
 func Register(name string, driver Driver) {
 	if driver == nil {
 		panic("storage: Register driver is nil")
@@ -28,7 +35,8 @@ func Register(name string, driver Driver) {
 	drivers[name] = driver
 }
 
-func Open(conf *config.Storage) (Pool, error) {
+// Open opens a data store specified by a storage configuration.
+func Open(conf *config.Storage) (DS, error) {
 	driver, ok := drivers[conf.Driver]
 	if !ok {
 		return nil, fmt.Errorf(
@@ -40,25 +48,29 @@ func Open(conf *config.Storage) (Pool, error) {
 	return pool, nil
 }
 
-// ConnPool represents a pool of connections to the data store.
-type Pool interface {
-	Close() error
-	Get() Conn
-}
-
-// Conn represents a single connection to the data store.
-type Conn interface {
+// DS represents a data store handle. It's expected to be safe for concurrent
+// use by multiple goroutines.
+//
+// A pool of connections or a database/sql.DB is a great concrete type to
+// implement the DS interface.
+type DS interface {
 	Close() error
 
-	NewTx() (Tx, error)
+	Begin() (Tx, error)
 
 	FindUser(passkey string) (*User, bool, error)
 	FindTorrent(infohash string) (*Torrent, bool, error)
+	ClientWhitelisted(peerID string) (bool, error)
 }
 
-// Tx represents a data store transaction.
+// Tx represents an in-progress data store transaction.
+// A transaction must end with a call to Commit or Rollback.
+//
+// After a call to Commit or Rollback, all operations on the
+// transaction must fail with ErrTxDone.
 type Tx interface {
 	Commit() error
+	Rollback() error
 
 	UnpruneTorrent(torrent *Torrent) error
 }

@@ -6,7 +6,6 @@ package server
 
 import (
 	"errors"
-	"github.com/pushrax/chihaya/config"
 	"net/http"
 	"net/url"
 	"strconv"
