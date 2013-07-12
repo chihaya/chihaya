@@ -7,7 +7,6 @@ package server
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"net"
@@ -113,14 +112,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func fail(err error, w http.ResponseWriter, r *http.Request) {
 	errmsg := err.Error()
-	message := fmt.Sprintf(
-		"%s%s%s%s%s",
-		"d14:failure reason",
-		strconv.Itoa(len(errmsg)),
-		":",
-		errmsg,
-		"e",
-	)
+	message := "d14:failure reason" + strconv.Itoa(len(errmsg)) + ":" + errmsg + "e"
 	length, _ := io.WriteString(w, message)
 	r.Close = true
 	w.Header().Add("Content-Type", "text/plain")
@@ -129,7 +121,7 @@ func fail(err error, w http.ResponseWriter, r *http.Request) {
 	w.(http.Flusher).Flush()
 }
 
-func (s *Server) validatePasskey(dir string) (*storage.User, error) {
+func (s *Server) FindUser(dir string) (*storage.User, error) {
 	if len(dir) != 34 {
 		return nil, errors.New("Passkey is invalid")
 	}

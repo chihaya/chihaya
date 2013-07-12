@@ -50,6 +50,7 @@ type Config struct {
 
 	Private   bool `json:"private"`
 	Freeleech bool `json:"freeleech"`
+	Slots     bool `json:"slots"`
 
 	Announce       Duration `json:"announce"`
 	MinAnnounce    Duration `json:"min_announce"`

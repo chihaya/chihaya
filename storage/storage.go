@@ -72,5 +72,17 @@ type Tx interface {
 	Commit() error
 	Rollback() error
 
-	UnpruneTorrent(torrent *Torrent) error
+	// Torrents
+	Snatch(userID, torrentID uint64) error
+	Unprune(torrentID uint64) error
+
+	// Peers
+	NewLeecher(torrent *Torrent, p *Peer) error
+	RmLeecher(torrentID uint64, peerID string) error
+
+	NewSeeder(torrent *Torrent, p *Peer) error
+	RmSeeder(torrentID uint64, peerID string) error
+
+	// Users
+	DecrementSlots(userID uint64) error
 }

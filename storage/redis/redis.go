@@ -67,7 +67,7 @@ func (ds *DS) FindUser(passkey string) (*storage.User, bool, error) {
 	conn := ds.Get()
 	defer conn.Close()
 
-	key := ds.conf.Prefix + "user:" + passkey
+	key := ds.conf.Prefix + "User:" + passkey
 	reply, err := redis.Values(conn.Do("HGETALL", key))
 	if err != nil {
 		return nil, true, err
@@ -90,7 +90,7 @@ func (ds *DS) FindTorrent(infohash string) (*storage.Torrent, bool, error) {
 	conn := ds.Get()
 	defer conn.Close()
 
-	key := ds.conf.Prefix + "torrent:" + infohash
+	key := ds.conf.Prefix + "Torrent:" + infohash
 	reply, err := redis.Values(conn.Do("HGETALL", key))
 	if err != nil {
 		return nil, false, err
@@ -113,7 +113,7 @@ func (ds *DS) ClientWhitelisted(peerID string) (bool, error) {
 	conn := ds.Get()
 	defer conn.Close()
 
-	key := ds.conf.Prefix + "whitelist:" + peerID
+	key := ds.conf.Prefix + "Whitelist:" + peerID
 	exists, err := redis.Bool(conn.Do("EXISTS", key))
 	if err != nil {
 		return false, err
@@ -151,7 +151,7 @@ func (t *Tx) UnpruneTorrent(torrent *storage.Torrent) error {
 	if t.done {
 		return storage.ErrTxDone
 	}
-	key := t.conf.Prefix + "torrent:" + torrent.Infohash
+	key := t.conf.Prefix + "Torrent:" + torrent.Infohash
 	err := t.Send("HSET " + key + " Status 0")
 	if err != nil {
 		return err

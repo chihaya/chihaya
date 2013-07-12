@@ -6,28 +6,29 @@ package server
 
 import (
 	"errors"
-	"net/http"
 	"net/url"
 	"strconv"
 )
 
+// parsedQuery represents a parsed URL.Query.
 type parsedQuery struct {
-	infohashes []string
-	params     map[string]string
+	Infohashes []string
+	Params     map[string]string
 }
 
-func (pq *parsedQuery) getUint64(key string) (uint64, bool) {
-	str, exists := pq.params[key]
+func (pq *parsedQuery) getUint64(key string) (uint64, error) {
+	str, exists := pq.Params[key]
 	if !exists {
-		return 0, false
+		return 0, errors.New("Value does not exist for key: " + key)
 	}
 	val, err := strconv.ParseUint(str, 10, 64)
 	if err != nil {
-		return 0, false
+		return 0, err
 	}
-	return val, true
+	return val, nil
 }
 
+// parseQuery parses a raw url query.
 func parseQuery(query string) (*parsedQuery, error) {
 	var (
 		keyStart, keyEnd int
@@ -38,8 +39,8 @@ func parseQuery(query string) (*parsedQuery, error) {
 		hasInfohash = false
 
 		pq = &parsedQuery{
-			infohashes: nil,
-			params:     make(map[string]string),
+			Infohashes: nil,
+			Params:     make(map[string]string),
 		}
 	)
 
@@ -67,15 +68,15 @@ func parseQuery(query string) (*parsedQuery, error) {
 				return nil, err
 			}
 
-			pq.params[keyStr] = valStr
+			pq.Params[keyStr] = valStr
 
 			if keyStr == "info_hash" {
 				if hasInfohash {
 					// Multiple infohashes
-					if pq.infohashes == nil {
-						pq.infohashes = []string{firstInfohash}
+					if pq.Infohashes == nil {
+						pq.Infohashes = []string{firstInfohash}
 					}
-					pq.infohashes = append(pq.infohashes, valStr)
+					pq.Infohashes = append(pq.Infohashes, valStr)
 				} else {
 					firstInfohash = valStr
 					hasInfohash = true
@@ -94,55 +95,4 @@ func parseQuery(query string) (*parsedQuery, error) {
 		}
 	}
 	return pq, nil
-}
-
-func (pq *parsedQuery) validateAnnounceParams() error {
-	infohash, _ := pq.params["info_hash"]
-	if infohash == "" {
-		return errors.New("infohash does not exist")
-	}
-	peerId, _ := pq.params["peer_id"]
-	if peerId == "" {
-		return errors.New("peerId does not exist")
-	}
-	_, ok := pq.getUint64("port")
-	if ok == false {
-		return errors.New("port does not exist")
-	}
-	_, ok = pq.getUint64("uploaded")
-	if ok == false {
-		return errors.New("uploaded does not exist")
-	}
-	_, ok = pq.getUint64("downloaded")
-	if ok == false {
-		return errors.New("downloaded does not exist")
-	}
-	_, ok = pq.getUint64("left")
-	if ok == false {
-		return errors.New("left does not exist")
-	}
-	return nil
-}
-
-// TODO IPv6 support
-func (pq *parsedQuery) determineIP(r *http.Request) (string, error) {
-	if ip, ok := pq.params["ip"]; ok {
-		return ip, nil
-	} else if ip, ok := pq.params["ipv4"]; ok {
-		return ip, nil
-	} else if ips, ok := pq.params["X-Real-Ip"]; ok && len(ips) > 0 {
-		return string(ips[0]), nil
-	} else {
-		portIndex := len(r.RemoteAddr) - 1
-		for ; portIndex >= 0; portIndex-- {
-			if r.RemoteAddr[portIndex] == ':' {
-				break
-			}
-		}
-		if portIndex != -1 {
-			return r.RemoteAddr[0:portIndex], nil
-		} else {
-			return "", errors.New("Failed to parse IP address")
-		}
-	}
 }

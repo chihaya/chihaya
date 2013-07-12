@@ -9,17 +9,14 @@ type Peer struct {
 	UserID    uint64
 	TorrentID uint64
 
-	Port uint
 	IP   string
-	Addr []byte
+	Port uint64
 
 	Uploaded   uint64
 	Downloaded uint64
 	Left       uint64
-	Seeding    bool
 
-	StartTimeUnix int64
-	LastAnnounce  int64
+	LastAnnounce int64
 }
 
 type Torrent struct {
@@ -28,21 +25,22 @@ type Torrent struct {
 	UpMultiplier   float64
 	DownMultiplier float64
 
-	Seeders  map[string]*Peer
-	Leechers map[string]*Peer
+	Seeders  map[string]Peer
+	Leechers map[string]Peer
 
-	Snatched   uint
-	Status     int64
+	Snatches   uint
+	Pruned     bool
 	LastAction int64
 }
 
 type User struct {
-	ID             uint64
-	Passkey        string
+	ID      uint64
+	Passkey string
+
 	UpMultiplier   float64
 	DownMultiplier float64
-	Slots          int64
-	UsedSlots      int64
 
+	Slots            int64
+	UsedSlots        int64
 	SlotsLastChecked int64
 }
