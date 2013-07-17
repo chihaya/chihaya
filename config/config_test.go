@@ -5,11 +5,13 @@
 package config
 
 import (
+	"bufio"
+	"os"
 	"strings"
 	"testing"
 )
 
-var exampleConfig = `{
+var exampleJson = `{
 
   "network": "tcp",
   "addr": ":34000",
@@ -35,8 +37,53 @@ var exampleConfig = `{
 
 }`
 
-func TestNew(t *testing.T) {
-	if _, err := New(strings.NewReader(exampleConfig)); err != nil {
+func TestNewConfig(t *testing.T) {
+	if _, err := newConfig(strings.NewReader(exampleJson)); err != nil {
 		t.Error(err)
+	}
+}
+
+func writeAndOpenJsonTest(t *testing.T, fn string) {
+	expandFn := os.ExpandEnv(fn)
+	//write json to relative path, clean up
+	tfile, ferr := os.Create(expandFn)
+	//Remove failure not counted as error
+	defer os.Remove(expandFn)
+	if ferr != nil {
+		t.Fatal("Failed to create %s. Error: %v", expandFn, ferr)
+	}
+
+	tWriter := bufio.NewWriter(tfile)
+	cw, err := tWriter.WriteString(exampleJson)
+	if err != nil {
+		t.Fatal("Failed to write json to config file. %v", err)
+	}
+	if cw < len(exampleJson) {
+		t.Error("Incorrect length of config file written %v vs. %v", cw, len(exampleJson))
+	}
+	fErr := tWriter.Flush()
+	if fErr != nil {
+		t.Error("Flush error: %v", fErr)
+	}
+	_, oErr := Open(fn)
+	if oErr != nil {
+		t.Error("Open error: %v", oErr)
+	}
+}
+
+//These implcitly require the test program have
+// read/write/delete file system permissions
+func TestOpenCurDir(t *testing.T) {
+	if !testing.Short() {
+		writeAndOpenJsonTest(t, "testConfig.json")
+	} else {
+		t.Log("Write/Read file test skipped")
+	}
+}
+func TestOpenAbsEnvPath(t *testing.T) {
+	if !testing.Short() {
+		writeAndOpenJsonTest(t, "$GOROOT/testConfig.json")
+	} else {
+		t.Log("Write/Read file test skipped")
 	}
 }
