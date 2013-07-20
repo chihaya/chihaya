@@ -6,7 +6,6 @@ package server
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"path"
@@ -45,6 +44,13 @@ func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if s.conf.Slots && user.Slots != -1 && left != 0 {
+		if user.UsedSlots >= user.Slots {
+			fail(errors.New("You've run out of download slots."), w, r)
+			return
+		}
+	}
+
 	tx, err := s.dataStore.Begin()
 	if err != nil {
 		log.Panicf("server: %s", err)
@@ -55,24 +61,10 @@ func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Panicf("server: %s", err)
 		}
-	} else if torrent.Pruned {
-		e := fmt.Errorf("This torrent does not exist (pruned: %t, left: %d)", torrent.Pruned, left)
-		fail(e, w, r)
-		return
-	}
-
-	if s.conf.Slots && user.Slots != -1 && left != 0 {
-		if user.UsedSlots >= user.Slots {
-			fail(errors.New("You've run out of download slots."), w, r)
-			return
-		}
 	}
 
 	_, isLeecher := torrent.Leechers[peerID]
 	_, isSeeder := torrent.Seeders[peerID]
-
-	completed := "completed" == event
-
 	if event == "stopped" || event == "paused" {
 		if left == 0 {
 			err := tx.RmSeeder(torrent.ID, peerID)
@@ -89,7 +81,7 @@ func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 				log.Panicf("server: %s", err)
 			}
 		}
-	} else if completed {
+	} else if event == "completed" {
 		err := tx.Snatch(user.ID, torrent.ID)
 		if err != nil {
 			log.Panicf("server: %s", err)
@@ -117,10 +109,10 @@ func (s *Server) validateAnnounceQuery(r *http.Request) (compact bool, numWant i
 	if infohash == "" ||
 		peerID == "" ||
 		ip == "" ||
-		portErr == nil ||
-		uploadedErr == nil ||
-		downloadedErr == nil ||
-		leftErr == nil {
+		portErr != nil ||
+		uploadedErr != nil ||
+		downloadedErr != nil ||
+		leftErr != nil {
 		return false, 0, "", "", "", "", 0, 0, 0, 0, errors.New("Malformed request")
 	}
 	return
