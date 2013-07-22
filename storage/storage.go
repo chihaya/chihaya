@@ -73,16 +73,17 @@ type Tx interface {
 	Rollback() error
 
 	// Torrents
-	Snatch(userID, torrentID uint64) error
-	Unprune(torrentID uint64) error
+	Snatch(u *User, t *Torrent) error
+	Unprune(t *Torrent) error
 
 	// Peers
-	NewLeecher(torrent *Torrent, p *Peer) error
-	RmLeecher(torrentID uint64, peerID string) error
+	NewLeecher(t *Torrent, p *Peer) error
+	RmLeecher(t *Torrent, p *Peer) error
 
-	NewSeeder(torrent *Torrent, p *Peer) error
-	RmSeeder(torrentID uint64, peerID string) error
+	NewSeeder(t *Torrent, p *Peer) error
+	RmSeeder(t *Torrent, p *Peer) error
 
 	// Users
-	DecrementSlots(userID uint64) error
+	IncrementSlots(u *User) error
+	DecrementSlots(u *User) error
 }

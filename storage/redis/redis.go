@@ -139,45 +139,101 @@ func (ds *DS) Begin() (storage.Tx, error) {
 	}, nil
 }
 
-func (t *Tx) Close() {
-	if t.done {
+func (tx *Tx) close() {
+	if tx.done {
 		panic("redis: transaction closed twice")
 	}
-	t.done = true
-	t.Conn.Close()
+	tx.done = true
+	tx.Conn.Close()
 }
 
-func (t *Tx) UnpruneTorrent(torrent *storage.Torrent) error {
-	if t.done {
+func (tx *Tx) Commit() error {
+	if tx.done {
 		return storage.ErrTxDone
 	}
-	key := t.conf.Prefix + "Torrent:" + torrent.Infohash
-	err := t.Send("HSET " + key + " Status 0")
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (t *Tx) Commit() error {
-	if t.done {
-		return storage.ErrTxDone
-	}
-	_, err := t.Do("EXEC")
+	_, err := tx.Do("EXEC")
 	if err != nil {
 		return err
 	}
 
-	t.Close()
+	tx.close()
 	return nil
 }
 
 // Redis doesn't need to rollback. Exec is atomic.
-func (t *Tx) Rollback() error {
-	if t.done {
+func (tx *Tx) Rollback() error {
+	if tx.done {
 		return storage.ErrTxDone
 	}
-	t.Close()
+	tx.close()
+	return nil
+}
+
+func (tx *Tx) Snatch(user *storage.User, torrent *storage.Torrent) error {
+	if tx.done {
+		return storage.ErrTxDone
+	}
+	// TODO
+	return nil
+}
+
+func (tx *Tx) Unprune(t *storage.Torrent) error {
+	if tx.done {
+		return storage.ErrTxDone
+	}
+	key := tx.conf.Prefix + "Torrent:" + t.Infohash
+	err := tx.Send("HSET " + key + " Status 0")
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (tx *Tx) NewLeecher(t *storage.Torrent, p *storage.Peer) error {
+	if tx.done {
+		return storage.ErrTxDone
+	}
+	// TODO
+	return nil
+}
+
+func (tx *Tx) RmLeecher(t *storage.Torrent, p *storage.Peer) error {
+	if tx.done {
+		return storage.ErrTxDone
+	}
+	// TODO
+	return nil
+}
+
+func (tx *Tx) NewSeeder(t *storage.Torrent, p *storage.Peer) error {
+	if tx.done {
+		return storage.ErrTxDone
+	}
+	// TODO
+	return nil
+}
+
+func (tx *Tx) RmSeeder(t *storage.Torrent, p *storage.Peer) error {
+	if tx.done {
+		return storage.ErrTxDone
+	}
+	// TODO
+	return nil
+}
+
+func (tx *Tx) IncrementSlots(u *storage.User) error {
+	if tx.done {
+		return storage.ErrTxDone
+	}
+	// TODO
+	return nil
+}
+
+func (tx *Tx) DecrementSlots(u *storage.User) error {
+	if tx.done {
+		return storage.ErrTxDone
+	}
+	// TODO
 	return nil
 }
 
