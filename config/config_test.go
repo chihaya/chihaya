@@ -45,9 +45,9 @@ func TestNewConfig(t *testing.T) {
 
 func writeAndOpenJsonTest(t *testing.T, fn string) {
 	expandFn := os.ExpandEnv(fn)
-	//write json to relative path, clean up
+	// Write JSON to relative path, clean up
 	tfile, ferr := os.Create(expandFn)
-	//Remove failure not counted as error
+	// Remove failure not counted as error
 	defer os.Remove(expandFn)
 	if ferr != nil {
 		t.Fatal("Failed to create %s. Error: %v", expandFn, ferr)
@@ -71,7 +71,7 @@ func writeAndOpenJsonTest(t *testing.T, fn string) {
 	}
 }
 
-//These implcitly require the test program have
+// These implcitly require the test program have
 // read/write/delete file system permissions
 func TestOpenCurDir(t *testing.T) {
 	if !testing.Short() {
@@ -82,7 +82,7 @@ func TestOpenCurDir(t *testing.T) {
 }
 func TestOpenAbsEnvPath(t *testing.T) {
 	if !testing.Short() {
-		writeAndOpenJsonTest(t, "$GOROOT/testConfig.json")
+		writeAndOpenJsonTest(t, os.TempDir()+"testConfig.json")
 	} else {
 		t.Log("Write/Read file test skipped")
 	}
