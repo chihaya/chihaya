@@ -74,7 +74,7 @@ type Tx interface {
 
 	// Torrents
 	Snatch(u *User, t *Torrent) error
-	Unprune(t *Torrent) error
+	Active(t *Torrent) error
 
 	// Peers
 	NewLeecher(t *Torrent, p *Peer) error

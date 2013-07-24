@@ -19,7 +19,7 @@ type Peer struct {
 type Torrent struct {
 	ID             uint64          `json:"id"`
 	Infohash       string          `json:"infohash"`
-	Pruned         bool            `json:"pruned"`
+	Active         bool            `json:"active"`
 	Seeders        map[string]Peer `json:"seeders"`
 	Leechers       map[string]Peer `json:"leechers"`
 	Snatches       uint            `json:"snatches"`

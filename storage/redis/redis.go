@@ -3,11 +3,11 @@
 // which can be found in the LICENSE file.
 
 // Package redis implements the storage interface for a BitTorrent tracker.
-
+//
 // The client whitelist is represented as a set with the key name "whitelist"
 // with an optional prefix. Torrents and users are JSON-formatted strings.
-// Torrents' keys are named "torrent_<infohash>" with an optional prefix.
-// Users' keys are named "user_<passkey>" with an optional prefix.
+// Torrents' keys are named "torrent:<infohash>" with an optional prefix.
+// Users' keys are named "user:<passkey>" with an optional prefix.
 package redis
 
 import (
@@ -74,7 +74,7 @@ func (ds *DS) FindUser(passkey string) (*storage.User, bool, error) {
 	conn := ds.Get()
 	defer conn.Close()
 
-	key := ds.conf.Prefix + "user_" + passkey
+	key := ds.conf.Prefix + "user:" + passkey
 	reply, err := redis.String(conn.Do("GET", key))
 	if err != nil {
 		if err == redis.ErrNil {
@@ -95,7 +95,7 @@ func (ds *DS) FindTorrent(infohash string) (*storage.Torrent, bool, error) {
 	conn := ds.Get()
 	defer conn.Close()
 
-	key := ds.conf.Prefix + "torrent_" + infohash
+	key := ds.conf.Prefix + "torrent:" + infohash
 	reply, err := redis.String(conn.Do("GET", key))
 	if err != nil {
 		if err == redis.ErrNil {
@@ -180,16 +180,13 @@ func (tx *Tx) Snatch(user *storage.User, torrent *storage.Torrent) error {
 	return nil
 }
 
-func (tx *Tx) Unprune(t *storage.Torrent) error {
+func (tx *Tx) Active(t *storage.Torrent) error {
 	if tx.done {
 		return storage.ErrTxDone
 	}
-	key := tx.conf.Prefix + "Torrent:" + t.Infohash
-	err := tx.Send("HSET " + key + " Status 0")
-	if err != nil {
-		return err
-	}
-	return nil
+	key := tx.conf.Prefix + "torrent:" + t.Infohash
+	err := activeScript.Send(tx.Conn, key)
+	return err
 }
 
 func (tx *Tx) NewLeecher(t *storage.Torrent, p *storage.Peer) error {
@@ -236,24 +233,27 @@ func (tx *Tx) RmSeeder(t *storage.Torrent, p *storage.Peer) error {
 	if tx.done {
 		return storage.ErrTxDone
 	}
-	// TODO
-	return nil
+	key := tx.conf.Prefix + "torrent:" + t.Infohash
+	err := rmSeederScript.Send(tx.Conn, key, p.ID)
+	return err
 }
 
 func (tx *Tx) IncrementSlots(u *storage.User) error {
 	if tx.done {
 		return storage.ErrTxDone
 	}
-	// TODO
-	return nil
+	key := tx.conf.Prefix + "user:" + u.Passkey
+	err := incSlotsScript.Send(tx.Conn, key)
+	return err
 }
 
 func (tx *Tx) DecrementSlots(u *storage.User) error {
 	if tx.done {
 		return storage.ErrTxDone
 	}
-	// TODO
-	return nil
+	key := tx.conf.Prefix + "user:" + u.Passkey
+	err := decSlotsScript.Send(tx.Conn, key)
+	return err
 }
 
 func init() {

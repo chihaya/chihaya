@@ -58,8 +58,8 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// If the torrent was pruned and the user is seeding, unprune it
-	if torrent.Pruned && left == 0 {
-		err := tx.Unprune(torrent)
+	if !torrent.Active && left == 0 {
+		err := tx.Active(torrent)
 		if err != nil {
 			log.Panicf("server: %s", err)
 		}
