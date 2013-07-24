@@ -15,7 +15,7 @@ import (
 	"github.com/pushrax/chihaya/storage"
 )
 
-func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
+func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 	// Parse the required parameters off of a query
 	compact, numWant, infohash, peerID, event, ip, port, uploaded, downloaded, left, err := s.validateAnnounceQuery(r)
 	if err != nil {
@@ -116,7 +116,7 @@ func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 	default:
 		// Check the user's slots to see if they're allowed to leech
 		if s.conf.Slots && user.Slots != -1 && left != 0 {
-			if user.UsedSlots >= user.Slots {
+			if user.SlotsUsed >= user.Slots {
 				fail(errors.New("You've run out of download slots."), w, r)
 				return
 			}
@@ -192,7 +192,7 @@ func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 	// TODO compact, response, etc...
 }
 
-func (s *Server) validateAnnounceQuery(r *http.Request) (compact bool, numWant int, infohash, peerID, event, ip string, port, uploaded, downloaded, left uint64, err error) {
+func (s Server) validateAnnounceQuery(r *http.Request) (compact bool, numWant int, infohash, peerID, event, ip string, port, uploaded, downloaded, left uint64, err error) {
 	pq, err := parseQuery(r.URL.RawQuery)
 	if err != nil {
 		return false, 0, "", "", "", "", 0, 0, 0, 0, err

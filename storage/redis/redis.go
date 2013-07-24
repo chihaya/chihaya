@@ -3,9 +3,16 @@
 // which can be found in the LICENSE file.
 
 // Package redis implements the storage interface for a BitTorrent tracker.
+
+// The client whitelist is represented as a set with the key name "whitelist"
+// with an optional prefix. Torrents and users are JSON-formatted strings.
+// Torrents' keys are named "torrent_<infohash>" with an optional prefix.
+// Users' keys are named "user_<passkey>" with an optional prefix.
 package redis
 
 import (
+	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/garyburd/redigo/redis"
@@ -67,19 +74,17 @@ func (ds *DS) FindUser(passkey string) (*storage.User, bool, error) {
 	conn := ds.Get()
 	defer conn.Close()
 
-	key := ds.conf.Prefix + "User:" + passkey
-	reply, err := redis.Values(conn.Do("HGETALL", key))
+	key := ds.conf.Prefix + "user_" + passkey
+	reply, err := redis.String(conn.Do("GET", key))
 	if err != nil {
-		return nil, true, err
-	}
-
-	// If we get nothing back, the user isn't found.
-	if len(reply) == 0 {
-		return nil, false, nil
+		if err == redis.ErrNil {
+			return nil, false, nil
+		}
+		return nil, false, err
 	}
 
 	user := &storage.User{}
-	err = redis.ScanStruct(reply, user)
+	err = json.NewDecoder(strings.NewReader(reply)).Decode(user)
 	if err != nil {
 		return nil, true, err
 	}
@@ -90,19 +95,17 @@ func (ds *DS) FindTorrent(infohash string) (*storage.Torrent, bool, error) {
 	conn := ds.Get()
 	defer conn.Close()
 
-	key := ds.conf.Prefix + "Torrent:" + infohash
-	reply, err := redis.Values(conn.Do("HGETALL", key))
+	key := ds.conf.Prefix + "torrent_" + infohash
+	reply, err := redis.String(conn.Do("GET", key))
 	if err != nil {
+		if err == redis.ErrNil {
+			return nil, false, nil
+		}
 		return nil, false, err
 	}
 
-	// If we get nothing back, the torrent isn't found.
-	if len(reply) == 0 {
-		return nil, false, nil
-	}
-
 	torrent := &storage.Torrent{}
-	err = redis.ScanStruct(reply, torrent)
+	err = json.NewDecoder(strings.NewReader(reply)).Decode(torrent)
 	if err != nil {
 		return nil, true, err
 	}
@@ -113,8 +116,8 @@ func (ds *DS) ClientWhitelisted(peerID string) (bool, error) {
 	conn := ds.Get()
 	defer conn.Close()
 
-	key := ds.conf.Prefix + "Whitelist:" + peerID
-	exists, err := redis.Bool(conn.Do("EXISTS", key))
+	key := ds.conf.Prefix + "whitelist"
+	exists, err := redis.Bool(conn.Do("SISMEMBER", key, peerID))
 	if err != nil {
 		return false, err
 	}
