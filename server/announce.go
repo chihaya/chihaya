@@ -65,22 +65,33 @@ func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Create a new peer object from the request
+	peer := &storage.Peer{
+		ID:           peerID,
+		UserID:       user.ID,
+		TorrentID:    torrent.ID,
+		IP:           ip,
+		Port:         port,
+		Uploaded:     uploaded,
+		Downloaded:   downloaded,
+		Left:         left,
+		LastAnnounce: time.Now().Unix(),
+	}
+
 	// Look for the user in in the pool of seeders and leechers
-	sp, seeder := torrent.Seeders[peerID]
-	lp, leecher := torrent.Leechers[peerID]
-	peer := &storage.Peer{}
+	_, seeder := torrent.Seeders[peerID]
+	_, leecher := torrent.Leechers[peerID]
+
 	switch {
 	// Guarantee that no user is in both pools
 	case seeder && leecher:
 		if left == 0 {
-			peer = &sp
 			err := tx.RmLeecher(torrent, peer)
 			if err != nil {
 				log.Panicf("server: %s", err)
 			}
 			leecher = false
 		} else {
-			peer = &lp
 			err := tx.RmSeeder(torrent, peer)
 			if err != nil {
 				log.Panicf("server: %s", err)
@@ -89,28 +100,21 @@ func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		}
 
 	case seeder:
-		peer = &sp
-		// TODO update stats
-
-	case leecher:
-		peer = &lp
-		// TODO update stats
-
-	default:
-		// The user is a new peer
-		peer = &storage.Peer{
-			ID:           peerID,
-			UserID:       user.ID,
-			TorrentID:    torrent.ID,
-			IP:           ip,
-			Port:         port,
-			Uploaded:     uploaded,
-			Downloaded:   downloaded,
-			Left:         left,
-			LastAnnounce: time.Now().Unix(),
+		// Update the peer with the stats from the request
+		err := tx.SetSeeder(torrent, peer)
+		if err != nil {
+			log.Panicf("server: %s", err)
 		}
 
-		// Check the new user's slots
+	case leecher:
+		// Update the peer with the stats from the request
+		err := tx.SetLeecher(torrent, peer)
+		if err != nil {
+			log.Panicf("server: %s", err)
+		}
+
+	default:
+		// Check the user's slots to see if they're allowed to leech
 		if s.conf.Slots && user.Slots != -1 && left != 0 {
 			if user.UsedSlots >= user.Slots {
 				fail(errors.New("You've run out of download slots."), w, r)
@@ -119,11 +123,13 @@ func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if left == 0 {
+			// Save the peer as a new seeder
 			err := tx.NewSeeder(torrent, peer)
 			if err != nil {
 				log.Panicf("server: %s", err)
 			}
 		} else {
+			// Save the peer as a new leecher and increment the user's slots
 			err := tx.IncrementSlots(user)
 			if err != nil {
 				log.Panicf("server: %s", err)
@@ -135,7 +141,7 @@ func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Handle any events given to us by the user
+	// Handle any events in the request
 	switch {
 	case event == "stopped" || event == "paused":
 		if seeder {
@@ -172,7 +178,7 @@ func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		}
 
 	case leecher && left == 0:
-		// Completed event from the peer was never received
+		// A leecher completed but the event was never received
 		err := tx.RmLeecher(torrent, peer)
 		if err != nil {
 			log.Panicf("server: %s", err)
@@ -184,7 +190,6 @@ func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TODO compact, response, etc...
-
 }
 
 func (s *Server) validateAnnounceQuery(r *http.Request) (compact bool, numWant int, infohash, peerID, event, ip string, port, uploaded, downloaded, left uint64, err error) {

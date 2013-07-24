@@ -197,6 +197,14 @@ func (tx *Tx) NewLeecher(t *storage.Torrent, p *storage.Peer) error {
 	return nil
 }
 
+func (tx *Tx) SetLeecher(t *storage.Torrent, p *storage.Peer) error {
+	if tx.done {
+		return storage.ErrTxDone
+	}
+	// TODO
+	return nil
+}
+
 func (tx *Tx) RmLeecher(t *storage.Torrent, p *storage.Peer) error {
 	if tx.done {
 		return storage.ErrTxDone
@@ -206,6 +214,14 @@ func (tx *Tx) RmLeecher(t *storage.Torrent, p *storage.Peer) error {
 }
 
 func (tx *Tx) NewSeeder(t *storage.Torrent, p *storage.Peer) error {
+	if tx.done {
+		return storage.ErrTxDone
+	}
+	// TODO
+	return nil
+}
+
+func (tx *Tx) SetSeeder(t *storage.Torrent, p *storage.Peer) error {
 	if tx.done {
 		return storage.ErrTxDone
 	}
