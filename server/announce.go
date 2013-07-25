@@ -23,16 +23,22 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Start a transaction
+	tx, err := s.dbConnPool.Get()
+	if err != nil {
+		log.Panicf("server: %s", err)
+	}
+
 	// Validate the user's passkey
 	passkey, _ := path.Split(r.URL.Path)
-	user, err := s.FindUser(passkey)
+	user, err := validateUser(tx, passkey)
 	if err != nil {
 		fail(err, w, r)
 		return
 	}
 
 	// Check if the user's client is whitelisted
-	whitelisted, err := s.dataStore.ClientWhitelisted(peerID)
+	whitelisted, err := tx.ClientWhitelisted(peerID)
 	if err != nil {
 		log.Panicf("server: %s", err)
 	}
@@ -42,7 +48,7 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Find the specified torrent
-	torrent, exists, err := s.dataStore.FindTorrent(infohash)
+	torrent, exists, err := tx.FindTorrent(infohash)
 	if err != nil {
 		log.Panicf("server: %s", err)
 	}
@@ -51,15 +57,9 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Begin a data store transaction
-	tx, err := s.dataStore.Begin()
-	if err != nil {
-		log.Panicf("server: %s", err)
-	}
-
 	// If the torrent was pruned and the user is seeding, unprune it
 	if !torrent.Active && left == 0 {
-		err := tx.Active(torrent)
+		err := tx.MarkActive(torrent)
 		if err != nil {
 			log.Panicf("server: %s", err)
 		}

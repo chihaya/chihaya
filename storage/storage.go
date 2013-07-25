@@ -19,7 +19,7 @@ var (
 )
 
 type Driver interface {
-	New(*config.Storage) DS
+	New(*config.Storage) Pool
 }
 
 // Register makes a database driver available by the provided name.
@@ -35,8 +35,8 @@ func Register(name string, driver Driver) {
 	drivers[name] = driver
 }
 
-// Open opens a data store specified by a storage configuration.
-func Open(conf *config.Storage) (DS, error) {
+// Open creates a pool of data store connections specified by a storage configuration.
+func Open(conf *config.Storage) (Pool, error) {
 	driver, ok := drivers[conf.Driver]
 	if !ok {
 		return nil, fmt.Errorf(
@@ -48,19 +48,11 @@ func Open(conf *config.Storage) (DS, error) {
 	return pool, nil
 }
 
-// DS represents a data store handle. It's expected to be safe for concurrent
-// use by multiple goroutines.
-//
-// A pool of connections or a database/sql.DB is a great concrete type to
-// implement the DS interface.
-type DS interface {
+// Pool represents a thread-safe pool of connections to the data store
+// that can be used to obtain transactions.
+type Pool interface {
 	Close() error
-
-	Begin() (Tx, error)
-
-	FindUser(passkey string) (*User, bool, error)
-	FindTorrent(infohash string) (*Torrent, bool, error)
-	ClientWhitelisted(peerID string) (bool, error)
+	Get() (Tx, error)
 }
 
 // Tx represents an in-progress data store transaction.
@@ -72,20 +64,20 @@ type Tx interface {
 	Commit() error
 	Rollback() error
 
-	// Torrents
+	// Reads
+	FindUser(passkey string) (*User, bool, error)
+	FindTorrent(infohash string) (*Torrent, bool, error)
+	ClientWhitelisted(peerID string) (bool, error)
+
+	// Writes
 	Snatch(u *User, t *Torrent) error
-	Active(t *Torrent) error
-
-	// Peers
+	MarkActive(t *Torrent) error
 	NewLeecher(t *Torrent, p *Peer) error
-	SetLeecher(t *Torrent, p *Peer) error
-	RmLeecher(t *Torrent, p *Peer) error
-
 	NewSeeder(t *Torrent, p *Peer) error
-	SetSeeder(t *Torrent, p *Peer) error
+	RmLeecher(t *Torrent, p *Peer) error
 	RmSeeder(t *Torrent, p *Peer) error
-
-	// Users
+	SetLeecher(t *Torrent, p *Peer) error
+	SetSeeder(t *Torrent, p *Peer) error
 	IncrementSlots(u *User) error
 	DecrementSlots(u *User) error
 }

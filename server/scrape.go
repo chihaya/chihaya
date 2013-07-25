@@ -15,16 +15,24 @@ import (
 )
 
 func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request) {
-	passkey, _ := path.Split(r.URL.Path)
-	_, err := s.FindUser(passkey)
-	if err != nil {
-		fail(err, w, r)
-		return
-	}
-
+	// Parse the query
 	pq, err := parseQuery(r.URL.RawQuery)
 	if err != nil {
 		fail(errors.New("Error parsing query"), w, r)
+		return
+	}
+
+	// Start a transaction
+	tx, err := s.dbConnPool.Get()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Find and validate the user
+	passkey, _ := path.Split(r.URL.Path)
+	_, err = validateUser(tx, passkey)
+	if err != nil {
+		fail(err, w, r)
 		return
 	}
 
@@ -32,7 +40,7 @@ func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request) {
 	writeBencoded(w, "files")
 	if pq.Infohashes != nil {
 		for _, infohash := range pq.Infohashes {
-			torrent, exists, err := s.dataStore.FindTorrent(infohash)
+			torrent, exists, err := tx.FindTorrent(infohash)
 			if err != nil {
 				log.Panicf("server: %s", err)
 			}
@@ -42,7 +50,7 @@ func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	} else if infohash, exists := pq.Params["info_hash"]; exists {
-		torrent, exists, err := s.dataStore.FindTorrent(infohash)
+		torrent, exists, err := tx.FindTorrent(infohash)
 		if err != nil {
 			log.Panicf("server: %s", err)
 		}
@@ -53,6 +61,7 @@ func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request) {
 	}
 	io.WriteString(w, "e")
 
+	// Finish up and write headers
 	r.Close = true
 	w.Header().Add("Content-Type", "text/plain")
 	w.Header().Add("Connection", "close")

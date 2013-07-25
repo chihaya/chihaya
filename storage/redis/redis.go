@@ -12,6 +12,7 @@ package redis
 
 import (
 	"encoding/json"
+	"errors"
 	"strings"
 	"time"
 
@@ -23,10 +24,10 @@ import (
 
 type driver struct{}
 
-func (d *driver) New(conf *config.Storage) storage.DS {
-	return &DS{
+func (d *driver) New(conf *config.Storage) storage.Pool {
+	return &Pool{
 		conf: conf,
-		Pool: redis.Pool{
+		pool: redis.Pool{
 			MaxIdle:      conf.MaxIdleConn,
 			IdleTimeout:  conf.IdleTimeout.Duration,
 			Dial:         makeDialFunc(conf),
@@ -65,17 +66,90 @@ func testOnBorrow(c redis.Conn, t time.Time) error {
 	return err
 }
 
-type DS struct {
+type Pool struct {
 	conf *config.Storage
-	redis.Pool
+	pool redis.Pool
 }
 
-func (ds *DS) FindUser(passkey string) (*storage.User, bool, error) {
-	conn := ds.Get()
-	defer conn.Close()
+func (p *Pool) Close() error {
+	return p.pool.Close()
+}
 
-	key := ds.conf.Prefix + "user:" + passkey
-	reply, err := redis.String(conn.Do("GET", key))
+func (p *Pool) Get() (storage.Tx, error) {
+	return &Tx{
+		conf:  p.conf,
+		done:  false,
+		multi: false,
+		Conn:  p.pool.Get(),
+	}, nil
+}
+
+// Tx represents a transaction for Redis with one gotcha:
+// all reads must be done prior to any writes. Writes will
+// check if the MULTI command has been sent to redis and will
+// send it if it hasn't.
+//
+// Internally a transaction looks like:
+// WATCH keyA
+// GET keyA
+// WATCH keyB
+// GET keyB
+// MULTI
+// SET keyA
+// SET keyB
+// EXEC
+type Tx struct {
+	conf  *config.Storage
+	done  bool
+	multi bool
+	redis.Conn
+}
+
+func (tx *Tx) close() {
+	if tx.done {
+		panic("redis: transaction closed twice")
+	}
+	tx.done = true
+	tx.Conn.Close()
+}
+
+func (tx *Tx) Commit() error {
+	if tx.done {
+		return storage.ErrTxDone
+	}
+	if tx.multi == true {
+		_, err := tx.Do("EXEC")
+		if err != nil {
+			return err
+		}
+	}
+	tx.close()
+	return nil
+}
+
+func (tx *Tx) Rollback() error {
+	if tx.done {
+		return storage.ErrTxDone
+	}
+	// Redis doesn't need to do anything. Exec is atomic.
+	tx.close()
+	return nil
+}
+
+func (tx *Tx) FindUser(passkey string) (*storage.User, bool, error) {
+	if tx.done {
+		return nil, false, storage.ErrTxDone
+	}
+	if tx.multi == true {
+		return nil, false, errors.New("Tried to read during MULTI")
+	}
+
+	key := tx.conf.Prefix + "user:" + passkey
+	_, err := tx.Do("WATCH", key)
+	if err != nil {
+		return nil, false, err
+	}
+	reply, err := redis.String(tx.Do("GET", key))
 	if err != nil {
 		if err == redis.ErrNil {
 			return nil, false, nil
@@ -91,12 +165,20 @@ func (ds *DS) FindUser(passkey string) (*storage.User, bool, error) {
 	return user, true, nil
 }
 
-func (ds *DS) FindTorrent(infohash string) (*storage.Torrent, bool, error) {
-	conn := ds.Get()
-	defer conn.Close()
+func (tx *Tx) FindTorrent(infohash string) (*storage.Torrent, bool, error) {
+	if tx.done {
+		return nil, false, storage.ErrTxDone
+	}
+	if tx.multi == true {
+		return nil, false, errors.New("Tried to read during MULTI")
+	}
 
-	key := ds.conf.Prefix + "torrent:" + infohash
-	reply, err := redis.String(conn.Do("GET", key))
+	key := tx.conf.Prefix + "torrent:" + infohash
+	_, err := tx.Do("WATCH", key)
+	if err != nil {
+		return nil, false, err
+	}
+	reply, err := redis.String(tx.Do("GET", key))
 	if err != nil {
 		if err == redis.ErrNil {
 			return nil, false, nil
@@ -112,87 +194,65 @@ func (ds *DS) FindTorrent(infohash string) (*storage.Torrent, bool, error) {
 	return torrent, true, nil
 }
 
-func (ds *DS) ClientWhitelisted(peerID string) (bool, error) {
-	conn := ds.Get()
-	defer conn.Close()
-
-	key := ds.conf.Prefix + "whitelist"
-	exists, err := redis.Bool(conn.Do("SISMEMBER", key, peerID))
-	if err != nil {
-		return false, err
-	}
-	return exists, nil
-}
-
-type Tx struct {
-	conf *config.Storage
-	done bool
-	redis.Conn
-}
-
-func (ds *DS) Begin() (storage.Tx, error) {
-	conn := ds.Get()
-	err := conn.Send("MULTI")
-	if err != nil {
-		return nil, err
-	}
-	return &Tx{
-		conf: ds.conf,
-		Conn: conn,
-	}, nil
-}
-
-func (tx *Tx) close() {
+func (tx *Tx) ClientWhitelisted(peerID string) (exists bool, err error) {
 	if tx.done {
-		panic("redis: transaction closed twice")
+		return false, storage.ErrTxDone
 	}
-	tx.done = true
-	tx.Conn.Close()
-}
+	if tx.multi == true {
+		return false, errors.New("Tried to read during MULTI")
+	}
 
-func (tx *Tx) Commit() error {
-	if tx.done {
-		return storage.ErrTxDone
-	}
-	_, err := tx.Do("EXEC")
+	key := tx.conf.Prefix + "whitelist"
+	_, err = tx.Do("WATCH", key)
 	if err != nil {
-		return err
+		return
 	}
 
-	tx.close()
-	return nil
-}
-
-// Redis doesn't need to rollback. Exec is atomic.
-func (tx *Tx) Rollback() error {
-	if tx.done {
-		return storage.ErrTxDone
-	}
-	tx.close()
-	return nil
+	// TODO
+	return
 }
 
 func (tx *Tx) Snatch(user *storage.User, torrent *storage.Torrent) error {
 	if tx.done {
 		return storage.ErrTxDone
 	}
+	if tx.multi != true {
+		err := tx.Send("MULTI")
+		if err != nil {
+			return err
+		}
+	}
+
 	// TODO
 	return nil
 }
 
-func (tx *Tx) Active(t *storage.Torrent) error {
+func (tx *Tx) MarkActive(t *storage.Torrent) error {
 	if tx.done {
 		return storage.ErrTxDone
 	}
-	key := tx.conf.Prefix + "torrent:" + t.Infohash
-	err := activeScript.Send(tx.Conn, key)
-	return err
+	if tx.multi != true {
+		err := tx.Send("MULTI")
+		if err != nil {
+			return err
+		}
+	}
+
+	// TODO
+	return nil
 }
 
 func (tx *Tx) NewLeecher(t *storage.Torrent, p *storage.Peer) error {
 	if tx.done {
 		return storage.ErrTxDone
 	}
+	if tx.multi != true {
+		err := tx.Send("MULTI")
+		if err != nil {
+			return err
+		}
+	}
+
 	// TODO
 	return nil
 }
@@ -201,6 +261,13 @@ func (tx *Tx) SetLeecher(t *storage.Torrent, p *storage.Peer) error {
 	if tx.done {
 		return storage.ErrTxDone
 	}
+	if tx.multi != true {
+		err := tx.Send("MULTI")
+		if err != nil {
+			return err
+		}
+	}
+
 	// TODO
 	return nil
 }
@@ -209,6 +276,13 @@ func (tx *Tx) RmLeecher(t *storage.Torrent, p *storage.Peer) error {
 	if tx.done {
 		return storage.ErrTxDone
 	}
+	if tx.multi != true {
+		err := tx.Send("MULTI")
+		if err != nil {
+			return err
+		}
+	}
+
 	// TODO
 	return nil
 }
@@ -217,6 +291,13 @@ func (tx *Tx) NewSeeder(t *storage.Torrent, p *storage.Peer) error {
 	if tx.done {
 		return storage.ErrTxDone
 	}
+	if tx.multi != true {
+		err := tx.Send("MULTI")
+		if err != nil {
+			return err
+		}
+	}
+
 	// TODO
 	return nil
 }
@@ -225,6 +306,13 @@ func (tx *Tx) SetSeeder(t *storage.Torrent, p *storage.Peer) error {
 	if tx.done {
 		return storage.ErrTxDone
 	}
+	if tx.multi != true {
+		err := tx.Send("MULTI")
+		if err != nil {
+			return err
+		}
+	}
+
 	// TODO
 	return nil
 }
@@ -233,27 +321,45 @@ func (tx *Tx) RmSeeder(t *storage.Torrent, p *storage.Peer) error {
 	if tx.done {
 		return storage.ErrTxDone
 	}
-	key := tx.conf.Prefix + "torrent:" + t.Infohash
-	err := rmSeederScript.Send(tx.Conn, key, p.ID)
-	return err
+	if tx.multi != true {
+		err := tx.Send("MULTI")
+		if err != nil {
+			return err
+		}
+	}
+
+	// TODO
+	return nil
 }
 
 func (tx *Tx) IncrementSlots(u *storage.User) error {
 	if tx.done {
 		return storage.ErrTxDone
 	}
-	key := tx.conf.Prefix + "user:" + u.Passkey
-	err := incSlotsScript.Send(tx.Conn, key)
-	return err
+	if tx.multi != true {
+		err := tx.Send("MULTI")
+		if err != nil {
+			return err
+		}
+	}
+
+	// TODO
+	return nil
 }
 
 func (tx *Tx) DecrementSlots(u *storage.User) error {
 	if tx.done {
 		return storage.ErrTxDone
 	}
-	key := tx.conf.Prefix + "user:" + u.Passkey
-	err := decSlotsScript.Send(tx.Conn, key)
-	return err
+	if tx.multi != true {
+		err := tx.Send("MULTI")
+		if err != nil {
+			return err
+		}
+	}
+
+	// TODO
+	return nil
 }
 
 func init() {

@@ -22,9 +22,9 @@ import (
 )
 
 type Server struct {
-	conf      *config.Config
-	listener  net.Listener
-	dataStore storage.DS
+	conf       *config.Config
+	listener   net.Listener
+	dbConnPool storage.Pool
 
 	serving   bool
 	startTime time.Time
@@ -38,14 +38,14 @@ type Server struct {
 }
 
 func New(conf *config.Config) (*Server, error) {
-	ds, err := storage.Open(&conf.Storage)
+	pool, err := storage.Open(&conf.Storage)
 	if err != nil {
 		return nil, err
 	}
 
 	s := &Server{
-		conf:      conf,
-		dataStore: ds,
+		conf:       conf,
+		dbConnPool: pool,
 		Server: http.Server{
 			Addr:        conf.Addr,
 			ReadTimeout: conf.ReadTimeout.Duration,
@@ -75,7 +75,7 @@ func (s *Server) ListenAndServe() error {
 func (s *Server) Stop() error {
 	s.serving = false
 	s.waitgroup.Wait()
-	err := s.dataStore.Close()
+	err := s.dbConnPool.Close()
 	if err != nil {
 		return err
 	}
@@ -121,13 +121,13 @@ func fail(err error, w http.ResponseWriter, r *http.Request) {
 	w.(http.Flusher).Flush()
 }
 
-func (s *Server) FindUser(dir string) (*storage.User, error) {
+func validateUser(tx storage.Tx, dir string) (*storage.User, error) {
 	if len(dir) != 34 {
 		return nil, errors.New("Passkey is invalid")
 	}
 	passkey := dir[1:33]
 
-	user, exists, err := s.dataStore.FindUser(passkey)
+	user, exists, err := tx.FindUser(passkey)
 	if err != nil {
 		log.Panicf("server: %s", err)
 	}
