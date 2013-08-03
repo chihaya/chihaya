@@ -7,6 +7,7 @@ package config
 import (
 	"bufio"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -82,7 +83,7 @@ func TestOpenCurDir(t *testing.T) {
 }
 func TestOpenAbsEnvPath(t *testing.T) {
 	if !testing.Short() {
-		writeAndOpenJsonTest(t, os.TempDir()+"testConfig.json")
+		writeAndOpenJsonTest(t, filepath.Join(os.TempDir(),"testConfig.json"))
 	} else {
 		t.Log("Write/Read file test skipped")
 	}
