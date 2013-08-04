@@ -3,6 +3,8 @@ exec { 'echo this works': }
 
 group { 'puppet': ensure => 'present' }
 
+exec { 'chown -R vagrant:vagrant /home/vagrant/': }
+
 exec { 'apt-get update':
 	command => '/usr/bin/apt-get update',
 }
@@ -18,11 +20,16 @@ package { 'python-software-properties':
 	require => Exec['apt-get update'],
 }
 
+package { 'git':
+	ensure  => present,
+	require => Exec['apt-get update'],
+}
+
 package { 'golang':
 	ensure  => present,
 	require => Exec['go_repo'],
 }
 
 exec { 'echo "export GOPATH=/home/vagrant/chihaya" > /etc/profile.d/gopath.sh':
-  creates => '/etc/profile.d/gopath.sh',
+	creates => '/etc/profile.d/gopath.sh',
 }
