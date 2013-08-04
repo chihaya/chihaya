@@ -41,6 +41,7 @@ type Storage struct {
 	MaxIdleConn int       `json:"max_idle_conn"`
 	IdleTimeout *Duration `json:"idle_timeout"`
 	ConnTimeout *Duration `json:"conn_timeout"`
+	TxRetries   int       `json:"tx_retries"`
 }
 
 // Config represents a configuration for a server.Server.

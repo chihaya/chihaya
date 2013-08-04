@@ -14,6 +14,7 @@ import (
 
 	"github.com/pushrax/chihaya/config"
 	"github.com/pushrax/chihaya/server"
+	_ "github.com/pushrax/chihaya/storage/redis"
 )
 
 var (

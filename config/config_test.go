@@ -25,7 +25,8 @@ var exampleJson = `{
 
     "max_idle_conn": 3,
     "idle_timeout": "240s",
-    "conn_timeout": "5s"
+    "conn_timeout": "5s",
+    "tx_retries": 3
   },
 
   "private": true,
@@ -83,7 +84,7 @@ func TestOpenCurDir(t *testing.T) {
 }
 func TestOpenAbsEnvPath(t *testing.T) {
 	if !testing.Short() {
-		writeAndOpenJsonTest(t, filepath.Join(os.TempDir(),"testConfig.json"))
+		writeAndOpenJsonTest(t, filepath.Join(os.TempDir(), "testConfig.json"))
 	} else {
 		t.Log("Write/Read file test skipped")
 	}
