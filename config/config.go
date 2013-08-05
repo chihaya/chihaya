@@ -47,6 +47,7 @@ type Storage struct {
 // Config represents a configuration for a server.Server.
 type Config struct {
 	Addr    string  `json:"addr"`
+	PubAddr string  `json:"pub_addr"`
 	Storage Storage `json:"storage"`
 
 	Private   bool `json:"private"`

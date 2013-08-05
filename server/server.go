@@ -34,6 +34,8 @@ type Server struct {
 
 	waitgroup sync.WaitGroup
 
+	pubChan chan string
+
 	http.Server
 }
 
@@ -46,6 +48,7 @@ func New(conf *config.Config) (*Server, error) {
 	s := &Server{
 		conf:       conf,
 		dbConnPool: pool,
+		pubChan:    make(chan string),
 		Server: http.Server{
 			Addr:        conf.Addr,
 			ReadTimeout: conf.ReadTimeout.Duration,
@@ -66,6 +69,7 @@ func (s *Server) ListenAndServe() error {
 	s.startTime = time.Now()
 
 	go s.updateRPM()
+	go s.publish()
 	s.Serve(s.listener)
 
 	s.waitgroup.Wait()
@@ -79,6 +83,7 @@ func (s *Server) Stop() error {
 	if err != nil {
 		return err
 	}
+	close(s.pubChan)
 	return s.listener.Close()
 }
 

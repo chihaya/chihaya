@@ -16,6 +16,7 @@ var exampleJson = `{
 
   "network": "tcp",
   "addr": ":34000",
+  "pub_addr": "tcp://*:34001",
   "storage": {
     "driver": "redis",
     "addr": "127.0.0.1:6379",
