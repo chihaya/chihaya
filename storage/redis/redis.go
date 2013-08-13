@@ -123,6 +123,16 @@ func (tx *Tx) initiateWrite() error {
 	return nil
 }
 
+func (tx *Tx) initiateRead() error {
+	if tx.done {
+		return storage.ErrTxDone
+	}
+	if tx.multi == true {
+		return errors.New("Tried to read during MULTI")
+	}
+	return nil
+}
+
 func (tx *Tx) Commit() error {
 	if tx.done {
 		return storage.ErrTxDone
@@ -147,15 +157,13 @@ func (tx *Tx) Rollback() error {
 }
 
 func (tx *Tx) FindUser(passkey string) (*storage.User, bool, error) {
-	if tx.done {
-		return nil, false, storage.ErrTxDone
-	}
-	if tx.multi == true {
-		return nil, false, errors.New("Tried to read during MULTI")
+	err := tx.initiateRead()
+	if err != nil {
+		return nil, false, err
 	}
 
 	key := tx.conf.Prefix + "user:" + passkey
-	_, err := tx.Do("WATCH", key)
+	_, err = tx.Do("WATCH", key)
 	if err != nil {
 		return nil, false, err
 	}
@@ -176,15 +184,13 @@ func (tx *Tx) FindUser(passkey string) (*storage.User, bool, error) {
 }
 
 func (tx *Tx) FindTorrent(infohash string) (*storage.Torrent, bool, error) {
-	if tx.done {
-		return nil, false, storage.ErrTxDone
-	}
-	if tx.multi == true {
-		return nil, false, errors.New("Tried to read during MULTI")
+	err := tx.initiateRead()
+	if err != nil {
+		return nil, false, err
 	}
 
 	key := tx.conf.Prefix + "torrent:" + infohash
-	_, err := tx.Do("WATCH", key)
+	_, err = tx.Do("WATCH", key)
 	if err != nil {
 		return nil, false, err
 	}
@@ -205,11 +211,9 @@ func (tx *Tx) FindTorrent(infohash string) (*storage.Torrent, bool, error) {
 }
 
 func (tx *Tx) ClientWhitelisted(peerID string) (exists bool, err error) {
-	if tx.done {
-		return false, storage.ErrTxDone
-	}
-	if tx.multi == true {
-		return false, errors.New("Tried to read during MULTI")
+	err = tx.initiateRead()
+	if err != nil {
+		return false, err
 	}
 
 	key := tx.conf.Prefix + "whitelist"
