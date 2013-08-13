@@ -16,7 +16,9 @@ just yet, but these are the features it targets:
 
 First, you'll need to install libzmq with your favourite package manager. Then,
 
-```sh $ go install github.com/pushrax/chihaya ```
+```sh
+$ go install github.com/pushrax/chihaya
+```
 
 ## Configuring
 
@@ -36,7 +38,7 @@ The [`storage`] package is heavily inspired by the standard library's
 [`database/sql`] package. To write a new storage backend, create a new Go
 package that has an implementation of the [`DS`], [`Tx`], and [`Driver`]
 interfaces. Within that package, you must also define an [`init()`] that calls
-[`storage.Register("driverName", &myDriver{})`].
+[`storage.Register`].
 
 [`storage`]: http://godoc.org/github.com/pushrax/chihaya/storage
 [`database/sql`]: http://godoc.org/database/sql
@@ -44,7 +46,7 @@ interfaces. Within that package, you must also define an [`init()`] that calls
 [`Tx`]: http://godoc.org/github.com/pushrax/chihaya/storage#Tx
 [`Driver`]: http://godoc.org/github.com/pushrax/chihaya/storage#Driver
 [`init()`]: http://golang.org/ref/spec#Program_execution
-[`storage.Register("driverName", &myDriver{})`]: http://godoc.org/github.com/pushrax/chihaya/storage#Register.
+[`storage.Register`]: http://godoc.org/github.com/pushrax/chihaya/storage#Register
 
 Please read the documentation and understand these interfaces as there are
 assumptions made about thread-safety. After you've implemented a new driver,
