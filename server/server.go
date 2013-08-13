@@ -68,8 +68,8 @@ func (s *Server) ListenAndServe() error {
 	s.serving = true
 	s.startTime = time.Now()
 
-	go s.updateRPM()
-	go s.publish()
+	go s.updateStats()
+	go s.publishQueue()
 	s.Serve(s.listener)
 
 	s.waitgroup.Wait()
@@ -137,7 +137,7 @@ func validateUser(tx storage.Tx, dir string) (*storage.User, error) {
 		log.Panicf("server: %s", err)
 	}
 	if !exists {
-		return nil, errors.New("Passkey not found")
+		return nil, errors.New("User not found")
 	}
 
 	return user, nil

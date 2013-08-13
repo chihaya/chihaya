@@ -31,7 +31,7 @@ func (s *Server) serveStats(w http.ResponseWriter, r *http.Request) {
 	w.(http.Flusher).Flush()
 }
 
-func (s *Server) updateRPM() {
+func (s *Server) updateStats() {
 	for _ = range time.NewTicker(time.Minute).C {
 		s.rpm = s.deltaRequests
 		atomic.StoreInt64(&s.deltaRequests, 0)

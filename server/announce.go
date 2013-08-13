@@ -263,11 +263,11 @@ func (s Server) validateAnnounceQuery(r *http.Request) (compact bool, numWant in
 	}
 
 	compact = pq.Params["compact"] == "1"
-	numWant = determineNumWant(s.conf.DefaultNumWant, pq)
+	numWant = requestedPeerCount(s.conf.DefaultNumWant, pq)
 	infohash, _ = pq.Params["info_hash"]
 	peerID, _ = pq.Params["peer_id"]
 	event, _ = pq.Params["event"]
-	ip, _ = determineIP(r, pq)
+	ip, _ = requestedIP(r, pq)
 	port, portErr := pq.getUint64("port")
 	uploaded, uploadedErr := pq.getUint64("uploaded")
 	downloaded, downloadedErr := pq.getUint64("downloaded")
@@ -285,7 +285,7 @@ func (s Server) validateAnnounceQuery(r *http.Request) (compact bool, numWant in
 	return
 }
 
-func determineNumWant(fallback int, pq *parsedQuery) int {
+func requestedPeerCount(fallback int, pq *parsedQuery) int {
 	if numWantStr, exists := pq.Params["numWant"]; exists {
 		numWant, err := strconv.Atoi(numWantStr)
 		if err != nil {
@@ -296,7 +296,7 @@ func determineNumWant(fallback int, pq *parsedQuery) int {
 	return fallback
 }
 
-func determineIP(r *http.Request, pq *parsedQuery) (string, error) {
+func requestedIP(r *http.Request, pq *parsedQuery) (string, error) {
 	ip, ok := pq.Params["ip"]
 	ipv4, okv4 := pq.Params["ipv4"]
 	xRealIPs, xRealOk := pq.Params["X-Real-Ip"]

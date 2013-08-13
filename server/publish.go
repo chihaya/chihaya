@@ -7,7 +7,7 @@ import (
 	zmq "github.com/alecthomas/gozmq"
 )
 
-func (s *Server) publish() {
+func (s *Server) publishQueue() {
 	context, err := zmq.NewContext()
 	if err != nil {
 		panic(err)
