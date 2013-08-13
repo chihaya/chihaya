@@ -4,6 +4,7 @@ go: 1.1.1
 
 before_install:
   - sudo apt-get install libzmq3-dev
+  - go get -tags zmq_3_x github.com/alecthomas/gozmq
 
 services:
   - redis-server
