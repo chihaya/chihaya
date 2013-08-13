@@ -12,7 +12,6 @@ package redis
 
 import (
 	"encoding/json"
-	"errors"
 	"strings"
 	"time"
 
@@ -128,7 +127,7 @@ func (tx *Tx) initiateRead() error {
 		return storage.ErrTxDone
 	}
 	if tx.multi == true {
-		return errors.New("Tried to read during MULTI")
+		panic("Tried to read during MULTI")
 	}
 	return nil
 }
