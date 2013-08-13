@@ -6,10 +6,10 @@ just yet, but these are the features it targets:
 
 - Low resource consumption
 - *Fast* request processing
-- IPv6 support
 - A generic storage interface that is easily adapted to use any data store
-- Scaling properties that directly correlate with a chosen data store's scaling
-  properties
+- Scaling properties that directly correlate with those of the chosen data store
+- IPv6 support
+- Maximum compatibility with what exists of the BitTorrent spec
 
 
 ## Installing
@@ -32,7 +32,7 @@ Chihaya currently supports the following drivers out of the box:
 
 * [redis](http://redis.io)
 
-## Implementing custom storage drivers
+## Custom storage drivers
 
 The [`storage`] package is heavily inspired by the standard library's
 [`database/sql`] package. To write a new storage backend, create a new Go
