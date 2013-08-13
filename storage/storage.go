@@ -70,12 +70,12 @@ type Tx interface {
 	ClientWhitelisted(peerID string) (bool, error)
 
 	// Writes
-	Snatch(u *User, t *Torrent) error
+	RecordSnatch(u *User, t *Torrent) error
 	MarkActive(t *Torrent) error
-	NewLeecher(t *Torrent, p *Peer) error
-	NewSeeder(t *Torrent, p *Peer) error
-	RmLeecher(t *Torrent, p *Peer) error
-	RmSeeder(t *Torrent, p *Peer) error
+	AddLeecher(t *Torrent, p *Peer) error
+	AddSeeder(t *Torrent, p *Peer) error
+	RemoveLeecher(t *Torrent, p *Peer) error
+	RemoveSeeder(t *Torrent, p *Peer) error
 	SetLeecher(t *Torrent, p *Peer) error
 	SetSeeder(t *Torrent, p *Peer) error
 	IncrementSlots(u *User) error

@@ -8,7 +8,7 @@ just yet, but these are the features it targets:
 - *Fast* request processing
 - A generic storage interface that is easily adapted to use any data store
 - Scaling properties that directly correlate with those of the chosen data store
-- IPv6 support
+- Correct IPv6 support
 - Maximum compatibility with what exists of the BitTorrent spec
 
 

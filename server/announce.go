@@ -89,13 +89,13 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		// Guarantee that no user is in both pools
 		case seeder && leecher:
 			if left == 0 {
-				err := tx.RmLeecher(torrent, peer)
+				err := tx.RemoveLeecher(torrent, peer)
 				if err != nil {
 					log.Panicf("server: %s", err)
 				}
 				leecher = false
 			} else {
-				err := tx.RmSeeder(torrent, peer)
+				err := tx.RemoveSeeder(torrent, peer)
 				if err != nil {
 					log.Panicf("server: %s", err)
 				}
@@ -127,7 +127,7 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 
 			if left == 0 {
 				// Save the peer as a new seeder
-				err := tx.NewSeeder(torrent, peer)
+				err := tx.AddSeeder(torrent, peer)
 				if err != nil {
 					log.Panicf("server: %s", err)
 				}
@@ -137,7 +137,7 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 				if err != nil {
 					log.Panicf("server: %s", err)
 				}
-				err = tx.NewLeecher(torrent, peer)
+				err = tx.AddLeecher(torrent, peer)
 				if err != nil {
 					log.Panicf("server: %s", err)
 				}
@@ -148,13 +148,13 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case event == "stopped" || event == "paused":
 			if seeder {
-				err := tx.RmSeeder(torrent, peer)
+				err := tx.RemoveSeeder(torrent, peer)
 				if err != nil {
 					log.Panicf("server: %s", err)
 				}
 			}
 			if leecher {
-				err := tx.RmLeecher(torrent, peer)
+				err := tx.RemoveLeecher(torrent, peer)
 				if err != nil {
 					log.Panicf("server: %s", err)
 				}
@@ -165,16 +165,16 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 			}
 
 		case event == "completed":
-			err := tx.Snatch(user, torrent)
+			err := tx.RecordSnatch(user, torrent)
 			if err != nil {
 				log.Panicf("server: %s", err)
 			}
 			if leecher {
-				err := tx.RmLeecher(torrent, peer)
+				err := tx.RemoveLeecher(torrent, peer)
 				if err != nil {
 					log.Panicf("server: %s", err)
 				}
-				err = tx.NewSeeder(torrent, peer)
+				err = tx.AddSeeder(torrent, peer)
 				if err != nil {
 					log.Panicf("server: %s", err)
 				}
@@ -182,11 +182,11 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 
 		case leecher && left == 0:
 			// A leecher completed but the event was never received
-			err := tx.RmLeecher(torrent, peer)
+			err := tx.RemoveLeecher(torrent, peer)
 			if err != nil {
 				log.Panicf("server: %s", err)
 			}
-			err = tx.NewSeeder(torrent, peer)
+			err = tx.AddSeeder(torrent, peer)
 			if err != nil {
 				log.Panicf("server: %s", err)
 			}

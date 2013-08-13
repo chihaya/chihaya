@@ -212,7 +212,7 @@ func (tx *Tx) ClientWhitelisted(peerID string) (exists bool, err error) {
 	return
 }
 
-func (tx *Tx) Snatch(user *storage.User, torrent *storage.Torrent) error {
+func (tx *Tx) RecordSnatch(user *storage.User, torrent *storage.Torrent) error {
 	if tx.done {
 		return storage.ErrTxDone
 	}
@@ -242,7 +242,7 @@ func (tx *Tx) MarkActive(t *storage.Torrent) error {
 	return nil
 }
 
-func (tx *Tx) NewLeecher(t *storage.Torrent, p *storage.Peer) error {
+func (tx *Tx) AddLeecher(t *storage.Torrent, p *storage.Peer) error {
 	if tx.done {
 		return storage.ErrTxDone
 	}
@@ -272,7 +272,7 @@ func (tx *Tx) SetLeecher(t *storage.Torrent, p *storage.Peer) error {
 	return nil
 }
 
-func (tx *Tx) RmLeecher(t *storage.Torrent, p *storage.Peer) error {
+func (tx *Tx) RemoveLeecher(t *storage.Torrent, p *storage.Peer) error {
 	if tx.done {
 		return storage.ErrTxDone
 	}
@@ -287,7 +287,7 @@ func (tx *Tx) RmLeecher(t *storage.Torrent, p *storage.Peer) error {
 	return nil
 }
 
-func (tx *Tx) NewSeeder(t *storage.Torrent, p *storage.Peer) error {
+func (tx *Tx) AddSeeder(t *storage.Torrent, p *storage.Peer) error {
 	if tx.done {
 		return storage.ErrTxDone
 	}
@@ -317,7 +317,7 @@ func (tx *Tx) SetSeeder(t *storage.Torrent, p *storage.Peer) error {
 	return nil
 }
 
-func (tx *Tx) RmSeeder(t *storage.Torrent, p *storage.Peer) error {
+func (tx *Tx) RemoveSeeder(t *storage.Torrent, p *storage.Peer) error {
 	if tx.done {
 		return storage.ErrTxDone
 	}
