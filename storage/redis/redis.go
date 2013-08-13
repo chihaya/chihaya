@@ -113,6 +113,16 @@ func (tx *Tx) close() {
 	tx.Conn.Close()
 }
 
+func (tx *Tx) initiateWrite() error {
+	if tx.done {
+		return storage.ErrTxDone
+	}
+	if tx.multi != true {
+		return tx.Send("MULTI")
+	}
+	return nil
+}
+
 func (tx *Tx) Commit() error {
 	if tx.done {
 		return storage.ErrTxDone
@@ -213,14 +223,8 @@ func (tx *Tx) ClientWhitelisted(peerID string) (exists bool, err error) {
 }
 
 func (tx *Tx) RecordSnatch(user *storage.User, torrent *storage.Torrent) error {
-	if tx.done {
-		return storage.ErrTxDone
-	}
-	if tx.multi != true {
-		err := tx.Send("MULTI")
-		if err != nil {
-			return err
-		}
+	if err := tx.initiateWrite(); err != nil {
+		return err
 	}
 
 	// TODO
@@ -228,14 +232,8 @@ func (tx *Tx) RecordSnatch(user *storage.User, torrent *storage.Torrent) error {
 }
 
 func (tx *Tx) MarkActive(t *storage.Torrent) error {
-	if tx.done {
-		return storage.ErrTxDone
-	}
-	if tx.multi != true {
-		err := tx.Send("MULTI")
-		if err != nil {
-			return err
-		}
+	if err := tx.initiateWrite(); err != nil {
+		return err
 	}
 
 	// TODO
@@ -243,14 +241,8 @@ func (tx *Tx) MarkActive(t *storage.Torrent) error {
 }
 
 func (tx *Tx) AddLeecher(t *storage.Torrent, p *storage.Peer) error {
-	if tx.done {
-		return storage.ErrTxDone
-	}
-	if tx.multi != true {
-		err := tx.Send("MULTI")
-		if err != nil {
-			return err
-		}
+	if err := tx.initiateWrite(); err != nil {
+		return err
 	}
 
 	// TODO
@@ -258,14 +250,8 @@ func (tx *Tx) AddLeecher(t *storage.Torrent, p *storage.Peer) error {
 }
 
 func (tx *Tx) SetLeecher(t *storage.Torrent, p *storage.Peer) error {
-	if tx.done {
-		return storage.ErrTxDone
-	}
-	if tx.multi != true {
-		err := tx.Send("MULTI")
-		if err != nil {
-			return err
-		}
+	if err := tx.initiateWrite(); err != nil {
+		return err
 	}
 
 	// TODO
@@ -273,14 +259,8 @@ func (tx *Tx) SetLeecher(t *storage.Torrent, p *storage.Peer) error {
 }
 
 func (tx *Tx) RemoveLeecher(t *storage.Torrent, p *storage.Peer) error {
-	if tx.done {
-		return storage.ErrTxDone
-	}
-	if tx.multi != true {
-		err := tx.Send("MULTI")
-		if err != nil {
-			return err
-		}
+	if err := tx.initiateWrite(); err != nil {
+		return err
 	}
 
 	// TODO
@@ -288,14 +268,8 @@ func (tx *Tx) RemoveLeecher(t *storage.Torrent, p *storage.Peer) error {
 }
 
 func (tx *Tx) AddSeeder(t *storage.Torrent, p *storage.Peer) error {
-	if tx.done {
-		return storage.ErrTxDone
-	}
-	if tx.multi != true {
-		err := tx.Send("MULTI")
-		if err != nil {
-			return err
-		}
+	if err := tx.initiateWrite(); err != nil {
+		return err
 	}
 
 	// TODO
@@ -303,14 +277,8 @@ func (tx *Tx) AddSeeder(t *storage.Torrent, p *storage.Peer) error {
 }
 
 func (tx *Tx) SetSeeder(t *storage.Torrent, p *storage.Peer) error {
-	if tx.done {
-		return storage.ErrTxDone
-	}
-	if tx.multi != true {
-		err := tx.Send("MULTI")
-		if err != nil {
-			return err
-		}
+	if err := tx.initiateWrite(); err != nil {
+		return err
 	}
 
 	// TODO
@@ -318,14 +286,8 @@ func (tx *Tx) SetSeeder(t *storage.Torrent, p *storage.Peer) error {
 }
 
 func (tx *Tx) RemoveSeeder(t *storage.Torrent, p *storage.Peer) error {
-	if tx.done {
-		return storage.ErrTxDone
-	}
-	if tx.multi != true {
-		err := tx.Send("MULTI")
-		if err != nil {
-			return err
-		}
+	if err := tx.initiateWrite(); err != nil {
+		return err
 	}
 
 	// TODO
@@ -333,14 +295,8 @@ func (tx *Tx) RemoveSeeder(t *storage.Torrent, p *storage.Peer) error {
 }
 
 func (tx *Tx) IncrementSlots(u *storage.User) error {
-	if tx.done {
-		return storage.ErrTxDone
-	}
-	if tx.multi != true {
-		err := tx.Send("MULTI")
-		if err != nil {
-			return err
-		}
+	if err := tx.initiateWrite(); err != nil {
+		return err
 	}
 
 	// TODO
@@ -348,14 +304,8 @@ func (tx *Tx) IncrementSlots(u *storage.User) error {
 }
 
 func (tx *Tx) DecrementSlots(u *storage.User) error {
-	if tx.done {
-		return storage.ErrTxDone
-	}
-	if tx.multi != true {
-		err := tx.Send("MULTI")
-		if err != nil {
-			return err
-		}
+	if err := tx.initiateWrite(); err != nil {
+		return err
 	}
 
 	// TODO
