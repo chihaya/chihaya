@@ -36,12 +36,7 @@ func (d *driver) New(conf *config.Storage) storage.Pool {
 }
 
 func makeDialFunc(conf *config.Storage) func() (redis.Conn, error) {
-	return func() (redis.Conn, error) {
-		var (
-			conn redis.Conn
-			err  error
-		)
-
+	return func() (conn redis.Conn, err error) {
 		if conf.ConnTimeout != nil {
 			conn, err = redis.DialTimeout(
 				conf.Network,
