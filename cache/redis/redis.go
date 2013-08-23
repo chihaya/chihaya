@@ -17,13 +17,14 @@ import (
 
 	"github.com/garyburd/redigo/redis"
 
+	"github.com/pushrax/chihaya/cache"
 	"github.com/pushrax/chihaya/config"
-	"github.com/pushrax/chihaya/storage"
+	"github.com/pushrax/chihaya/models"
 )
 
 type driver struct{}
 
-func (d *driver) New(conf *config.Storage) storage.Pool {
+func (d *driver) New(conf *config.Cache) cache.Pool {
 	return &Pool{
 		conf: conf,
 		pool: redis.Pool{
@@ -35,7 +36,7 @@ func (d *driver) New(conf *config.Storage) storage.Pool {
 	}
 }
 
-func makeDialFunc(conf *config.Storage) func() (redis.Conn, error) {
+func makeDialFunc(conf *config.Cache) func() (redis.Conn, error) {
 	return func() (conn redis.Conn, err error) {
 		if conf.ConnTimeout != nil {
 			conn, err = redis.DialTimeout(
@@ -61,7 +62,7 @@ func testOnBorrow(c redis.Conn, t time.Time) error {
 }
 
 type Pool struct {
-	conf *config.Storage
+	conf *config.Cache
 	pool redis.Pool
 }
 
@@ -69,7 +70,7 @@ func (p *Pool) Close() error {
 	return p.pool.Close()
 }
 
-func (p *Pool) Get() (storage.Tx, error) {
+func (p *Pool) Get() (cache.Tx, error) {
 	return &Tx{
 		conf:  p.conf,
 		done:  false,
@@ -93,7 +94,7 @@ func (p *Pool) Get() (storage.Tx, error) {
 // SET keyB
 // EXEC
 type Tx struct {
-	conf  *config.Storage
+	conf  *config.Cache
 	done  bool
 	multi bool
 	redis.Conn
@@ -109,7 +110,7 @@ func (tx *Tx) close() {
 
 func (tx *Tx) initiateWrite() error {
 	if tx.done {
-		return storage.ErrTxDone
+		return cache.ErrTxDone
 	}
 	if tx.multi != true {
 		return tx.Send("MULTI")
@@ -119,7 +120,7 @@ func (tx *Tx) initiateWrite() error {
 
 func (tx *Tx) initiateRead() error {
 	if tx.done {
-		return storage.ErrTxDone
+		return cache.ErrTxDone
 	}
 	if tx.multi == true {
 		panic("Tried to read during MULTI")
@@ -129,7 +130,7 @@ func (tx *Tx) initiateRead() error {
 
 func (tx *Tx) Commit() error {
 	if tx.done {
-		return storage.ErrTxDone
+		return cache.ErrTxDone
 	}
 	if tx.multi == true {
 		_, err := tx.Do("EXEC")
@@ -143,14 +144,14 @@ func (tx *Tx) Commit() error {
 
 func (tx *Tx) Rollback() error {
 	if tx.done {
-		return storage.ErrTxDone
+		return cache.ErrTxDone
 	}
 	// Redis doesn't need to do anything. Exec is atomic.
 	tx.close()
 	return nil
 }
 
-func (tx *Tx) FindUser(passkey string) (*storage.User, bool, error) {
+func (tx *Tx) FindUser(passkey string) (*models.User, bool, error) {
 	err := tx.initiateRead()
 	if err != nil {
 		return nil, false, err
@@ -169,7 +170,7 @@ func (tx *Tx) FindUser(passkey string) (*storage.User, bool, error) {
 		return nil, false, err
 	}
 
-	user := &storage.User{}
+	user := &models.User{}
 	err = json.NewDecoder(strings.NewReader(reply)).Decode(user)
 	if err != nil {
 		return nil, true, err
@@ -177,7 +178,7 @@ func (tx *Tx) FindUser(passkey string) (*storage.User, bool, error) {
 	return user, true, nil
 }
 
-func (tx *Tx) FindTorrent(infohash string) (*storage.Torrent, bool, error) {
+func (tx *Tx) FindTorrent(infohash string) (*models.Torrent, bool, error) {
 	err := tx.initiateRead()
 	if err != nil {
 		return nil, false, err
@@ -196,7 +197,7 @@ func (tx *Tx) FindTorrent(infohash string) (*storage.Torrent, bool, error) {
 		return nil, false, err
 	}
 
-	torrent := &storage.Torrent{}
+	torrent := &models.Torrent{}
 	err = json.NewDecoder(strings.NewReader(reply)).Decode(torrent)
 	if err != nil {
 		return nil, true, err
@@ -220,7 +221,7 @@ func (tx *Tx) ClientWhitelisted(peerID string) (exists bool, err error) {
 	return
 }
 
-func (tx *Tx) RecordSnatch(user *storage.User, torrent *storage.Torrent) error {
+func (tx *Tx) RecordSnatch(user *models.User, torrent *models.Torrent) error {
 	if err := tx.initiateWrite(); err != nil {
 		return err
 	}
@@ -229,7 +230,7 @@ func (tx *Tx) RecordSnatch(user *storage.User, torrent *storage.Torrent) error {
 	return nil
 }
 
-func (tx *Tx) MarkActive(t *storage.Torrent) error {
+func (tx *Tx) MarkActive(t *models.Torrent) error {
 	if err := tx.initiateWrite(); err != nil {
 		return err
 	}
@@ -238,7 +239,7 @@ func (tx *Tx) MarkActive(t *storage.Torrent) error {
 	return nil
 }
 
-func (tx *Tx) AddLeecher(t *storage.Torrent, p *storage.Peer) error {
+func (tx *Tx) AddLeecher(t *models.Torrent, p *models.Peer) error {
 	if err := tx.initiateWrite(); err != nil {
 		return err
 	}
@@ -247,7 +248,7 @@ func (tx *Tx) AddLeecher(t *storage.Torrent, p *storage.Peer) error {
 	return nil
 }
 
-func (tx *Tx) SetLeecher(t *storage.Torrent, p *storage.Peer) error {
+func (tx *Tx) SetLeecher(t *models.Torrent, p *models.Peer) error {
 	if err := tx.initiateWrite(); err != nil {
 		return err
 	}
@@ -256,7 +257,7 @@ func (tx *Tx) SetLeecher(t *storage.Torrent, p *storage.Peer) error {
 	return nil
 }
 
-func (tx *Tx) RemoveLeecher(t *storage.Torrent, p *storage.Peer) error {
+func (tx *Tx) RemoveLeecher(t *models.Torrent, p *models.Peer) error {
 	if err := tx.initiateWrite(); err != nil {
 		return err
 	}
@@ -265,7 +266,7 @@ func (tx *Tx) RemoveLeecher(t *storage.Torrent, p *storage.Peer) error {
 	return nil
 }
 
-func (tx *Tx) AddSeeder(t *storage.Torrent, p *storage.Peer) error {
+func (tx *Tx) AddSeeder(t *models.Torrent, p *models.Peer) error {
 	if err := tx.initiateWrite(); err != nil {
 		return err
 	}
@@ -274,7 +275,7 @@ func (tx *Tx) AddSeeder(t *storage.Torrent, p *storage.Peer) error {
 	return nil
 }
 
-func (tx *Tx) SetSeeder(t *storage.Torrent, p *storage.Peer) error {
+func (tx *Tx) SetSeeder(t *models.Torrent, p *models.Peer) error {
 	if err := tx.initiateWrite(); err != nil {
 		return err
 	}
@@ -283,7 +284,7 @@ func (tx *Tx) SetSeeder(t *storage.Torrent, p *storage.Peer) error {
 	return nil
 }
 
-func (tx *Tx) RemoveSeeder(t *storage.Torrent, p *storage.Peer) error {
+func (tx *Tx) RemoveSeeder(t *models.Torrent, p *models.Peer) error {
 	if err := tx.initiateWrite(); err != nil {
 		return err
 	}
@@ -292,7 +293,7 @@ func (tx *Tx) RemoveSeeder(t *storage.Torrent, p *storage.Peer) error {
 	return nil
 }
 
-func (tx *Tx) IncrementSlots(u *storage.User) error {
+func (tx *Tx) IncrementSlots(u *models.User) error {
 	if err := tx.initiateWrite(); err != nil {
 		return err
 	}
@@ -301,7 +302,7 @@ func (tx *Tx) IncrementSlots(u *storage.User) error {
 	return nil
 }
 
-func (tx *Tx) DecrementSlots(u *storage.User) error {
+func (tx *Tx) DecrementSlots(u *models.User) error {
 	if err := tx.initiateWrite(); err != nil {
 		return err
 	}
@@ -311,5 +312,5 @@ func (tx *Tx) DecrementSlots(u *storage.User) error {
 }
 
 func init() {
-	storage.Register("redis", &driver{})
+	cache.Register("redis", &driver{})
 }

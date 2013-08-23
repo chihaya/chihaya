@@ -47,6 +47,3 @@ func writeBencoded(w io.Writer, data interface{}) {
 		panic("Tried to bencode an unsupported type!")
 	}
 }
-
-func compact() {
-}

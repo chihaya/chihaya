@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/pushrax/chihaya/storage"
+	"github.com/pushrax/chihaya/models"
 )
 
 func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
@@ -24,7 +24,7 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Retry failed transactions a specified number of times
-	for i := 0; i < s.conf.Storage.TxRetries; i++ {
+	for i := 0; i < s.conf.Cache.TxRetries; i++ {
 
 		// Start a transaction
 		tx, err := s.dbConnPool.Get()
@@ -69,7 +69,7 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Create a new peer object from the request
-		peer := &storage.Peer{
+		peer := &models.Peer{
 			ID:           peerID,
 			UserID:       user.ID,
 			TorrentID:    torrent.ID,
@@ -332,7 +332,7 @@ func minInt(a, b int) int {
 	return b
 }
 
-func writeSeeders(w http.ResponseWriter, t *storage.Torrent, count, numWant int, compact bool) {
+func writeSeeders(w http.ResponseWriter, t *models.Torrent, count, numWant int, compact bool) {
 	for _, seed := range t.Seeders {
 		if count >= numWant {
 			break
@@ -353,7 +353,7 @@ func writeSeeders(w http.ResponseWriter, t *storage.Torrent, count, numWant int,
 	}
 }
 
-func writeLeechers(w http.ResponseWriter, t *storage.Torrent, count, numWant int, compact bool) {
+func writeLeechers(w http.ResponseWriter, t *models.Torrent, count, numWant int, compact bool) {
 	for _, leech := range t.Leechers {
 		if count >= numWant {
 			break

@@ -17,14 +17,15 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/pushrax/chihaya/cache"
 	"github.com/pushrax/chihaya/config"
-	"github.com/pushrax/chihaya/storage"
+	"github.com/pushrax/chihaya/models"
 )
 
 type Server struct {
 	conf       *config.Config
 	listener   net.Listener
-	dbConnPool storage.Pool
+	dbConnPool cache.Pool
 
 	serving   bool
 	startTime time.Time
@@ -40,7 +41,7 @@ type Server struct {
 }
 
 func New(conf *config.Config) (*Server, error) {
-	pool, err := storage.Open(&conf.Storage)
+	pool, err := cache.Open(&conf.Cache)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +70,6 @@ func (s *Server) ListenAndServe() error {
 	s.startTime = time.Now()
 
 	go s.updateStats()
-	go s.publishQueue()
 	s.Serve(s.listener)
 
 	s.waitgroup.Wait()
@@ -126,7 +126,7 @@ func fail(err error, w http.ResponseWriter, r *http.Request) {
 	w.(http.Flusher).Flush()
 }
 
-func validateUser(tx storage.Tx, dir string) (*storage.User, error) {
+func validateUser(tx cache.Tx, dir string) (*models.User, error) {
 	if len(dir) != 34 {
 		return nil, errors.New("Passkey is invalid")
 	}

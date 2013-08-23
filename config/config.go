@@ -27,8 +27,8 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 	return err
 }
 
-// Storage represents the configuration for any storage.DS.
-type Storage struct {
+// Cache represents the configuration for any data store used as a cache.
+type Cache struct {
 	Driver   string `json:"driver"`
 	Network  string `json:"network`
 	Addr     string `json:"addr"`
@@ -46,9 +46,9 @@ type Storage struct {
 
 // Config represents a configuration for a server.Server.
 type Config struct {
-	Addr    string  `json:"addr"`
-	PubAddr string  `json:"pub_addr"`
-	Storage Storage `json:"storage"`
+	Addr    string `json:"addr"`
+	PubAddr string `json:"pub_addr"`
+	Cache   Cache  `json:"cache"`
 
 	Private   bool `json:"private"`
 	Freeleech bool `json:"freeleech"`

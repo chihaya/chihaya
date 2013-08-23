@@ -12,9 +12,9 @@ import (
 	"runtime"
 	"runtime/pprof"
 
+	_ "github.com/pushrax/chihaya/cache/redis"
 	"github.com/pushrax/chihaya/config"
 	"github.com/pushrax/chihaya/server"
-	_ "github.com/pushrax/chihaya/storage/redis"
 )
 
 var (

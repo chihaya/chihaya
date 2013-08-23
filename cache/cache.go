@@ -3,14 +3,15 @@
 // which can be found in the LICENSE file.
 
 // Package storage provides a generic interface for manipulating a
-// BitTorrent tracker's data store.
-package storage
+// BitTorrent tracker's cache.
+package cache
 
 import (
 	"errors"
 	"fmt"
 
 	"github.com/pushrax/chihaya/config"
+	"github.com/pushrax/chihaya/models"
 )
 
 var (
@@ -19,7 +20,7 @@ var (
 )
 
 type Driver interface {
-	New(*config.Storage) Pool
+	New(*config.Cache) Pool
 }
 
 // Register makes a database driver available by the provided name.
@@ -36,7 +37,7 @@ func Register(name string, driver Driver) {
 }
 
 // Open creates a pool of data store connections specified by a storage configuration.
-func Open(conf *config.Storage) (Pool, error) {
+func Open(conf *config.Cache) (Pool, error) {
 	driver, ok := drivers[conf.Driver]
 	if !ok {
 		return nil, fmt.Errorf(
@@ -65,19 +66,19 @@ type Tx interface {
 	Rollback() error
 
 	// Reads
-	FindUser(passkey string) (*User, bool, error)
-	FindTorrent(infohash string) (*Torrent, bool, error)
+	FindUser(passkey string) (*models.User, bool, error)
+	FindTorrent(infohash string) (*models.Torrent, bool, error)
 	ClientWhitelisted(peerID string) (bool, error)
 
 	// Writes
-	RecordSnatch(u *User, t *Torrent) error
-	MarkActive(t *Torrent) error
-	AddLeecher(t *Torrent, p *Peer) error
-	AddSeeder(t *Torrent, p *Peer) error
-	RemoveLeecher(t *Torrent, p *Peer) error
-	RemoveSeeder(t *Torrent, p *Peer) error
-	SetLeecher(t *Torrent, p *Peer) error
-	SetSeeder(t *Torrent, p *Peer) error
-	IncrementSlots(u *User) error
-	DecrementSlots(u *User) error
+	RecordSnatch(u *models.User, t *models.Torrent) error
+	MarkActive(t *models.Torrent) error
+	AddLeecher(t *models.Torrent, p *models.Peer) error
+	AddSeeder(t *models.Torrent, p *models.Peer) error
+	RemoveLeecher(t *models.Torrent, p *models.Peer) error
+	RemoveSeeder(t *models.Torrent, p *models.Peer) error
+	SetLeecher(t *models.Torrent, p *models.Peer) error
+	SetSeeder(t *models.Torrent, p *models.Peer) error
+	IncrementSlots(u *models.User) error
+	DecrementSlots(u *models.User) error
 }

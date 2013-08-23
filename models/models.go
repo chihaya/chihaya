@@ -2,7 +2,7 @@
 // Use of this source code is governed by the BSD 2-Clause license,
 // which can be found in the LICENSE file.
 
-package storage
+package models
 
 type Peer struct {
 	ID           string `json:"id"`

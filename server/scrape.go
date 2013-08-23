@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"path"
 
-	"github.com/pushrax/chihaya/storage"
+	"github.com/pushrax/chihaya/models"
 )
 
 func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request) {
@@ -68,7 +68,7 @@ func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request) {
 	w.(http.Flusher).Flush()
 }
 
-func writeScrapeInfo(w io.Writer, torrent *storage.Torrent) {
+func writeScrapeInfo(w io.Writer, torrent *models.Torrent) {
 	io.WriteString(w, "d")
 	writeBencoded(w, "complete")
 	writeBencoded(w, len(torrent.Seeders))
