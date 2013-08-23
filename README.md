@@ -88,6 +88,6 @@ likely lead to confusion and time wasted for everyone. However, small
 unannounced fixes are always welcome.
 
 [#chihaya]: http://webchat.freenode.net?channels=chihaya
-[freenode]: http://freenode.net
+[freenode IRC]: http://freenode.net
 
 And remember: good gophers always use gofmt!
