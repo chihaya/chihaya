@@ -3,7 +3,7 @@
 // which can be found in the LICENSE file.
 
 // Package storage provides a generic interface for manipulating a
-// BitTorrent tracker's cache.
+// BitTorrent tracker's fast moving data.
 package cache
 
 import (

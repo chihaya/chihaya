@@ -5,9 +5,12 @@
 // Package redis implements the storage interface for a BitTorrent tracker.
 //
 // The client whitelist is represented as a set with the key name "whitelist"
-// with an optional prefix. Torrents and users are JSON-formatted strings.
+// with an optional prefix. Torrents and users are represented as hashes.
 // Torrents' keys are named "torrent:<infohash>" with an optional prefix.
-// Users' keys are named "user:<passkey>" with an optional prefix.
+// Users' keys are named "user:<passkey>" with an optional prefix. The
+// seeders and leechers attributes of torrent hashes are strings that represent
+// the key for those hashes within redis. This is done because redis cannot
+// nest their hash data type.
 package redis
 
 import (
@@ -38,17 +41,7 @@ func (d *driver) New(conf *config.Cache) cache.Pool {
 
 func makeDialFunc(conf *config.Cache) func() (redis.Conn, error) {
 	return func() (conn redis.Conn, err error) {
-		if conf.ConnTimeout != nil {
-			conn, err = redis.DialTimeout(
-				conf.Network,
-				conf.Addr,
-				conf.ConnTimeout.Duration, // Connect Timeout
-				conf.ConnTimeout.Duration, // Read Timeout
-				conf.ConnTimeout.Duration, // Write Timeout
-			)
-		} else {
-			conn, err = redis.Dial(conf.Network, conf.Addr)
-		}
+		conn, err = redis.Dial(conf.Network, conf.Addr)
 		if err != nil {
 			return nil, err
 		}
