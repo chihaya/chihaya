@@ -2,7 +2,7 @@
 // Use of this source code is governed by the BSD 2-Clause license,
 // which can be found in the LICENSE file.
 
-// Package storage provides a generic interface for manipulating a
+// Package cache provides a generic interface for manipulating a
 // BitTorrent tracker's fast moving data.
 package cache
 
@@ -16,11 +16,11 @@ import (
 
 var (
 	drivers   = make(map[string]Driver)
-	ErrTxDone = errors.New("storage: Transaction has already been committed or rolled back")
+	ErrTxDone = errors.New("cache: Transaction has already been committed or rolled back")
 )
 
 type Driver interface {
-	New(*config.Cache) Pool
+	New(*config.DataStore) Pool
 }
 
 // Register makes a database driver available by the provided name.
@@ -28,20 +28,20 @@ type Driver interface {
 // it panics.
 func Register(name string, driver Driver) {
 	if driver == nil {
-		panic("storage: Register driver is nil")
+		panic("cache: Register driver is nil")
 	}
 	if _, dup := drivers[name]; dup {
-		panic("storage: Register called twice for driver " + name)
+		panic("cache: Register called twice for driver " + name)
 	}
 	drivers[name] = driver
 }
 
 // Open creates a pool of data store connections specified by a storage configuration.
-func Open(conf *config.Cache) (Pool, error) {
+func Open(conf *config.DataStore) (Pool, error) {
 	driver, ok := drivers[conf.Driver]
 	if !ok {
 		return nil, fmt.Errorf(
-			"storage: unknown driver %q (forgotten import?)",
+			"cache: unknown driver %q (forgotten import?)",
 			conf.Driver,
 		)
 	}

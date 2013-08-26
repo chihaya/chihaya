@@ -27,8 +27,8 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 	return err
 }
 
-// Cache represents the configuration for any data store used as a cache.
-type Cache struct {
+// DataStore represents the configuration used to connect to a data store.
+type DataStore struct {
 	Driver   string `json:"driver"`
 	Network  string `json:"network`
 	Addr     string `json:"addr"`
@@ -38,16 +38,16 @@ type Cache struct {
 	Encoding string `json:"encoding,omitempty"`
 	Prefix   string `json:"prefix,omitempty"`
 
-	MaxIdleConn int       `json:"max_idle_conn"`
-	IdleTimeout *Duration `json:"idle_timeout"`
-	TxRetries   int       `json:"tx_retries"`
+	MaxIdleConn int       `json:"max_idle_conn,omitempty"`
+	IdleTimeout *Duration `json:"idle_timeout,omitempty"`
 }
 
 // Config represents a configuration for a server.Server.
 type Config struct {
-	Addr    string `json:"addr"`
-	PubAddr string `json:"pub_addr"`
-	Cache   Cache  `json:"cache"`
+	Addr    string    `json:"addr"`
+	PubAddr string    `json:"pub_addr"`
+	Cache   DataStore `json:"cache"`
+	Storage DataStore `json:"storage"`
 
 	Private   bool `json:"private"`
 	Freeleech bool `json:"freeleech"`
@@ -57,6 +57,8 @@ type Config struct {
 	MinAnnounce    Duration `json:"min_announce"`
 	ReadTimeout    Duration `json:"read_timeout"`
 	DefaultNumWant int      `json:"default_num_want"`
+
+	TxRetries int `json:"tx_retries"`
 }
 
 // Open is a shortcut to open a file, read it, and generate a Config.

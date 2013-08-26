@@ -27,7 +27,7 @@ import (
 
 type driver struct{}
 
-func (d *driver) New(conf *config.Cache) cache.Pool {
+func (d *driver) New(conf *config.DataStore) cache.Pool {
 	return &Pool{
 		conf: conf,
 		pool: redis.Pool{
@@ -39,7 +39,7 @@ func (d *driver) New(conf *config.Cache) cache.Pool {
 	}
 }
 
-func makeDialFunc(conf *config.Cache) func() (redis.Conn, error) {
+func makeDialFunc(conf *config.DataStore) func() (redis.Conn, error) {
 	return func() (conn redis.Conn, err error) {
 		conn, err = redis.Dial(conf.Network, conf.Addr)
 		if err != nil {
@@ -55,7 +55,7 @@ func testOnBorrow(c redis.Conn, t time.Time) error {
 }
 
 type Pool struct {
-	conf *config.Cache
+	conf *config.DataStore
 	pool redis.Pool
 }
 
@@ -87,7 +87,7 @@ func (p *Pool) Get() (cache.Tx, error) {
 // SET keyB
 // EXEC
 type Tx struct {
-	conf  *config.Cache
+	conf  *config.DataStore
 	done  bool
 	multi bool
 	redis.Conn

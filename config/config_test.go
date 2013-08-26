@@ -17,6 +17,7 @@ var exampleJson = `{
   "network": "tcp",
   "addr": ":34000",
   "pub_addr": "tcp://*:34001",
+
   "cache": {
     "driver": "redis",
     "addr": "127.0.0.1:6379",
@@ -25,9 +26,14 @@ var exampleJson = `{
     "prefix": "test:",
 
     "max_idle_conn": 3,
-    "idle_timeout": "240s",
-    "conn_timeout": "5s",
-    "tx_retries": 3
+    "idle_timeout": "240s"
+  },
+
+  "storage": {
+    "driver": "batter",
+    "addr": "127.0.0.1:5432",
+    "user": "postgres",
+    "pass": ""
   },
 
   "private": true,
@@ -36,8 +42,9 @@ var exampleJson = `{
   "announce": "30m",
   "min_announce": "15m",
   "read_timeout": "20s",
-  "default_num_want": 50
+  "default_num_want": 50,
 
+  "tx_retries": 3
 }`
 
 func TestNewConfig(t *testing.T) {

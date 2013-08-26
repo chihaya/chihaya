@@ -24,7 +24,7 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Retry failed transactions a specified number of times
-	for i := 0; i < s.conf.Cache.TxRetries; i++ {
+	for i := 0; i < s.conf.TxRetries; i++ {
 
 		// Start a transaction
 		tx, err := s.dbConnPool.Get()
