@@ -17,15 +17,8 @@ import (
 	_ "github.com/pushrax/chihaya/storage/batter"
 )
 
-func NewServer() (*Server, error) {
-	var path string
-	if os.Getenv("TRAVISCONFIGPATH") != "" {
-		path = os.Getenv("TRAVISCONFIGPATH")
-	} else {
-		path = os.ExpandEnv("$GOPATH/src/github.com/pushrax/chihaya/config/example.json")
-	}
-
-	testConfig, err := config.Open(path)
+func newTestServer() (*Server, error) {
+	testConfig, err := config.Open(os.Getenv("TESTCONFIGPATH"))
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +32,7 @@ func NewServer() (*Server, error) {
 }
 
 func TestStats(t *testing.T) {
-	s, err := NewServer()
+	s, err := newTestServer()
 	if err != nil {
 		t.Error(err)
 	}

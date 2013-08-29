@@ -30,6 +30,14 @@ Make sure you have your $GOROOT and $GOPATH set up correctly and have your $GOBI
 $ go install github.com/pushrax/chihaya
 ```
 
+## Testing
+
+```sh
+$ export TESTCONFIGPATH=$GOPATH/src/chihaya/config/example.json
+$ go get github.com/pushrax/chihaya
+$ go test -v ./...
+```
+
 ## Configuring
 
 Configuration is done in a JSON formatted file specified with the `-config`

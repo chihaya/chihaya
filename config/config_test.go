@@ -11,21 +11,14 @@ import (
 	"testing"
 )
 
-func getConfigPath() string {
-	if os.Getenv("TRAVISCONFIGPATH") != "" {
-		return os.Getenv("TRAVISCONFIGPATH")
-	}
-	return os.ExpandEnv("$GOPATH/src/github.com/pushrax/chihaya/config/example.json")
-}
-
 func TestOpenConfig(t *testing.T) {
-	if _, err := Open(getConfigPath()); err != nil {
+	if _, err := Open(os.Getenv("TESTCONFIGPATH")); err != nil {
 		t.Error(err)
 	}
 }
 
 func TestNewConfig(t *testing.T) {
-	contents, err := ioutil.ReadFile(getConfigPath())
+	contents, err := ioutil.ReadFile(os.Getenv("TESTCONFIGPATH"))
 	if err != nil {
 		t.Error(err)
 	}
