@@ -31,7 +31,8 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 type DataStore struct {
 	Driver   string `json:"driver"`
 	Network  string `json:"network`
-	Addr     string `json:"addr"`
+	Host     string `json:"host"`
+	Port     string `json:"port"`
 	Username string `json:"user"`
 	Password string `json:"pass"`
 	Schema   string `json:"schema,omitempty"`

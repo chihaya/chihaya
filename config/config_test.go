@@ -5,95 +5,25 @@
 package config
 
 import (
-	"bufio"
+	"bytes"
+	"io/ioutil"
 	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 )
 
-var exampleJson = `{
-
-  "network": "tcp",
-  "addr": ":34000",
-  "pub_addr": "tcp://*:34001",
-
-  "cache": {
-    "driver": "redis",
-    "addr": "127.0.0.1:6379",
-    "user": "root",
-    "pass": "",
-    "prefix": "test:",
-
-    "max_idle_conn": 3,
-    "idle_timeout": "240s"
-  },
-
-  "storage": {
-    "driver": "batter",
-    "addr": "127.0.0.1:5432",
-    "user": "postgres",
-    "pass": ""
-  },
-
-  "private": true,
-  "freeleech": false,
-
-  "announce": "30m",
-  "min_announce": "15m",
-  "read_timeout": "20s",
-  "default_num_want": 50,
-
-  "tx_retries": 3
-}`
-
-func TestNewConfig(t *testing.T) {
-	if _, err := newConfig(strings.NewReader(exampleJson)); err != nil {
+func TestOpenConfig(t *testing.T) {
+	if _, err := Open(os.ExpandEnv("$GOPATH/src/github.com/pushrax/chihaya/config/example.json")); err != nil {
 		t.Error(err)
 	}
 }
 
-func writeAndOpenJsonTest(t *testing.T, fn string) {
-	expandFn := os.ExpandEnv(fn)
-	// Write JSON to relative path, clean up
-	tfile, ferr := os.Create(expandFn)
-	// Remove failure not counted as error
-	defer os.Remove(expandFn)
-	if ferr != nil {
-		t.Fatal("Failed to create %s. Error: %v", expandFn, ferr)
-	}
-
-	tWriter := bufio.NewWriter(tfile)
-	cw, err := tWriter.WriteString(exampleJson)
+func TestNewConfig(t *testing.T) {
+	contents, err := ioutil.ReadFile(os.ExpandEnv("$GOPATH/src/github.com/pushrax/chihaya/config/example.json"))
 	if err != nil {
-		t.Fatal("Failed to write json to config file. %v", err)
+		t.Error(err)
 	}
-	if cw < len(exampleJson) {
-		t.Error("Incorrect length of config file written %v vs. %v", cw, len(exampleJson))
-	}
-	fErr := tWriter.Flush()
-	if fErr != nil {
-		t.Error("Flush error: %v", fErr)
-	}
-	_, oErr := Open(fn)
-	if oErr != nil {
-		t.Error("Open error: %v", oErr)
-	}
-}
-
-// These implcitly require the test program have
-// read/write/delete file system permissions
-func TestOpenCurDir(t *testing.T) {
-	if !testing.Short() {
-		writeAndOpenJsonTest(t, "testConfig.json")
-	} else {
-		t.Log("Write/Read file test skipped")
-	}
-}
-func TestOpenAbsEnvPath(t *testing.T) {
-	if !testing.Short() {
-		writeAndOpenJsonTest(t, filepath.Join(os.TempDir(), "testConfig.json"))
-	} else {
-		t.Log("Write/Read file test skipped")
+	buff := bytes.NewBuffer(contents)
+	if _, err := newConfig(buff); err != nil {
+		t.Error(err)
 	}
 }

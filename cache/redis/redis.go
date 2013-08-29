@@ -41,7 +41,7 @@ func (d *driver) New(conf *config.DataStore) cache.Pool {
 
 func makeDialFunc(conf *config.DataStore) func() (redis.Conn, error) {
 	return func() (conn redis.Conn, err error) {
-		conn, err = redis.Dial(conf.Network, conf.Addr)
+		conn, err = redis.Dial(conf.Network, conf.Host+":"+conf.Port)
 		if err != nil {
 			return nil, err
 		}

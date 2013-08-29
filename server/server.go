@@ -96,8 +96,15 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer s.waitgroup.Done()
 	defer atomic.AddInt64(&s.deltaRequests, 1)
 
-	if r.URL.Path == "/stats" {
+	switch r.URL.Path {
+	case "/stats":
 		s.serveStats(w, r)
+		return
+	case "/add":
+		s.serveAdd(w, r)
+		return
+	case "/remove":
+		s.serveRemove(w, r)
 		return
 	}
 
