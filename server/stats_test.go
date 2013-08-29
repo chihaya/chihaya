@@ -6,7 +6,6 @@ package server
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -18,13 +17,29 @@ import (
 	_ "github.com/pushrax/chihaya/storage/batter"
 )
 
-func TestStats(t *testing.T) {
-	testConfig, err := config.Open(os.ExpandEnv("$GOPATH/src/github.com/pushrax/chihaya/config/example.json"))
-	if err != nil {
-		t.Error(err)
+func NewServer() (*Server, error) {
+	var path string
+	if os.Getenv("TRAVISCONFIGPATH") != "" {
+		path = os.Getenv("TRAVISCONFIGPATH")
+	} else {
+		path = os.ExpandEnv("$GOPATH/src/github.com/pushrax/chihaya/config/example.json")
 	}
-	fmt.Println(testConfig)
+
+	testConfig, err := config.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
 	s, err := New(testConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return s, nil
+}
+
+func TestStats(t *testing.T) {
+	s, err := NewServer()
 	if err != nil {
 		t.Error(err)
 	}
