@@ -18,6 +18,14 @@ Planned features include:
 See [the wiki](https://github.com/pushrax/chihaya/wiki) for a discussion of the design behind Chihaya.
 
 ## Using Chihaya
+
+Chihaya is intended to work with existing torrent indexing web frameworks, such as [batter] and [Gazelle].
+Following the Unix way, it is built to perform a specific task, and interface with any system that
+needs its functionality. See [below](#drivers) for more info.
+
+[batter]: https://github.com/wafflesfm/batter
+[gazelle]: https://github.com/whatcd/gazelle
+
 ### Installing
 
 Make sure you have your `$GOROOT` and `$GOPATH` set up correctly, and have your `$GOBIN` in your `$PATH`.
@@ -40,7 +48,7 @@ $ go get github.com/pushrax/chihaya
 $ go test -v ./...
 ```
 
-## Default drivers
+## Drivers
 
 Chihaya is designed to remain agnostic about the choice of data store for an
 application, and it is straightforward to [implement a new driver]. However, there
