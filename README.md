@@ -2,7 +2,9 @@
 
 Chihaya is a high-performance [BitTorrent tracker](http://en.wikipedia.org/wiki/BitTorrent_tracker)
 written in the Go programming language. It is still heavily under development and the current `master` branch
-should not be used in production. Planned features include:
+should not be used in production.
+
+Planned features include:
 
 - Light resource consumption
 - Fast request processing, sparing the network from exorbitant connection counts 
@@ -11,31 +13,32 @@ should not be used in production. Planned features include:
 - Generic storage interfaces that are easily adapted to work with any existing web application
 - Scaling properties that directly correlate with those of the chosen data stores
 
-## Technical Details
+### Technical Details
 
 See [the wiki](https://github.com/pushrax/chihaya/wiki) for a discussion of the design behind Chihaya.
 
-## Installing
+## Using Chihaya
+### Installing
 
-Make sure you have your $GOROOT and $GOPATH set up correctly and have your $GOBIN on your $PATH.
+Make sure you have your `$GOROOT` and `$GOPATH` set up correctly, and have your `$GOBIN` in your `$PATH`.
 
 ```sh
 $ go get github.com/pushrax/chihaya
 ```
 
-## Testing
+### Configuring
+
+Configuration is done in a JSON formatted file specified with the `-config`
+flag. An example configuration file can be found
+[here](https://github.com/pushrax/chihaya/blob/master/config/example.json).
+
+### Running the tests
 
 ```sh
 $ export TESTCONFIGPATH=$GOPATH/src/chihaya/config/example.json
 $ go get github.com/pushrax/chihaya
 $ go test -v ./...
 ```
-
-## Configuring
-
-Configuration is done in a JSON formatted file specified with the `-config`
-flag. An example configuration file can be found
-[here](https://github.com/pushrax/chihaya/blob/master/config/example.json).
 
 ## Default drivers
 
@@ -45,8 +48,8 @@ are a number of directly supported drivers:
 
 Cache:
 
-* [redis](http://redis.io)
-* Memory
+* [redis](http://redis.io) — allows for multiple tracker instances to run at the same time for the same swarm
+* memory — only a single instance can run, but it requires no extra setup
 
 Storage:
 
