@@ -106,6 +106,7 @@ func (tx *Tx) initiateWrite() error {
 		return cache.ErrTxDone
 	}
 	if tx.multi != true {
+		tx.multi = true
 		return tx.Send("MULTI")
 	}
 	return nil
@@ -126,7 +127,11 @@ func (tx *Tx) Commit() error {
 		return cache.ErrTxDone
 	}
 	if tx.multi == true {
-		_, err := tx.Do("EXEC")
+		execResponse, err := tx.Do("EXEC")
+		if execResponse == nil {
+			tx.multi = false
+			return cache.ErrTxConflict
+		}
 		if err != nil {
 			return err
 		}
@@ -139,7 +144,11 @@ func (tx *Tx) Rollback() error {
 	if tx.done {
 		return cache.ErrTxDone
 	}
-	// Redis doesn't need to do anything. Exec is atomic.
+	// Undoes watches and multi
+	if _, err := tx.Do("DISCARD") ; err != nil {
+		return err
+	}
+	tx.multi = false
 	tx.close()
 	return nil
 }

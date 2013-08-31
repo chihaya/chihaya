@@ -17,6 +17,7 @@ import (
 var (
 	drivers   = make(map[string]Driver)
 	ErrTxDone = errors.New("cache: Transaction has already been committed or rolled back")
+	ErrTxConflict = errors.New("cache: Commit interrupted, update transaction and repeat")
 )
 
 type Driver interface {
