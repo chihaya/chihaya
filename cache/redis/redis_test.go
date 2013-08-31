@@ -2,29 +2,25 @@
 // Use of this source code is governed by the BSD 2-Clause license,
 // which can be found in the LICENSE file.
 
-// Package redis implements the storage interface for a BitTorrent tracker.
-// Benchmarks are at the top of the file, tests are at the bottom
 package redis
 
 import (
-	"github.com/garyburd/redigo/redis"
-	"github.com/pushrax/chihaya/cache"
-	"github.com/pushrax/chihaya/config"
+	"math/rand"
 	"os"
+	"strconv"
 	"testing"
 	"time"
-	"math/rand"
-	"strconv"
+
+	"github.com/garyburd/redigo/redis"
+
+	"github.com/pushrax/chihaya/cache"
+	"github.com/pushrax/chihaya/config"
 )
 
-var(
-	//maximum number of parallel retries, will depends on system latency
-	MAX_RETRIES = 9000
-)
+// Maximum number of parallel retries; depends on system latency
+const MAX_RETRIES = 9000
 
 func CreateTestTxObj(t *testing.T) Tx {
-
-	//assumes TESTCONFIGPATH has been defined
 	testConfig, err := config.Open(os.Getenv("TESTCONFIGPATH"))
 	if err != nil {
 		t.Error(err)
@@ -36,32 +32,28 @@ func CreateTestTxObj(t *testing.T) Tx {
 		t.Fail()
 	}
 	return Tx{&testConfig.Cache, false, false, testConn}
-
 }
 
-func SampleTransaction( testTx Tx, retries int, t *testing.T){
-
+func SampleTransaction(testTx Tx, retries int, t *testing.T) {
 	defer func() {
-		if rawError := recover(); rawError != nil {
-			t.Errorf("initiate read failed")
-			t.Fail()
+		if err := recover(); err != nil {
+			t.Errorf("initiateRead() failed: %s", err)
 		}
-	} ()
+	}()
 	err := testTx.initiateRead()
 	if err != nil {
-		t.Fail()
+		t.Error(err)
 	}
 	_, err = testTx.Do("WATCH", "testKeyA")
 	if err != nil {
-		t.Errorf("error=%s", err)
+		t.Error(err)
 	}
 	_, err = redis.String(testTx.Do("GET", "testKeyA"))
 	if err != nil {
 		if err == redis.ErrNil {
 			t.Log("redis.ErrNil")
 		} else {
-			t.Errorf("error=%s", err)
-			t.Fail()
+			t.Error(err)
 		}
 	}
 	_, err = testTx.Do("WATCH", "testKeyB")
@@ -69,8 +61,7 @@ func SampleTransaction( testTx Tx, retries int, t *testing.T){
 		if err == redis.ErrNil {
 			t.Log("redis.ErrNil")
 		} else {
-			t.Errorf("error=%s", err)
-			t.Fail()
+			t.Error(err)
 		}
 	}
 	_, err = redis.String(testTx.Do("GET", "testKeyB"))
@@ -78,143 +69,123 @@ func SampleTransaction( testTx Tx, retries int, t *testing.T){
 		if err == redis.ErrNil {
 			t.Log("redis.ErrNil")
 		} else {
-			t.Errorf("error=%s", err)
-			t.Fail()
+			t.Error(err)
 		}
 	}
 
 	err = testTx.initiateWrite()
 	if err != nil {
-		t.Errorf("error=%s", err)
-		t.Fail()
+		t.Error(err)
 	}
 
-	//generate random data to set
+	// Generate random data to set
 	randGen := rand.New(rand.NewSource(time.Now().UnixNano()))
 	err = testTx.Send("SET", "testKeyA", strconv.Itoa(randGen.Int()))
 	if err != nil {
-		t.Errorf("error=%s", err)
-		t.Fail()
+		t.Error(err)
 	}
 	err = testTx.Send("SET", "testKeyB", strconv.Itoa(randGen.Int()))
 	if err != nil {
-		t.Errorf("error=%s", err)
-		t.Fail()
+		t.Error(err)
 	}
 
 	err = testTx.Commit()
-	//for parallel runs, there may be conflicts, retry until successful
-	if err == cache.ErrTxConflict && retries > 0 {
-		//t.Logf("Conflict, %d retries left",retries)
-		SampleTransaction(testTx,retries-1,t)
-		//clear TxConflict, if retries max out, errors are already recorded
+	switch {
+	// For parallel runs, there may be conflicts, retry until successful
+	case err == cache.ErrTxConflict && retries > 0:
+		// t.Logf("Conflict, %d retries left",retries)
+		SampleTransaction(testTx, retries-1, t)
+		// Clear TxConflict, if retries max out, errors are already recorded
 		err = nil
-	}else if err == cache.ErrTxConflict {
-		t.Error("Conflict encountered, max retries reached")
-		t.Errorf("error=%s", err)
+	case err == cache.ErrTxConflict:
+		t.Errorf("Conflict encountered, max retries reached: %s", err)
+	case err != nil:
+		t.Error(err)
+	default:
 	}
-	if err != nil {
-		t.Errorf("error=%s", err)
-		t.Fail()
-	}
-
 }
 
 func TestRedisTransaction(t *testing.T) {
-
-	for i:=0; i < 10; i++ {
-		//No retries for serial transactions
-		SampleTransaction(CreateTestTxObj(t),0,t)
+	for i := 0; i < 10; i++ {
+		// No retries for serial transactions
+		SampleTransaction(CreateTestTxObj(t), 0, t)
 	}
 }
 
 func TestReadAfterWrite(t *testing.T) {
+	defer func() {
+		if err := recover(); err == nil {
+			t.Error("Read after write did not panic")
+		}
+	}()
 
 	testTx := CreateTestTxObj(t)
-
 	err := testTx.initiateWrite()
 	if err != nil {
-		t.Errorf("error=%s", err)
-		t.Fail()
+		t.Error(err)
 	}
-	// test requires panic
-	defer func() {
-		if rawError := recover(); rawError == nil {
-			t.Errorf("Read after write did not panic")
-			t.Fail()
-		}
-	} ()
+
 	err = testTx.initiateRead()
 	if err != nil {
-		t.Errorf("error=%s", err)
-		t.Fail()
+		t.Error(err)
 	}
 }
 
-func TestDoubleClose(t *testing.T){
+func TestCloseClosedTransaction(t *testing.T) {
+	defer func() {
+		if err := recover(); err == nil {
+			t.Error("Closing a closed transaction did not panic")
+		}
+	}()
 
 	testTx := CreateTestTxObj(t)
-
 	testTx.close()
-	//require panic
-	defer func() {
-		if rawError := recover(); rawError == nil {
-			t.Errorf("double close did not panic")
-			t.Fail()
-		}
-	} ()
 	testTx.close()
 }
 
 func TestParallelTx0(t *testing.T) {
-
 	t.Parallel()
-
-	for i:=0; i< 20; i++ {
-		go SampleTransaction(CreateTestTxObj(t),MAX_RETRIES,t)
+	for i := 0; i < 20; i++ {
+		go SampleTransaction(CreateTestTxObj(t), MAX_RETRIES, t)
 		time.Sleep(1 * time.Millisecond)
 	}
-
 }
 
 func TestParallelTx1(t *testing.T) {
-
 	t.Parallel()
-	SampleTransaction(CreateTestTxObj(t),MAX_RETRIES,t)
-	for i:=0; i< 100; i++ {
-		go SampleTransaction(CreateTestTxObj(t),MAX_RETRIES,t)
+	SampleTransaction(CreateTestTxObj(t), MAX_RETRIES, t)
+	for i := 0; i < 100; i++ {
+		go SampleTransaction(CreateTestTxObj(t), MAX_RETRIES, t)
 	}
 }
 
 func TestParallelTx2(t *testing.T) {
-
 	t.Parallel()
-	for i:=0; i< 100; i++ {
-		go SampleTransaction(CreateTestTxObj(t),MAX_RETRIES,t)
+	for i := 0; i < 100; i++ {
+		go SampleTransaction(CreateTestTxObj(t), MAX_RETRIES, t)
 	}
-	SampleTransaction(CreateTestTxObj(t),MAX_RETRIES,t)
+	SampleTransaction(CreateTestTxObj(t), MAX_RETRIES, t)
 }
 
-//just in case the above parallel tests didn't fail, force a failure here
+// Just in case the above parallel tests didn't fail, force a failure here
 func TestParallelInterrupted(t *testing.T) {
-
 	t.Parallel()
 
-	testTx := CreateTestTxObj(t)
 	defer func() {
-		if rawError := recover(); rawError != nil {
-			t.Errorf("initiate read failed in parallelInterrupted")
-			t.Fail()
+		if err := recover(); err != nil {
+			t.Errorf("initiateRead() failed in parallel: %s", err)
 		}
-	} ()
+	}()
+
+	testTx := CreateTestTxObj(t)
 	err := testTx.initiateRead()
 	if err != nil {
-		t.Fail()
+		t.Error(err)
 	}
 
 	_, err = testTx.Do("WATCH", "testKeyA")
 	if err != nil {
-		t.Errorf("error=%s", err)
+		t.Error(err)
 	}
 
 	testValueA, err := redis.String(testTx.Do("GET", "testKeyA"))
@@ -222,8 +193,7 @@ func TestParallelInterrupted(t *testing.T) {
 		if err == redis.ErrNil {
 			t.Log("redis.ErrNil")
 		} else {
-			t.Errorf("error=%s", err)
-			t.Fail()
+			t.Error(err)
 		}
 	}
 
@@ -232,8 +202,7 @@ func TestParallelInterrupted(t *testing.T) {
 		if err == redis.ErrNil {
 			t.Log("redis.ErrNil")
 		} else {
-			t.Errorf("error=%s", err)
-			t.Fail()
+			t.Error(err)
 		}
 	}
 
@@ -242,43 +211,38 @@ func TestParallelInterrupted(t *testing.T) {
 		if err == redis.ErrNil {
 			t.Log("redis.ErrNil")
 		} else {
-			t.Errorf("error=%s", err)
-			t.Fail()
+			t.Error(err)
 		}
 	}
-	//stand in for what real updates would do
+
+	// Stand in for what real updates would do
 	testValueB = testValueB + "+updates"
 	testValueA = testValueA + "+updates"
 
-	// simulating another client interrupts transaction, causing exec to fail
-	SampleTransaction(CreateTestTxObj(t),MAX_RETRIES,t)
+	// Simulating another client interrupts transaction, causing exec to fail
+	SampleTransaction(CreateTestTxObj(t), MAX_RETRIES, t)
 
 	err = testTx.initiateWrite()
 	if err != nil {
-		t.Errorf("error=%s", err)
-		t.Fail()
+		t.Error(err)
 	}
 	err = testTx.Send("SET", "testKeyA", testValueA)
 	if err != nil {
-		t.Errorf("error=%s", err)
-		t.Fail()
+		t.Error(err)
 	}
 
 	err = testTx.Send("SET", "testKeyB", testValueB)
 	if err != nil {
-		t.Errorf("error=%s", err)
-		t.Fail()
+		t.Error(err)
 	}
 
 	keys, err := (testTx.Do("EXEC"))
-	//expect error
 	if keys != nil {
-		t.Errorf("keys not nil, exec should have been interrupted")
+		t.Error("Keys not nil; exec should have been interrupted")
 	}
 
 	testTx.close()
 	if err != nil {
-		t.Errorf("error=%s", err)
-		t.Fail()
+		t.Error(err)
 	}
 }

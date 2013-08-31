@@ -145,7 +145,7 @@ func (tx *Tx) Rollback() error {
 		return cache.ErrTxDone
 	}
 	// Undoes watches and multi
-	if _, err := tx.Do("DISCARD") ; err != nil {
+	if _, err := tx.Do("DISCARD"); err != nil {
 		return err
 	}
 	tx.multi = false

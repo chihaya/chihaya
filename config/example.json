@@ -5,6 +5,7 @@
 
   "cache": {
     "driver": "redis",
+    "network": "tcp",
     "host": "127.0.0.1",
     "port": "6379",
     "user": "root",
@@ -12,11 +13,7 @@
     "prefix": "test:",
 
     "max_idle_conn": 3,
-    "idle_timeout": "240s",
-		
-    "network": "tcp",
-		"schema": "schema",
-		"encoding": "encoding"
+    "idle_timeout": "240s"
   },
 
   "storage": {
