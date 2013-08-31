@@ -29,7 +29,7 @@ func CreateTestTxObj(t *testing.T) Tx {
 	testDialFunc := makeDialFunc(&testConfig.Cache)
 	testConn, err := testDialFunc()
 	if err != nil {
-		t.Fail()
+		t.Error(err)
 	}
 	return Tx{&testConfig.Cache, false, false, testConn}
 }
