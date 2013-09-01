@@ -24,7 +24,7 @@ type Torrent struct {
 	Leechers       map[string]Peer `json:"leechers"`
 	Snatches       uint            `json:"snatches"`
 	UpMultiplier   float64         `json:"up_multiplier"`
-	DownMultiplier float64         `json:"down_multipler"`
+	DownMultiplier float64         `json:"down_multiplier"`
 	LastAction     int64           `json:"last_action"`
 }
 
