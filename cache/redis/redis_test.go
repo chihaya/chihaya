@@ -90,14 +90,25 @@ func createUser() models.User {
 	return testUser
 }
 
-func createTorrent() models.Torrent {
+func createSeeders() []models.Peer {
 	testSeeders := make([]models.Peer, 4)
 	testSeeders[0] = models.Peer{"testPeerID0", 57005, 48879, "testIP", 6889, 1024, 3000, 4200, 6}
 	testSeeders[1] = models.Peer{"testPeerID1", 10101, 48879, "testIP", 6889, 1024, 3000, 4200, 6}
 	testSeeders[2] = models.Peer{"testPeerID2", 29890, 48879, "testIP", 6889, 1024, 3000, 4200, 6}
 	testSeeders[3] = models.Peer{"testPeerID3", 65261, 48879, "testIP", 6889, 1024, 3000, 4200, 6}
+	return testSeeders
+}
+
+func createLeechers() []models.Peer {
 	testLeechers := make([]models.Peer, 1)
 	testLeechers[0] = models.Peer{"testPeerID", 11111, 48879, "testIP", 6889, 1024, 3000, 4200, 6}
+	return testLeechers
+}
+
+func createTorrent() models.Torrent {
+
+	testSeeders := createSeeders()
+	testLeechers := createLeechers()
 
 	seeders := make(map[string]models.Peer)
 	for i := range testSeeders {
@@ -175,25 +186,22 @@ func ExampleJsonTransaction(testTx *Tx, retries int, t TestReporter) {
 	verifyErrNil(err, t)
 }
 
-func ExampleJsonSchemaRemoveSeeder(t TestReporter) {
+func ExampleJsonSchemaRemoveSeeder(torrent *models.Torrent, peer *models.Peer, t TestReporter) {
 	testTx := createTestTxObj(t)
 
 	verifyErrNil(testTx.initiateRead(), t)
 
-	key := testTx.conf.Prefix + "torrent:" + sample_infohash
+	key := testTx.conf.Prefix + "torrent:" + torrent.Infohash
 	_, err := testTx.Do("WATCH", key)
 	reply, err := redis.String(testTx.Do("GET", key))
 	if err != nil {
 		if err == redis.ErrNil {
-			//TODO Move this logic from example
-			t.Logf("no key yet, creating json reply")
-			reply = string(createTorrentJson(t))
+			t.Error("testTorrent does not exist")
 		} else {
 			t.Error(err)
 		}
 	}
 
-	torrent := &models.Torrent{}
 	verifyErrNil(json.NewDecoder(strings.NewReader(reply)).Decode(torrent), t)
 
 	delete(torrent.Seeders, "testPeerID2")
@@ -206,22 +214,22 @@ func ExampleJsonSchemaRemoveSeeder(t TestReporter) {
 
 }
 
-func ExampleRedisTypeSchemaRemoveSeeder(t TestReporter) {
+func ExampleRedisTypeSchemaRemoveSeeder(torrent *models.Torrent, peer *models.Peer, t TestReporter) {
 	testTx := createTestTxObj(t)
-	setkey := testTx.conf.Prefix + "torrent:" + sample_infohash + ":seeders"
-	reply, err := redis.Int(testTx.Do("SREM", setkey, "testPeerID2"))
+	setkey := testTx.conf.Prefix + "torrent:" + torrent.Infohash + ":seeders"
+	reply, err := redis.Int(testTx.Do("SREM", setkey, *peer))
 	if reply == 0 {
-		t.Error("remove failed")
+		t.Errorf("remove %v failed", *peer)
 	}
 	verifyErrNil(err, t)
 }
 
-func ExampleJsonSchemaFindUser(t TestReporter) (*models.User, bool) {
+func ExampleJsonSchemaFindUser(passkey string, t TestReporter) (*models.User, bool) {
 	testTx := createTestTxObj(t)
 
 	verifyErrNil(testTx.initiateRead(), t)
 
-	key := testTx.conf.Prefix + "user:" + sample_passkey
+	key := testTx.conf.Prefix + "user:" + passkey
 	_, err := testTx.Do("WATCH", key)
 	verifyErrNil(err, t)
 	reply, err := redis.String(testTx.Do("GET", key))
@@ -238,7 +246,7 @@ func ExampleJsonSchemaFindUser(t TestReporter) (*models.User, bool) {
 	return user, true
 }
 
-func ExampleRedisTypesSchemaFindUser(t TestReporter) (*models.User, bool) {
+func ExampleRedisTypesSchemaFindUser(passkey string, t TestReporter) (*models.User, bool) {
 	testTx := createTestTxObj(t)
 	hashkey := testTx.conf.Prefix + "user_hash:" + sample_passkey
 	userVals, err := redis.Strings(testTx.Do("HVALS", hashkey))
@@ -252,25 +260,43 @@ func ExampleRedisTypesSchemaFindUser(t TestReporter) (*models.User, bool) {
 
 func BenchmarkRedisJsonSchemaRemoveSeeder(b *testing.B) {
 	for bCount := 0; bCount < b.N; bCount++ {
-		ExampleJsonSchemaRemoveSeeder(b)
+		b.StopTimer()
+		testTx := createTestTxObj(b)
+		testTorrent := createTorrent()
+		testSeeders := createSeeders()
+		key := testTx.conf.Prefix + "torrent:" + testTorrent.Infohash
+		// Benchmark setup not a transaction, not thread-safe
+		_, err := testTx.Do("SET", key, createTorrentJson(b))
+		verifyErrNil(err, b)
+		b.StartTimer()
+
+		ExampleJsonSchemaRemoveSeeder(&testTorrent, &testSeeders[2], b)
 	}
 }
 
 func BenchmarkRedisTypesSchemaRemoveSeeder(b *testing.B) {
 	for bCount := 0; bCount < b.N; bCount++ {
 
-		// Ensure that remove completes successfully, even if it doesn't impact the performance
+		// Ensure that remove completes successfully,
+		// even if it doesn't impact the performance
 		b.StopTimer()
 		testTx := createTestTxObj(b)
-		setkey := testTx.conf.Prefix + "torrent:" + sample_infohash + ":seeders"
-		reply, err := redis.Int(testTx.Do("SADD", setkey, "testPeerID0", "testPeerID1", "testPeerID2", "testPeerID3"))
+		testTorrent := createTorrent()
+		setkey := testTx.conf.Prefix + "torrent:" + testTorrent.Infohash + ":seeders"
+		testSeeders := createSeeders()
+		reply, err := redis.Int(testTx.Do("SADD", setkey,
+			testSeeders[0],
+			testSeeders[1],
+			testSeeders[2],
+			testSeeders[3]))
+
 		if reply == 0 {
-			b.Error("no keys added!")
+			b.Log("no keys added!")
 		}
 		verifyErrNil(err, b)
 		b.StartTimer()
 
-		ExampleRedisTypeSchemaRemoveSeeder(b)
+		ExampleRedisTypeSchemaRemoveSeeder(&testTorrent, &testSeeders[2], b)
 	}
 }
 
@@ -286,7 +312,7 @@ func BenchmarkRedisJsonSchemaFindUser(b *testing.B) {
 	verifyErrNil(testTx.Commit(), b)
 	b.StartTimer()
 	for bCount := 0; bCount < b.N; bCount++ {
-		compareUser, exists := ExampleJsonSchemaFindUser(b)
+		compareUser, exists := ExampleJsonSchemaFindUser(sample_passkey, b)
 		b.StopTimer()
 		if !exists {
 			b.Error("User not found!")
@@ -305,7 +331,14 @@ func BenchmarkRedisTypesSchemaFindUser(b *testing.B) {
 	testUser := createUser()
 	testTx := createTestTxObj(b)
 	hashkey := testTx.conf.Prefix + "user_hash:" + sample_passkey
-	reply, err := testTx.Do("HMSET", hashkey, "id", testUser.ID, "passkey", testUser.Passkey, "up_multiplier", testUser.UpMultiplier, "down_multiplier", testUser.DownMultiplier, "slots", testUser.Slots, "slots_used", testUser.SlotsUsed)
+	reply, err := testTx.Do("HMSET", hashkey,
+		"id", testUser.ID,
+		"passkey", testUser.Passkey,
+		"up_multiplier", testUser.UpMultiplier,
+		"down_multiplier", testUser.DownMultiplier,
+		"slots", testUser.Slots,
+		"slots_used", testUser.SlotsUsed)
+
 	if reply == nil {
 		b.Error("no hash fields added!")
 	}
@@ -314,7 +347,7 @@ func BenchmarkRedisTypesSchemaFindUser(b *testing.B) {
 
 	for bCount := 0; bCount < b.N; bCount++ {
 
-		compareUser, exists := ExampleRedisTypesSchemaFindUser(b)
+		compareUser, exists := ExampleRedisTypesSchemaFindUser(sample_passkey, b)
 
 		b.StopTimer()
 		if !exists {
