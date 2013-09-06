@@ -39,8 +39,8 @@ type DataStore struct {
 	Encoding string `json:"encoding,omitempty"`
 	Prefix   string `json:"prefix,omitempty"`
 
-	MaxIdleConn int       `json:"max_idle_conn,omitempty"`
-	IdleTimeout *Duration `json:"idle_timeout,omitempty"`
+	MaxIdleConns int       `json:"max_idle_conns,omitempty"`
+	IdleTimeout  *Duration `json:"idle_timeout,omitempty"`
 }
 
 // Config represents a configuration for a server.Server.

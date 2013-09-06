@@ -12,7 +12,7 @@
     "pass": "",
     "prefix": "test:",
 
-    "max_idle_conn": 3,
+    "max_idle_conns": 3,
     "idle_timeout": "240s"
   },
 

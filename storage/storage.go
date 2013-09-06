@@ -49,7 +49,8 @@ func Open(conf *config.DataStore) (Conn, error) {
 
 // Conn represents a connection to the data store.
 type Conn interface {
+	Start() error
 	Close() error
-	UpdateTorrents(t []models.Torrent) error
-	UpdateUsers(u []models.User) error
+	RecordAnnounce(delta *models.AnnounceDelta) error
+	RecordSnatch(peer *models.Peer) error
 }

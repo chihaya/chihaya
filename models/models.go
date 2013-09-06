@@ -36,3 +36,13 @@ type User struct {
 	Slots          int64   `json:"slots"`
 	SlotsUsed      int64   `json:"slots_used"`
 }
+
+type AnnounceDelta struct {
+	Peer    *Peer
+	Torrent *Torrent
+	User    *User
+
+	Uploaded   uint64
+	Downloaded uint64
+	Timestamp  float64
+}
