@@ -7,7 +7,6 @@
 package gazelle
 
 import (
-	"bytes"
 	"database/sql"
 	"fmt"
 	"sync"
@@ -39,11 +38,11 @@ func (d *driver) New(conf *config.DataStore) storage.Conn {
 	conn := &Conn{db: db}
 
 	// TODO Buffer sizes
-	conn.torrentChannel = make(chan *bytes.Buffer, 1000)
-	conn.userChannel = make(chan *bytes.Buffer, 1000)
-	conn.transferHistoryChannel = make(chan *bytes.Buffer, 1000)
-	conn.transferIpsChannel = make(chan *bytes.Buffer, 1000)
-	conn.snatchChannel = make(chan *bytes.Buffer, 100)
+	conn.torrentChannel = make(chan string, 1000)
+	conn.userChannel = make(chan string, 1000)
+	conn.transferHistoryChannel = make(chan string, 1000)
+	conn.transferIpsChannel = make(chan string, 1000)
+	conn.snatchChannel = make(chan string, 100)
 
 	return conn
 }
@@ -53,11 +52,11 @@ type Conn struct {
 	waitGroup sync.WaitGroup
 	terminate bool
 
-	torrentChannel         chan *bytes.Buffer
-	userChannel            chan *bytes.Buffer
-	transferHistoryChannel chan *bytes.Buffer
-	transferIpsChannel     chan *bytes.Buffer
-	snatchChannel          chan *bytes.Buffer
+	torrentChannel         chan string
+	userChannel            chan string
+	transferHistoryChannel chan string
+	transferIpsChannel     chan string
+	snatchChannel          chan string
 }
 
 func (c *Conn) Start() error {
@@ -76,6 +75,13 @@ func (c *Conn) Close() error {
 }
 
 func (c *Conn) RecordAnnounce(delta *models.AnnounceDelta) error {
+	c.torrentChannel <- fmt.Sprintf(
+		"('%s','%s','%s','%s','%s')",
+		delta.Torrent.ID,
+		len(delta.Torrent.Seeders),
+		len(delta.Torrent.Leechers),
+		delta.Torrent.LastAction,
+	)
 	return nil
 }
 

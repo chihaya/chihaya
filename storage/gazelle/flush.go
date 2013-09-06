@@ -23,11 +23,11 @@ func (c *Conn) flushTorrents() {
 		query.WriteString("INSERT INTO torrents (ID, Snatched, Seeders, Leechers, last_action) VALUES\n")
 
 		for count = 0; count < length; count++ {
-			b := <-c.torrentChannel
-			if b == nil {
+			s := <-c.torrentChannel
+			if s == "" {
 				break
 			}
-			query.Write(b.Bytes())
+			query.WriteString(s)
 
 			if count != length-1 {
 				query.WriteRune(',')
