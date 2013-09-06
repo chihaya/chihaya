@@ -35,7 +35,7 @@ func (d *driver) New(conf *config.DataStore) storage.Conn {
 	}
 	db.SetMaxIdleConns(conf.MaxIdleConns)
 
-	conn := &Conn{db: db}
+	conn := &Conn{DB: db}
 
 	// TODO Buffer sizes
 	conn.torrentChannel = make(chan string, 1000)
@@ -48,7 +48,6 @@ func (d *driver) New(conf *config.DataStore) storage.Conn {
 }
 
 type Conn struct {
-	db        *sql.DB
 	waitGroup sync.WaitGroup
 	terminate bool
 
@@ -57,6 +56,8 @@ type Conn struct {
 	transferHistoryChannel chan string
 	transferIpsChannel     chan string
 	snatchChannel          chan string
+
+	*sql.DB
 }
 
 func (c *Conn) Start() error {
@@ -71,7 +72,7 @@ func (c *Conn) Start() error {
 func (c *Conn) Close() error {
 	c.terminate = true
 	c.waitGroup.Wait()
-	return c.db.Close()
+	return c.DB.Close()
 }
 
 func (c *Conn) RecordAnnounce(delta *models.AnnounceDelta) error {

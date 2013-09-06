@@ -43,7 +43,7 @@ func (c *Conn) flushTorrents() {
 				"Seeders = VALUES(Seeders), Leechers = VALUES(Leechers), " +
 				"last_action = IF(last_action < VALUES(last_action), VALUES(last_action), last_action);")
 
-			c.db.Exec(query.String())
+			c.Exec(query.String())
 
 			if length < cap(c.torrentChannel)/2 {
 				time.Sleep(200 * time.Millisecond)
