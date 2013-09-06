@@ -45,4 +45,5 @@ type AnnounceDelta struct {
 	Uploaded   uint64
 	Downloaded uint64
 	Timestamp  float64
+	Snatched   bool
 }

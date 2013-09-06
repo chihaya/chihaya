@@ -75,9 +75,15 @@ func (c *Conn) Close() error {
 }
 
 func (c *Conn) RecordAnnounce(delta *models.AnnounceDelta) error {
+	snatchCount := 0
+	if delta.Snatched {
+		snatchCount = 1
+	}
+
 	c.torrentChannel <- fmt.Sprintf(
-		"('%s','%s','%s','%s','%s')",
+		"('%d','%d','%d','%d','%d')",
 		delta.Torrent.ID,
+		snatchCount,
 		len(delta.Torrent.Seeders),
 		len(delta.Torrent.Leechers),
 		delta.Torrent.LastAction,
