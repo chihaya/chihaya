@@ -52,5 +52,4 @@ type Conn interface {
 	Start() error
 	Close() error
 	RecordAnnounce(delta *models.AnnounceDelta) error
-	RecordSnatch(peer *models.Peer) error
 }

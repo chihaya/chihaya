@@ -16,6 +16,7 @@ import (
 	"github.com/pushrax/chihaya/server"
 
 	_ "github.com/pushrax/chihaya/cache/redis"
+	_ "github.com/pushrax/chihaya/storage/batter"
 	_ "github.com/pushrax/chihaya/storage/gazelle"
 )
 

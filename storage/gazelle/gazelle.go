@@ -33,7 +33,10 @@ func (d *driver) New(conf *config.DataStore) storage.Conn {
 	if err != nil {
 		panic("gazelle: failed to open connection to MySQL")
 	}
-	db.SetMaxIdleConns(conf.MaxIdleConns)
+
+	if conf.MaxIdleConns != 0 {
+		db.SetMaxIdleConns(conf.MaxIdleConns)
+	}
 
 	conn := &Conn{DB: db}
 
@@ -89,10 +92,6 @@ func (c *Conn) RecordAnnounce(delta *models.AnnounceDelta) error {
 		len(delta.Torrent.Leechers),
 		delta.Torrent.LastAction,
 	)
-	return nil
-}
-
-func (c *Conn) RecordSnatch(peer *models.Peer) error {
 	return nil
 }
 
