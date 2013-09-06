@@ -42,10 +42,12 @@ flag. An example configuration file can be found
 
 ### Running the tests
 
+The tests require a running redis server to function correctly, and a config to use for the tests.
+The `$TESTCONFIGPATH` environment variable is required for the tests to function:
+
 ```sh
-$ export TESTCONFIGPATH=$GOPATH/src/chihaya/config/example.json
-$ go get github.com/pushrax/chihaya
-$ go test -v ./...
+$ cd $GOPATH/src/github.com/pushrax/chihaya
+$ TESTCONFIGPATH=$GOPATH/src/github.com/pushrax/chihaya/config/example.json go test -v ./...
 ```
 
 ## Drivers
