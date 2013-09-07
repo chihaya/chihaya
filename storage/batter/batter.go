@@ -11,7 +11,6 @@ import (
 	"fmt"
 
 	"github.com/pushrax/chihaya/config"
-	"github.com/pushrax/chihaya/models"
 	"github.com/pushrax/chihaya/storage"
 
 	_ "github.com/bmizerany/pq"
@@ -48,7 +47,7 @@ func (c *Conn) Start() error {
 	return nil
 }
 
-func (c *Conn) RecordAnnounce(delta *models.AnnounceDelta) error {
+func (c *Conn) RecordAnnounce(delta *storage.AnnounceDelta) error {
 	return nil
 }
 

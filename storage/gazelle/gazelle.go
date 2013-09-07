@@ -12,7 +12,6 @@ import (
 	"sync"
 
 	"github.com/pushrax/chihaya/config"
-	"github.com/pushrax/chihaya/models"
 	"github.com/pushrax/chihaya/storage"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -78,7 +77,7 @@ func (c *Conn) Close() error {
 	return c.DB.Close()
 }
 
-func (c *Conn) RecordAnnounce(delta *models.AnnounceDelta) error {
+func (c *Conn) RecordAnnounce(delta *storage.AnnounceDelta) error {
 	snatchCount := 0
 	if delta.Snatched {
 		snatchCount = 1
