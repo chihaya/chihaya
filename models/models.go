@@ -5,23 +5,23 @@
 package models
 
 type Peer struct {
-	ID           string `json:"id"`
-	UserID       uint64 `json:"user_id"`
-	TorrentID    uint64 `json:"torrent_id"`
+	ID        string `json:"id"`
+	UserID    uint64 `json:"user_id"`
+	TorrentID uint64 `json:"torrent_id"`
 
 	IP   string `json:"ip"`
 	Port uint64 `json:"port"`
 
-	Uploaded   uint64 `json:"uploaded"`
-	Downloaded uint64 `json:"downloaded`
-	Left       uint64 `json:"left"`
+	Uploaded     uint64 `json:"uploaded"`
+	Downloaded   uint64 `json:"downloaded`
+	Left         uint64 `json:"left"`
 	LastAnnounce int64  `json:"last_announce"`
 }
 
 type Torrent struct {
-	ID         uint64 `json:"id"`
-	Infohash   string `json:"infohash"`
-	Active     bool   `json:"active"`
+	ID       uint64 `json:"id"`
+	Infohash string `json:"infohash"`
+	Active   bool   `json:"active"`
 
 	Seeders  map[string]Peer `json:"seeders"`
 	Leechers map[string]Peer `json:"leechers"`
@@ -29,7 +29,7 @@ type Torrent struct {
 	Snatches       uint    `json:"snatches"`
 	UpMultiplier   float64 `json:"up_multiplier"`
 	DownMultiplier float64 `json:"down_multiplier"`
-	LastAction int64  `json:"last_action"`
+	LastAction     int64   `json:"last_action"`
 }
 
 type User struct {
