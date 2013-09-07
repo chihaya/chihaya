@@ -11,7 +11,6 @@ import (
 	"fmt"
 
 	"github.com/pushrax/chihaya/config"
-	"github.com/pushrax/chihaya/models"
 	"github.com/pushrax/chihaya/storage"
 
 	_ "github.com/bmizerany/pq"
@@ -32,6 +31,11 @@ func (d *driver) New(conf *config.DataStore) storage.Conn {
 	if err != nil {
 		panic("batter: failed to open connection to postgres")
 	}
+
+	if conf.MaxIdleConns != 0 {
+		db.SetMaxIdleConns(conf.MaxIdleConns)
+	}
+
 	return &Conn{db}
 }
 
@@ -39,11 +43,11 @@ type Conn struct {
 	*sql.DB
 }
 
-func (c *Conn) UpdateTorrents(t []models.Torrent) error {
+func (c *Conn) Start() error {
 	return nil
 }
 
-func (c *Conn) UpdateUsers(u []models.User) error {
+func (c *Conn) RecordAnnounce(delta *storage.AnnounceDelta) error {
 	return nil
 }
 

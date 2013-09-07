@@ -31,7 +31,7 @@ func (d *driver) New(conf *config.DataStore) cache.Pool {
 	return &Pool{
 		conf: conf,
 		pool: redis.Pool{
-			MaxIdle:      conf.MaxIdleConn,
+			MaxIdle:      conf.MaxIdleConns,
 			IdleTimeout:  conf.IdleTimeout.Duration,
 			Dial:         makeDialFunc(conf),
 			TestOnBorrow: testOnBorrow,
