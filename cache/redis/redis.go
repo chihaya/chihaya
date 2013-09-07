@@ -14,7 +14,8 @@
 package redis
 
 import (
-	"encoding/json"
+	"errors"
+	"strconv"
 	"strings"
 	"time"
 
@@ -23,6 +24,18 @@ import (
 	"github.com/pushrax/chihaya/cache"
 	"github.com/pushrax/chihaya/config"
 	"github.com/pushrax/chihaya/models"
+)
+
+var (
+	ErrCreateUser    = errors.New("redis: Incorrect reply length for user")
+	ErrCreateTorrent = errors.New("redis: Incorrect reply length for torrent")
+	ErrCreatePeer    = errors.New("redis: Incorrect reply length for peer")
+	ErrMarkActive    = errors.New("redis: Torrent doesn't exist")
+
+	SeederSuffix  = ":seeders"
+	LeecherSuffix = ":leechers"
+	TorrentPrefix = "torrent:"
+	UserPrefix    = "user:"
 )
 
 type driver struct{}
@@ -65,27 +78,12 @@ func (p *Pool) Close() error {
 
 func (p *Pool) Get() (cache.Tx, error) {
 	return &Tx{
-		conf:  p.conf,
-		done:  false,
-		multi: false,
-		Conn:  p.pool.Get(),
+		conf: p.conf,
+		done: false,
+		Conn: p.pool.Get(),
 	}, nil
 }
 
-// Tx represents a transaction for Redis with one gotcha:
-// all reads must be done prior to any writes. Writes will
-// check if the MULTI command has been sent to redis and will
-// send it if it hasn't.
-//
-// Internally a transaction looks like:
-// WATCH keyA
-// GET keyA
-// WATCH keyB
-// GET keyB
-// MULTI
-// SET keyA
-// SET keyB
-// EXEC
 type Tx struct {
 	conf  *config.DataStore
 	done  bool
@@ -99,27 +97,6 @@ func (tx *Tx) close() {
 	}
 	tx.done = true
 	tx.Conn.Close()
-}
-
-func (tx *Tx) initiateWrite() error {
-	if tx.done {
-		return cache.ErrTxDone
-	}
-	if tx.multi != true {
-		tx.multi = true
-		return tx.Send("MULTI")
-	}
-	return nil
-}
-
-func (tx *Tx) initiateRead() error {
-	if tx.done {
-		return cache.ErrTxDone
-	}
-	if tx.multi == true {
-		panic("Tried to read during MULTI")
-	}
-	return nil
 }
 
 func (tx *Tx) Commit() error {
@@ -153,163 +130,324 @@ func (tx *Tx) Rollback() error {
 	return nil
 }
 
-func (tx *Tx) FindUser(passkey string) (*models.User, bool, error) {
-	err := tx.initiateRead()
-	if err != nil {
-		return nil, false, err
+func createUser(userVals []string) (*models.User, error) {
+	if len(userVals) != 7 {
+		return nil, ErrCreateUser
 	}
-
-	key := tx.conf.Prefix + "user:" + passkey
-	_, err = tx.Do("WATCH", key)
+	// This could be a loop+switch
+	ID, err := strconv.ParseUint(userVals[0], 10, 64)
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
-	reply, err := redis.String(tx.Do("GET", key))
+	Passkey := userVals[1]
+	UpMultiplier, err := strconv.ParseFloat(userVals[2], 64)
 	if err != nil {
-		if err == redis.ErrNil {
-			return nil, false, nil
-		}
-		return nil, false, err
+		return nil, err
 	}
-
-	user := &models.User{}
-	err = json.NewDecoder(strings.NewReader(reply)).Decode(user)
+	DownMultiplier, err := strconv.ParseFloat(userVals[3], 64)
 	if err != nil {
-		return nil, true, err
+		return nil, err
 	}
-	return user, true, nil
+	Slots, err := strconv.ParseInt(userVals[4], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	SlotsUsed, err := strconv.ParseInt(userVals[5], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	Snatches, err := strconv.ParseUint(userVals[6], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	return &models.User{ID, Passkey, UpMultiplier, DownMultiplier, Slots, SlotsUsed, uint(Snatches)}, nil
 }
 
-func (tx *Tx) FindTorrent(infohash string) (*models.Torrent, bool, error) {
-	err := tx.initiateRead()
-	if err != nil {
-		return nil, false, err
+func createTorrent(torrentVals []string, seeders map[string]models.Peer, leechers map[string]models.Peer) (*models.Torrent, error) {
+	if len(torrentVals) != 7 {
+		return nil, ErrCreateTorrent
 	}
+	ID, err := strconv.ParseUint(torrentVals[0], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	Infohash := torrentVals[1]
+	Active, err := strconv.ParseBool(torrentVals[2])
+	if err != nil {
+		return nil, err
+	}
+	Snatches, err := strconv.ParseUint(torrentVals[3], 10, 32)
+	if err != nil {
+		return nil, err
+	}
+	UpMultiplier, err := strconv.ParseFloat(torrentVals[4], 64)
+	if err != nil {
+		return nil, err
+	}
+	DownMultiplier, err := strconv.ParseFloat(torrentVals[5], 64)
+	if err != nil {
+		return nil, err
+	}
+	LastAction, err := strconv.ParseInt(torrentVals[6], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	return &models.Torrent{ID, Infohash, Active, seeders, leechers, uint(Snatches), UpMultiplier, DownMultiplier, LastAction}, nil
 
-	key := tx.conf.Prefix + "torrent:" + infohash
-	_, err = tx.Do("WATCH", key)
-	if err != nil {
-		return nil, false, err
-	}
-	reply, err := redis.String(tx.Do("GET", key))
-	if err != nil {
-		if err == redis.ErrNil {
-			return nil, false, nil
-		}
-		return nil, false, err
-	}
-
-	torrent := &models.Torrent{}
-	err = json.NewDecoder(strings.NewReader(reply)).Decode(torrent)
-	if err != nil {
-		return nil, true, err
-	}
-	return torrent, true, nil
 }
 
-func (tx *Tx) ClientWhitelisted(peerID string) (exists bool, err error) {
-	err = tx.initiateRead()
+// Prevents adding duplicate peers, and doesn't return error on dup add
+func (tx *Tx) addPeer(infohash string, peer *models.Peer, suffix string) error {
+	setKey := tx.conf.Prefix + TorrentPrefix + infohash + suffix
+	_, err := tx.Do("SADD", setKey, *peer)
 	if err != nil {
-		return false, err
-	}
-
-	key := tx.conf.Prefix + "whitelist"
-	_, err = tx.Do("WATCH", key)
-	if err != nil {
-		return
-	}
-
-	// TODO
-	return
-}
-
-func (tx *Tx) RecordSnatch(user *models.User, torrent *models.Torrent) error {
-	if err := tx.initiateWrite(); err != nil {
 		return err
 	}
-
-	// TODO
 	return nil
 }
 
-func (tx *Tx) MarkActive(t *models.Torrent) error {
-	if err := tx.initiateWrite(); err != nil {
+// Will not return an error if the peer doesn't exist
+func (tx *Tx) removePeer(infohash string, peer *models.Peer, suffix string) error {
+	setKey := tx.conf.Prefix + TorrentPrefix + infohash + suffix
+	_, err := tx.Do("SREM", setKey, *peer)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (tx *Tx) addPeers(infohash string, peers map[string]models.Peer, suffix string) error {
+	setKey := tx.conf.Prefix + TorrentPrefix + infohash + suffix
+	for _, peer := range peers {
+		err := tx.Send("SADD", setKey, peer)
+		if err != nil {
+			return err
+		}
+	}
+	tx.Flush()
+	tx.Receive()
+	return nil
+}
+
+func createPeer(peerString string) (*models.Peer, error) {
+	peerVals := strings.Split(strings.Trim(peerString, "{}"), " ")
+	if len(peerVals) != 9 {
+		return nil, ErrCreatePeer
+	}
+	ID := peerVals[0]
+	UserID, err := strconv.ParseUint(peerVals[1], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	TorrentID, err := strconv.ParseUint(peerVals[2], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	IP := peerVals[3]
+
+	Port, err := strconv.ParseUint(peerVals[4], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	Uploaded, err := strconv.ParseUint(peerVals[5], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	Downloaded, err := strconv.ParseUint(peerVals[6], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	Left, err := strconv.ParseUint(peerVals[7], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	LastAnnounce, err := strconv.ParseInt(peerVals[8], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	return &models.Peer{ID, UserID, TorrentID, IP, Port, Uploaded, Downloaded, Left, LastAnnounce}, nil
+
+}
+
+func (tx *Tx) getPeers(infohash string, suffix string) (peers map[string]models.Peer, err error) {
+	peers = make(map[string]models.Peer)
+	setKey := tx.conf.Prefix + TorrentPrefix + infohash + suffix
+	peerStrings, err := redis.Strings(tx.Do("SMEMBERS", setKey))
+	for peerIndex := range peerStrings {
+		peer, err := createPeer(peerStrings[peerIndex])
+		if err != nil {
+			return nil, err
+		}
+		peers[peer.ID] = *peer
+	}
+	return
+}
+
+func (tx *Tx) AddTorrent(t *models.Torrent) error {
+	hashkey := tx.conf.Prefix + TorrentPrefix + t.Infohash
+	_, err := tx.Do("HMSET", hashkey,
+		"id", t.ID,
+		"infohash", t.Infohash,
+		"active", t.Active,
+		"snatches", t.Snatches,
+		"up_multiplier", t.UpMultiplier,
+		"down_multiplier", t.DownMultiplier,
+		"last_action", t.LastAction)
+	if err != nil {
 		return err
 	}
 
-	// TODO
+	tx.addPeers(t.Infohash, t.Seeders, SeederSuffix)
+	tx.addPeers(t.Infohash, t.Leechers, LeecherSuffix)
+
+	return nil
+}
+
+func (tx *Tx) RemoveTorrent(t *models.Torrent) error {
+	hashkey := tx.conf.Prefix + TorrentPrefix + t.Infohash
+	_, err := tx.Do("HDEL", hashkey)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (tx *Tx) AddUser(u *models.User) error {
+	hashkey := tx.conf.Prefix + UserPrefix + u.Passkey
+	_, err := tx.Do("HMSET", hashkey,
+		"id", u.ID,
+		"passkey", u.Passkey,
+		"up_multiplier", u.UpMultiplier,
+		"down_multiplier", u.DownMultiplier,
+		"slots", u.Slots,
+		"slots_used", u.SlotsUsed,
+		"snatches", u.Snatches)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (tx *Tx) RemoveUser(u *models.User) error {
+	hashkey := tx.conf.Prefix + UserPrefix + u.Passkey
+	_, err := tx.Do("HDEL", hashkey)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (tx *Tx) FindUser(passkey string) (*models.User, bool, error) {
+	hashkey := tx.conf.Prefix + UserPrefix + passkey
+	userStrings, err := redis.Strings(tx.Do("HVALS", hashkey))
+	if err != nil {
+		return nil, false, err
+	} else if len(userStrings) == 0 {
+		return nil, false, nil
+	}
+	foundUser, err := createUser(userStrings)
+	if err != nil {
+		return nil, false, err
+	}
+	return foundUser, true, nil
+}
+
+func (tx *Tx) FindTorrent(infohash string) (*models.Torrent, bool, error) {
+	hashkey := tx.conf.Prefix + TorrentPrefix + infohash
+	torrentStrings, err := redis.Strings(tx.Do("HVALS", hashkey))
+	if err != nil {
+		return nil, false, err
+	} else if len(torrentStrings) == 0 {
+		return nil, false, nil
+	}
+
+	seeders, err := tx.getPeers(infohash, SeederSuffix)
+	leechers, err := tx.getPeers(infohash, LeecherSuffix)
+	foundTorrent, err := createTorrent(torrentStrings, seeders, leechers)
+	if err != nil {
+		return nil, false, err
+	}
+	return foundTorrent, true, nil
+}
+
+func (tx *Tx) ClientWhitelisted(peerID string) (exists bool, err error) {
+	key := tx.conf.Prefix + "whitelist"
+	return redis.Bool(tx.Do("ISMEMBER", key, peerID))
+}
+
+// This is a mulple action command, it's not internally atomic
+func (tx *Tx) RecordSnatch(user *models.User, torrent *models.Torrent) error {
+
+	torrentKey := tx.conf.Prefix + TorrentPrefix + torrent.Infohash
+	snatchCount, err := redis.Int(tx.Do("HINCRBY", torrentKey, 1))
+	if err != nil {
+		return err
+	}
+	torrent.Snatches = uint(snatchCount)
+
+	userKey := tx.conf.Prefix + TorrentPrefix + torrent.Infohash
+	snatchCount, err = redis.Int(tx.Do("HINCRBY", userKey, 1))
+	if err != nil {
+		return err
+	}
+	user.Snatches = uint(snatchCount)
+	return nil
+}
+
+func (tx *Tx) MarkActive(torrent *models.Torrent) error {
+	hashkey := tx.conf.Prefix + TorrentPrefix + torrent.Infohash
+	activeExists, err := redis.Int(tx.Do("HSET", hashkey, true))
+	if err != nil {
+		return err
+	}
+	// HSET returns 1 if hash didn't exist before
+	if activeExists == 1 {
+		return ErrMarkActive
+	}
 	return nil
 }
 
 func (tx *Tx) AddLeecher(t *models.Torrent, p *models.Peer) error {
-	if err := tx.initiateWrite(); err != nil {
-		return err
-	}
-
-	// TODO
-	return nil
+	return tx.addPeer(t.Infohash, p, LeecherSuffix)
 }
 
 func (tx *Tx) SetLeecher(t *models.Torrent, p *models.Peer) error {
-	if err := tx.initiateWrite(); err != nil {
-		return err
-	}
-
-	// TODO
-	return nil
+	return tx.addPeer(t.Infohash, p, LeecherSuffix)
 }
 
 func (tx *Tx) RemoveLeecher(t *models.Torrent, p *models.Peer) error {
-	if err := tx.initiateWrite(); err != nil {
-		return err
-	}
-
-	// TODO
-	return nil
+	return tx.removePeer(t.Infohash, p, LeecherSuffix)
 }
 
 func (tx *Tx) AddSeeder(t *models.Torrent, p *models.Peer) error {
-	if err := tx.initiateWrite(); err != nil {
-		return err
-	}
-
-	// TODO
-	return nil
+	return tx.addPeer(t.Infohash, p, SeederSuffix)
 }
 
 func (tx *Tx) SetSeeder(t *models.Torrent, p *models.Peer) error {
-	if err := tx.initiateWrite(); err != nil {
-		return err
-	}
-
-	// TODO
-	return nil
+	return tx.addPeer(t.Infohash, p, SeederSuffix)
 }
 
 func (tx *Tx) RemoveSeeder(t *models.Torrent, p *models.Peer) error {
-	if err := tx.initiateWrite(); err != nil {
-		return err
-	}
-
-	// TODO
-	return nil
+	return tx.removePeer(t.Infohash, p, SeederSuffix)
 }
 
 func (tx *Tx) IncrementSlots(u *models.User) error {
-	if err := tx.initiateWrite(); err != nil {
+	hashkey := tx.conf.Prefix + UserPrefix + u.Passkey
+	slotCount, err := redis.Int(tx.Do("HINCRBY", hashkey, 1))
+	if err != nil {
 		return err
 	}
-
-	// TODO
+	u.Slots = int64(slotCount)
 	return nil
 }
 
 func (tx *Tx) DecrementSlots(u *models.User) error {
-	if err := tx.initiateWrite(); err != nil {
+	hashkey := tx.conf.Prefix + UserPrefix + u.Passkey
+	slotCount, err := redis.Int(tx.Do("HINCRBY", hashkey, -1))
+	if err != nil {
 		return err
 	}
-
-	// TODO
+	u.Slots = int64(slotCount)
 	return nil
 }
 

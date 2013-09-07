@@ -5,13 +5,8 @@
 package redis
 
 import (
-	"encoding/json"
-	"math/rand"
 	"os"
-	"strconv"
-	"strings"
 	"testing"
-	"time"
 
 	"github.com/garyburd/redigo/redis"
 
@@ -22,6 +17,7 @@ import (
 
 // Maximum number of parallel retries; depends on system latency
 const MAX_RETRIES = 9000
+
 const sample_infohash = "58c290f4ea1efb3adcb8c1ed2643232117577bcd"
 const sample_passkey = "32426b162be0bce5428e7e36afaf734ae5afb355"
 
@@ -37,6 +33,28 @@ func verifyErrNil(err error, t TestReporter) {
 	if err != nil {
 		t.Error(err)
 	}
+}
+
+// Legacy JSON support for benching
+func (tx *Tx) initiateWrite() error {
+	if tx.done {
+		return cache.ErrTxDone
+	}
+	if tx.multi != true {
+		tx.multi = true
+		return tx.Send("MULTI")
+	}
+	return nil
+}
+
+func (tx *Tx) initiateRead() error {
+	if tx.done {
+		return cache.ErrTxDone
+	}
+	if tx.multi == true {
+		panic("Tried to read during MULTI")
+	}
+	return nil
 }
 
 func createTestTxObj(t TestReporter) *Tx {
@@ -71,22 +89,8 @@ func createTestTxObj(t TestReporter) *Tx {
 	return txObj
 }
 
-func createUserFromValues(userVals []string, t TestReporter) *models.User {
-	ID, err := strconv.ParseUint(userVals[0], 10, 64)
-	verifyErrNil(err, t)
-	Passkey := userVals[1]
-	UpMultiplier, err := strconv.ParseFloat(userVals[2], 64)
-	verifyErrNil(err, t)
-	DownMultiplier, err := strconv.ParseFloat(userVals[3], 64)
-	Slots, err := strconv.ParseInt(userVals[4], 10, 64)
-	verifyErrNil(err, t)
-	SlotsUsed, err := strconv.ParseInt(userVals[5], 10, 64)
-	verifyErrNil(err, t)
-	return &models.User{ID, Passkey, UpMultiplier, DownMultiplier, Slots, SlotsUsed}
-}
-
-func createUser() models.User {
-	testUser := models.User{214, "32426b162be0bce5428e7e36afaf734ae5afb355", 0.0, 0.0, 4, 2}
+func createTestUser() models.User {
+	testUser := models.User{214, "32426b162be0bce5428e7e36afaf734ae5afb355", 1.01, 1.0, 4, 2, 7}
 	return testUser
 }
 
@@ -105,7 +109,7 @@ func createLeechers() []models.Peer {
 	return testLeechers
 }
 
-func createTorrent() models.Torrent {
+func createTestTorrent() models.Torrent {
 
 	testSeeders := createSeeders()
 	testLeechers := createLeechers()
@@ -124,96 +128,6 @@ func createTorrent() models.Torrent {
 	return testTorrent
 }
 
-func createTorrentJson(t TestReporter) []byte {
-	jsonTorrent, err := json.Marshal(createTorrent())
-	verifyErrNil(err, t)
-	return jsonTorrent
-}
-
-func createUserJson(t TestReporter) []byte {
-	jsonUser, err := json.Marshal(createUser())
-	verifyErrNil(err, t)
-	return jsonUser
-}
-
-func ExampleJsonTransaction(testTx *Tx, retries int, t TestReporter) {
-	defer func() {
-		if err := recover(); err != nil {
-			t.Error(err)
-		}
-	}()
-	verifyErrNil(testTx.initiateRead(), t)
-	_, err := testTx.Do("WATCH", "testKeyA")
-	verifyErrNil(err, t)
-
-	_, err = redis.String(testTx.Do("GET", "testKeyA"))
-	if err != nil {
-		if err == redis.ErrNil {
-			t.Log("testKeyA does not exist yet")
-		} else {
-			t.Error(err)
-		}
-	}
-	_, err = testTx.Do("WATCH", "testKeyB")
-	verifyErrNil(err, t)
-
-	_, err = redis.String(testTx.Do("GET", "testKeyB"))
-	if err != nil {
-		if err == redis.ErrNil {
-			t.Log("testKeyB does not exist yet")
-		} else {
-			t.Error(err)
-		}
-	}
-
-	verifyErrNil(testTx.initiateWrite(), t)
-
-	// Generate random data to set
-	randGen := rand.New(rand.NewSource(time.Now().UnixNano()))
-	verifyErrNil(testTx.Send("SET", "testKeyA", strconv.Itoa(randGen.Int())), t)
-	verifyErrNil(testTx.Send("SET", "testKeyB", strconv.Itoa(randGen.Int())), t)
-
-	err = testTx.Commit()
-	// For parallel runs, there may be conflicts, retry until successful
-	if err == cache.ErrTxConflict && retries > 0 {
-		ExampleJsonTransaction(testTx, retries-1, t)
-		// Clear TxConflict, if retries max out, errors are already recorded
-		err = nil
-	} else if err == cache.ErrTxConflict {
-		t.Error("Conflict encountered, max retries reached")
-		t.Error(err)
-	}
-	verifyErrNil(err, t)
-}
-
-func ExampleJsonSchemaRemoveSeeder(torrent *models.Torrent, peer *models.Peer, t TestReporter) {
-	testTx := createTestTxObj(t)
-
-	verifyErrNil(testTx.initiateRead(), t)
-
-	key := testTx.conf.Prefix + "torrent:" + torrent.Infohash
-	_, err := testTx.Do("WATCH", key)
-	reply, err := redis.String(testTx.Do("GET", key))
-	if err != nil {
-		if err == redis.ErrNil {
-			t.Error("testTorrent does not exist")
-		} else {
-			t.Error(err)
-		}
-	}
-
-	verifyErrNil(json.NewDecoder(strings.NewReader(reply)).Decode(torrent), t)
-
-	delete(torrent.Seeders, "testPeerID2")
-
-	jsonTorrent, err := json.Marshal(torrent)
-	verifyErrNil(err, t)
-	verifyErrNil(testTx.initiateWrite(), t)
-	verifyErrNil(testTx.Send("SET", key, jsonTorrent), t)
-	verifyErrNil(testTx.Commit(), t)
-
-}
-
 func ExampleRedisTypeSchemaRemoveSeeder(torrent *models.Torrent, peer *models.Peer, t TestReporter) {
 	testTx := createTestTxObj(t)
 	setkey := testTx.conf.Prefix + "torrent:" + torrent.Infohash + ":seeders"
@@ -224,64 +138,70 @@ func ExampleRedisTypeSchemaRemoveSeeder(torrent *models.Torrent, peer *models.Pe
 	verifyErrNil(err, t)
 }
 
-func ExampleJsonSchemaFindUser(passkey string, t TestReporter) (*models.User, bool) {
-	testTx := createTestTxObj(t)
-
-	verifyErrNil(testTx.initiateRead(), t)
-
-	key := testTx.conf.Prefix + "user:" + passkey
-	_, err := testTx.Do("WATCH", key)
-	verifyErrNil(err, t)
-	reply, err := redis.String(testTx.Do("GET", key))
-	if err != nil {
-		if err == redis.ErrNil {
-			return nil, false
-		} else {
-			t.Error(err)
-		}
-	}
-
-	user := &models.User{}
-	verifyErrNil(json.NewDecoder(strings.NewReader(reply)).Decode(user), t)
-	return user, true
-}
-
 func ExampleRedisTypesSchemaFindUser(passkey string, t TestReporter) (*models.User, bool) {
 	testTx := createTestTxObj(t)
-	hashkey := testTx.conf.Prefix + "user_hash:" + sample_passkey
+	hashkey := testTx.conf.Prefix + UserPrefix + passkey
 	userVals, err := redis.Strings(testTx.Do("HVALS", hashkey))
-	if userVals == nil {
+	if len(userVals) == 0 {
 		return nil, false
 	}
 	verifyErrNil(err, t)
-	compareUser := createUserFromValues(userVals, t)
+	compareUser, err := createUser(userVals)
+	verifyErrNil(err, t)
 	return compareUser, true
 }
 
-func BenchmarkRedisJsonSchemaRemoveSeeder(b *testing.B) {
-	for bCount := 0; bCount < b.N; bCount++ {
-		b.StopTimer()
-		testTx := createTestTxObj(b)
-		testTorrent := createTorrent()
-		testSeeders := createSeeders()
-		key := testTx.conf.Prefix + "torrent:" + testTorrent.Infohash
-		// Benchmark setup not a transaction, not thread-safe
-		_, err := testTx.Do("SET", key, createTorrentJson(b))
-		verifyErrNil(err, b)
-		b.StartTimer()
+func TestFindUserSuccess(t *testing.T) {
+	testUser := createTestUser()
+	testTx := createTestTxObj(t)
+	hashkey := testTx.conf.Prefix + UserPrefix + sample_passkey
+	_, err := testTx.Do("DEL", hashkey)
+	verifyErrNil(err, t)
 
-		ExampleJsonSchemaRemoveSeeder(&testTorrent, &testSeeders[2], b)
+	err = testTx.AddUser(&testUser)
+	verifyErrNil(err, t)
+
+	compareUser, exists := ExampleRedisTypesSchemaFindUser(sample_passkey, t)
+
+	if !exists {
+		t.Error("User not found!")
+	}
+	if testUser != *compareUser {
+		t.Errorf("user mismatch: %v vs. %v", compareUser, testUser)
+	}
+}
+
+func TestFindUserFail(t *testing.T) {
+	compareUser, exists := ExampleRedisTypesSchemaFindUser("not_a_user_passkey", t)
+	if exists {
+		t.Errorf("User %v found when none should exist!", compareUser)
+	}
+}
+
+func TestAddGetPeers(t *testing.T) {
+
+	testTx := createTestTxObj(t)
+	testTorrent := createTestTorrent()
+
+	setkey := testTx.conf.Prefix + "torrent:" + testTorrent.Infohash + ":seeders"
+	testTx.Do("DEL", setkey)
+
+	testTx.addPeers(testTorrent.Infohash, testTorrent.Seeders, ":seeders")
+	peerMap, err := testTx.getPeers(sample_infohash, ":seeders")
+	if err != nil {
+		t.Error(err)
+	} else if len(peerMap) != len(testTorrent.Seeders) {
+		t.Error("Num Peers not equal")
 	}
 }
 
 func BenchmarkRedisTypesSchemaRemoveSeeder(b *testing.B) {
 	for bCount := 0; bCount < b.N; bCount++ {
-
 		// Ensure that remove completes successfully,
 		// even if it doesn't impact the performance
 		b.StopTimer()
 		testTx := createTestTxObj(b)
-		testTorrent := createTorrent()
+		testTorrent := createTestTorrent()
 		setkey := testTx.conf.Prefix + "torrent:" + testTorrent.Infohash + ":seeders"
 		testSeeders := createSeeders()
 		reply, err := redis.Int(testTx.Do("SADD", setkey,
@@ -300,37 +220,13 @@ func BenchmarkRedisTypesSchemaRemoveSeeder(b *testing.B) {
 	}
 }
 
-func BenchmarkRedisJsonSchemaFindUser(b *testing.B) {
-	// Ensure successful user find ( a failed lookup may have different performance )
-	b.StopTimer()
-	testTx := createTestTxObj(b)
-	testUser := createUser()
-	userJson := string(createUserJson(b))
-	verifyErrNil(testTx.initiateWrite(), b)
-	key := testTx.conf.Prefix + "user:" + sample_passkey
-	verifyErrNil(testTx.Send("SET", key, userJson), b)
-	verifyErrNil(testTx.Commit(), b)
-	b.StartTimer()
-	for bCount := 0; bCount < b.N; bCount++ {
-		compareUser, exists := ExampleJsonSchemaFindUser(sample_passkey, b)
-		b.StopTimer()
-		if !exists {
-			b.Error("User not found!")
-		}
-		if testUser != *compareUser {
-			b.Errorf("user mismatch: %v vs. %v", compareUser, testUser)
-		}
-		b.StartTimer()
-	}
-}
-
 func BenchmarkRedisTypesSchemaFindUser(b *testing.B) {
 
 	// Ensure successful user find ( a failed lookup may have different performance )
 	b.StopTimer()
-	testUser := createUser()
+	testUser := createTestUser()
 	testTx := createTestTxObj(b)
-	hashkey := testTx.conf.Prefix + "user_hash:" + sample_passkey
+	hashkey := testTx.conf.Prefix + UserPrefix + sample_passkey
 	reply, err := testTx.Do("HMSET", hashkey,
 		"id", testUser.ID,
 		"passkey", testUser.Passkey,
@@ -340,7 +236,7 @@ func BenchmarkRedisTypesSchemaFindUser(b *testing.B) {
 		"slots_used", testUser.SlotsUsed)
 
 	if reply == nil {
-		b.Error("no hash fields added!")
+		b.Log("no hash fields added!")
 	}
 	verifyErrNil(err, b)
 	b.StartTimer()
@@ -357,13 +253,6 @@ func BenchmarkRedisTypesSchemaFindUser(b *testing.B) {
 			b.Errorf("user mismatch: %v vs. %v", compareUser, testUser)
 		}
 		b.StartTimer()
-	}
-}
-
-func TestRedisTransaction(t *testing.T) {
-	for i := 0; i < 10; i++ {
-		// No retries for serial transactions
-		ExampleJsonTransaction(createTestTxObj(t), 0, t)
 	}
 }
 
@@ -390,102 +279,5 @@ func TestCloseClosedTransaction(t *testing.T) {
 
 	testTx := createTestTxObj(t)
 	testTx.close()
-	testTx.close()
-}
-
-func TestParallelTx0(t *testing.T) {
-	if testing.Short() {
-		t.SkipNow()
-	}
-	t.Parallel()
-
-	for i := 0; i < 20; i++ {
-		go ExampleJsonTransaction(createTestTxObj(t), MAX_RETRIES, t)
-		time.Sleep(1 * time.Millisecond)
-	}
-
-}
-
-func TestParallelTx1(t *testing.T) {
-	if testing.Short() {
-		t.SkipNow()
-	}
-	t.Parallel()
-	ExampleJsonTransaction(createTestTxObj(t), MAX_RETRIES, t)
-	for i := 0; i < 100; i++ {
-		go ExampleJsonTransaction(createTestTxObj(t), MAX_RETRIES, t)
-	}
-}
-
-func TestParallelTx2(t *testing.T) {
-	if testing.Short() {
-		t.SkipNow()
-	}
-	t.Parallel()
-	for i := 0; i < 100; i++ {
-		go ExampleJsonTransaction(createTestTxObj(t), MAX_RETRIES, t)
-	}
-	ExampleJsonTransaction(createTestTxObj(t), MAX_RETRIES, t)
-}
-
-// Just in case the above parallel tests didn't fail, force a failure here
-func TestParallelInterrupted(t *testing.T) {
-	t.Parallel()
-
-	testTx := createTestTxObj(t)
-	defer func() {
-		if err := recover(); err != nil {
-			t.Errorf("initiateRead() failed in parallel %s", err)
-		}
-	}()
-	verifyErrNil(testTx.initiateRead(), t)
-
-	_, err := testTx.Do("WATCH", "testKeyA")
-	verifyErrNil(err, t)
-
-	testValueA, err := redis.String(testTx.Do("GET", "testKeyA"))
-	if err != nil {
-		if err == redis.ErrNil {
-			t.Log("redis.ErrNil")
-		} else {
-			t.Error(err)
-		}
-	}
-
-	_, err = testTx.Do("WATCH", "testKeyB")
-	if err != nil {
-		if err == redis.ErrNil {
-			t.Log("redis.ErrNil")
-		} else {
-			t.Error(err)
-		}
-	}
-
-	testValueB, err := redis.String(testTx.Do("GET", "testKeyB"))
-	if err != nil {
-		if err == redis.ErrNil {
-			t.Log("redis.ErrNil")
-		} else {
-			t.Error(err)
-		}
-	}
-	// Stand in for what real updates would do
-	testValueB = testValueB + "+updates"
-	testValueA = testValueA + "+updates"
-
-	// Simulating another client interrupts transaction, causing exec to fail
-	ExampleJsonTransaction(createTestTxObj(t), MAX_RETRIES, t)
-
-	verifyErrNil(testTx.initiateWrite(), t)
-	verifyErrNil(testTx.Send("SET", "testKeyA", testValueA), t)
-	verifyErrNil(testTx.Send("SET", "testKeyB", testValueB), t)
-
-	keys, err := (testTx.Do("EXEC"))
-	// Expect error
-	if keys != nil {
-		t.Error("Keys not nil; exec should have been interrupted")
-	}
-	verifyErrNil(err, t)
-
 	testTx.close()
 }

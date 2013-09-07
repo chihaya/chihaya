@@ -82,4 +82,8 @@ type Tx interface {
 	SetSeeder(t *models.Torrent, p *models.Peer) error
 	IncrementSlots(u *models.User) error
 	DecrementSlots(u *models.User) error
+	AddTorrent(t *models.Torrent) error
+	RemoveTorrent(t *models.Torrent) error
+	AddUser(u *models.User) error
+	RemoveUser(u *models.User) error
 }

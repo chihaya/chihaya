@@ -40,4 +40,5 @@ type User struct {
 	DownMultiplier float64 `json:"down_multiplier"`
 	Slots          int64   `json:"slots"`
 	SlotsUsed      int64   `json:"slots_used"`
+	Snatches       uint    `json:"snatches"`
 }
