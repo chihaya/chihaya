@@ -197,12 +197,6 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 			peer.IP = ip
 		}
 
-		// If the transaction failed, retry
-		err = tx.Commit()
-		if err != nil {
-			continue
-		}
-
 		// Generate the response
 		seedCount := len(torrent.Seeders)
 		leechCount := len(torrent.Leechers)

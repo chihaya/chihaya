@@ -16,7 +16,6 @@ package redis
 import (
 	"errors"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/garyburd/redigo/redis"
@@ -32,10 +31,11 @@ var (
 	ErrCreatePeer    = errors.New("redis: Incorrect reply length for peer")
 	ErrMarkActive    = errors.New("redis: Torrent doesn't exist")
 
-	SeederSuffix  = ":seeders"
-	LeecherSuffix = ":leechers"
+	SeederPrefix  = "seeders:"
+	LeecherPrefix = "leechers:"
 	TorrentPrefix = "torrent:"
 	UserPrefix    = "user:"
+	PeerPrefix    = "peer:"
 )
 
 type driver struct{}
@@ -77,11 +77,15 @@ func (p *Pool) Close() error {
 }
 
 func (p *Pool) Get() (cache.Tx, error) {
-	return &Tx{
+	retTx := &Tx{
 		conf: p.conf,
 		done: false,
 		Conn: p.pool.Get(),
-	}, nil
+	}
+	// Test valid connection before returning
+	_, err := retTx.Do("PING")
+
+	return retTx, err
 }
 
 type Tx struct {
@@ -97,37 +101,6 @@ func (tx *Tx) close() {
 	}
 	tx.done = true
 	tx.Conn.Close()
-}
-
-func (tx *Tx) Commit() error {
-	if tx.done {
-		return cache.ErrTxDone
-	}
-	if tx.multi == true {
-		execResponse, err := tx.Do("EXEC")
-		if execResponse == nil {
-			tx.multi = false
-			return cache.ErrTxConflict
-		}
-		if err != nil {
-			return err
-		}
-	}
-	tx.close()
-	return nil
-}
-
-func (tx *Tx) Rollback() error {
-	if tx.done {
-		return cache.ErrTxDone
-	}
-	// Undoes watches and multi
-	if _, err := tx.Do("DISCARD"); err != nil {
-		return err
-	}
-	tx.multi = false
-	tx.close()
-	return nil
 }
 
 func createUser(userVals []string) (*models.User, error) {
@@ -163,7 +136,7 @@ func createUser(userVals []string) (*models.User, error) {
 	return &models.User{ID, Passkey, UpMultiplier, DownMultiplier, Slots, SlotsUsed, uint(Snatches)}, nil
 }
 
-func createTorrent(torrentVals []string, seeders map[string]models.Peer, leechers map[string]models.Peer) (*models.Torrent, error) {
+func (tx *Tx) createTorrent(torrentVals []string) (*models.Torrent, error) {
 	if len(torrentVals) != 7 {
 		return nil, ErrCreateTorrent
 	}
@@ -192,14 +165,32 @@ func createTorrent(torrentVals []string, seeders map[string]models.Peer, leecher
 	if err != nil {
 		return nil, err
 	}
-	return &models.Torrent{ID, Infohash, Active, seeders, leechers, uint(Snatches), UpMultiplier, DownMultiplier, LastAction}, nil
+	seeders, err := tx.getPeers(ID, SeederPrefix)
+	if err != nil {
+		return nil, err
+	}
+	leechers, err := tx.getPeers(ID, LeecherPrefix)
+	if err != nil {
+		return nil, err
+	}
 
+	return &models.Torrent{ID, Infohash, Active, seeders, leechers, uint(Snatches), UpMultiplier, DownMultiplier, LastAction}, nil
 }
 
-// Prevents adding duplicate peers, and doesn't return error on dup add
-func (tx *Tx) addPeer(infohash string, peer *models.Peer, suffix string) error {
-	setKey := tx.conf.Prefix + TorrentPrefix + infohash + suffix
-	_, err := tx.Do("SADD", setKey, *peer)
+// hashkey relies on combination of peerID, userID, and torrentID being unique
+func (tx *Tx) setPeer(peer *models.Peer, peerTypePrefix string) error {
+	hashKey := tx.conf.Prefix + peerTypePrefix + getPeerHashKey(peer)
+	_, err := tx.Do("HMSET", hashKey,
+		"id", peer.ID,
+		"user_id", peer.UserID,
+		"torrent_id", peer.TorrentID,
+		"ip", peer.IP,
+		"port", peer.Port,
+		"uploaded", peer.Uploaded,
+		"downloaded", peer.Downloaded,
+		"left", peer.Left,
+		"last_announce", peer.LastAnnounce)
+
 	if err != nil {
 		return err
 	}
@@ -207,8 +198,8 @@ func (tx *Tx) addPeer(infohash string, peer *models.Peer, suffix string) error {
 }
 
 // Will not return an error if the peer doesn't exist
-func (tx *Tx) removePeer(infohash string, peer *models.Peer, suffix string) error {
-	setKey := tx.conf.Prefix + TorrentPrefix + infohash + suffix
+func (tx *Tx) removePeer(peer *models.Peer, peerTypePrefix string) error {
+	setKey := tx.conf.Prefix + peerTypePrefix + strconv.FormatUint(peer.TorrentID, 36)
 	_, err := tx.Do("SREM", setKey, *peer)
 	if err != nil {
 		return err
@@ -216,21 +207,42 @@ func (tx *Tx) removePeer(infohash string, peer *models.Peer, suffix string) erro
 	return nil
 }
 
-func (tx *Tx) addPeers(infohash string, peers map[string]models.Peer, suffix string) error {
-	setKey := tx.conf.Prefix + TorrentPrefix + infohash + suffix
+func (tx *Tx) removePeers(torrentID uint64, peers map[string]models.Peer, peerTypePrefix string) error {
 	for _, peer := range peers {
-		err := tx.Send("SADD", setKey, peer)
+		hashKey := tx.conf.Prefix + peerTypePrefix + getPeerHashKey(&peer)
+		_, err := tx.Do("DEL", hashKey)
 		if err != nil {
 			return err
 		}
+		delete(peers, peer.ID)
 	}
-	tx.Flush()
-	tx.Receive()
+	// Only delete the set if all the peer deletions were successful
+	setKey := tx.conf.Prefix + peerTypePrefix + strconv.FormatUint(torrentID, 36)
+	_, err := tx.Do("DEL", setKey)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func createPeer(peerString string) (*models.Peer, error) {
-	peerVals := strings.Split(strings.Trim(peerString, "{}"), " ")
+func getPeerHashKey(peer *models.Peer) string {
+	return peer.ID + ":" + strconv.FormatUint(peer.UserID, 36) + ":" + strconv.FormatUint(peer.TorrentID, 36)
+}
+
+func (tx *Tx) addPeers(peers map[string]models.Peer, peerTypePrefix string) error {
+	for _, peer := range peers {
+		setKey := tx.conf.Prefix + peerTypePrefix + strconv.FormatUint(peer.TorrentID, 36)
+		_, err := tx.Do("SADD", setKey, getPeerHashKey(&peer))
+		if err != nil {
+			return err
+		}
+		tx.setPeer(&peer, peerTypePrefix)
+	}
+	return nil
+}
+
+func createPeer(peerVals []string) (*models.Peer, error) {
 	if len(peerVals) != 9 {
 		return nil, ErrCreatePeer
 	}
@@ -269,12 +281,21 @@ func createPeer(peerString string) (*models.Peer, error) {
 
 }
 
-func (tx *Tx) getPeers(infohash string, suffix string) (peers map[string]models.Peer, err error) {
+func (tx *Tx) getPeers(torrentID uint64, peerTypePrefix string) (peers map[string]models.Peer, err error) {
 	peers = make(map[string]models.Peer)
-	setKey := tx.conf.Prefix + TorrentPrefix + infohash + suffix
+	setKey := tx.conf.Prefix + peerTypePrefix + strconv.FormatUint(torrentID, 36)
 	peerStrings, err := redis.Strings(tx.Do("SMEMBERS", setKey))
-	for peerIndex := range peerStrings {
-		peer, err := createPeer(peerStrings[peerIndex])
+	if err != nil {
+		return peers, err
+	}
+	// Keys map to peer objects stored in hashes
+	for _, peerHashKey := range peerStrings {
+		hashKey := tx.conf.Prefix + peerTypePrefix + peerHashKey
+		peerVals, err := redis.Strings(tx.Do("HVALS", hashKey))
+		if err != nil {
+			return peers, err
+		}
+		peer, err := createPeer(peerVals)
 		if err != nil {
 			return nil, err
 		}
@@ -297,18 +318,28 @@ func (tx *Tx) AddTorrent(t *models.Torrent) error {
 		return err
 	}
 
-	tx.addPeers(t.Infohash, t.Seeders, SeederSuffix)
-	tx.addPeers(t.Infohash, t.Leechers, LeecherSuffix)
+	tx.addPeers(t.Seeders, SeederPrefix)
+	tx.addPeers(t.Leechers, LeecherPrefix)
 
 	return nil
 }
 
 func (tx *Tx) RemoveTorrent(t *models.Torrent) error {
 	hashkey := tx.conf.Prefix + TorrentPrefix + t.Infohash
-	_, err := tx.Do("HDEL", hashkey)
+	_, err := tx.Do("DEL", hashkey)
 	if err != nil {
 		return err
 	}
+	// Remove seeders and leechers as well
+	err = tx.removePeers(t.ID, t.Seeders, SeederPrefix)
+	if err != nil {
+		return err
+	}
+	err = tx.removePeers(t.ID, t.Leechers, LeecherPrefix)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -330,7 +361,7 @@ func (tx *Tx) AddUser(u *models.User) error {
 
 func (tx *Tx) RemoveUser(u *models.User) error {
 	hashkey := tx.conf.Prefix + UserPrefix + u.Passkey
-	_, err := tx.Do("HDEL", hashkey)
+	_, err := tx.Do("DEL", hashkey)
 	if err != nil {
 		return err
 	}
@@ -352,6 +383,7 @@ func (tx *Tx) FindUser(passkey string) (*models.User, bool, error) {
 	return foundUser, true, nil
 }
 
+// This is a mulple action command, it's not internally atomic
 func (tx *Tx) FindTorrent(infohash string) (*models.Torrent, bool, error) {
 	hashkey := tx.conf.Prefix + TorrentPrefix + infohash
 	torrentStrings, err := redis.Strings(tx.Do("HVALS", hashkey))
@@ -361,9 +393,7 @@ func (tx *Tx) FindTorrent(infohash string) (*models.Torrent, bool, error) {
 		return nil, false, nil
 	}
 
-	seeders, err := tx.getPeers(infohash, SeederSuffix)
-	leechers, err := tx.getPeers(infohash, LeecherSuffix)
-	foundTorrent, err := createTorrent(torrentStrings, seeders, leechers)
+	foundTorrent, err := tx.createTorrent(torrentStrings)
 	if err != nil {
 		return nil, false, err
 	}
@@ -372,7 +402,19 @@ func (tx *Tx) FindTorrent(infohash string) (*models.Torrent, bool, error) {
 
 func (tx *Tx) ClientWhitelisted(peerID string) (exists bool, err error) {
 	key := tx.conf.Prefix + "whitelist"
-	return redis.Bool(tx.Do("ISMEMBER", key, peerID))
+	return redis.Bool(tx.Do("SISMEMBER", key, peerID))
+}
+
+func (tx *Tx) WhitelistClient(peerID string) error {
+	key := tx.conf.Prefix + "whitelist"
+	_, err := tx.Do("SADD", key, peerID)
+	return err
+}
+
+func (tx *Tx) UnWhitelistClient(peerID string) error {
+	key := tx.conf.Prefix + "whitelist"
+	_, err := tx.Do("SREM", key, peerID)
+	return err
 }
 
 // This is a mulple action command, it's not internally atomic
@@ -407,28 +449,66 @@ func (tx *Tx) MarkActive(torrent *models.Torrent) error {
 	return nil
 }
 
-func (tx *Tx) AddLeecher(t *models.Torrent, p *models.Peer) error {
-	return tx.addPeer(t.Infohash, p, LeecherSuffix)
+func (tx *Tx) AddLeecher(torrent *models.Torrent, peer *models.Peer) error {
+	setKey := tx.conf.Prefix + LeecherPrefix + strconv.FormatUint(torrent.ID, 36)
+	_, err := tx.Do("SADD", setKey, getPeerHashKey(peer))
+	if err != nil {
+		return err
+	}
+	err = tx.setPeer(peer, LeecherPrefix)
+	if err != nil {
+		return err
+	}
+	if torrent.Leechers == nil {
+		torrent.Leechers = make(map[string]models.Peer)
+	}
+	torrent.Leechers[peer.ID] = *peer
+	return nil
 }
 
+// Setting assumes it is already a leecher, and just needs to be updated
+// Maybe eventually there will be a move from leecher to seeder method
 func (tx *Tx) SetLeecher(t *models.Torrent, p *models.Peer) error {
-	return tx.addPeer(t.Infohash, p, LeecherSuffix)
+	return tx.setPeer(p, LeecherPrefix)
 }
 
 func (tx *Tx) RemoveLeecher(t *models.Torrent, p *models.Peer) error {
-	return tx.removePeer(t.Infohash, p, LeecherSuffix)
+	err := tx.removePeer(p, LeecherPrefix)
+	if err != nil {
+		return err
+	}
+	delete(t.Leechers, p.ID)
+	return nil
 }
 
-func (tx *Tx) AddSeeder(t *models.Torrent, p *models.Peer) error {
-	return tx.addPeer(t.Infohash, p, SeederSuffix)
+func (tx *Tx) AddSeeder(torrent *models.Torrent, peer *models.Peer) error {
+	setKey := tx.conf.Prefix + SeederPrefix + strconv.FormatUint(torrent.ID, 36)
+	_, err := tx.Do("SADD", setKey, getPeerHashKey(peer))
+	if err != nil {
+		return err
+	}
+	err = tx.setPeer(peer, SeederPrefix)
+	if err != nil {
+		return err
+	}
+	if torrent.Seeders == nil {
+		torrent.Seeders = make(map[string]models.Peer)
+	}
+	torrent.Seeders[peer.ID] = *peer
+	return nil
 }
 
 func (tx *Tx) SetSeeder(t *models.Torrent, p *models.Peer) error {
-	return tx.addPeer(t.Infohash, p, SeederSuffix)
+	return tx.setPeer(p, SeederPrefix)
 }
 
 func (tx *Tx) RemoveSeeder(t *models.Torrent, p *models.Peer) error {
-	return tx.removePeer(t.Infohash, p, SeederSuffix)
+	err := tx.removePeer(p, SeederPrefix)
+	if err != nil {
+		return err
+	}
+	delete(t.Seeders, p.ID)
+	return nil
 }
 
 func (tx *Tx) IncrementSlots(u *models.User) error {

@@ -5,21 +5,56 @@
 package redis
 
 import (
+	"crypto/rand"
+	"io"
 	"os"
+	"strconv"
 	"testing"
 
 	"github.com/garyburd/redigo/redis"
 
-	"github.com/pushrax/chihaya/cache"
 	"github.com/pushrax/chihaya/config"
 	"github.com/pushrax/chihaya/models"
 )
 
-// Maximum number of parallel retries; depends on system latency
-const MAX_RETRIES = 9000
+var (
+	testTorrentIDCounter uint64
+	testUserIDCounter    uint64
+	testPeerIDCounter    int
+)
 
-const sample_infohash = "58c290f4ea1efb3adcb8c1ed2643232117577bcd"
-const sample_passkey = "32426b162be0bce5428e7e36afaf734ae5afb355"
+func createTestTorrentID() uint64 {
+	testTorrentIDCounter++
+	return testTorrentIDCounter
+}
+
+func createTestUserID() uint64 {
+	testUserIDCounter++
+	return testUserIDCounter
+}
+
+func createTestPeerID() string {
+	testPeerIDCounter++
+	return "-testPeerID-" + strconv.Itoa(testPeerIDCounter)
+}
+
+func createTestInfohash() string {
+	uuid := make([]byte, 40)
+	n, err := io.ReadFull(rand.Reader, uuid)
+	if n != len(uuid) || err != nil {
+		panic(err)
+	}
+	return string(uuid)
+}
+
+func createTestPasskey() string {
+	uuid := make([]byte, 40)
+	n, err := io.ReadFull(rand.Reader, uuid)
+	if n != len(uuid) || err != nil {
+		panic(err)
+	}
+	return string(uuid)
+}
 
 // Common interface for benchmarks and test error reporting
 type TestReporter interface {
@@ -33,28 +68,6 @@ func verifyErrNil(err error, t TestReporter) {
 	if err != nil {
 		t.Error(err)
 	}
-}
-
-// Legacy JSON support for benching
-func (tx *Tx) initiateWrite() error {
-	if tx.done {
-		return cache.ErrTxDone
-	}
-	if tx.multi != true {
-		tx.multi = true
-		return tx.Send("MULTI")
-	}
-	return nil
-}
-
-func (tx *Tx) initiateRead() error {
-	if tx.done {
-		return cache.ErrTxDone
-	}
-	if tx.multi == true {
-		panic("Tried to read during MULTI")
-	}
-	return nil
 }
 
 func createTestTxObj(t TestReporter) *Tx {
@@ -72,8 +85,6 @@ func createTestTxObj(t TestReporter) *Tx {
 		},
 	}
 
-	//testDialFunc := makeDialFunc(&testConfig.Cache)
-	//testConn, err := testDialFunc()
 	txObj := &Tx{
 		conf:  testPool.conf,
 		done:  false,
@@ -83,85 +94,53 @@ func createTestTxObj(t TestReporter) *Tx {
 	verifyErrNil(err, t)
 
 	// Test connection before returning
-	//txObj := Tx{&testConfig.Cache, false, false, testConn}
 	_, err = txObj.Do("PING")
 	verifyErrNil(err, t)
 	return txObj
 }
 
 func createTestUser() models.User {
-	testUser := models.User{214, "32426b162be0bce5428e7e36afaf734ae5afb355", 1.01, 1.0, 4, 2, 7}
+	testUser := models.User{createTestUserID(), createTestPasskey(), 1.01, 1.0, 4, 2, 7}
 	return testUser
 }
 
-func createSeeders() []models.Peer {
-	testSeeders := make([]models.Peer, 4)
-	testSeeders[0] = models.Peer{"testPeerID0", 57005, 48879, "testIP", 6889, 1024, 3000, 4200, 6}
-	testSeeders[1] = models.Peer{"testPeerID1", 10101, 48879, "testIP", 6889, 1024, 3000, 4200, 6}
-	testSeeders[2] = models.Peer{"testPeerID2", 29890, 48879, "testIP", 6889, 1024, 3000, 4200, 6}
-	testSeeders[3] = models.Peer{"testPeerID3", 65261, 48879, "testIP", 6889, 1024, 3000, 4200, 6}
-	return testSeeders
+func createTestPeer(userID uint64, torrentID uint64) models.Peer {
+
+	return models.Peer{createTestPeerID(), userID, torrentID, "127.0.0.1", 6889, 1024, 3000, 4200, 11}
 }
 
-func createLeechers() []models.Peer {
-	testLeechers := make([]models.Peer, 1)
-	testLeechers[0] = models.Peer{"testPeerID", 11111, 48879, "testIP", 6889, 1024, 3000, 4200, 6}
-	return testLeechers
+func createTestPeers(torrentID uint64, num int) map[string]models.Peer {
+	testPeers := make(map[string]models.Peer)
+	for i := 0; i < num; i++ {
+		tempPeer := createTestPeer(createTestUserID(), torrentID)
+		testPeers[tempPeer.ID] = tempPeer
+	}
+	return testPeers
 }
 
 func createTestTorrent() models.Torrent {
 
-	testSeeders := createSeeders()
-	testLeechers := createLeechers()
+	torrentInfohash := createTestInfohash()
+	torrentID := createTestTorrentID()
 
-	seeders := make(map[string]models.Peer)
-	for i := range testSeeders {
-		seeders[testSeeders[i].ID] = testSeeders[i]
-	}
+	testSeeders := createTestPeers(torrentID, 4)
+	testLeechers := createTestPeers(torrentID, 2)
 
-	leechers := make(map[string]models.Peer)
-	for i := range testLeechers {
-		leechers[testLeechers[i].ID] = testLeechers[i]
-	}
-
-	testTorrent := models.Torrent{48879, sample_infohash, true, seeders, leechers, 11, 0.0, 0.0, 0}
+	testTorrent := models.Torrent{torrentID, torrentInfohash, true, testSeeders, testLeechers, 11, 0.0, 0.0, 0}
 	return testTorrent
-}
-
-func ExampleRedisTypeSchemaRemoveSeeder(torrent *models.Torrent, peer *models.Peer, t TestReporter) {
-	testTx := createTestTxObj(t)
-	setkey := testTx.conf.Prefix + "torrent:" + torrent.Infohash + ":seeders"
-	reply, err := redis.Int(testTx.Do("SREM", setkey, *peer))
-	if reply == 0 {
-		t.Errorf("remove %v failed", *peer)
-	}
-	verifyErrNil(err, t)
-}
-
-func ExampleRedisTypesSchemaFindUser(passkey string, t TestReporter) (*models.User, bool) {
-	testTx := createTestTxObj(t)
-	hashkey := testTx.conf.Prefix + UserPrefix + passkey
-	userVals, err := redis.Strings(testTx.Do("HVALS", hashkey))
-	if len(userVals) == 0 {
-		return nil, false
-	}
-	verifyErrNil(err, t)
-	compareUser, err := createUser(userVals)
-	verifyErrNil(err, t)
-	return compareUser, true
 }
 
 func TestFindUserSuccess(t *testing.T) {
 	testUser := createTestUser()
 	testTx := createTestTxObj(t)
-	hashkey := testTx.conf.Prefix + UserPrefix + sample_passkey
+	hashkey := testTx.conf.Prefix + UserPrefix + testUser.Passkey
 	_, err := testTx.Do("DEL", hashkey)
 	verifyErrNil(err, t)
 
 	err = testTx.AddUser(&testUser)
 	verifyErrNil(err, t)
 
-	compareUser, exists := ExampleRedisTypesSchemaFindUser(sample_passkey, t)
+	compareUser, exists := ExampleRedisTypesSchemaFindUser(testUser.Passkey, t)
 
 	if !exists {
 		t.Error("User not found!")
@@ -183,11 +162,11 @@ func TestAddGetPeers(t *testing.T) {
 	testTx := createTestTxObj(t)
 	testTorrent := createTestTorrent()
 
-	setkey := testTx.conf.Prefix + "torrent:" + testTorrent.Infohash + ":seeders"
+	setkey := testTx.conf.Prefix + SeederPrefix + strconv.FormatUint(testTorrent.ID, 36)
 	testTx.Do("DEL", setkey)
 
-	testTx.addPeers(testTorrent.Infohash, testTorrent.Seeders, ":seeders")
-	peerMap, err := testTx.getPeers(sample_infohash, ":seeders")
+	testTx.addPeers(testTorrent.Seeders, SeederPrefix)
+	peerMap, err := testTx.getPeers(testTorrent.ID, SeederPrefix)
 	if err != nil {
 		t.Error(err)
 	} else if len(peerMap) != len(testTorrent.Seeders) {
@@ -195,67 +174,7 @@ func TestAddGetPeers(t *testing.T) {
 	}
 }
 
-func BenchmarkRedisTypesSchemaRemoveSeeder(b *testing.B) {
-	for bCount := 0; bCount < b.N; bCount++ {
-		// Ensure that remove completes successfully,
-		// even if it doesn't impact the performance
-		b.StopTimer()
-		testTx := createTestTxObj(b)
-		testTorrent := createTestTorrent()
-		setkey := testTx.conf.Prefix + "torrent:" + testTorrent.Infohash + ":seeders"
-		testSeeders := createSeeders()
-		reply, err := redis.Int(testTx.Do("SADD", setkey,
-			testSeeders[0],
-			testSeeders[1],
-			testSeeders[2],
-			testSeeders[3]))
-
-		if reply == 0 {
-			b.Log("no keys added!")
-		}
-		verifyErrNil(err, b)
-		b.StartTimer()
-
-		ExampleRedisTypeSchemaRemoveSeeder(&testTorrent, &testSeeders[2], b)
-	}
-}
-
-func BenchmarkRedisTypesSchemaFindUser(b *testing.B) {
-
-	// Ensure successful user find ( a failed lookup may have different performance )
-	b.StopTimer()
-	testUser := createTestUser()
-	testTx := createTestTxObj(b)
-	hashkey := testTx.conf.Prefix + UserPrefix + sample_passkey
-	reply, err := testTx.Do("HMSET", hashkey,
-		"id", testUser.ID,
-		"passkey", testUser.Passkey,
-		"up_multiplier", testUser.UpMultiplier,
-		"down_multiplier", testUser.DownMultiplier,
-		"slots", testUser.Slots,
-		"slots_used", testUser.SlotsUsed)
-
-	if reply == nil {
-		b.Log("no hash fields added!")
-	}
-	verifyErrNil(err, b)
-	b.StartTimer()
-
-	for bCount := 0; bCount < b.N; bCount++ {
-
-		compareUser, exists := ExampleRedisTypesSchemaFindUser(sample_passkey, b)
-
-		b.StopTimer()
-		if !exists {
-			b.Error("User not found!")
-		}
-		if testUser != *compareUser {
-			b.Errorf("user mismatch: %v vs. %v", compareUser, testUser)
-		}
-		b.StartTimer()
-	}
-}
-
+// Legacy tests
 func TestReadAfterWrite(t *testing.T) {
 	// Test requires panic
 	defer func() {
