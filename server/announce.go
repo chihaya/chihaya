@@ -170,11 +170,7 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 				log.Panicf("server: %s", err)
 			}
 			if leecher {
-				err := tx.RemoveLeecher(torrent, peer)
-				if err != nil {
-					log.Panicf("server: %s", err)
-				}
-				err = tx.AddSeeder(torrent, peer)
+				err := tx.LeecherFinished(torrent, peer)
 				if err != nil {
 					log.Panicf("server: %s", err)
 				}
@@ -182,11 +178,7 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 
 		case leecher && left == 0:
 			// A leecher completed but the event was never received
-			err := tx.RemoveLeecher(torrent, peer)
-			if err != nil {
-				log.Panicf("server: %s", err)
-			}
-			err = tx.AddSeeder(torrent, peer)
+			err := tx.LeecherFinished(torrent, peer)
 			if err != nil {
 				log.Panicf("server: %s", err)
 			}

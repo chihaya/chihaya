@@ -73,6 +73,9 @@ type Tx interface {
 	SetSeeder(t *models.Torrent, p *models.Peer) error
 	IncrementSlots(u *models.User) error
 	DecrementSlots(u *models.User) error
+	LeecherFinished(t *models.Torrent, p *models.Peer) error
+
+	// Priming / Testing
 	AddTorrent(t *models.Torrent) error
 	RemoveTorrent(t *models.Torrent) error
 	AddUser(u *models.User) error

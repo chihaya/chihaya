@@ -104,21 +104,21 @@ func createTestUser() models.User {
 	return testUser
 }
 
-func createTestPeer(userID uint64, torrentID uint64) models.Peer {
+func createTestPeer(userID uint64, torrentID uint64) *models.Peer {
 
-	return models.Peer{createTestPeerID(), userID, torrentID, "127.0.0.1", 6889, 1024, 3000, 4200, 11}
+	return &models.Peer{createTestPeerID(), userID, torrentID, "127.0.0.1", 6889, 1024, 3000, 4200, 11}
 }
 
 func createTestPeers(torrentID uint64, num int) map[string]models.Peer {
 	testPeers := make(map[string]models.Peer)
 	for i := 0; i < num; i++ {
 		tempPeer := createTestPeer(createTestUserID(), torrentID)
-		testPeers[tempPeer.ID] = tempPeer
+		testPeers[tempPeer.ID] = *tempPeer
 	}
 	return testPeers
 }
 
-func createTestTorrent() models.Torrent {
+func createTestTorrent() *models.Torrent {
 
 	torrentInfohash := createTestInfohash()
 	torrentID := createTestTorrentID()
@@ -127,34 +127,7 @@ func createTestTorrent() models.Torrent {
 	testLeechers := createTestPeers(torrentID, 2)
 
 	testTorrent := models.Torrent{torrentID, torrentInfohash, true, testSeeders, testLeechers, 11, 0.0, 0.0, 0}
-	return testTorrent
-}
-
-func TestFindUserSuccess(t *testing.T) {
-	testUser := createTestUser()
-	testTx := createTestTxObj(t)
-	hashkey := testTx.conf.Prefix + UserPrefix + testUser.Passkey
-	_, err := testTx.Do("DEL", hashkey)
-	verifyErrNil(err, t)
-
-	err = testTx.AddUser(&testUser)
-	verifyErrNil(err, t)
-
-	compareUser, exists := ExampleRedisTypesSchemaFindUser(testUser.Passkey, t)
-
-	if !exists {
-		t.Error("User not found!")
-	}
-	if testUser != *compareUser {
-		t.Errorf("user mismatch: %v vs. %v", compareUser, testUser)
-	}
-}
-
-func TestFindUserFail(t *testing.T) {
-	compareUser, exists := ExampleRedisTypesSchemaFindUser("not_a_user_passkey", t)
-	if exists {
-		t.Errorf("User %v found when none should exist!", compareUser)
-	}
+	return &testTorrent
 }
 
 func TestAddGetPeers(t *testing.T) {
@@ -172,20 +145,6 @@ func TestAddGetPeers(t *testing.T) {
 	} else if len(peerMap) != len(testTorrent.Seeders) {
 		t.Error("Num Peers not equal")
 	}
-}
-
-// Legacy tests
-func TestReadAfterWrite(t *testing.T) {
-	// Test requires panic
-	defer func() {
-		if err := recover(); err == nil {
-			t.Error("Read after write did not panic")
-		}
-	}()
-
-	testTx := createTestTxObj(t)
-	verifyErrNil(testTx.initiateWrite(), t)
-	verifyErrNil(testTx.initiateRead(), t)
 }
 
 func TestCloseClosedTransaction(t *testing.T) {
