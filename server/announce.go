@@ -82,8 +82,8 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Look for the user in in the pool of seeders and leechers
-		_, seeder := torrent.Seeders[peerID]
-		_, leecher := torrent.Leechers[peerID]
+		_, seeder := torrent.Seeders[models.PeerMapKey(peer)]
+		_, leecher := torrent.Leechers[models.PeerMapKey(peer)]
 
 		switch {
 		// Guarantee that no user is in both pools

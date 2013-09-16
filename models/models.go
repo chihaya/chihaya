@@ -4,6 +4,10 @@
 
 package models
 
+import (
+	"strconv"
+)
+
 type Peer struct {
 	ID        string `json:"id"`
 	UserID    uint64 `json:"user_id"`
@@ -16,6 +20,10 @@ type Peer struct {
 	Downloaded   uint64 `json:"downloaded`
 	Left         uint64 `json:"left"`
 	LastAnnounce int64  `json:"last_announce"`
+}
+
+func PeerMapKey(peer *Peer) string {
+	return peer.ID + ":" + strconv.FormatUint(peer.UserID, 36)
 }
 
 type Torrent struct {

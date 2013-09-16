@@ -6,6 +6,7 @@ package redis
 
 import (
 	"crypto/rand"
+	"fmt"
 	"io"
 	"os"
 	"strconv"
@@ -64,16 +65,17 @@ type TestReporter interface {
 	Logf(format string, args ...interface{})
 }
 
-func verifyErrNil(err error, t TestReporter) {
+func panicErrNil(err error) {
 	if err != nil {
-		t.Error(err)
+		fmt.Println(err)
+		panic(err)
 	}
 }
 
-func createTestTxObj(t TestReporter) *Tx {
+func createTestTxObj() *Tx {
 	testConfig, err := config.Open(os.Getenv("TESTCONFIGPATH"))
 	conf := &testConfig.Cache
-	verifyErrNil(err, t)
+	panicErrNil(err)
 
 	testPool := &Pool{
 		conf: conf,
@@ -86,27 +88,27 @@ func createTestTxObj(t TestReporter) *Tx {
 	}
 
 	txObj := &Tx{
-		conf:  testPool.conf,
-		done:  false,
-		multi: false,
-		Conn:  testPool.pool.Get(),
+		conf: testPool.conf,
+		done: false,
+		Conn: testPool.pool.Get(),
 	}
-	verifyErrNil(err, t)
+	panicErrNil(err)
 
 	// Test connection before returning
 	_, err = txObj.Do("PING")
-	verifyErrNil(err, t)
+	panicErrNil(err)
 	return txObj
 }
 
-func createTestUser() models.User {
-	testUser := models.User{createTestUserID(), createTestPasskey(), 1.01, 1.0, 4, 2, 7}
-	return testUser
+func createTestUser() *models.User {
+	return &models.User{ID: createTestUserID(), Passkey: createTestPasskey(),
+		UpMultiplier: 1.01, DownMultiplier: 1.0, Slots: 4, SlotsUsed: 2, Snatches: 7}
 }
 
 func createTestPeer(userID uint64, torrentID uint64) *models.Peer {
 
-	return &models.Peer{createTestPeerID(), userID, torrentID, "127.0.0.1", 6889, 1024, 3000, 4200, 11}
+	return &models.Peer{ID: createTestPeerID(), UserID: userID, TorrentID: torrentID,
+		IP: "127.0.0.1", Port: 6889, Uploaded: 1024, Downloaded: 3000, Left: 4200, LastAnnounce: 11}
 }
 
 func createTestPeers(torrentID uint64, num int) map[string]models.Peer {
@@ -126,36 +128,22 @@ func createTestTorrent() *models.Torrent {
 	testSeeders := createTestPeers(torrentID, 4)
 	testLeechers := createTestPeers(torrentID, 2)
 
-	testTorrent := models.Torrent{torrentID, torrentInfohash, true, testSeeders, testLeechers, 11, 0.0, 0.0, 0}
+	testTorrent := models.Torrent{ID: torrentID, Infohash: torrentInfohash, Active: true,
+		Seeders: testSeeders, Leechers: testLeechers, Snatches: 11, UpMultiplier: 1.0, DownMultiplier: 1.0, LastAction: 0}
 	return &testTorrent
 }
 
-func TestAddGetPeers(t *testing.T) {
+func TestPeersAlone(t *testing.T) {
 
-	testTx := createTestTxObj(t)
-	testTorrent := createTestTorrent()
+	testTx := createTestTxObj()
+	testTorrentID := createTestTorrentID()
+	testPeers := createTestPeers(testTorrentID, 3)
 
-	setkey := testTx.conf.Prefix + SeederPrefix + strconv.FormatUint(testTorrent.ID, 36)
-	testTx.Do("DEL", setkey)
-
-	testTx.addPeers(testTorrent.Seeders, SeederPrefix)
-	peerMap, err := testTx.getPeers(testTorrent.ID, SeederPrefix)
-	if err != nil {
-		t.Error(err)
-	} else if len(peerMap) != len(testTorrent.Seeders) {
-		t.Error("Num Peers not equal")
+	panicErrNil(testTx.addPeers(testPeers, "test:"))
+	peerMap, err := testTx.getPeers(testTorrentID, "test:")
+	panicErrNil(err)
+	if len(peerMap) != len(testPeers) {
+		t.Error("Num Peers not equal ", len(peerMap), len(testPeers))
 	}
-}
-
-func TestCloseClosedTransaction(t *testing.T) {
-	//require panic
-	defer func() {
-		if err := recover(); err == nil {
-			t.Error("Closing a closed transaction did not panic")
-		}
-	}()
-
-	testTx := createTestTxObj(t)
-	testTx.close()
-	testTx.close()
+	panicErrNil(testTx.removePeers(testTorrentID, testPeers, "test:"))
 }

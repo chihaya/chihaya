@@ -6,128 +6,240 @@
 package redis
 
 import (
-	"errors"
+	"math/rand"
 	"testing"
-
-	"github.com/garyburd/redigo/redis"
-
-	"github.com/pushrax/chihaya/models"
+	"time"
 )
 
-var (
-	ErrTxDone     = errors.New("cache: Transaction has already been committed or rolled back")
-	ErrTxConflict = errors.New("cache: Commit interrupted, update transaction and repeat")
-)
-
-// Maximum number of parallel retries; depends on system latency
-const MAX_RETRIES = 9000
-
-// Legacy JSON support for benching
-func (tx *Tx) initiateWrite() error {
-	if tx.done {
-		return ErrTxDone
-	}
-	if tx.multi != true {
-		tx.multi = true
-		return tx.Send("MULTI")
-	}
-	return nil
-}
-
-func (tx *Tx) initiateRead() error {
-	if tx.done {
-		return ErrTxDone
-	}
-	if tx.multi == true {
-		panic("Tried to read during MULTI")
-	}
-	return nil
-}
-
-func (tx *Tx) Commit() error {
-	if tx.done {
-		return ErrTxDone
-	}
-	if tx.multi == true {
-		execResponse, err := tx.Do("EXEC")
-		if execResponse == nil {
-			tx.multi = false
-			return ErrTxConflict
-		}
-		if err != nil {
-			return err
-		}
-	}
-	tx.close()
-	return nil
-}
-
-func (tx *Tx) Rollback() error {
-	if tx.done {
-		return ErrTxDone
-	}
-	// Undoes watches and multi
-	if _, err := tx.Do("DISCARD"); err != nil {
-		return err
-	}
-	tx.multi = false
-	tx.close()
-	return nil
-}
-
-func ExampleRedisTypesSchemaFindUser(passkey string, t TestReporter) (*models.User, bool) {
-	testTx := createTestTxObj(t)
-	hashkey := testTx.conf.Prefix + UserPrefix + passkey
-	userVals, err := redis.Strings(testTx.Do("HVALS", hashkey))
-	if len(userVals) == 0 {
-		return nil, false
-	}
-	verifyErrNil(err, t)
-	compareUser, err := createUser(userVals)
-	verifyErrNil(err, t)
-	return compareUser, true
-}
-
-func BenchmarkRedisTypesSchemaRemoveSeeder(b *testing.B) {
-	for bCount := 0; bCount < b.N; bCount++ {
-		//TODO this needs to be updated
-		b.Error("Unimplemented")
-
-	}
-}
-
-func BenchmarkRedisTypesSchemaFindUser(b *testing.B) {
-
-	// Ensure successful user find ( a failed lookup may have different performance )
+func BenchmarkSuccessfulFindUser(b *testing.B) {
 	b.StopTimer()
+	tx := createTestTx()
 	testUser := createTestUser()
-	testTx := createTestTxObj(b)
-	hashkey := testTx.conf.Prefix + UserPrefix + testUser.Passkey
-	reply, err := testTx.Do("HMSET", hashkey,
-		"id", testUser.ID,
-		"passkey", testUser.Passkey,
-		"up_multiplier", testUser.UpMultiplier,
-		"down_multiplier", testUser.DownMultiplier,
-		"slots", testUser.Slots,
-		"slots_used", testUser.SlotsUsed)
-
-	if reply == nil {
-		b.Log("no hash fields added!")
-	}
-	verifyErrNil(err, b)
+	panicErrNil(tx.AddUser(testUser))
 	b.StartTimer()
 
 	for bCount := 0; bCount < b.N; bCount++ {
 
-		compareUser, exists := ExampleRedisTypesSchemaFindUser(testUser.Passkey, b)
-
-		b.StopTimer()
-		if !exists {
-			b.Error("User not found!")
+		foundUser, found, err := tx.FindUser(testUser.Passkey)
+		panicErrNil(err)
+		if !found {
+			b.Error("user not found", testUser)
 		}
-		if testUser != *compareUser {
-			b.Errorf("user mismatch: %v vs. %v", compareUser, testUser)
+		if *foundUser != *testUser {
+			b.Error("found user mismatch", *foundUser, testUser)
 		}
-		b.StartTimer()
 	}
+}
+
+func BenchmarkFailedFindUser(b *testing.B) {
+	b.StopTimer()
+	tx := createTestTx()
+	testUser := createTestUser()
+	b.StartTimer()
+
+	for bCount := 0; bCount < b.N; bCount++ {
+
+		_, found, err := tx.FindUser(testUser.Passkey)
+		panicErrNil(err)
+		if found {
+			b.Error("user not found", testUser)
+		}
+	}
+}
+
+func BenchmarkSuccessfulFindTorrent(b *testing.B) {
+	b.StopTimer()
+	tx := createTestTx()
+	testTorrent := createTestTorrent()
+
+	panicErrNil(tx.AddTorrent(testTorrent))
+	b.StartTimer()
+
+	for bCount := 0; bCount < b.N; bCount++ {
+		foundTorrent, found, err := tx.FindTorrent(testTorrent.Infohash)
+		panicErrNil(err)
+		if !found {
+			b.Error("torrent not found", testTorrent)
+		}
+		// Incomplete comparison as maps make struct not nativly comparable
+		if foundTorrent.Infohash != testTorrent.Infohash {
+			b.Error("found torrent mismatch", foundTorrent, testTorrent)
+		}
+	}
+}
+
+func BenchmarkFailFindTorrent(b *testing.B) {
+	b.StopTimer()
+	tx := createTestTx()
+	testTorrent := createTestTorrent()
+	b.StartTimer()
+
+	for bCount := 0; bCount < b.N; bCount++ {
+		foundTorrent, found, err := tx.FindTorrent(testTorrent.Infohash)
+		panicErrNil(err)
+		if found {
+			b.Error("torrent found", foundTorrent)
+		}
+	}
+}
+
+func BenchmarkSuccessfulClientWhitelisted(b *testing.B) {
+	b.StopTimer()
+	tx := createTestTx()
+	testPeerID := "-lt0D30-"
+	panicErrNil(tx.WhitelistClient(testPeerID))
+	b.StartTimer()
+
+	for bCount := 0; bCount < b.N; bCount++ {
+		found, err := tx.ClientWhitelisted(testPeerID)
+		panicErrNil(err)
+		if !found {
+			b.Error("peerID not found", testPeerID)
+		}
+	}
+}
+
+func BenchmarkFailClientWhitelisted(b *testing.B) {
+	b.StopTimer()
+	tx := createTestTx()
+	testPeerID2 := "TIX0192"
+	b.StartTimer()
+
+	for bCount := 0; bCount < b.N; bCount++ {
+		found, err := tx.ClientWhitelisted(testPeerID2)
+		panicErrNil(err)
+		if found {
+			b.Error("peerID found", testPeerID2)
+		}
+	}
+}
+
+func BenchmarkRecordSnatch(b *testing.B) {
+	b.StopTimer()
+	tx := createTestTx()
+	testTorrent := createTestTorrent()
+	testUser := createTestUser()
+	panicErrNil(tx.AddTorrent(testTorrent))
+	panicErrNil(tx.AddUser(testUser))
+	b.StartTimer()
+
+	for bCount := 0; bCount < b.N; bCount++ {
+		panicErrNil(tx.RecordSnatch(testUser, testTorrent))
+	}
+}
+
+func BenchmarkMarkActive(b *testing.B) {
+	b.StopTimer()
+	tx := createTestTx()
+	testTorrent := createTestTorrent()
+	testTorrent.Active = false
+	panicErrNil(tx.AddTorrent(testTorrent))
+	b.StartTimer()
+
+	for bCount := 0; bCount < b.N; bCount++ {
+		panicErrNil(tx.MarkActive(testTorrent))
+	}
+}
+
+func BenchmarkAddSeeder(b *testing.B) {
+	b.StopTimer()
+	tx := createTestTx()
+	testTorrent := createTestTorrent()
+	panicErrNil(tx.AddTorrent(testTorrent))
+	b.StartTimer()
+
+	for bCount := 0; bCount < b.N; bCount++ {
+		b.StopTimer()
+		testSeeder := createTestPeer(createTestUserID(), testTorrent.ID)
+		b.StartTimer()
+
+		panicErrNil(tx.AddSeeder(testTorrent, testSeeder))
+	}
+}
+
+func BenchmarkRemoveSeeder(b *testing.B) {
+	b.StopTimer()
+	tx := createTestTx()
+	testTorrent := createTestTorrent()
+	panicErrNil(tx.AddTorrent(testTorrent))
+	testSeeder := createTestPeer(createTestUserID(), testTorrent.ID)
+	b.StartTimer()
+
+	for bCount := 0; bCount < b.N; bCount++ {
+		b.StopTimer()
+		tx.AddSeeder(testTorrent, testSeeder)
+		b.StartTimer()
+
+		panicErrNil(tx.RemoveSeeder(testTorrent, testSeeder))
+	}
+}
+
+func BenchmarkSetSeeder(b *testing.B) {
+	b.StopTimer()
+	tx := createTestTx()
+	testTorrent := createTestTorrent()
+	panicErrNil(tx.AddTorrent(testTorrent))
+	testSeeder := createTestPeer(createTestUserID(), testTorrent.ID)
+	panicErrNil(tx.AddSeeder(testTorrent, testSeeder))
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	b.StartTimer()
+
+	for bCount := 0; bCount < b.N; bCount++ {
+		b.StopTimer()
+		testSeeder.Uploaded += uint64(r.Int63())
+		b.StartTimer()
+
+		tx.SetSeeder(testTorrent, testSeeder)
+	}
+}
+
+func BenchmarkIncrementSlots(b *testing.B) {
+	b.StopTimer()
+	tx := createTestTx()
+	testUser := createTestUser()
+	panicErrNil(tx.AddUser(testUser))
+	b.StartTimer()
+
+	for bCount := 0; bCount < b.N; bCount++ {
+		panicErrNil(tx.IncrementSlots(testUser))
+	}
+}
+
+func BenchmarkLeecherFinished(b *testing.B) {
+	b.StopTimer()
+	tx := createTestTx()
+	testTorrent := createTestTorrent()
+	panicErrNil(tx.AddTorrent(testTorrent))
+	b.StartTimer()
+
+	for bCount := 0; bCount < b.N; bCount++ {
+		b.StopTimer()
+		testLeecher := createTestPeer(createTestUserID(), testTorrent.ID)
+		panicErrNil(tx.AddLeecher(testTorrent, testLeecher))
+		testLeecher.Left = 0
+		b.StartTimer()
+
+		panicErrNil(tx.LeecherFinished(testTorrent, testLeecher))
+	}
+}
+
+// This is a comparision to the Leecher finished function
+func BenchmarkRemoveLeecherAddSeeder(b *testing.B) {
+	b.StopTimer()
+	tx := createTestTx()
+	testTorrent := createTestTorrent()
+	panicErrNil(tx.AddTorrent(testTorrent))
+	b.StartTimer()
+
+	for bCount := 0; bCount < b.N; bCount++ {
+		b.StopTimer()
+		testLeecher := createTestPeer(createTestUserID(), testTorrent.ID)
+		panicErrNil(tx.AddLeecher(testTorrent, testLeecher))
+		testLeecher.Left = 0
+		b.StartTimer()
+
+		panicErrNil(tx.RemoveLeecher(testTorrent, testLeecher))
+		panicErrNil(tx.AddSeeder(testTorrent, testLeecher))
+	}
+
 }
