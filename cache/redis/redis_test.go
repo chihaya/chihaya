@@ -19,24 +19,43 @@ import (
 )
 
 var (
-	testTorrentIDCounter uint64
-	testUserIDCounter    uint64
-	testPeerIDCounter    int
+	testTorrentIDChannel chan uint64
+	testUserIDChannel    chan uint64
+	testPeerIDChannel    chan int
 )
 
+func init() {
+	testTorrentIDChannel = make(chan uint64, 100)
+	testUserIDChannel = make(chan uint64, 100)
+	testPeerIDChannel = make(chan int, 100)
+	// Sync access to ID counter with buffered global channels
+	go func() {
+		for i := 0; ; i++ {
+			testTorrentIDChannel <- uint64(i)
+		}
+	}()
+	go func() {
+		for i := 0; ; i++ {
+			testUserIDChannel <- uint64(i)
+		}
+	}()
+	go func() {
+		for i := 0; ; i++ {
+			testPeerIDChannel <- i
+		}
+	}()
+}
+
 func createTestTorrentID() uint64 {
-	testTorrentIDCounter++
-	return testTorrentIDCounter
+	return <-testTorrentIDChannel
 }
 
 func createTestUserID() uint64 {
-	testUserIDCounter++
-	return testUserIDCounter
+	return <-testUserIDChannel
 }
 
 func createTestPeerID() string {
-	testPeerIDCounter++
-	return "-testPeerID-" + strconv.Itoa(testPeerIDCounter)
+	return "-testPeerID-" + strconv.Itoa(<-testPeerIDChannel)
 }
 
 func createTestInfohash() string {
@@ -57,14 +76,6 @@ func createTestPasskey() string {
 	return string(uuid)
 }
 
-// Common interface for benchmarks and test error reporting
-type TestReporter interface {
-	Error(args ...interface{})
-	Errorf(format string, args ...interface{})
-	Log(args ...interface{})
-	Logf(format string, args ...interface{})
-}
-
 func panicErrNil(err error) {
 	if err != nil {
 		fmt.Println(err)
@@ -72,7 +83,7 @@ func panicErrNil(err error) {
 	}
 }
 
-func createTestTxObj() *Tx {
+func createTestRedisTx() *Tx {
 	testConfig, err := config.Open(os.Getenv("TESTCONFIGPATH"))
 	conf := &testConfig.Cache
 	panicErrNil(err)
@@ -115,7 +126,7 @@ func createTestPeers(torrentID uint64, num int) map[string]models.Peer {
 	testPeers := make(map[string]models.Peer)
 	for i := 0; i < num; i++ {
 		tempPeer := createTestPeer(createTestUserID(), torrentID)
-		testPeers[tempPeer.ID] = *tempPeer
+		testPeers[models.PeerMapKey(tempPeer)] = *tempPeer
 	}
 	return testPeers
 }
@@ -133,9 +144,43 @@ func createTestTorrent() *models.Torrent {
 	return &testTorrent
 }
 
-func TestPeersAlone(t *testing.T) {
+func comparePeers(lhPeers map[string]models.Peer, rhPeers map[string]models.Peer) bool {
+	if len(lhPeers) != len(rhPeers) {
+		return false
+	}
+	for rhKey, rhValue := range rhPeers {
+		lhValue, lhExists := lhPeers[rhKey]
+		if !lhExists || lhValue != rhValue {
+			return false
+		}
+	}
+	for lhKey, lhValue := range lhPeers {
+		rhValue, rhExists := rhPeers[lhKey]
+		if !rhExists || rhValue != lhValue {
+			return false
+		}
+	}
+	return true
+}
 
-	testTx := createTestTxObj()
+func torrentsEqual(lhTorrent *models.Torrent, rhTorrent *models.Torrent) bool {
+	fieldsEqual := lhTorrent.Infohash == rhTorrent.Infohash &&
+		lhTorrent.ID == rhTorrent.ID &&
+		lhTorrent.Active == rhTorrent.Active &&
+		lhTorrent.Snatches == rhTorrent.Snatches &&
+		lhTorrent.UpMultiplier == rhTorrent.UpMultiplier &&
+		lhTorrent.DownMultiplier == rhTorrent.DownMultiplier &&
+		lhTorrent.LastAction == rhTorrent.LastAction
+
+	if !fieldsEqual {
+		return false
+	}
+
+	return comparePeers(lhTorrent.Seeders, rhTorrent.Seeders) && comparePeers(lhTorrent.Leechers, rhTorrent.Leechers)
+}
+
+func TestValidPeers(t *testing.T) {
+	testTx := createTestRedisTx()
 	testTorrentID := createTestTorrentID()
 	testPeers := createTestPeers(testTorrentID, 3)
 
@@ -143,6 +188,28 @@ func TestPeersAlone(t *testing.T) {
 	peerMap, err := testTx.getPeers(testTorrentID, "test:")
 	panicErrNil(err)
 	if len(peerMap) != len(testPeers) {
+		t.Error("Num Peers not equal ", len(peerMap), len(testPeers))
+	}
+	panicErrNil(testTx.removePeers(testTorrentID, testPeers, "test:"))
+}
+
+func TestInvalidPeers(t *testing.T) {
+	testTx := createTestRedisTx()
+	testTorrentID := createTestTorrentID()
+	testPeers := createTestPeers(testTorrentID, 3)
+	tempPeer := createTestPeer(createTestUserID(), testTorrentID)
+	testPeers[models.PeerMapKey(tempPeer)] = *tempPeer
+
+	panicErrNil(testTx.addPeers(testPeers, "test:"))
+	// Imitate a peer being removed during get
+	hashKey := testTx.conf.Prefix + getPeerHashKey(tempPeer)
+	_, err := testTx.Do("DEL", hashKey)
+	panicErrNil(err)
+
+	peerMap, err := testTx.getPeers(testTorrentID, "test:")
+	panicErrNil(err)
+	// Expect 1 less peer due to delete
+	if len(peerMap) != len(testPeers)-1 {
 		t.Error("Num Peers not equal ", len(peerMap), len(testPeers))
 	}
 	panicErrNil(testTx.removePeers(testTorrentID, testPeers, "test:"))

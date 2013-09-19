@@ -69,18 +69,17 @@ func TestRemoveUser(t *testing.T) {
 	}
 }
 
-func TestFindTorrent(t *testing.T) {
+func TestFindTorrentSuccess(t *testing.T) {
 	tx := createTestTx()
 	testTorrent := createTestTorrent()
-
 	panicErrNil(tx.AddTorrent(testTorrent))
+
 	foundTorrent, found, err := tx.FindTorrent(testTorrent.Infohash)
 	panicErrNil(err)
 	if !found {
 		t.Error("torrent not found", testTorrent)
 	}
-	// Incomplete comparison as maps make struct not nativly comparable
-	if foundTorrent.Infohash != testTorrent.Infohash {
+	if !torrentsEqual(foundTorrent, testTorrent) {
 		t.Error("found torrent mismatch", foundTorrent, testTorrent)
 	}
 }
@@ -407,5 +406,116 @@ func TestUpdatePeer(t *testing.T) {
 	}
 	if seeder, exists := testTorrent.Seeders[models.PeerMapKey(testSeeder)]; exists {
 		t.Error("seeder not removed from local", seeder)
+	}
+}
+
+func TestParallelFindUser(t *testing.T) {
+	t.Parallel()
+	if testing.Short() {
+		t.Skip()
+	}
+	tx := createTestTx()
+	testUserSuccess := createTestUser()
+	testUserFail := createTestUser()
+	panicErrNil(tx.AddUser(testUserSuccess))
+
+	for i := 0; i < 10; i++ {
+		foundUser, found, err := tx.FindUser(testUserFail.Passkey)
+		panicErrNil(err)
+		if found {
+			t.Error("user found", foundUser)
+		}
+		foundUser, found, err = tx.FindUser(testUserSuccess.Passkey)
+		panicErrNil(err)
+		if !found {
+			t.Error("user not found", testUserSuccess)
+		}
+		if *foundUser != *testUserSuccess {
+			t.Error("found user mismatch", *foundUser, testUserSuccess)
+		}
+	}
+}
+
+func TestParallelFindTorrent(t *testing.T) {
+	t.Parallel()
+	if testing.Short() {
+		t.Skip()
+	}
+	tx := createTestTx()
+	testTorrentSuccess := createTestTorrent()
+	testTorrentFail := createTestTorrent()
+	panicErrNil(tx.AddTorrent(testTorrentSuccess))
+
+	for i := 0; i < 10; i++ {
+		foundTorrent, found, err := tx.FindTorrent(testTorrentSuccess.Infohash)
+		panicErrNil(err)
+		if !found {
+			t.Error("torrent not found", testTorrentSuccess)
+		}
+		if !torrentsEqual(foundTorrent, testTorrentSuccess) {
+			t.Error("found torrent mismatch", foundTorrent, testTorrentSuccess)
+		}
+		foundTorrent, found, err = tx.FindTorrent(testTorrentFail.Infohash)
+		panicErrNil(err)
+		if found {
+			t.Error("torrent found", foundTorrent)
+		}
+	}
+}
+
+func TestParallelSetSeeder(t *testing.T) {
+	t.Parallel()
+	if testing.Short() {
+		t.Skip()
+	}
+	tx := createTestTx()
+	testTorrent := createTestTorrent()
+	panicErrNil(tx.AddTorrent(testTorrent))
+	testSeeder := createTestPeer(createTestUserID(), testTorrent.ID)
+	panicErrNil(tx.AddSeeder(testTorrent, testSeeder))
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	for i := 0; i < 10; i++ {
+		testSeeder.Uploaded += uint64(r.Int63())
+
+		panicErrNil(tx.SetSeeder(testTorrent, testSeeder))
+
+		foundTorrent, _, err := tx.FindTorrent(testTorrent.Infohash)
+		panicErrNil(err)
+		foundSeeder, _ := foundTorrent.Seeders[models.PeerMapKey(testSeeder)]
+		if foundSeeder != *testSeeder {
+			t.Error("seeder not updated in cache", foundSeeder, *testSeeder)
+		}
+		foundSeeder, _ = testTorrent.Seeders[models.PeerMapKey(testSeeder)]
+		if foundSeeder != *testSeeder {
+			t.Error("seeder not updated in local", foundSeeder, *testSeeder)
+		}
+	}
+}
+
+func TestParallelAddLeecher(t *testing.T) {
+	t.Parallel()
+	if testing.Short() {
+		t.Skip()
+	}
+	tx := createTestTx()
+	testTorrent := createTestTorrent()
+	panicErrNil(tx.AddTorrent(testTorrent))
+
+	for i := 0; i < 10; i++ {
+		testLeecher := createTestPeer(createTestUserID(), testTorrent.ID)
+
+		panicErrNil(tx.AddLeecher(testTorrent, testLeecher))
+
+		foundTorrent, found, err := tx.FindTorrent(testTorrent.Infohash)
+		panicErrNil(err)
+		foundLeecher, found := foundTorrent.Leechers[models.PeerMapKey(testLeecher)]
+		if found && foundLeecher != *testLeecher {
+			t.Error("leecher not added to cache", testLeecher)
+		}
+		foundLeecher, found = testTorrent.Leechers[models.PeerMapKey(testLeecher)]
+		if found && foundLeecher != *testLeecher {
+			t.Error("leecher not added to local", testLeecher)
+		}
 	}
 }

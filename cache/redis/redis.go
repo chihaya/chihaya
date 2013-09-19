@@ -297,14 +297,17 @@ func (tx *Tx) getPeers(torrentID uint64, peerTypePrefix string) (peers map[strin
 	setKey := tx.conf.Prefix + peerTypePrefix + strconv.FormatUint(torrentID, 36)
 	peerStrings, err := redis.Strings(tx.Do("SMEMBERS", setKey))
 	if err != nil {
-		return peers, err
+		return nil, err
 	}
 	// Keys map to peer objects stored in hashes
 	for _, peerHashKey := range peerStrings {
 		hashKey := tx.conf.Prefix + peerHashKey
 		peerVals, err := redis.Strings(tx.Do("HVALS", hashKey))
 		if err != nil {
-			return peers, err
+			return nil, err
+		}
+		if len(peerVals) == 0 {
+			continue
 		}
 		peer, err := createPeer(peerVals)
 		if err != nil {
