@@ -15,13 +15,13 @@ func BenchmarkSuccessfulFindUser(b *testing.B) {
 	b.StopTimer()
 	tx := createTestTx()
 	testUser := createTestUser()
-	panicErrNil(tx.AddUser(testUser))
+	panicOnErr(tx.AddUser(testUser))
 	b.StartTimer()
 
 	for bCount := 0; bCount < b.N; bCount++ {
 
 		foundUser, found, err := tx.FindUser(testUser.Passkey)
-		panicErrNil(err)
+		panicOnErr(err)
 		if !found {
 			b.Error("user not found", testUser)
 		}
@@ -40,7 +40,7 @@ func BenchmarkFailedFindUser(b *testing.B) {
 	for bCount := 0; bCount < b.N; bCount++ {
 
 		_, found, err := tx.FindUser(testUser.Passkey)
-		panicErrNil(err)
+		panicOnErr(err)
 		if found {
 			b.Error("user not found", testUser)
 		}
@@ -52,12 +52,12 @@ func BenchmarkSuccessfulFindTorrent(b *testing.B) {
 	tx := createTestTx()
 	testTorrent := createTestTorrent()
 
-	panicErrNil(tx.AddTorrent(testTorrent))
+	panicOnErr(tx.AddTorrent(testTorrent))
 	b.StartTimer()
 
 	for bCount := 0; bCount < b.N; bCount++ {
 		foundTorrent, found, err := tx.FindTorrent(testTorrent.Infohash)
-		panicErrNil(err)
+		panicOnErr(err)
 		if !found {
 			b.Error("torrent not found", testTorrent)
 		}
@@ -76,7 +76,7 @@ func BenchmarkFailFindTorrent(b *testing.B) {
 
 	for bCount := 0; bCount < b.N; bCount++ {
 		foundTorrent, found, err := tx.FindTorrent(testTorrent.Infohash)
-		panicErrNil(err)
+		panicOnErr(err)
 		if found {
 			b.Error("torrent found", foundTorrent)
 		}
@@ -87,12 +87,12 @@ func BenchmarkSuccessfulClientWhitelisted(b *testing.B) {
 	b.StopTimer()
 	tx := createTestTx()
 	testPeerID := "-lt0D30-"
-	panicErrNil(tx.WhitelistClient(testPeerID))
+	panicOnErr(tx.WhitelistClient(testPeerID))
 	b.StartTimer()
 
 	for bCount := 0; bCount < b.N; bCount++ {
 		found, err := tx.ClientWhitelisted(testPeerID)
-		panicErrNil(err)
+		panicOnErr(err)
 		if !found {
 			b.Error("peerID not found", testPeerID)
 		}
@@ -107,7 +107,7 @@ func BenchmarkFailClientWhitelisted(b *testing.B) {
 
 	for bCount := 0; bCount < b.N; bCount++ {
 		found, err := tx.ClientWhitelisted(testPeerID2)
-		panicErrNil(err)
+		panicOnErr(err)
 		if found {
 			b.Error("peerID found", testPeerID2)
 		}
@@ -119,12 +119,12 @@ func BenchmarkRecordSnatch(b *testing.B) {
 	tx := createTestTx()
 	testTorrent := createTestTorrent()
 	testUser := createTestUser()
-	panicErrNil(tx.AddTorrent(testTorrent))
-	panicErrNil(tx.AddUser(testUser))
+	panicOnErr(tx.AddTorrent(testTorrent))
+	panicOnErr(tx.AddUser(testUser))
 	b.StartTimer()
 
 	for bCount := 0; bCount < b.N; bCount++ {
-		panicErrNil(tx.RecordSnatch(testUser, testTorrent))
+		panicOnErr(tx.RecordSnatch(testUser, testTorrent))
 	}
 }
 
@@ -133,11 +133,11 @@ func BenchmarkMarkActive(b *testing.B) {
 	tx := createTestTx()
 	testTorrent := createTestTorrent()
 	testTorrent.Active = false
-	panicErrNil(tx.AddTorrent(testTorrent))
+	panicOnErr(tx.AddTorrent(testTorrent))
 	b.StartTimer()
 
 	for bCount := 0; bCount < b.N; bCount++ {
-		panicErrNil(tx.MarkActive(testTorrent))
+		panicOnErr(tx.MarkActive(testTorrent))
 	}
 }
 
@@ -145,7 +145,7 @@ func BenchmarkAddSeeder(b *testing.B) {
 	b.StopTimer()
 	tx := createTestTx()
 	testTorrent := createTestTorrent()
-	panicErrNil(tx.AddTorrent(testTorrent))
+	panicOnErr(tx.AddTorrent(testTorrent))
 	b.StartTimer()
 
 	for bCount := 0; bCount < b.N; bCount++ {
@@ -153,7 +153,7 @@ func BenchmarkAddSeeder(b *testing.B) {
 		testSeeder := createTestPeer(createTestUserID(), testTorrent.ID)
 		b.StartTimer()
 
-		panicErrNil(tx.AddSeeder(testTorrent, testSeeder))
+		panicOnErr(tx.AddSeeder(testTorrent, testSeeder))
 	}
 }
 
@@ -161,7 +161,7 @@ func BenchmarkRemoveSeeder(b *testing.B) {
 	b.StopTimer()
 	tx := createTestTx()
 	testTorrent := createTestTorrent()
-	panicErrNil(tx.AddTorrent(testTorrent))
+	panicOnErr(tx.AddTorrent(testTorrent))
 	testSeeder := createTestPeer(createTestUserID(), testTorrent.ID)
 	b.StartTimer()
 
@@ -170,7 +170,7 @@ func BenchmarkRemoveSeeder(b *testing.B) {
 		tx.AddSeeder(testTorrent, testSeeder)
 		b.StartTimer()
 
-		panicErrNil(tx.RemoveSeeder(testTorrent, testSeeder))
+		panicOnErr(tx.RemoveSeeder(testTorrent, testSeeder))
 	}
 }
 
@@ -178,9 +178,9 @@ func BenchmarkSetSeeder(b *testing.B) {
 	b.StopTimer()
 	tx := createTestTx()
 	testTorrent := createTestTorrent()
-	panicErrNil(tx.AddTorrent(testTorrent))
+	panicOnErr(tx.AddTorrent(testTorrent))
 	testSeeder := createTestPeer(createTestUserID(), testTorrent.ID)
-	panicErrNil(tx.AddSeeder(testTorrent, testSeeder))
+	panicOnErr(tx.AddSeeder(testTorrent, testSeeder))
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 	b.StartTimer()
 
@@ -197,11 +197,11 @@ func BenchmarkIncrementSlots(b *testing.B) {
 	b.StopTimer()
 	tx := createTestTx()
 	testUser := createTestUser()
-	panicErrNil(tx.AddUser(testUser))
+	panicOnErr(tx.AddUser(testUser))
 	b.StartTimer()
 
 	for bCount := 0; bCount < b.N; bCount++ {
-		panicErrNil(tx.IncrementSlots(testUser))
+		panicOnErr(tx.IncrementSlots(testUser))
 	}
 }
 
@@ -209,17 +209,17 @@ func BenchmarkLeecherFinished(b *testing.B) {
 	b.StopTimer()
 	tx := createTestTx()
 	testTorrent := createTestTorrent()
-	panicErrNil(tx.AddTorrent(testTorrent))
+	panicOnErr(tx.AddTorrent(testTorrent))
 	b.StartTimer()
 
 	for bCount := 0; bCount < b.N; bCount++ {
 		b.StopTimer()
 		testLeecher := createTestPeer(createTestUserID(), testTorrent.ID)
-		panicErrNil(tx.AddLeecher(testTorrent, testLeecher))
+		panicOnErr(tx.AddLeecher(testTorrent, testLeecher))
 		testLeecher.Left = 0
 		b.StartTimer()
 
-		panicErrNil(tx.LeecherFinished(testTorrent, testLeecher))
+		panicOnErr(tx.LeecherFinished(testTorrent, testLeecher))
 	}
 }
 
@@ -228,18 +228,18 @@ func BenchmarkRemoveLeecherAddSeeder(b *testing.B) {
 	b.StopTimer()
 	tx := createTestTx()
 	testTorrent := createTestTorrent()
-	panicErrNil(tx.AddTorrent(testTorrent))
+	panicOnErr(tx.AddTorrent(testTorrent))
 	b.StartTimer()
 
 	for bCount := 0; bCount < b.N; bCount++ {
 		b.StopTimer()
 		testLeecher := createTestPeer(createTestUserID(), testTorrent.ID)
-		panicErrNil(tx.AddLeecher(testTorrent, testLeecher))
+		panicOnErr(tx.AddLeecher(testTorrent, testLeecher))
 		testLeecher.Left = 0
 		b.StartTimer()
 
-		panicErrNil(tx.RemoveLeecher(testTorrent, testLeecher))
-		panicErrNil(tx.AddSeeder(testTorrent, testLeecher))
+		panicOnErr(tx.RemoveLeecher(testTorrent, testLeecher))
+		panicOnErr(tx.AddSeeder(testTorrent, testLeecher))
 	}
 
 }

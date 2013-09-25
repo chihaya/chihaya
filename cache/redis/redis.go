@@ -31,11 +31,11 @@ var (
 	ErrCreatePeer    = errors.New("redis: Incorrect reply length for peer")
 	ErrMarkActive    = errors.New("redis: Torrent doesn't exist")
 
-	SeederPrefix  = "seeders:"
-	LeecherPrefix = "leechers:"
-	TorrentPrefix = "torrent:"
-	UserPrefix    = "user:"
-	PeerPrefix    = "peer:"
+	SeedersPrefix  = "seeders:"
+	LeechersPrefix = "leechers:"
+	TorrentPrefix  = "torrent:"
+	UserPrefix     = "user:"
+	PeerPrefix     = "peer:"
 )
 
 type driver struct{}
@@ -82,10 +82,7 @@ func (p *Pool) Get() (cache.Tx, error) {
 		done: false,
 		Conn: p.pool.Get(),
 	}
-	// Test valid connection before returning
-	_, err := retTx.Do("PING")
-
-	return retTx, err
+	return retTx, nil
 }
 
 type Tx struct {
@@ -106,76 +103,47 @@ func createUser(userVals []string) (*models.User, error) {
 	if len(userVals) != 7 {
 		return nil, ErrCreateUser
 	}
-	ID, err := strconv.ParseUint(userVals[0], 10, 64)
-	if err != nil {
-		return nil, err
+	var user models.User
+	convErrors := make([]error, 7)
+	user.ID, convErrors[0] = strconv.ParseUint(userVals[0], 10, 64)
+	user.Passkey = userVals[1]
+	user.UpMultiplier, convErrors[2] = strconv.ParseFloat(userVals[2], 64)
+	user.DownMultiplier, convErrors[3] = strconv.ParseFloat(userVals[3], 64)
+	user.Slots, convErrors[4] = strconv.ParseInt(userVals[4], 10, 64)
+	user.SlotsUsed, convErrors[5] = strconv.ParseInt(userVals[5], 10, 64)
+	user.Snatches, convErrors[6] = strconv.ParseUint(userVals[6], 10, 64)
+
+	for i := 0; i < 7; i++ {
+		if convErrors[i] != nil {
+			return nil, convErrors[i]
+		}
 	}
-	Passkey := userVals[1]
-	UpMultiplier, err := strconv.ParseFloat(userVals[2], 64)
-	if err != nil {
-		return nil, err
-	}
-	DownMultiplier, err := strconv.ParseFloat(userVals[3], 64)
-	if err != nil {
-		return nil, err
-	}
-	Slots, err := strconv.ParseInt(userVals[4], 10, 64)
-	if err != nil {
-		return nil, err
-	}
-	SlotsUsed, err := strconv.ParseInt(userVals[5], 10, 64)
-	if err != nil {
-		return nil, err
-	}
-	Snatches, err := strconv.ParseUint(userVals[6], 10, 64)
-	if err != nil {
-		return nil, err
-	}
-	return &models.User{ID: ID, Passkey: Passkey, UpMultiplier: UpMultiplier,
-		DownMultiplier: DownMultiplier, Slots: Slots, SlotsUsed: SlotsUsed, Snatches: uint(Snatches)}, nil
+	return &user, nil
 }
 
-// This is a mulple action command, it's not internally atomic
+// This is a multiple action command, it's not internally atomic
 func (tx *Tx) createTorrent(torrentVals []string) (*models.Torrent, error) {
 	if len(torrentVals) != 7 {
 		return nil, ErrCreateTorrent
 	}
-	ID, err := strconv.ParseUint(torrentVals[0], 10, 64)
-	if err != nil {
-		return nil, err
-	}
-	Infohash := torrentVals[1]
-	Active, err := strconv.ParseBool(torrentVals[2])
-	if err != nil {
-		return nil, err
-	}
-	Snatches, err := strconv.ParseUint(torrentVals[3], 10, 32)
-	if err != nil {
-		return nil, err
-	}
-	UpMultiplier, err := strconv.ParseFloat(torrentVals[4], 64)
-	if err != nil {
-		return nil, err
-	}
-	DownMultiplier, err := strconv.ParseFloat(torrentVals[5], 64)
-	if err != nil {
-		return nil, err
-	}
-	LastAction, err := strconv.ParseInt(torrentVals[6], 10, 64)
-	if err != nil {
-		return nil, err
-	}
-	seeders, err := tx.getPeers(ID, SeederPrefix)
-	if err != nil {
-		return nil, err
-	}
-	leechers, err := tx.getPeers(ID, LeecherPrefix)
-	if err != nil {
-		return nil, err
-	}
+	var torrent models.Torrent
+	convErrors := make([]error, 9)
+	torrent.ID, convErrors[0] = strconv.ParseUint(torrentVals[0], 10, 64)
+	torrent.Infohash = torrentVals[1]
+	torrent.Active, convErrors[2] = strconv.ParseBool(torrentVals[2])
+	torrent.Snatches, convErrors[3] = strconv.ParseUint(torrentVals[3], 10, 32)
+	torrent.UpMultiplier, convErrors[4] = strconv.ParseFloat(torrentVals[4], 64)
+	torrent.DownMultiplier, convErrors[5] = strconv.ParseFloat(torrentVals[5], 64)
+	torrent.LastAction, convErrors[6] = strconv.ParseInt(torrentVals[6], 10, 64)
+	torrent.Seeders, convErrors[7] = tx.getPeers(torrent.ID, SeedersPrefix)
+	torrent.Leechers, convErrors[8] = tx.getPeers(torrent.ID, LeechersPrefix)
 
-	return &models.Torrent{ID: ID, Infohash: Infohash, Active: Active, Seeders: seeders, Leechers: leechers,
-		Snatches: uint(Snatches), UpMultiplier: UpMultiplier, DownMultiplier: DownMultiplier, LastAction: LastAction}, nil
+	for i := 0; i < 9; i++ {
+		if convErrors[i] != nil {
+			return nil, convErrors[i]
+		}
+	}
+	return &torrent, nil
 }
 
 // The peer hashkey relies on the combination of peerID, userID, and torrentID being unique
@@ -210,7 +178,7 @@ func (tx *Tx) removePeer(peer *models.Peer, peerTypePrefix string) error {
 	return nil
 }
 
-// This is a mulple action command, it's not internally atomic
+// This is a multiple action command, it's not internally atomic
 func (tx *Tx) removePeers(torrentID uint64, peers map[string]models.Peer, peerTypePrefix string) error {
 	for _, peer := range peers {
 		hashKey := tx.conf.Prefix + getPeerHashKey(&peer)
@@ -218,7 +186,7 @@ func (tx *Tx) removePeers(torrentID uint64, peers map[string]models.Peer, peerTy
 		if err != nil {
 			return err
 		}
-		delete(peers, peer.ID)
+		delete(peers, models.PeerMapKey(&peer))
 	}
 	// Will only delete the set if all the peer deletions were successful
 	setKey := tx.conf.Prefix + peerTypePrefix + strconv.FormatUint(torrentID, 36)
@@ -238,7 +206,7 @@ func getPeerSetKey(typePrefix string, peer *models.Peer) string {
 	return typePrefix + strconv.FormatUint(peer.TorrentID, 36)
 }
 
-// This is a mulple action command, it's not internally atomic
+// This is a multiple action command, it's not internally atomic
 func (tx *Tx) addPeers(peers map[string]models.Peer, peerTypePrefix string) error {
 	for _, peer := range peers {
 		setKey := tx.conf.Prefix + getPeerSetKey(peerTypePrefix, &peer)
@@ -291,7 +259,7 @@ func createPeer(peerVals []string) (*models.Peer, error) {
 
 }
 
-// This is a mulple action command, it's not internally atomic
+// This is a multiple action command, it's not internally atomic
 func (tx *Tx) getPeers(torrentID uint64, peerTypePrefix string) (peers map[string]models.Peer, err error) {
 	peers = make(map[string]models.Peer)
 	setKey := tx.conf.Prefix + peerTypePrefix + strconv.FormatUint(torrentID, 36)
@@ -318,7 +286,7 @@ func (tx *Tx) getPeers(torrentID uint64, peerTypePrefix string) (peers map[strin
 	return
 }
 
-// This is a mulple action command, it's not internally atomic
+// This is a multiple action command, it's not internally atomic
 func (tx *Tx) AddTorrent(t *models.Torrent) error {
 	hashkey := tx.conf.Prefix + TorrentPrefix + t.Infohash
 	_, err := tx.Do("HMSET", hashkey,
@@ -333,18 +301,18 @@ func (tx *Tx) AddTorrent(t *models.Torrent) error {
 		return err
 	}
 
-	err = tx.addPeers(t.Seeders, SeederPrefix)
+	err = tx.addPeers(t.Seeders, SeedersPrefix)
 	if err != nil {
 		return err
 	}
-	err = tx.addPeers(t.Leechers, LeecherPrefix)
+	err = tx.addPeers(t.Leechers, LeechersPrefix)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-// This is a mulple action command, it's not internally atomic
+// This is a multiple action command, it's not internally atomic
 func (tx *Tx) RemoveTorrent(t *models.Torrent) error {
 	hashkey := tx.conf.Prefix + TorrentPrefix + t.Infohash
 	_, err := tx.Do("DEL", hashkey)
@@ -352,11 +320,11 @@ func (tx *Tx) RemoveTorrent(t *models.Torrent) error {
 		return err
 	}
 	// Remove seeders and leechers as well
-	err = tx.removePeers(t.ID, t.Seeders, SeederPrefix)
+	err = tx.removePeers(t.ID, t.Seeders, SeedersPrefix)
 	if err != nil {
 		return err
 	}
-	err = tx.removePeers(t.ID, t.Leechers, LeecherPrefix)
+	err = tx.removePeers(t.ID, t.Leechers, LeechersPrefix)
 	if err != nil {
 		return err
 	}
@@ -403,7 +371,7 @@ func (tx *Tx) FindUser(passkey string) (*models.User, bool, error) {
 	return foundUser, true, nil
 }
 
-// This is a mulple action command, it's not internally atomic
+// This is a multiple action command, it's not internally atomic
 func (tx *Tx) FindTorrent(infohash string) (*models.Torrent, bool, error) {
 	hashkey := tx.conf.Prefix + TorrentPrefix + infohash
 	torrentStrings, err := redis.Strings(tx.Do("HVALS", hashkey))
@@ -437,7 +405,7 @@ func (tx *Tx) UnWhitelistClient(peerID string) error {
 	return err
 }
 
-// This is a mulple action command, it's not internally atomic
+// This is a multiple action command, it's not internally atomic
 func (tx *Tx) RecordSnatch(user *models.User, torrent *models.Torrent) error {
 
 	torrentKey := tx.conf.Prefix + TorrentPrefix + torrent.Infohash
@@ -445,14 +413,14 @@ func (tx *Tx) RecordSnatch(user *models.User, torrent *models.Torrent) error {
 	if err != nil {
 		return err
 	}
-	torrent.Snatches = uint(snatchCount)
+	torrent.Snatches = uint64(snatchCount)
 
 	userKey := tx.conf.Prefix + UserPrefix + user.Passkey
 	snatchCount, err = redis.Int(tx.Do("HINCRBY", userKey, "snatches", 1))
 	if err != nil {
 		return err
 	}
-	user.Snatches = uint(snatchCount)
+	user.Snatches = uint64(snatchCount)
 	return nil
 }
 
@@ -470,7 +438,7 @@ func (tx *Tx) MarkActive(torrent *models.Torrent) error {
 	return nil
 }
 
-func (tx *Tx) MarkInActive(torrent *models.Torrent) error {
+func (tx *Tx) MarkInactive(torrent *models.Torrent) error {
 	hashkey := tx.conf.Prefix + TorrentPrefix + torrent.Infohash
 	activeExists, err := redis.Int(tx.Do("HSET", hashkey, "active", false))
 	if err != nil {
@@ -479,14 +447,19 @@ func (tx *Tx) MarkInActive(torrent *models.Torrent) error {
 	torrent.Active = false
 	// HSET returns 1 if hash didn't exist before
 	if activeExists == 1 {
+		// Clean-up incomplete torrent
+		_, err = tx.Do("DEL", hashkey)
+		if err != nil {
+			return err
+		}
 		return ErrMarkActive
 	}
 	return nil
 }
 
-// This is a mulple action command, it's not internally atomic
+// This is a multiple action command, it's not internally atomic
 func (tx *Tx) AddLeecher(torrent *models.Torrent, peer *models.Peer) error {
-	setKey := tx.conf.Prefix + LeecherPrefix + strconv.FormatUint(torrent.ID, 36)
+	setKey := tx.conf.Prefix + LeechersPrefix + strconv.FormatUint(torrent.ID, 36)
 	_, err := tx.Do("SADD", setKey, getPeerHashKey(peer))
 	if err != nil {
 		return err
@@ -514,7 +487,7 @@ func (tx *Tx) SetLeecher(t *models.Torrent, p *models.Peer) error {
 }
 
 func (tx *Tx) RemoveLeecher(t *models.Torrent, p *models.Peer) error {
-	err := tx.removePeer(p, LeecherPrefix)
+	err := tx.removePeer(p, LeechersPrefix)
 	if err != nil {
 		return err
 	}
@@ -524,8 +497,8 @@ func (tx *Tx) RemoveLeecher(t *models.Torrent, p *models.Peer) error {
 
 func (tx *Tx) LeecherFinished(torrent *models.Torrent, peer *models.Peer) error {
 	torrentIdKey := strconv.FormatUint(torrent.ID, 36)
-	seederSetKey := tx.conf.Prefix + SeederPrefix + torrentIdKey
-	leecherSetKey := tx.conf.Prefix + LeecherPrefix + torrentIdKey
+	seederSetKey := tx.conf.Prefix + SeedersPrefix + torrentIdKey
+	leecherSetKey := tx.conf.Prefix + LeechersPrefix + torrentIdKey
 
 	_, err := tx.Do("SMOVE", leecherSetKey, seederSetKey, getPeerHashKey(peer))
 	if err != nil {
@@ -538,9 +511,9 @@ func (tx *Tx) LeecherFinished(torrent *models.Torrent, peer *models.Peer) error 
 	return err
 }
 
-// This is a mulple action command, it's not internally atomic
+// This is a multiple action command, it's not internally atomic
 func (tx *Tx) AddSeeder(torrent *models.Torrent, peer *models.Peer) error {
-	setKey := tx.conf.Prefix + SeederPrefix + strconv.FormatUint(torrent.ID, 36)
+	setKey := tx.conf.Prefix + SeedersPrefix + strconv.FormatUint(torrent.ID, 36)
 	_, err := tx.Do("SADD", setKey, getPeerHashKey(peer))
 	if err != nil {
 		return err
@@ -566,7 +539,7 @@ func (tx *Tx) SetSeeder(t *models.Torrent, p *models.Peer) error {
 }
 
 func (tx *Tx) RemoveSeeder(t *models.Torrent, p *models.Peer) error {
-	err := tx.removePeer(p, SeederPrefix)
+	err := tx.removePeer(p, SeedersPrefix)
 	if err != nil {
 		return err
 	}
