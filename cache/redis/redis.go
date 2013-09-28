@@ -112,85 +112,92 @@ func (tx *Tx) close() {
 	tx.Conn.Close()
 }
 
-// createUser takes a slice of length 7 and returns a pointer to a new models.User or an error.
-// This function is used to create a user from a Redis hash response.
-// The 7 strings in the slice must be in the specified order.
-//
-// User.ID
-// User.Passkey
-// User.UpMultiplier
-// User.DownMultiplier
-// User.Slots
-// User.SlotsUsed
-// User.Snatches
-//
-// If the strings cannot be converted to the correct type,
+// createUser takes a string slice of length 14 and returns a pointer to a new
+// models.User or an error.
+// This function is used to create a user from a Redis hash response(HGETALL).
+// The order of strings the in the slice must follow the pattern:
+//  [<field name>, <field value>, <field name>, <field value>, ...]
+// If the field value string cannot be converted to the correct type,
 // createUser will return a nil user and the conversion error.
 func createUser(userVals []string) (*models.User, error) {
-	if len(userVals) != 7 {
+	if len(userVals) != 14 {
 		return nil, ErrCreateUser
 	}
 	var user models.User
-	convErrors := make([]error, 7)
-	user.ID, convErrors[0] = strconv.ParseUint(userVals[0], 10, 64)
-	user.Passkey = userVals[1]
-	user.UpMultiplier, convErrors[2] = strconv.ParseFloat(userVals[2], 64)
-	user.DownMultiplier, convErrors[3] = strconv.ParseFloat(userVals[3], 64)
-	user.Slots, convErrors[4] = strconv.ParseInt(userVals[4], 10, 64)
-	user.SlotsUsed, convErrors[5] = strconv.ParseInt(userVals[5], 10, 64)
-	user.Snatches, convErrors[6] = strconv.ParseUint(userVals[6], 10, 64)
-
-	for i := 0; i < 7; i++ {
-		if convErrors[i] != nil {
-			return nil, convErrors[i]
+	var err error
+	for index, userString := range userVals {
+		switch userString {
+		case "id":
+			user.ID, err = strconv.ParseUint(userVals[index+1], 10, 64)
+		case "passkey":
+			user.Passkey = userVals[index+1]
+		case "up_multiplier":
+			user.UpMultiplier, err = strconv.ParseFloat(userVals[index+1], 64)
+		case "down_multiplier":
+			user.DownMultiplier, err = strconv.ParseFloat(userVals[index+1], 64)
+		case "slots":
+			user.Slots, err = strconv.ParseInt(userVals[index+1], 10, 64)
+		case "slots_used":
+			user.SlotsUsed, err = strconv.ParseInt(userVals[index+1], 10, 64)
+		case "snatches":
+			user.Snatches, err = strconv.ParseUint(userVals[index+1], 10, 64)
+		}
+		if err != nil {
+			return nil, err
 		}
 	}
 	return &user, nil
 }
 
-// createTorrent takes a slice of length 7 and returns a pointer to a new models.Torrent or an error.
-// This function can be used to create a torrent from a Redis hash response.
-// The 7 hash fields must be in the specified order.
-//
-// torrent.ID
-// torrent.Infohash
-// torrent.Active
-// torrent.Snatches
-// torrent.UpMultiplier
-// torrent.DownMultiplier
-// torrent.LastAction
-//
+// createTorrent takes a string slice of length 14 and returns a pointer to a new models.Torrent
+// or an error.
+// This function can be used to create a torrent from a Redis hash response(HGETALL).
+// The order of strings the in the slice must follow the pattern:
+//  [<field name>, <field value>, <field name>, <field value>, ...]
 // This function calls multiple redis commands, it's not internally atomic.
-// After converting the torrent's ID, the seeders and leechers are populated by getPeers
-// If the strings cannot be converted to the correct type,
+// If the field values cannot be converted to the correct type,
 // createTorrent will return a nil user and the conversion error.
+// After converting the torrent fields, the seeders and leechers are populated by redis.getPeers
 func (tx *Tx) createTorrent(torrentVals []string) (*models.Torrent, error) {
-	if len(torrentVals) != 7 {
+	if len(torrentVals) != 14 {
 		return nil, ErrCreateTorrent
 	}
 	var torrent models.Torrent
-	convErrors := make([]error, 9)
-	torrent.ID, convErrors[0] = strconv.ParseUint(torrentVals[0], 10, 64)
-	torrent.Infohash = torrentVals[1]
-	torrent.Active, convErrors[2] = strconv.ParseBool(torrentVals[2])
-	torrent.Snatches, convErrors[3] = strconv.ParseUint(torrentVals[3], 10, 32)
-	torrent.UpMultiplier, convErrors[4] = strconv.ParseFloat(torrentVals[4], 64)
-	torrent.DownMultiplier, convErrors[5] = strconv.ParseFloat(torrentVals[5], 64)
-	torrent.LastAction, convErrors[6] = strconv.ParseInt(torrentVals[6], 10, 64)
-	torrent.Seeders, convErrors[7] = tx.getPeers(torrent.ID, SeedersPrefix)
-	torrent.Leechers, convErrors[8] = tx.getPeers(torrent.ID, LeechersPrefix)
-
-	for i := 0; i < 9; i++ {
-		if convErrors[i] != nil {
-			return nil, convErrors[i]
+	var err error
+	for index, torrentString := range torrentVals {
+		switch torrentString {
+		case "id":
+			torrent.ID, err = strconv.ParseUint(torrentVals[index+1], 10, 64)
+		case "infohash":
+			torrent.Infohash = torrentVals[index+1]
+		case "active":
+			torrent.Active, err = strconv.ParseBool(torrentVals[index+1])
+		case "snatches":
+			torrent.Snatches, err = strconv.ParseUint(torrentVals[index+1], 10, 32)
+		case "up_multiplier":
+			torrent.UpMultiplier, err = strconv.ParseFloat(torrentVals[index+1], 64)
+		case "down_multiplier":
+			torrent.DownMultiplier, err = strconv.ParseFloat(torrentVals[index+1], 64)
+		case "last_action":
+			torrent.LastAction, err = strconv.ParseInt(torrentVals[index+1], 10, 64)
 		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	torrent.Seeders, err = tx.getPeers(torrent.ID, SeedersPrefix)
+	if err != nil {
+		return nil, err
+	}
+	torrent.Leechers, err = tx.getPeers(torrent.ID, LeechersPrefix)
+	if err != nil {
+		return nil, err
 	}
 	return &torrent, nil
 }
 
-// setPeer writes or overwrites peer information.
-// The hash fields are sent in a specific order
-// so that they can be unpacked correctly
+// setPeer writes or overwrites peer information, stored as a Redis hash.
+// The hash fields names are the same as the JSON tags on the models.Peer struct.
 func (tx *Tx) setPeer(peer *models.Peer) error {
 	hashKey := tx.conf.Prefix + getPeerHashKey(peer)
 	_, err := tx.Do("HMSET", hashKey,
@@ -274,47 +281,47 @@ func (tx *Tx) addPeers(peers map[string]models.Peer, peerTypePrefix string) erro
 }
 
 // createPeer takes a slice of length 9 and returns a pointer to a new models.Peer or an error.
-// This function is used to create a peer from a Redis hash response.
-// The 9 strings in the slice must be in the specified order.
-//
-// peer.ID
-// peer.UserID
-// peer.TorrentID
-// peer.IP
-// peer.Port
-// peer.Uploaded
-// peer.Downloaded
-// peer.Left
-// peer.LastAnnounce
-//
-// If the strings cannot be converted to the correct type,
-// This function will return a nil peer and the conversion error.
+// This function is used to create a peer from a Redis hash response(HGETALL).
+// The order of strings the in the slice must follow the pattern:
+//  [<field name>, <field value>, <field name>, <field value>, ...]
+// If the field value string cannot be converted to the correct type,
+// the function will return a nil peer and the conversion error.
 func createPeer(peerVals []string) (*models.Peer, error) {
-	if len(peerVals) != 9 {
+	if len(peerVals) != 18 {
 		return nil, ErrCreatePeer
 	}
 	var peer models.Peer
-	convErrors := make([]error, 9)
-	peer.ID = peerVals[0]
-	peer.UserID, convErrors[1] = strconv.ParseUint(peerVals[1], 10, 64)
-	peer.TorrentID, convErrors[2] = strconv.ParseUint(peerVals[2], 10, 64)
-	peer.IP = peerVals[3]
-	peer.Port, convErrors[4] = strconv.ParseUint(peerVals[4], 10, 64)
-	peer.Uploaded, convErrors[5] = strconv.ParseUint(peerVals[5], 10, 64)
-	peer.Downloaded, convErrors[6] = strconv.ParseUint(peerVals[6], 10, 64)
-	peer.Left, convErrors[7] = strconv.ParseUint(peerVals[7], 10, 64)
-	peer.LastAnnounce, convErrors[8] = strconv.ParseInt(peerVals[8], 10, 64)
-
-	for i := 0; i < 9; i++ {
-		if convErrors[i] != nil {
-			return nil, convErrors[i]
+	var err error
+	for index, peerString := range peerVals {
+		switch peerString {
+		case "id":
+			peer.ID = peerVals[index+1]
+		case "user_id":
+			peer.UserID, err = strconv.ParseUint(peerVals[index+1], 10, 64)
+		case "torrent_id":
+			peer.TorrentID, err = strconv.ParseUint(peerVals[index+1], 10, 64)
+		case "ip":
+			peer.IP = peerVals[index+1]
+		case "port":
+			peer.Port, err = strconv.ParseUint(peerVals[index+1], 10, 64)
+		case "uploaded":
+			peer.Uploaded, err = strconv.ParseUint(peerVals[index+1], 10, 64)
+		case "downloaded":
+			peer.Downloaded, err = strconv.ParseUint(peerVals[index+1], 10, 64)
+		case "left":
+			peer.Left, err = strconv.ParseUint(peerVals[index+1], 10, 64)
+		case "last_announce":
+			peer.LastAnnounce, err = strconv.ParseInt(peerVals[index+1], 10, 64)
+		}
+		if err != nil {
+			return nil, err
 		}
 	}
 	return &peer, nil
 }
 
 // getPeers returns a map of peers from a specified torrent's peer set(seeders or leechers).
-// This is a multiple action command, it's not internally atomic
+// This is a multiple action command, it's not internally atomic.
 func (tx *Tx) getPeers(torrentID uint64, peerTypePrefix string) (peers map[string]models.Peer, err error) {
 	peers = make(map[string]models.Peer)
 	setKey := tx.conf.Prefix + peerTypePrefix + strconv.FormatUint(torrentID, 36)
@@ -325,7 +332,7 @@ func (tx *Tx) getPeers(torrentID uint64, peerTypePrefix string) (peers map[strin
 	// Keys map to peer objects stored in hashes
 	for _, peerHashKey := range peerStrings {
 		hashKey := tx.conf.Prefix + peerHashKey
-		peerVals, err := redis.Strings(tx.Do("HVALS", hashKey))
+		peerVals, err := redis.Strings(tx.Do("HGETALL", hashKey))
 		if err != nil {
 			return nil, err
 		}
@@ -342,9 +349,8 @@ func (tx *Tx) getPeers(torrentID uint64, peerTypePrefix string) (peers map[strin
 }
 
 // AddTorrent writes/overwrites torrent information and saves peers from both peer sets.
-// The hash fields are sent in a specific order
-// so that they can be unpacked correctly
-// This is a multiple action command, it's not internally atomic
+// The hash fields names are the same as the JSON tags on the models.Torrent struct.
+// This is a multiple action command, it's not internally atomic.
 func (tx *Tx) AddTorrent(t *models.Torrent) error {
 	hashkey := tx.conf.Prefix + TorrentPrefix + t.Infohash
 	_, err := tx.Do("HMSET", hashkey,
@@ -392,8 +398,7 @@ func (tx *Tx) RemoveTorrent(t *models.Torrent) error {
 }
 
 // AddUser writes/overwrites user information to a Redis hash.
-// The hash fields are sent in a specific order
-// so that they can be unpacked correctly
+// The hash fields names are the same as the JSON tags on the models.user struct.
 func (tx *Tx) AddUser(u *models.User) error {
 	hashkey := tx.conf.Prefix + UserPrefix + u.Passkey
 	_, err := tx.Do("HMSET", hashkey,
@@ -421,13 +426,13 @@ func (tx *Tx) RemoveUser(u *models.User) error {
 	return nil
 }
 
-// FindUser returns true and a pointer to a new user struct, if the user exists
+// FindUser returns a pointer to a new user struct and true if the user exists,
 // or nil and false if the user doesn't exist.
 // This function does not return an error if the torrent doesn't exist.
 func (tx *Tx) FindUser(passkey string) (*models.User, bool, error) {
 	hashkey := tx.conf.Prefix + UserPrefix + passkey
 	// Consider using HGETALL instead of HVALS here for robustness
-	userStrings, err := redis.Strings(tx.Do("HVALS", hashkey))
+	userStrings, err := redis.Strings(tx.Do("HGETALL", hashkey))
 	if err != nil {
 		return nil, false, err
 	} else if len(userStrings) == 0 {
@@ -440,12 +445,12 @@ func (tx *Tx) FindUser(passkey string) (*models.User, bool, error) {
 	return foundUser, true, nil
 }
 
-// FindTorrent returns a pointer to a new torrent struct and true, if the torrent exists
+// FindTorrent returns a pointer to a new torrent struct and true if the torrent exists,
 // or nil and false if the torrent doesn't exist.
-// This is a multiple action command, it's not internally atomic
+// This is a multiple action command, it's not internally atomic.
 func (tx *Tx) FindTorrent(infohash string) (*models.Torrent, bool, error) {
 	hashkey := tx.conf.Prefix + TorrentPrefix + infohash
-	torrentStrings, err := redis.Strings(tx.Do("HVALS", hashkey))
+	torrentStrings, err := redis.Strings(tx.Do("HGETALL", hashkey))
 	if err != nil {
 		return nil, false, err
 	} else if len(torrentStrings) == 0 {
@@ -485,7 +490,7 @@ func (tx *Tx) UnWhitelistClient(peerID string) error {
 
 // RecordSnatch increments the snatch counter on the torrent and user by one.
 // This modifies the arguments as well as the hash field in Redis.
-// This is a multiple action command, it's not internally atomic
+// This is a multiple action command, it's not internally atomic.
 func (tx *Tx) RecordSnatch(user *models.User, torrent *models.Torrent) error {
 
 	torrentKey := tx.conf.Prefix + TorrentPrefix + torrent.Infohash
@@ -546,7 +551,7 @@ func (tx *Tx) MarkInactive(torrent *models.Torrent) error {
 // AddLeecher adds a new peer to a torrent's leecher set.
 // This modifies the torrent argument, as well as the torrent's set and peer's hash in Redis.
 // This function does not return an error if the leecher already exists.
-// This is a multiple action command, it's not internally atomic
+// This is a multiple action command, it's not internally atomic.
 func (tx *Tx) AddLeecher(torrent *models.Torrent, peer *models.Peer) error {
 	setKey := tx.conf.Prefix + LeechersPrefix + strconv.FormatUint(torrent.ID, 36)
 	_, err := tx.Do("SADD", setKey, getPeerHashKey(peer))
@@ -611,7 +616,7 @@ func (tx *Tx) LeecherFinished(torrent *models.Torrent, peer *models.Peer) error 
 // AddSeeder adds a new peer to a torrent's seeder set.
 // This modifies the torrent argument, as well as the torrent's set and peer's hash in Redis.
 // This function does not return an error if the seeder already exists.
-// This is a multiple action command, it's not internally atomic
+// This is a multiple action command, it's not internally atomic.
 func (tx *Tx) AddSeeder(torrent *models.Torrent, peer *models.Peer) error {
 	setKey := tx.conf.Prefix + SeedersPrefix + strconv.FormatUint(torrent.ID, 36)
 	_, err := tx.Do("SADD", setKey, getPeerHashKey(peer))
