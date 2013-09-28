@@ -7,7 +7,6 @@
 package cache
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/pushrax/chihaya/config"
@@ -15,9 +14,7 @@ import (
 )
 
 var (
-	drivers       = make(map[string]Driver)
-	ErrTxDone     = errors.New("cache: Transaction has already been committed or rolled back")
-	ErrTxConflict = errors.New("cache: Commit interrupted, update transaction and repeat")
+	drivers = make(map[string]Driver)
 )
 
 type Driver interface {
@@ -57,15 +54,9 @@ type Pool interface {
 	Get() (Tx, error)
 }
 
-// Tx represents an in-progress data store transaction.
-// A transaction must end with a call to Commit or Rollback.
-//
-// After a call to Commit or Rollback, all operations on the
-// transaction must fail with ErrTxDone.
+// The transmit object is the interface to add, remove and modify
+// data in the cache
 type Tx interface {
-	Commit() error
-	Rollback() error
-
 	// Reads
 	FindUser(passkey string) (*models.User, bool, error)
 	FindTorrent(infohash string) (*models.Torrent, bool, error)
@@ -82,4 +73,13 @@ type Tx interface {
 	SetSeeder(t *models.Torrent, p *models.Peer) error
 	IncrementSlots(u *models.User) error
 	DecrementSlots(u *models.User) error
+	LeecherFinished(t *models.Torrent, p *models.Peer) error
+
+	// Priming / Testing
+	AddTorrent(t *models.Torrent) error
+	RemoveTorrent(t *models.Torrent) error
+	AddUser(u *models.User) error
+	RemoveUser(u *models.User) error
+	WhitelistClient(peerID string) error
+	UnWhitelistClient(peerID string) error
 }

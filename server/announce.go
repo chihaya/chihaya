@@ -82,8 +82,8 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Look for the user in in the pool of seeders and leechers
-		_, seeder := torrent.Seeders[peerID]
-		_, leecher := torrent.Leechers[peerID]
+		_, seeder := torrent.Seeders[models.PeerMapKey(peer)]
+		_, leecher := torrent.Leechers[models.PeerMapKey(peer)]
 
 		switch {
 		// Guarantee that no user is in both pools
@@ -170,11 +170,7 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 				log.Panicf("server: %s", err)
 			}
 			if leecher {
-				err := tx.RemoveLeecher(torrent, peer)
-				if err != nil {
-					log.Panicf("server: %s", err)
-				}
-				err = tx.AddSeeder(torrent, peer)
+				err := tx.LeecherFinished(torrent, peer)
 				if err != nil {
 					log.Panicf("server: %s", err)
 				}
@@ -182,11 +178,7 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 
 		case leecher && left == 0:
 			// A leecher completed but the event was never received
-			err := tx.RemoveLeecher(torrent, peer)
-			if err != nil {
-				log.Panicf("server: %s", err)
-			}
-			err = tx.AddSeeder(torrent, peer)
+			err := tx.LeecherFinished(torrent, peer)
 			if err != nil {
 				log.Panicf("server: %s", err)
 			}
@@ -195,12 +187,6 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		if ip != peer.IP || port != peer.Port {
 			peer.Port = port
 			peer.IP = ip
-		}
-
-		// If the transaction failed, retry
-		err = tx.Commit()
-		if err != nil {
-			continue
 		}
 
 		// Generate the response
