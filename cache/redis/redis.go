@@ -4,13 +4,23 @@
 
 // Package redis implements the storage interface for a BitTorrent tracker.
 //
-// The client whitelist is represented as a set with the key name "whitelist"
-// with an optional prefix. Torrents and users are represented as hashes.
-// Torrents' keys are named "torrent:<infohash>" with an optional prefix.
-// Users' keys are named "user:<passkey>" with an optional prefix. The
-// seeders and leechers attributes of torrent hashes are strings that represent
-// the key for those hashes within redis. This is done because redis cannot
-// nest their hash data type.
+// This interface is configured by a config.DataStore.
+// To get a handle to this interface, call New on the initialized driver and
+// then Get() on returned the cache.Pool.
+//
+// Torrents, Users, and Peers are all stored in Redis hash types. All Redis
+// keys can have an optional prefix specified during configuration.
+// The relationship between Torrents and Peers is a Redis set that holds
+// the peers' keys. There are two sets per torrent, one for seeders and
+// one for leechers. The Redis sets are keyed by type and the torrent's ID.
+//
+// The whitelist is a Redis set with the key "whitelist" that holds client IDs.
+// Operations on the whitelist do not parse the client ID from a peer ID.
+//
+// Some functions in this interface are not atomic. The data being modified may
+// change while the function is executing. This will not cause the function to
+// return an error; instead the function will complete and return valid, stale
+// data.
 package redis
 
 import (
@@ -40,6 +50,7 @@ var (
 
 type driver struct{}
 
+// New creates and returns a cache.Pool.
 func (d *driver) New(conf *config.DataStore) cache.Pool {
 	return &Pool{
 		conf: conf,
@@ -52,6 +63,7 @@ func (d *driver) New(conf *config.DataStore) cache.Pool {
 	}
 }
 
+// makeDialFunc configures and returns a new redis.Dial struct using the specified configuration.
 func makeDialFunc(conf *config.DataStore) func() (redis.Conn, error) {
 	return func() (conn redis.Conn, err error) {
 		conn, err = redis.Dial(conf.Network, conf.Host+":"+conf.Port)
@@ -62,6 +74,7 @@ func makeDialFunc(conf *config.DataStore) func() (redis.Conn, error) {
 	}
 }
 
+// testOnBorrow pings the Redis instance
 func testOnBorrow(c redis.Conn, t time.Time) error {
 	_, err := c.Do("PING")
 	return err
@@ -99,6 +112,20 @@ func (tx *Tx) close() {
 	tx.Conn.Close()
 }
 
+// createUser takes a slice of length 7 and returns a pointer to a new models.User or an error.
+// This function is used to create a user from a Redis hash response.
+// The 7 strings in the slice must be in the specified order.
+//
+// User.ID
+// User.Passkey
+// User.UpMultiplier
+// User.DownMultiplier
+// User.Slots
+// User.SlotsUsed
+// User.Snatches
+//
+// If the strings cannot be converted to the correct type,
+// createUser will return a nil user and the conversion error.
 func createUser(userVals []string) (*models.User, error) {
 	if len(userVals) != 7 {
 		return nil, ErrCreateUser
@@ -121,7 +148,22 @@ func createUser(userVals []string) (*models.User, error) {
 	return &user, nil
 }
 
-// This is a multiple action command, it's not internally atomic
+// createTorrent takes a slice of length 7 and returns a pointer to a new models.Torrent or an error.
+// This function can be used to create a torrent from a Redis hash response.
+// The 7 hash fields must be in the specified order.
+//
+// torrent.ID
+// torrent.Infohash
+// torrent.Active
+// torrent.Snatches
+// torrent.UpMultiplier
+// torrent.DownMultiplier
+// torrent.LastAction
+//
+// This function calls multiple redis commands, it's not internally atomic.
+// After converting the torrent's ID, the seeders and leechers are populated by getPeers
+// If the strings cannot be converted to the correct type,
+// createTorrent will return a nil user and the conversion error.
 func (tx *Tx) createTorrent(torrentVals []string) (*models.Torrent, error) {
 	if len(torrentVals) != 7 {
 		return nil, ErrCreateTorrent
@@ -146,7 +188,9 @@ func (tx *Tx) createTorrent(torrentVals []string) (*models.Torrent, error) {
 	return &torrent, nil
 }
 
-// The peer hashkey relies on the combination of peerID, userID, and torrentID being unique
+// setPeer writes or overwrites peer information.
+// The hash fields are sent in a specific order
+// so that they can be unpacked correctly
 func (tx *Tx) setPeer(peer *models.Peer) error {
 	hashKey := tx.conf.Prefix + getPeerHashKey(peer)
 	_, err := tx.Do("HMSET", hashKey,
@@ -160,13 +204,13 @@ func (tx *Tx) setPeer(peer *models.Peer) error {
 		"left", peer.Left,
 		"last_announce", peer.LastAnnounce)
 
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
-// Will not return an error if the peer doesn't exist
+// removePeer removes the given peer from the specified peer set (seeder or leecher),
+// and removes the peer information.
+// This function calls multiple redis commands, it's not internally atomic.
+// This function will not return an error if the peer to remove doesn't exist.
 func (tx *Tx) removePeer(peer *models.Peer, peerTypePrefix string) error {
 	setKey := tx.conf.Prefix + getPeerSetKey(peerTypePrefix, peer)
 	_, err := tx.Do("SREM", setKey, getPeerHashKey(peer))
@@ -178,7 +222,11 @@ func (tx *Tx) removePeer(peer *models.Peer, peerTypePrefix string) error {
 	return nil
 }
 
-// This is a multiple action command, it's not internally atomic
+// removePeers removes all peers from specified peer set (seeders or leechers),
+// removes the peer information, and then removes the associated peer from the given map.
+// This function will not return an error if the peer to remove doesn't exist.
+// This function will only delete the peer set if all the individual peer deletions were successful
+// This function calls multiple redis commands, it's not internally atomic.
 func (tx *Tx) removePeers(torrentID uint64, peers map[string]models.Peer, peerTypePrefix string) error {
 	for _, peer := range peers {
 		hashKey := tx.conf.Prefix + getPeerHashKey(&peer)
@@ -188,25 +236,31 @@ func (tx *Tx) removePeers(torrentID uint64, peers map[string]models.Peer, peerTy
 		}
 		delete(peers, models.PeerMapKey(&peer))
 	}
-	// Will only delete the set if all the peer deletions were successful
 	setKey := tx.conf.Prefix + peerTypePrefix + strconv.FormatUint(torrentID, 36)
 	_, err := tx.Do("DEL", setKey)
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
+// getPeerHashKey returns a string with the peer.ID, encoded peer.UserID, and encoded peer.TorrentID,
+// concatenated and delimited by colons
+// This key corresponds to a Redis hash type with fields containing a peer's data.
+// The peer hashkey relies on the combination of peerID, userID, and torrentID being unique.
 func getPeerHashKey(peer *models.Peer) string {
 	return peer.ID + ":" + strconv.FormatUint(peer.UserID, 36) + ":" + strconv.FormatUint(peer.TorrentID, 36)
 }
 
+// getPeerSetKey returns a string that is the peer's encoded torrentID appended to the typePrefix
+// This key corresponds to a torrent's pool of leechers or seeders
 func getPeerSetKey(typePrefix string, peer *models.Peer) string {
 	return typePrefix + strconv.FormatUint(peer.TorrentID, 36)
 }
 
-// This is a multiple action command, it's not internally atomic
+// addPeers adds each peer's key to the specified peer set and saves the peer's information.
+// This function will not return an error if the peer already exists in the set.
+// This function calls multiple redis commands, it's not internally atomic.
 func (tx *Tx) addPeers(peers map[string]models.Peer, peerTypePrefix string) error {
 	for _, peer := range peers {
 		setKey := tx.conf.Prefix + getPeerSetKey(peerTypePrefix, &peer)
@@ -219,46 +273,47 @@ func (tx *Tx) addPeers(peers map[string]models.Peer, peerTypePrefix string) erro
 	return nil
 }
 
+// createPeer takes a slice of length 9 and returns a pointer to a new models.Peer or an error.
+// This function is used to create a peer from a Redis hash response.
+// The 9 strings in the slice must be in the specified order.
+//
+// peer.ID
+// peer.UserID
+// peer.TorrentID
+// peer.IP
+// peer.Port
+// peer.Uploaded
+// peer.Downloaded
+// peer.Left
+// peer.LastAnnounce
+//
+// If the strings cannot be converted to the correct type,
+// This function will return a nil peer and the conversion error.
 func createPeer(peerVals []string) (*models.Peer, error) {
 	if len(peerVals) != 9 {
 		return nil, ErrCreatePeer
 	}
-	ID := peerVals[0]
-	UserID, err := strconv.ParseUint(peerVals[1], 10, 64)
-	if err != nil {
-		return nil, err
-	}
-	TorrentID, err := strconv.ParseUint(peerVals[2], 10, 64)
-	if err != nil {
-		return nil, err
-	}
-	IP := peerVals[3]
+	var peer models.Peer
+	convErrors := make([]error, 9)
+	peer.ID = peerVals[0]
+	peer.UserID, convErrors[1] = strconv.ParseUint(peerVals[1], 10, 64)
+	peer.TorrentID, convErrors[2] = strconv.ParseUint(peerVals[2], 10, 64)
+	peer.IP = peerVals[3]
+	peer.Port, convErrors[4] = strconv.ParseUint(peerVals[4], 10, 64)
+	peer.Uploaded, convErrors[5] = strconv.ParseUint(peerVals[5], 10, 64)
+	peer.Downloaded, convErrors[6] = strconv.ParseUint(peerVals[6], 10, 64)
+	peer.Left, convErrors[7] = strconv.ParseUint(peerVals[7], 10, 64)
+	peer.LastAnnounce, convErrors[8] = strconv.ParseInt(peerVals[8], 10, 64)
 
-	Port, err := strconv.ParseUint(peerVals[4], 10, 64)
-	if err != nil {
-		return nil, err
+	for i := 0; i < 9; i++ {
+		if convErrors[i] != nil {
+			return nil, convErrors[i]
+		}
 	}
-	Uploaded, err := strconv.ParseUint(peerVals[5], 10, 64)
-	if err != nil {
-		return nil, err
-	}
-	Downloaded, err := strconv.ParseUint(peerVals[6], 10, 64)
-	if err != nil {
-		return nil, err
-	}
-	Left, err := strconv.ParseUint(peerVals[7], 10, 64)
-	if err != nil {
-		return nil, err
-	}
-	LastAnnounce, err := strconv.ParseInt(peerVals[8], 10, 64)
-	if err != nil {
-		return nil, err
-	}
-	return &models.Peer{ID: ID, UserID: UserID, TorrentID: TorrentID, IP: IP, Port: Port,
-		Uploaded: Uploaded, Downloaded: Downloaded, Left: Left, LastAnnounce: LastAnnounce}, nil
-
+	return &peer, nil
 }
 
+// getPeers returns a map of peers from a specified torrent's peer set(seeders or leechers).
 // This is a multiple action command, it's not internally atomic
 func (tx *Tx) getPeers(torrentID uint64, peerTypePrefix string) (peers map[string]models.Peer, err error) {
 	peers = make(map[string]models.Peer)
@@ -286,6 +341,9 @@ func (tx *Tx) getPeers(torrentID uint64, peerTypePrefix string) (peers map[strin
 	return
 }
 
+// AddTorrent writes/overwrites torrent information and saves peers from both peer sets.
+// The hash fields are sent in a specific order
+// so that they can be unpacked correctly
 // This is a multiple action command, it's not internally atomic
 func (tx *Tx) AddTorrent(t *models.Torrent) error {
 	hashkey := tx.conf.Prefix + TorrentPrefix + t.Infohash
@@ -312,7 +370,9 @@ func (tx *Tx) AddTorrent(t *models.Torrent) error {
 	return nil
 }
 
-// This is a multiple action command, it's not internally atomic
+// RemoveTorrent deletes the torrent's Redis hash and then deletes all peers.
+// This function will not return an error if the torrent has already been removed.
+// This is a multiple action command, it's not internally atomic.
 func (tx *Tx) RemoveTorrent(t *models.Torrent) error {
 	hashkey := tx.conf.Prefix + TorrentPrefix + t.Infohash
 	_, err := tx.Do("DEL", hashkey)
@@ -331,6 +391,9 @@ func (tx *Tx) RemoveTorrent(t *models.Torrent) error {
 	return nil
 }
 
+// AddUser writes/overwrites user information to a Redis hash.
+// The hash fields are sent in a specific order
+// so that they can be unpacked correctly
 func (tx *Tx) AddUser(u *models.User) error {
 	hashkey := tx.conf.Prefix + UserPrefix + u.Passkey
 	_, err := tx.Do("HMSET", hashkey,
@@ -347,6 +410,8 @@ func (tx *Tx) AddUser(u *models.User) error {
 	return nil
 }
 
+// RemoveUser removes the user's hash from Redis.
+// This function does not return an error if the user doesn't exist.
 func (tx *Tx) RemoveUser(u *models.User) error {
 	hashkey := tx.conf.Prefix + UserPrefix + u.Passkey
 	_, err := tx.Do("DEL", hashkey)
@@ -356,8 +421,12 @@ func (tx *Tx) RemoveUser(u *models.User) error {
 	return nil
 }
 
+// FindUser returns true and a pointer to a new user struct, if the user exists
+// or nil and false if the user doesn't exist.
+// This function does not return an error if the torrent doesn't exist.
 func (tx *Tx) FindUser(passkey string) (*models.User, bool, error) {
 	hashkey := tx.conf.Prefix + UserPrefix + passkey
+	// Consider using HGETALL instead of HVALS here for robustness
 	userStrings, err := redis.Strings(tx.Do("HVALS", hashkey))
 	if err != nil {
 		return nil, false, err
@@ -371,6 +440,8 @@ func (tx *Tx) FindUser(passkey string) (*models.User, bool, error) {
 	return foundUser, true, nil
 }
 
+// FindTorrent returns a pointer to a new torrent struct and true, if the torrent exists
+// or nil and false if the torrent doesn't exist.
 // This is a multiple action command, it's not internally atomic
 func (tx *Tx) FindTorrent(infohash string) (*models.Torrent, bool, error) {
 	hashkey := tx.conf.Prefix + TorrentPrefix + infohash
@@ -388,23 +459,32 @@ func (tx *Tx) FindTorrent(infohash string) (*models.Torrent, bool, error) {
 	return foundTorrent, true, nil
 }
 
+// ClientWhitelisted returns true if the ClientID exists in the Client set.
+// This function does not parse the client ID from the peer ID.
+// The clientID must match exactly to a member of the set.
 func (tx *Tx) ClientWhitelisted(peerID string) (exists bool, err error) {
 	key := tx.conf.Prefix + "whitelist"
 	return redis.Bool(tx.Do("SISMEMBER", key, peerID))
 }
 
+// WhitelistClient adds a client ID to the client whitelist set.
+// This function does not return an error if the client ID is already in the set.
 func (tx *Tx) WhitelistClient(peerID string) error {
 	key := tx.conf.Prefix + "whitelist"
 	_, err := tx.Do("SADD", key, peerID)
 	return err
 }
 
+// UnWhitelistClient removes a client ID from the client whitelist set
+// This function does not return an error if the client ID is not in the set.
 func (tx *Tx) UnWhitelistClient(peerID string) error {
 	key := tx.conf.Prefix + "whitelist"
 	_, err := tx.Do("SREM", key, peerID)
 	return err
 }
 
+// RecordSnatch increments the snatch counter on the torrent and user by one.
+// This modifies the arguments as well as the hash field in Redis.
 // This is a multiple action command, it's not internally atomic
 func (tx *Tx) RecordSnatch(user *models.User, torrent *models.Torrent) error {
 
@@ -424,6 +504,9 @@ func (tx *Tx) RecordSnatch(user *models.User, torrent *models.Torrent) error {
 	return nil
 }
 
+// MarkActive sets the active field of the torrent to true.
+// This modifies the argument as well as the hash field in Redis.
+// This function will return ErrMarkActive if the torrent does not exist.
 func (tx *Tx) MarkActive(torrent *models.Torrent) error {
 	hashkey := tx.conf.Prefix + TorrentPrefix + torrent.Infohash
 	activeExists, err := redis.Int(tx.Do("HSET", hashkey, "active", true))
@@ -438,6 +521,9 @@ func (tx *Tx) MarkActive(torrent *models.Torrent) error {
 	return nil
 }
 
+// MarkInactive sets the active field of the torrent to false.
+// This modifies the argument as well as the hash field in Redis.
+// This function will return ErrMarkActive if the torrent does not exist.
 func (tx *Tx) MarkInactive(torrent *models.Torrent) error {
 	hashkey := tx.conf.Prefix + TorrentPrefix + torrent.Infohash
 	activeExists, err := redis.Int(tx.Do("HSET", hashkey, "active", false))
@@ -457,6 +543,9 @@ func (tx *Tx) MarkInactive(torrent *models.Torrent) error {
 	return nil
 }
 
+// AddLeecher adds a new peer to a torrent's leecher set.
+// This modifies the torrent argument, as well as the torrent's set and peer's hash in Redis.
+// This function does not return an error if the leecher already exists.
 // This is a multiple action command, it's not internally atomic
 func (tx *Tx) AddLeecher(torrent *models.Torrent, peer *models.Peer) error {
 	setKey := tx.conf.Prefix + LeechersPrefix + strconv.FormatUint(torrent.ID, 36)
@@ -475,8 +564,10 @@ func (tx *Tx) AddLeecher(torrent *models.Torrent, peer *models.Peer) error {
 	return nil
 }
 
-// Setting assumes it is already a leecher, and just needs to be updated
-// Maybe eventually there will be a move from leecher to seeder method
+// SetLeecher updates a torrent's leecher.
+// This modifies the torrent argument, as well as the peer's hash in Redis.
+// Setting assumes that the peer is already a leecher, and only needs to be updated.
+// This function does not return an error if the leecher does not exist or is not in the torrent's leecher set.
 func (tx *Tx) SetLeecher(t *models.Torrent, p *models.Peer) error {
 	err := tx.setPeer(p)
 	if err != nil {
@@ -486,6 +577,9 @@ func (tx *Tx) SetLeecher(t *models.Torrent, p *models.Peer) error {
 	return nil
 }
 
+// RemoveLeecher removes the given peer from a torrent's leecher set.
+// This modifies the torrent argument, as well as the torrent's set and peer's hash in Redis.
+// This function does not return an error if the peer doesn't exist, or is not in the set.
 func (tx *Tx) RemoveLeecher(t *models.Torrent, p *models.Peer) error {
 	err := tx.removePeer(p, LeechersPrefix)
 	if err != nil {
@@ -495,6 +589,9 @@ func (tx *Tx) RemoveLeecher(t *models.Torrent, p *models.Peer) error {
 	return nil
 }
 
+// LeecherFinished moves a peer's hashkey from a torrent's leecher set to the seeder set and updates the peer.
+// This modifies the torrent argument, as well as the torrent's set and peer's hash in Redis.
+// This function does not return an error if the peer doesn't exist or is not in the torrent's leecher set.
 func (tx *Tx) LeecherFinished(torrent *models.Torrent, peer *models.Peer) error {
 	torrentIdKey := strconv.FormatUint(torrent.ID, 36)
 	seederSetKey := tx.conf.Prefix + SeedersPrefix + torrentIdKey
@@ -511,6 +608,9 @@ func (tx *Tx) LeecherFinished(torrent *models.Torrent, peer *models.Peer) error 
 	return err
 }
 
+// AddSeeder adds a new peer to a torrent's seeder set.
+// This modifies the torrent argument, as well as the torrent's set and peer's hash in Redis.
+// This function does not return an error if the seeder already exists.
 // This is a multiple action command, it's not internally atomic
 func (tx *Tx) AddSeeder(torrent *models.Torrent, peer *models.Peer) error {
 	setKey := tx.conf.Prefix + SeedersPrefix + strconv.FormatUint(torrent.ID, 36)
@@ -529,6 +629,10 @@ func (tx *Tx) AddSeeder(torrent *models.Torrent, peer *models.Peer) error {
 	return nil
 }
 
+// SetSeeder updates a torrent's seeder.
+// This modifies the torrent argument, as well as the peer's hash in Redis.
+// Setting assumes that the peer is already a seeder, and only needs to be updated.
+// This function does not return an error if the seeder does not exist or is not in the torrent's seeder set.
 func (tx *Tx) SetSeeder(t *models.Torrent, p *models.Peer) error {
 	err := tx.setPeer(p)
 	if err != nil {
@@ -538,6 +642,9 @@ func (tx *Tx) SetSeeder(t *models.Torrent, p *models.Peer) error {
 	return nil
 }
 
+// RemoveSeeder removes the given peer from a torrent's seeder set.
+// This modifies the torrent argument, as well as the torrent's set and peer's hash in Redis.
+// This function does not return an error if the peer doesn't exist, or is not in the set.
 func (tx *Tx) RemoveSeeder(t *models.Torrent, p *models.Peer) error {
 	err := tx.removePeer(p, SeedersPrefix)
 	if err != nil {
@@ -547,6 +654,8 @@ func (tx *Tx) RemoveSeeder(t *models.Torrent, p *models.Peer) error {
 	return nil
 }
 
+// IncrementSlots increment a user's Slots by one.
+// This function modifies the argument as well as the hash field in Redis.
 func (tx *Tx) IncrementSlots(u *models.User) error {
 	hashkey := tx.conf.Prefix + UserPrefix + u.Passkey
 	slotCount, err := redis.Int(tx.Do("HINCRBY", hashkey, "slots", 1))
@@ -557,6 +666,8 @@ func (tx *Tx) IncrementSlots(u *models.User) error {
 	return nil
 }
 
+// IncrementSlots increment a user's Slots by one.
+// This function modifies the argument as well as the hash field in Redis.
 func (tx *Tx) DecrementSlots(u *models.User) error {
 	hashkey := tx.conf.Prefix + UserPrefix + u.Passkey
 	slotCount, err := redis.Int(tx.Do("HINCRBY", hashkey, "slots", -1))
@@ -567,6 +678,7 @@ func (tx *Tx) DecrementSlots(u *models.User) error {
 	return nil
 }
 
+// init registers the redis driver
 func init() {
 	cache.Register("redis", &driver{})
 }
