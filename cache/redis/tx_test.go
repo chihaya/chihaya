@@ -43,6 +43,8 @@ func TestFindUserSuccess(t *testing.T) {
 	if *foundUser != *testUser {
 		t.Error("found user mismatch", *foundUser, testUser)
 	}
+	// Cleanup
+	panicOnErr(tx.RemoveUser(testUser))
 }
 
 func TestFindUserFail(t *testing.T) {
@@ -83,6 +85,8 @@ func TestFindTorrentSuccess(t *testing.T) {
 	if !reflect.DeepEqual(foundTorrent, testTorrent) {
 		t.Error("found torrent mismatch", foundTorrent, testTorrent)
 	}
+	// Cleanup
+	panicOnErr(tx.RemoveTorrent(testTorrent))
 }
 
 func TestFindTorrentFail(t *testing.T) {
@@ -107,6 +111,8 @@ func TestRemoveTorrent(t *testing.T) {
 	if found {
 		t.Error("removed torrent found", foundTorrent)
 	}
+	// Cleanup
+	panicOnErr(tx.RemoveTorrent(testTorrent))
 }
 
 func TestClientWhitelistSuccess(t *testing.T) {
@@ -119,6 +125,8 @@ func TestClientWhitelistSuccess(t *testing.T) {
 	if !found {
 		t.Error("peerID not found", testPeerID)
 	}
+	// Cleanup
+	panicOnErr(tx.UnWhitelistClient(testPeerID))
 }
 
 func TestClientWhitelistFail(t *testing.T) {
@@ -161,6 +169,9 @@ func TestRecordSnatch(t *testing.T) {
 	if foundTorrent.Snatches != torrentSnatches+1 {
 		t.Error("snatch not recorded to cached torrent")
 	}
+	// Cleanup
+	panicOnErr(tx.RemoveTorrent(testTorrent))
+	panicOnErr(tx.RemoveUser(testUser))
 }
 
 func TestMarkActive(t *testing.T) {
@@ -179,6 +190,8 @@ func TestMarkActive(t *testing.T) {
 	if testTorrent.Active != true {
 		t.Error("cached torrent not activated")
 	}
+	// Cleanup
+	panicOnErr(tx.RemoveTorrent(testTorrent))
 }
 
 func TestClientWhitelistRemove(t *testing.T) {
@@ -211,6 +224,8 @@ func TestAddSeeder(t *testing.T) {
 	if found && foundSeeder != *testSeeder {
 		t.Error("seeder not added to local", testSeeder)
 	}
+	// Cleanup
+	panicOnErr(tx.RemoveTorrent(testTorrent))
 }
 
 func TestAddLeecher(t *testing.T) {
@@ -230,6 +245,8 @@ func TestAddLeecher(t *testing.T) {
 	if found && foundLeecher != *testLeecher {
 		t.Error("leecher not added to local", testLeecher)
 	}
+	// Cleanup
+	panicOnErr(tx.RemoveTorrent(testTorrent))
 }
 
 func TestRemoveSeeder(t *testing.T) {
@@ -251,6 +268,8 @@ func TestRemoveSeeder(t *testing.T) {
 	if found || foundSeeder == *testSeeder {
 		t.Error("seeder not removed from cache", foundSeeder, *testSeeder)
 	}
+	// Cleanup
+	panicOnErr(tx.RemoveTorrent(testTorrent))
 }
 
 func TestRemoveLeecher(t *testing.T) {
@@ -271,6 +290,8 @@ func TestRemoveLeecher(t *testing.T) {
 	if found || foundLeecher == *testLeecher {
 		t.Error("leecher not removed from local", foundLeecher, *testLeecher)
 	}
+	// Cleanup
+	panicOnErr(tx.RemoveTorrent(testTorrent))
 }
 
 func TestSetSeeder(t *testing.T) {
@@ -295,6 +316,8 @@ func TestSetSeeder(t *testing.T) {
 	if foundSeeder != *testSeeder {
 		t.Error("seeder not updated in local", foundSeeder, *testSeeder)
 	}
+	// Cleanup
+	panicOnErr(tx.RemoveTorrent(testTorrent))
 }
 
 func TestSetLeecher(t *testing.T) {
@@ -318,6 +341,8 @@ func TestSetLeecher(t *testing.T) {
 	if foundLeecher != *testLeecher {
 		t.Error("leecher not updated in local", testLeecher)
 	}
+	// Cleanup
+	panicOnErr(tx.RemoveTorrent(testTorrent))
 }
 
 func TestIncrementSlots(t *testing.T) {
@@ -336,6 +361,8 @@ func TestIncrementSlots(t *testing.T) {
 	if testUser.Slots != numSlots+1 {
 		t.Error("local slots not incremented")
 	}
+	// Cleanup
+	panicOnErr(tx.RemoveUser(testUser))
 }
 
 func TestDecrementSlots(t *testing.T) {
@@ -354,6 +381,8 @@ func TestDecrementSlots(t *testing.T) {
 	if testUser.Slots != numSlots-1 {
 		t.Error("local slots not incremented")
 	}
+	// Cleanup
+	panicOnErr(tx.RemoveUser(testUser))
 }
 
 func TestLeecherFinished(t *testing.T) {
@@ -384,6 +413,8 @@ func TestLeecherFinished(t *testing.T) {
 	if foundSeeder == *testLeecher {
 		t.Error("leecher not removed from local", testLeecher)
 	}
+	// Cleanup
+	panicOnErr(tx.RemoveTorrent(testTorrent))
 }
 
 // Add, update, verify remove
@@ -408,6 +439,8 @@ func TestUpdatePeer(t *testing.T) {
 	if seeder, exists := testTorrent.Seeders[models.PeerMapKey(testSeeder)]; exists {
 		t.Error("seeder not removed from local", seeder)
 	}
+	// Cleanup
+	panicOnErr(tx.RemoveTorrent(testTorrent))
 }
 
 func TestParallelFindUser(t *testing.T) {
@@ -435,6 +468,8 @@ func TestParallelFindUser(t *testing.T) {
 			t.Error("found user mismatch", *foundUser, testUserSuccess)
 		}
 	}
+	// Cleanup
+	panicOnErr(tx.RemoveUser(testUserSuccess))
 }
 
 func TestParallelFindTorrent(t *testing.T) {
@@ -462,6 +497,8 @@ func TestParallelFindTorrent(t *testing.T) {
 			t.Error("torrent found", foundTorrent)
 		}
 	}
+	// Cleanup
+	panicOnErr(tx.RemoveTorrent(testTorrentSuccess))
 }
 
 func TestParallelSetSeeder(t *testing.T) {
@@ -492,6 +529,8 @@ func TestParallelSetSeeder(t *testing.T) {
 			t.Error("seeder not updated in local", foundSeeder, *testSeeder)
 		}
 	}
+	// Cleanup
+	panicOnErr(tx.RemoveTorrent(testTorrent))
 }
 
 func TestParallelAddLeecher(t *testing.T) {
@@ -519,4 +558,6 @@ func TestParallelAddLeecher(t *testing.T) {
 			t.Error("leecher not added to local", testLeecher)
 		}
 	}
+	// Cleanup
+	panicOnErr(tx.RemoveTorrent(testTorrent))
 }

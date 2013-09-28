@@ -2,7 +2,6 @@
 // Use of this source code is governed by the BSD 2-Clause license,
 // which can be found in the LICENSE file.
 
-// Benchmarks two different redis schemeas
 package redis
 
 import (
@@ -29,6 +28,10 @@ func BenchmarkSuccessfulFindUser(b *testing.B) {
 			b.Error("found user mismatch", *foundUser, testUser)
 		}
 	}
+	// Cleanup
+	b.StopTimer()
+	panicOnErr(tx.RemoveUser(testUser))
+	b.StartTimer()
 }
 
 func BenchmarkFailedFindUser(b *testing.B) {
@@ -66,6 +69,10 @@ func BenchmarkSuccessfulFindTorrent(b *testing.B) {
 			b.Error("found torrent mismatch", foundTorrent, testTorrent)
 		}
 	}
+	// Cleanup
+	b.StopTimer()
+	panicOnErr(tx.RemoveTorrent(testTorrent))
+	b.StartTimer()
 }
 
 func BenchmarkFailFindTorrent(b *testing.B) {
@@ -97,6 +104,10 @@ func BenchmarkSuccessfulClientWhitelisted(b *testing.B) {
 			b.Error("peerID not found", testPeerID)
 		}
 	}
+	// Cleanup
+	b.StopTimer()
+	panicOnErr(tx.UnWhitelistClient(testPeerID))
+	b.StartTimer()
 }
 
 func BenchmarkFailClientWhitelisted(b *testing.B) {
@@ -126,6 +137,11 @@ func BenchmarkRecordSnatch(b *testing.B) {
 	for bCount := 0; bCount < b.N; bCount++ {
 		panicOnErr(tx.RecordSnatch(testUser, testTorrent))
 	}
+	// Cleanup
+	b.StopTimer()
+	panicOnErr(tx.RemoveTorrent(testTorrent))
+	panicOnErr(tx.RemoveUser(testUser))
+	b.StartTimer()
 }
 
 func BenchmarkMarkActive(b *testing.B) {
@@ -139,6 +155,10 @@ func BenchmarkMarkActive(b *testing.B) {
 	for bCount := 0; bCount < b.N; bCount++ {
 		panicOnErr(tx.MarkActive(testTorrent))
 	}
+	// Cleanup
+	b.StopTimer()
+	panicOnErr(tx.RemoveTorrent(testTorrent))
+	b.StartTimer()
 }
 
 func BenchmarkAddSeeder(b *testing.B) {
@@ -155,6 +175,10 @@ func BenchmarkAddSeeder(b *testing.B) {
 
 		panicOnErr(tx.AddSeeder(testTorrent, testSeeder))
 	}
+	// Cleanup
+	b.StopTimer()
+	panicOnErr(tx.RemoveTorrent(testTorrent))
+	b.StartTimer()
 }
 
 func BenchmarkRemoveSeeder(b *testing.B) {
@@ -172,6 +196,10 @@ func BenchmarkRemoveSeeder(b *testing.B) {
 
 		panicOnErr(tx.RemoveSeeder(testTorrent, testSeeder))
 	}
+	// Cleanup
+	b.StopTimer()
+	panicOnErr(tx.RemoveTorrent(testTorrent))
+	b.StartTimer()
 }
 
 func BenchmarkSetSeeder(b *testing.B) {
@@ -191,6 +219,10 @@ func BenchmarkSetSeeder(b *testing.B) {
 
 		tx.SetSeeder(testTorrent, testSeeder)
 	}
+	// Cleanup
+	b.StopTimer()
+	panicOnErr(tx.RemoveTorrent(testTorrent))
+	b.StartTimer()
 }
 
 func BenchmarkIncrementSlots(b *testing.B) {
@@ -203,6 +235,10 @@ func BenchmarkIncrementSlots(b *testing.B) {
 	for bCount := 0; bCount < b.N; bCount++ {
 		panicOnErr(tx.IncrementSlots(testUser))
 	}
+	// Cleanup
+	b.StopTimer()
+	panicOnErr(tx.RemoveUser(testUser))
+	b.StartTimer()
 }
 
 func BenchmarkLeecherFinished(b *testing.B) {
@@ -221,6 +257,10 @@ func BenchmarkLeecherFinished(b *testing.B) {
 
 		panicOnErr(tx.LeecherFinished(testTorrent, testLeecher))
 	}
+	// Cleanup
+	b.StopTimer()
+	panicOnErr(tx.RemoveTorrent(testTorrent))
+	b.StartTimer()
 }
 
 // This is a comparision to the Leecher finished function
@@ -241,5 +281,8 @@ func BenchmarkRemoveLeecherAddSeeder(b *testing.B) {
 		panicOnErr(tx.RemoveLeecher(testTorrent, testLeecher))
 		panicOnErr(tx.AddSeeder(testTorrent, testLeecher))
 	}
-
+	// Cleanup
+	b.StopTimer()
+	tx.RemoveTorrent(testTorrent)
+	b.StartTimer()
 }
