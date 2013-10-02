@@ -4,6 +4,10 @@
 
 package models
 
+import (
+	"strconv"
+)
+
 type Peer struct {
 	ID        string `json:"id"`
 	UserID    uint64 `json:"user_id"`
@@ -18,6 +22,10 @@ type Peer struct {
 	LastAnnounce int64  `json:"last_announce"`
 }
 
+func PeerMapKey(peer *Peer) string {
+	return peer.ID + ":" + strconv.FormatUint(peer.UserID, 36)
+}
+
 type Torrent struct {
 	ID       uint64 `json:"id"`
 	Infohash string `json:"infohash"`
@@ -26,7 +34,7 @@ type Torrent struct {
 	Seeders  map[string]Peer `json:"seeders"`
 	Leechers map[string]Peer `json:"leechers"`
 
-	Snatches       uint    `json:"snatches"`
+	Snatches       uint64  `json:"snatches"`
 	UpMultiplier   float64 `json:"up_multiplier"`
 	DownMultiplier float64 `json:"down_multiplier"`
 	LastAction     int64   `json:"last_action"`
@@ -40,4 +48,5 @@ type User struct {
 	DownMultiplier float64 `json:"down_multiplier"`
 	Slots          int64   `json:"slots"`
 	SlotsUsed      int64   `json:"slots_used"`
+	Snatches       uint64  `json:"snatches"`
 }
