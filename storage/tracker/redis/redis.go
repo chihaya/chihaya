@@ -6,7 +6,7 @@
 //
 // This interface is configured by a config.DataStore.
 // To get a handle to this interface, call New on the initialized driver and
-// then Get() on returned the cache.Pool.
+// then Get() on returned the tracker.Pool.
 //
 // Torrents, Users, and Peers are all stored in Redis hash types. All Redis
 // keys can have an optional prefix specified during configuration.
@@ -30,9 +30,9 @@ import (
 
 	"github.com/garyburd/redigo/redis"
 
-	"github.com/pushrax/chihaya/cache"
 	"github.com/pushrax/chihaya/config"
 	"github.com/pushrax/chihaya/models"
+	"github.com/pushrax/chihaya/storage/tracker"
 )
 
 var (
@@ -50,8 +50,8 @@ var (
 
 type driver struct{}
 
-// New creates and returns a cache.Pool.
-func (d *driver) New(conf *config.DataStore) cache.Pool {
+// New creates and returns a tracker.Pool.
+func (d *driver) New(conf *config.DataStore) tracker.Pool {
 	return &Pool{
 		conf: conf,
 		pool: redis.Pool{
@@ -89,7 +89,7 @@ func (p *Pool) Close() error {
 	return p.pool.Close()
 }
 
-func (p *Pool) Get() (cache.Tx, error) {
+func (p *Pool) Get() (tracker.Conn, error) {
 	retTx := &Tx{
 		conf: p.conf,
 		done: false,
@@ -685,5 +685,5 @@ func (tx *Tx) DecrementSlots(u *models.User) error {
 
 // init registers the redis driver
 func init() {
-	cache.Register("redis", &driver{})
+	tracker.Register("redis", &driver{})
 }

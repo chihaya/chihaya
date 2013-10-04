@@ -2,9 +2,9 @@
 // Use of this source code is governed by the BSD 2-Clause license,
 // which can be found in the LICENSE file.
 
-// Package cache provides a generic interface for manipulating a
-// BitTorrent tracker's fast moving data.
-package cache
+// Package tracker provides a generic interface for manipulating a
+// BitTorrent tracker's fast-moving, inconsistent data.
+package tracker
 
 import (
 	"fmt"
@@ -26,10 +26,10 @@ type Driver interface {
 // it panics.
 func Register(name string, driver Driver) {
 	if driver == nil {
-		panic("cache: Register driver is nil")
+		panic("tracker: Register driver is nil")
 	}
 	if _, dup := drivers[name]; dup {
-		panic("cache: Register called twice for driver " + name)
+		panic("tracker: Register called twice for driver " + name)
 	}
 	drivers[name] = driver
 }
@@ -39,7 +39,7 @@ func Open(conf *config.DataStore) (Pool, error) {
 	driver, ok := drivers[conf.Driver]
 	if !ok {
 		return nil, fmt.Errorf(
-			"cache: unknown driver %q (forgotten import?)",
+			"tracker: unknown driver %q (forgotten import?)",
 			conf.Driver,
 		)
 	}
@@ -48,15 +48,15 @@ func Open(conf *config.DataStore) (Pool, error) {
 }
 
 // Pool represents a thread-safe pool of connections to the data store
-// that can be used to obtain transactions.
+// that can be used to safely within concurrent goroutines.
 type Pool interface {
 	Close() error
-	Get() (Tx, error)
+	Get() (Conn, error)
 }
 
-// The transmit object is the interface to add, remove and modify
-// data in the cache
-type Tx interface {
+// Conn represents a connection to the data store that can be used
+// to make atomic and non-atomic reads/writes.
+type Conn interface {
 	// Reads
 	FindUser(passkey string) (*models.User, bool, error)
 	FindTorrent(infohash string) (*models.Torrent, bool, error)

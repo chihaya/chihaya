@@ -11,17 +11,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pushrax/chihaya/cache"
 	"github.com/pushrax/chihaya/config"
 	"github.com/pushrax/chihaya/models"
+	"github.com/pushrax/chihaya/storage/tracker"
 )
 
-func createTestTx() cache.Tx {
+func createTestTx() tracker.Conn {
 	testConfig, err := config.Open(os.Getenv("TESTCONFIGPATH"))
 	panicOnErr(err)
 	conf := &testConfig.Cache
 
-	testPool, err := cache.Open(conf)
+	testPool, err := tracker.Open(conf)
 	panicOnErr(err)
 
 	txObj, err := testPool.Get()
