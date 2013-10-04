@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/pushrax/chihaya/config"
-	"github.com/pushrax/chihaya/models"
+	"github.com/pushrax/chihaya/storage"
 	"github.com/pushrax/chihaya/storage/tracker"
 )
 
@@ -216,11 +216,11 @@ func TestAddSeeder(t *testing.T) {
 	panicOnErr(tx.AddSeeder(testTorrent, testSeeder))
 	foundTorrent, found, err := tx.FindTorrent(testTorrent.Infohash)
 	panicOnErr(err)
-	foundSeeder, found := foundTorrent.Seeders[models.PeerMapKey(testSeeder)]
+	foundSeeder, found := foundTorrent.Seeders[storage.PeerMapKey(testSeeder)]
 	if found && foundSeeder != *testSeeder {
 		t.Error("seeder not added to cache", testSeeder)
 	}
-	foundSeeder, found = testTorrent.Seeders[models.PeerMapKey(testSeeder)]
+	foundSeeder, found = testTorrent.Seeders[storage.PeerMapKey(testSeeder)]
 	if found && foundSeeder != *testSeeder {
 		t.Error("seeder not added to local", testSeeder)
 	}
@@ -237,11 +237,11 @@ func TestAddLeecher(t *testing.T) {
 	panicOnErr(tx.AddLeecher(testTorrent, testLeecher))
 	foundTorrent, found, err := tx.FindTorrent(testTorrent.Infohash)
 	panicOnErr(err)
-	foundLeecher, found := foundTorrent.Leechers[models.PeerMapKey(testLeecher)]
+	foundLeecher, found := foundTorrent.Leechers[storage.PeerMapKey(testLeecher)]
 	if found && foundLeecher != *testLeecher {
 		t.Error("leecher not added to cache", testLeecher)
 	}
-	foundLeecher, found = testTorrent.Leechers[models.PeerMapKey(testLeecher)]
+	foundLeecher, found = testTorrent.Leechers[storage.PeerMapKey(testLeecher)]
 	if found && foundLeecher != *testLeecher {
 		t.Error("leecher not added to local", testLeecher)
 	}
@@ -257,14 +257,14 @@ func TestRemoveSeeder(t *testing.T) {
 	panicOnErr(tx.AddSeeder(testTorrent, testSeeder))
 
 	panicOnErr(tx.RemoveSeeder(testTorrent, testSeeder))
-	foundSeeder, found := testTorrent.Seeders[models.PeerMapKey(testSeeder)]
+	foundSeeder, found := testTorrent.Seeders[storage.PeerMapKey(testSeeder)]
 	if found || foundSeeder == *testSeeder {
 		t.Error("seeder not removed from local", foundSeeder)
 	}
 
 	foundTorrent, found, err := tx.FindTorrent(testTorrent.Infohash)
 	panicOnErr(err)
-	foundSeeder, found = foundTorrent.Seeders[models.PeerMapKey(testSeeder)]
+	foundSeeder, found = foundTorrent.Seeders[storage.PeerMapKey(testSeeder)]
 	if found || foundSeeder == *testSeeder {
 		t.Error("seeder not removed from cache", foundSeeder, *testSeeder)
 	}
@@ -282,11 +282,11 @@ func TestRemoveLeecher(t *testing.T) {
 	panicOnErr(tx.RemoveLeecher(testTorrent, testLeecher))
 	foundTorrent, found, err := tx.FindTorrent(testTorrent.Infohash)
 	panicOnErr(err)
-	foundLeecher, found := foundTorrent.Leechers[models.PeerMapKey(testLeecher)]
+	foundLeecher, found := foundTorrent.Leechers[storage.PeerMapKey(testLeecher)]
 	if found || foundLeecher == *testLeecher {
 		t.Error("leecher not removed from cache", foundLeecher, *testLeecher)
 	}
-	foundLeecher, found = testTorrent.Leechers[models.PeerMapKey(testLeecher)]
+	foundLeecher, found = testTorrent.Leechers[storage.PeerMapKey(testLeecher)]
 	if found || foundLeecher == *testLeecher {
 		t.Error("leecher not removed from local", foundLeecher, *testLeecher)
 	}
@@ -308,11 +308,11 @@ func TestSetSeeder(t *testing.T) {
 
 	foundTorrent, _, err := tx.FindTorrent(testTorrent.Infohash)
 	panicOnErr(err)
-	foundSeeder, _ := foundTorrent.Seeders[models.PeerMapKey(testSeeder)]
+	foundSeeder, _ := foundTorrent.Seeders[storage.PeerMapKey(testSeeder)]
 	if foundSeeder != *testSeeder {
 		t.Error("seeder not updated in cache", foundSeeder, *testSeeder)
 	}
-	foundSeeder, _ = testTorrent.Seeders[models.PeerMapKey(testSeeder)]
+	foundSeeder, _ = testTorrent.Seeders[storage.PeerMapKey(testSeeder)]
 	if foundSeeder != *testSeeder {
 		t.Error("seeder not updated in local", foundSeeder, *testSeeder)
 	}
@@ -333,11 +333,11 @@ func TestSetLeecher(t *testing.T) {
 	panicOnErr(tx.SetLeecher(testTorrent, testLeecher))
 	foundTorrent, _, err := tx.FindTorrent(testTorrent.Infohash)
 	panicOnErr(err)
-	foundLeecher, _ := foundTorrent.Leechers[models.PeerMapKey(testLeecher)]
+	foundLeecher, _ := foundTorrent.Leechers[storage.PeerMapKey(testLeecher)]
 	if foundLeecher != *testLeecher {
 		t.Error("leecher not updated in cache", testLeecher)
 	}
-	foundLeecher, _ = testTorrent.Leechers[models.PeerMapKey(testLeecher)]
+	foundLeecher, _ = testTorrent.Leechers[storage.PeerMapKey(testLeecher)]
 	if foundLeecher != *testLeecher {
 		t.Error("leecher not updated in local", testLeecher)
 	}
@@ -397,19 +397,19 @@ func TestLeecherFinished(t *testing.T) {
 
 	foundTorrent, _, err := tx.FindTorrent(testTorrent.Infohash)
 	panicOnErr(err)
-	foundSeeder, _ := foundTorrent.Seeders[models.PeerMapKey(testLeecher)]
+	foundSeeder, _ := foundTorrent.Seeders[storage.PeerMapKey(testLeecher)]
 	if foundSeeder != *testLeecher {
 		t.Error("seeder not added to cache", foundSeeder, *testLeecher)
 	}
-	foundSeeder, _ = foundTorrent.Leechers[models.PeerMapKey(testLeecher)]
+	foundSeeder, _ = foundTorrent.Leechers[storage.PeerMapKey(testLeecher)]
 	if foundSeeder == *testLeecher {
 		t.Error("leecher not removed from cache", testLeecher)
 	}
-	foundSeeder, _ = testTorrent.Seeders[models.PeerMapKey(testLeecher)]
+	foundSeeder, _ = testTorrent.Seeders[storage.PeerMapKey(testLeecher)]
 	if foundSeeder != *testLeecher {
 		t.Error("seeder not added to local", testLeecher)
 	}
-	foundSeeder, _ = testTorrent.Leechers[models.PeerMapKey(testLeecher)]
+	foundSeeder, _ = testTorrent.Leechers[storage.PeerMapKey(testLeecher)]
 	if foundSeeder == *testLeecher {
 		t.Error("leecher not removed from local", testLeecher)
 	}
@@ -433,10 +433,10 @@ func TestUpdatePeer(t *testing.T) {
 	panicOnErr(tx.RemoveSeeder(testTorrent, testSeeder))
 	foundTorrent, _, err := tx.FindTorrent(testTorrent.Infohash)
 	panicOnErr(err)
-	if seeder, exists := foundTorrent.Seeders[models.PeerMapKey(testSeeder)]; exists {
+	if seeder, exists := foundTorrent.Seeders[storage.PeerMapKey(testSeeder)]; exists {
 		t.Error("seeder not removed from cache", seeder)
 	}
-	if seeder, exists := testTorrent.Seeders[models.PeerMapKey(testSeeder)]; exists {
+	if seeder, exists := testTorrent.Seeders[storage.PeerMapKey(testSeeder)]; exists {
 		t.Error("seeder not removed from local", seeder)
 	}
 	// Cleanup
@@ -520,11 +520,11 @@ func TestParallelSetSeeder(t *testing.T) {
 
 		foundTorrent, _, err := tx.FindTorrent(testTorrent.Infohash)
 		panicOnErr(err)
-		foundSeeder, _ := foundTorrent.Seeders[models.PeerMapKey(testSeeder)]
+		foundSeeder, _ := foundTorrent.Seeders[storage.PeerMapKey(testSeeder)]
 		if foundSeeder != *testSeeder {
 			t.Error("seeder not updated in cache", foundSeeder, *testSeeder)
 		}
-		foundSeeder, _ = testTorrent.Seeders[models.PeerMapKey(testSeeder)]
+		foundSeeder, _ = testTorrent.Seeders[storage.PeerMapKey(testSeeder)]
 		if foundSeeder != *testSeeder {
 			t.Error("seeder not updated in local", foundSeeder, *testSeeder)
 		}
@@ -549,11 +549,11 @@ func TestParallelAddLeecher(t *testing.T) {
 
 		foundTorrent, found, err := tx.FindTorrent(testTorrent.Infohash)
 		panicOnErr(err)
-		foundLeecher, found := foundTorrent.Leechers[models.PeerMapKey(testLeecher)]
+		foundLeecher, found := foundTorrent.Leechers[storage.PeerMapKey(testLeecher)]
 		if found && foundLeecher != *testLeecher {
 			t.Error("leecher not added to cache", testLeecher)
 		}
-		foundLeecher, found = testTorrent.Leechers[models.PeerMapKey(testLeecher)]
+		foundLeecher, found = testTorrent.Leechers[storage.PeerMapKey(testLeecher)]
 		if found && foundLeecher != *testLeecher {
 			t.Error("leecher not added to local", testLeecher)
 		}

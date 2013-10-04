@@ -10,7 +10,7 @@ import (
 	"fmt"
 
 	"github.com/pushrax/chihaya/config"
-	"github.com/pushrax/chihaya/models"
+	"github.com/pushrax/chihaya/storage"
 )
 
 var (
@@ -58,28 +58,28 @@ type Pool interface {
 // to make atomic and non-atomic reads/writes.
 type Conn interface {
 	// Reads
-	FindUser(passkey string) (*models.User, bool, error)
-	FindTorrent(infohash string) (*models.Torrent, bool, error)
+	FindUser(passkey string) (*storage.User, bool, error)
+	FindTorrent(infohash string) (*storage.Torrent, bool, error)
 	ClientWhitelisted(peerID string) (bool, error)
 
 	// Writes
-	RecordSnatch(u *models.User, t *models.Torrent) error
-	MarkActive(t *models.Torrent) error
-	AddLeecher(t *models.Torrent, p *models.Peer) error
-	AddSeeder(t *models.Torrent, p *models.Peer) error
-	RemoveLeecher(t *models.Torrent, p *models.Peer) error
-	RemoveSeeder(t *models.Torrent, p *models.Peer) error
-	SetLeecher(t *models.Torrent, p *models.Peer) error
-	SetSeeder(t *models.Torrent, p *models.Peer) error
-	IncrementSlots(u *models.User) error
-	DecrementSlots(u *models.User) error
-	LeecherFinished(t *models.Torrent, p *models.Peer) error
+	RecordSnatch(u *storage.User, t *storage.Torrent) error
+	MarkActive(t *storage.Torrent) error
+	AddLeecher(t *storage.Torrent, p *storage.Peer) error
+	AddSeeder(t *storage.Torrent, p *storage.Peer) error
+	RemoveLeecher(t *storage.Torrent, p *storage.Peer) error
+	RemoveSeeder(t *storage.Torrent, p *storage.Peer) error
+	SetLeecher(t *storage.Torrent, p *storage.Peer) error
+	SetSeeder(t *storage.Torrent, p *storage.Peer) error
+	IncrementSlots(u *storage.User) error
+	DecrementSlots(u *storage.User) error
+	LeecherFinished(t *storage.Torrent, p *storage.Peer) error
 
 	// Priming / Testing
-	AddTorrent(t *models.Torrent) error
-	RemoveTorrent(t *models.Torrent) error
-	AddUser(u *models.User) error
-	RemoveUser(u *models.User) error
+	AddTorrent(t *storage.Torrent) error
+	RemoveTorrent(t *storage.Torrent) error
+	AddUser(u *storage.User) error
+	RemoveUser(u *storage.User) error
 	WhitelistClient(peerID string) error
 	UnWhitelistClient(peerID string) error
 }

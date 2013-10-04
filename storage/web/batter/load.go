@@ -5,21 +5,21 @@
 package batter
 
 import (
-	"github.com/pushrax/chihaya/models"
+	"github.com/pushrax/chihaya/storage"
 )
 
-func (c *Conn) LoadTorrents(ids []uint64) ([]*models.Torrent, error) {
+func (c *Conn) LoadTorrents(ids []uint64) ([]*storage.Torrent, error) {
 	return nil, nil
 }
 
-func (c *Conn) LoadAllTorrents() ([]*models.Torrent, error) {
+func (c *Conn) LoadAllTorrents() ([]*storage.Torrent, error) {
 	return nil, nil
 }
 
-func (c *Conn) LoadUsers(ids []uint64) ([]*models.User, error) {
+func (c *Conn) LoadUsers(ids []uint64) ([]*storage.User, error) {
 	return nil, nil
 }
 
-func (c *Conn) LoadAllUsers(ids []uint64) ([]*models.User, error) {
+func (c *Conn) LoadAllUsers(ids []uint64) ([]*storage.User, error) {
 	return nil, nil
 }

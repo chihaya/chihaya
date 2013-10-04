@@ -12,14 +12,14 @@ import (
 	"sync"
 
 	"github.com/pushrax/chihaya/config"
-	"github.com/pushrax/chihaya/storage"
+	"github.com/pushrax/chihaya/storage/web"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
 type driver struct{}
 
-func (d *driver) New(conf *config.DataStore) storage.Conn {
+func (d *driver) New(conf *config.DataStore) web.Conn {
 	dsn := fmt.Sprintf(
 		"%s:%s@%s:%s/%s?charset=utf8mb4,utf8",
 		conf.Username,
@@ -77,7 +77,7 @@ func (c *Conn) Close() error {
 	return c.DB.Close()
 }
 
-func (c *Conn) RecordAnnounce(delta *storage.AnnounceDelta) error {
+func (c *Conn) RecordAnnounce(delta *web.AnnounceDelta) error {
 	snatchCount := 0
 	if delta.Snatched {
 		snatchCount = 1
@@ -95,5 +95,5 @@ func (c *Conn) RecordAnnounce(delta *storage.AnnounceDelta) error {
 }
 
 func init() {
-	storage.Register("gazelle", &driver{})
+	web.Register("gazelle", &driver{})
 }

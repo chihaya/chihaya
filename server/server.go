@@ -18,7 +18,7 @@ import (
 	"time"
 
 	"github.com/pushrax/chihaya/config"
-	"github.com/pushrax/chihaya/models"
+	"github.com/pushrax/chihaya/storage"
 	"github.com/pushrax/chihaya/storage/tracker"
 )
 
@@ -133,7 +133,7 @@ func fail(err error, w http.ResponseWriter, r *http.Request) {
 	w.(http.Flusher).Flush()
 }
 
-func validateUser(tx tracker.Conn, dir string) (*models.User, error) {
+func validateUser(tx tracker.Conn, dir string) (*storage.User, error) {
 	if len(dir) != 34 {
 		return nil, errors.New("Passkey is invalid")
 	}
