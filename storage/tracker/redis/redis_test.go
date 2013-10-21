@@ -15,7 +15,7 @@ import (
 	"github.com/garyburd/redigo/redis"
 
 	"github.com/pushrax/chihaya/config"
-	"github.com/pushrax/chihaya/models"
+	"github.com/pushrax/chihaya/storage"
 )
 
 var (
@@ -111,27 +111,27 @@ func createTestRedisTx() *Tx {
 	return txObj
 }
 
-func createTestUser() *models.User {
-	return &models.User{ID: createTestUserID(), Passkey: createTestPasskey(),
+func createTestUser() *storage.User {
+	return &storage.User{ID: createTestUserID(), Passkey: createTestPasskey(),
 		UpMultiplier: 1.01, DownMultiplier: 1.0, Slots: 4, SlotsUsed: 2, Snatches: 7}
 }
 
-func createTestPeer(userID uint64, torrentID uint64) *models.Peer {
+func createTestPeer(userID uint64, torrentID uint64) *storage.Peer {
 
-	return &models.Peer{ID: createTestPeerID(), UserID: userID, TorrentID: torrentID,
+	return &storage.Peer{ID: createTestPeerID(), UserID: userID, TorrentID: torrentID,
 		IP: "127.0.0.1", Port: 6889, Uploaded: 1024, Downloaded: 3000, Left: 4200, LastAnnounce: 11}
 }
 
-func createTestPeers(torrentID uint64, num int) map[string]models.Peer {
-	testPeers := make(map[string]models.Peer)
+func createTestPeers(torrentID uint64, num int) map[string]storage.Peer {
+	testPeers := make(map[string]storage.Peer)
 	for i := 0; i < num; i++ {
 		tempPeer := createTestPeer(createTestUserID(), torrentID)
-		testPeers[models.PeerMapKey(tempPeer)] = *tempPeer
+		testPeers[storage.PeerMapKey(tempPeer)] = *tempPeer
 	}
 	return testPeers
 }
 
-func createTestTorrent() *models.Torrent {
+func createTestTorrent() *storage.Torrent {
 
 	torrentInfohash := createTestInfohash()
 	torrentID := createTestTorrentID()
@@ -139,7 +139,7 @@ func createTestTorrent() *models.Torrent {
 	testSeeders := createTestPeers(torrentID, 4)
 	testLeechers := createTestPeers(torrentID, 2)
 
-	testTorrent := models.Torrent{ID: torrentID, Infohash: torrentInfohash, Active: true,
+	testTorrent := storage.Torrent{ID: torrentID, Infohash: torrentInfohash, Active: true,
 		Seeders: testSeeders, Leechers: testLeechers, Snatches: 11, UpMultiplier: 1.0, DownMultiplier: 1.0, LastAction: 0}
 	return &testTorrent
 }
@@ -163,7 +163,7 @@ func TestInvalidPeers(t *testing.T) {
 	testTorrentID := createTestTorrentID()
 	testPeers := createTestPeers(testTorrentID, 3)
 	tempPeer := createTestPeer(createTestUserID(), testTorrentID)
-	testPeers[models.PeerMapKey(tempPeer)] = *tempPeer
+	testPeers[storage.PeerMapKey(tempPeer)] = *tempPeer
 
 	panicOnErr(testTx.addPeers(testPeers, "test:"))
 	// Imitate a peer being removed during get

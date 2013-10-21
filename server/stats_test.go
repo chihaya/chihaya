@@ -13,8 +13,8 @@ import (
 
 	"github.com/pushrax/chihaya/config"
 
-	_ "github.com/pushrax/chihaya/cache/redis"
-	_ "github.com/pushrax/chihaya/storage/batter"
+	_ "github.com/pushrax/chihaya/storage/backend/batter"
+	_ "github.com/pushrax/chihaya/storage/tracker/redis"
 )
 
 func newTestServer() (*Server, error) {

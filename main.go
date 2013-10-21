@@ -15,9 +15,9 @@ import (
 	"github.com/pushrax/chihaya/config"
 	"github.com/pushrax/chihaya/server"
 
-	_ "github.com/pushrax/chihaya/cache/redis"
-	_ "github.com/pushrax/chihaya/storage/batter"
-	_ "github.com/pushrax/chihaya/storage/gazelle"
+	_ "github.com/pushrax/chihaya/storage/backend/batter"
+	_ "github.com/pushrax/chihaya/storage/backend/gazelle"
+	_ "github.com/pushrax/chihaya/storage/tracker/redis"
 )
 
 var (

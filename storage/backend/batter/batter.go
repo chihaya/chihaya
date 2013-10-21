@@ -11,14 +11,14 @@ import (
 	"fmt"
 
 	"github.com/pushrax/chihaya/config"
-	"github.com/pushrax/chihaya/storage"
+	"github.com/pushrax/chihaya/storage/backend"
 
 	_ "github.com/bmizerany/pq"
 )
 
 type driver struct{}
 
-func (d *driver) New(conf *config.DataStore) storage.Conn {
+func (d *driver) New(conf *config.DataStore) backend.Conn {
 	dsn := fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s",
 		conf.Host,
@@ -47,10 +47,10 @@ func (c *Conn) Start() error {
 	return nil
 }
 
-func (c *Conn) RecordAnnounce(delta *storage.AnnounceDelta) error {
+func (c *Conn) RecordAnnounce(delta *backend.AnnounceDelta) error {
 	return nil
 }
 
 func init() {
-	storage.Register("batter", &driver{})
+	backend.Register("batter", &driver{})
 }
