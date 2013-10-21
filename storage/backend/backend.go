@@ -2,9 +2,9 @@
 // Use of this source code is governed by the BSD 2-Clause license,
 // which can be found in the LICENSE file.
 
-// Package web provides a generic interface for manipulating a
-// BitTorrent tracker's web application data.
-package web
+// Package backend provides a generic interface for manipulating a
+// BitTorrent tracker's backend data (usually for a web application).
+package backend
 
 import (
 	"fmt"
