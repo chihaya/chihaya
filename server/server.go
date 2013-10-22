@@ -13,9 +13,10 @@ import (
 	"net/http"
 	"path"
 	"strconv"
-	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/etix/stoppableListener"
 
 	"github.com/pushrax/chihaya/config"
 	"github.com/pushrax/chihaya/storage"
@@ -24,18 +25,13 @@ import (
 
 type Server struct {
 	conf       *config.Config
-	listener   net.Listener
+	listener   *stoppableListener.StoppableListener
 	dbConnPool tracker.Pool
 
-	serving   bool
 	startTime time.Time
 
 	deltaRequests int64
 	rpm           int64
-
-	waitgroup sync.WaitGroup
-
-	pubChan chan string
 
 	http.Server
 }
@@ -49,7 +45,6 @@ func New(conf *config.Config) (*Server, error) {
 	s := &Server{
 		conf:       conf,
 		dbConnPool: pool,
-		pubChan:    make(chan string),
 		Server: http.Server{
 			Addr:        conf.Addr,
 			ReadTimeout: conf.ReadTimeout.Duration,
@@ -61,39 +56,30 @@ func New(conf *config.Config) (*Server, error) {
 }
 
 func (s *Server) ListenAndServe() error {
-	listener, err := net.Listen("tcp", s.Addr)
-	s.listener = listener
+	l, err := net.Listen("tcp", s.Addr)
 	if err != nil {
 		return err
 	}
-	s.serving = true
+	sl := stoppableListener.Handle(l)
+	s.listener = sl
 	s.startTime = time.Now()
 
 	go s.updateStats()
 	s.Serve(s.listener)
 
-	s.waitgroup.Wait()
 	return nil
 }
 
 func (s *Server) Stop() error {
-	s.serving = false
-	s.waitgroup.Wait()
+	s.listener.Stop <- true
 	err := s.dbConnPool.Close()
 	if err != nil {
 		return err
 	}
-	close(s.pubChan)
 	return s.listener.Close()
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if !s.serving {
-		return
-	}
-
-	s.waitgroup.Add(1)
-	defer s.waitgroup.Done()
 	defer atomic.AddInt64(&s.deltaRequests, 1)
 
 	switch r.URL.Path {
