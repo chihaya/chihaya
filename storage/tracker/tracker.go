@@ -3,7 +3,7 @@
 // which can be found in the LICENSE file.
 
 // Package tracker provides a generic interface for manipulating a
-// BitTorrent tracker's fast-moving, inconsistent data.
+// BitTorrent tracker's fast-moving data.
 package tracker
 
 import (
@@ -55,7 +55,7 @@ type Pool interface {
 }
 
 // Conn represents a connection to the data store that can be used
-// to make atomic and non-atomic reads/writes.
+// to make reads/writes.
 type Conn interface {
 	// Reads
 	FindUser(passkey string) (*storage.User, bool, error)

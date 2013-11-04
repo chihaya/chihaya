@@ -2,14 +2,15 @@
 // Use of this source code is governed by the BSD 2-Clause license,
 // which can be found in the LICENSE file.
 
-// Package storage implements a high-level abstraction over the multiple
-// data stores used by a BitTorrent tracker.
+// Package storage implements the models for an abstraction over the
+// multiple data stores used by a BitTorrent tracker.
 package storage
 
 import (
 	"strconv"
 )
 
+// Peer is the internal representation of a participant in a swarm.
 type Peer struct {
 	ID        string `json:"id"`
 	UserID    uint64 `json:"user_id"`
@@ -24,10 +25,13 @@ type Peer struct {
 	LastAnnounce int64  `json:"last_announce"`
 }
 
+// PeerMapKey is a helper that returns the proper format for keys used for maps
+// of peers (i.e. torrent.Seeders & torrent.Leechers).
 func PeerMapKey(peer *Peer) string {
 	return peer.ID + ":" + strconv.FormatUint(peer.UserID, 36)
 }
 
+// Torrent is the internal representation of a swarm for a given torrent file.
 type Torrent struct {
 	ID       uint64 `json:"id"`
 	Infohash string `json:"infohash"`
@@ -42,6 +46,7 @@ type Torrent struct {
 	LastAction     int64   `json:"last_action"`
 }
 
+// User is the internal representation of registered user for private trackers.
 type User struct {
 	ID      uint64 `json:"id"`
 	Passkey string `json:"passkey"`
