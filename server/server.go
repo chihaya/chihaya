@@ -135,3 +135,13 @@ func validateUser(tx tracker.Conn, dir string) (*storage.User, error) {
 
 	return user, nil
 }
+
+// Takes a peer_id and returns a ClientID
+func parsePeerID(peerID string) (clientID string) {
+	if peerID[0] == '-' {
+		clientID = peerID[1:7]
+	} else {
+		clientID = peerID[0:6]
+	}
+	return
+}

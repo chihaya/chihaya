@@ -41,7 +41,7 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Check if the user's client is whitelisted
-		whitelisted, err := tx.ClientWhitelisted(peerID)
+		whitelisted, err := tx.ClientWhitelisted(parsePeerID(peerID))
 		if err != nil {
 			log.Panicf("server: %s", err)
 		}
