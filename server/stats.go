@@ -20,7 +20,6 @@ type stats struct {
 
 func (s *Server) serveStats(w http.ResponseWriter, r *http.Request) {
   w.Header().Set("Content-Type", "application/json")
-  w.Header().Set("Connection", "close")
 
   stats, _ := json.Marshal(&stats{
     config.Duration{time.Now().Sub(s.startTime)},
