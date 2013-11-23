@@ -5,44 +5,51 @@
 package server
 
 import (
-	"errors"
-	"net/http"
-	"net/http/httptest"
-	"os"
-	"testing"
+  "errors"
+  "net/http"
+  "net/http/httptest"
+  "os"
+  "testing"
 
-	"github.com/pushrax/chihaya/config"
+  "github.com/pushrax/chihaya/config"
 
-	_ "github.com/pushrax/chihaya/storage/backend/batter"
-	_ "github.com/pushrax/chihaya/storage/tracker/redis"
+  _ "github.com/pushrax/chihaya/storage/backend/batter"
+  _ "github.com/pushrax/chihaya/storage/tracker/redis"
 )
 
 func newTestServer() (*Server, error) {
-	testConfig, err := config.Open(os.Getenv("TESTCONFIGPATH"))
-	if err != nil {
-		return nil, err
-	}
+  testConfig, err := config.Open(os.Getenv("TESTCONFIGPATH"))
+  if err != nil {
+    return nil, err
+  }
 
-	s, err := New(testConfig)
-	if err != nil {
-		return nil, err
-	}
+  s, err := New(testConfig)
+  if err != nil {
+    return nil, err
+  }
 
-	return s, nil
+  return s, nil
 }
 
 func TestStats(t *testing.T) {
-	s, err := newTestServer()
-	if err != nil {
-		t.Error(err)
-	}
-	r, err := http.NewRequest("GET", "127.0.0.1:80/stats", nil)
-	if err != nil {
-		t.Error(err)
-	}
-	w := httptest.NewRecorder()
-	s.serveStats(w, r)
-	if w.Code != 200 {
-		t.Error(errors.New("/stats did not return HTTP 200"))
-	}
+  s, err := newTestServer()
+  if err != nil {
+    t.Error(err)
+  }
+
+  r, err := http.NewRequest("GET", "127.0.0.1:80/stats", nil)
+  if err != nil {
+    t.Error(err)
+  }
+
+  w := httptest.NewRecorder()
+  s.serveStats(w, r)
+
+  if w.Code != 200 {
+    t.Error(errors.New("/stats did not return HTTP 200"))
+  }
+
+  if w.Header()["Content-Type"][0] != "application/json" {
+    t.Error(errors.New("/stats did not return the proper Content-Type header"))
+  }
 }

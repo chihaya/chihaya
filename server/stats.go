@@ -5,35 +5,36 @@
 package server
 
 import (
-	"encoding/json"
-	"net/http"
-	"sync/atomic"
-	"time"
+  "encoding/json"
+  "net/http"
+  "sync/atomic"
+  "time"
 
-	"github.com/pushrax/chihaya/config"
+  "github.com/pushrax/chihaya/config"
 )
 
 type stats struct {
-	Uptime config.Duration `json:"uptime"`
-	RPM    int64           `json:"req_per_min"`
+  Uptime config.Duration `json:"uptime"`
+  RPM    int64           `json:"req_per_min"`
 }
 
 func (s *Server) serveStats(w http.ResponseWriter, r *http.Request) {
-	stats, _ := json.Marshal(&stats{
-		config.Duration{time.Now().Sub(s.startTime)},
-		s.rpm,
-	})
+  w.Header().Set("Content-Type", "application/json")
+  w.Header().Set("Connection", "close")
 
-	length, _ := w.Write(stats)
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Content-Length", string(length))
-	w.Header().Set("Connection", "close")
-	w.(http.Flusher).Flush()
+  stats, _ := json.Marshal(&stats{
+    config.Duration{time.Now().Sub(s.startTime)},
+    s.rpm,
+  })
+
+  length, _ := w.Write(stats)
+  w.Header().Set("Content-Length", string(length))
+  w.(http.Flusher).Flush()
 }
 
 func (s *Server) updateStats() {
-	for _ = range time.NewTicker(time.Minute).C {
-		s.rpm = s.deltaRequests
-		atomic.StoreInt64(&s.deltaRequests, 0)
-	}
+  for _ = range time.NewTicker(time.Minute).C {
+    s.rpm = s.deltaRequests
+    atomic.StoreInt64(&s.deltaRequests, 0)
+  }
 }
