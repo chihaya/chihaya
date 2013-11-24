@@ -22,15 +22,15 @@ func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request) {
     return
   }
 
-  // Start a transaction
-  tx, err := s.dbConnPool.Get()
+  // Get a connection to the tracker db
+  conn, err := s.dbConnPool.Get()
   if err != nil {
     log.Fatal(err)
   }
 
   // Find and validate the user
   passkey, _ := path.Split(r.URL.Path)
-  _, err = validateUser(tx, passkey)
+  _, err = validateUser(conn, passkey)
   if err != nil {
     fail(err, w, r)
     return
@@ -40,7 +40,7 @@ func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request) {
   writeBencoded(w, "files")
   if pq.Infohashes != nil {
     for _, infohash := range pq.Infohashes {
-      torrent, exists, err := tx.FindTorrent(infohash)
+      torrent, exists, err := conn.FindTorrent(infohash)
       if err != nil {
         log.Panicf("server: %s", err)
       }
@@ -50,7 +50,7 @@ func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request) {
       }
     }
   } else if infohash, exists := pq.Params["info_hash"]; exists {
-    torrent, exists, err := tx.FindTorrent(infohash)
+    torrent, exists, err := conn.FindTorrent(infohash)
     if err != nil {
       log.Panicf("server: %s", err)
     }

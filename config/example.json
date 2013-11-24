@@ -30,8 +30,6 @@
   "announce": "30m",
   "min_announce": "15m",
   "read_timeout": "20s",
-  "default_num_want": 50,
-
-  "tx_retries": 3
+  "default_num_want": 50
 
 }

@@ -117,13 +117,13 @@ func fail(err error, w http.ResponseWriter, r *http.Request) {
   w.(http.Flusher).Flush()
 }
 
-func validateUser(tx tracker.Conn, dir string) (*storage.User, error) {
+func validateUser(conn tracker.Conn, dir string) (*storage.User, error) {
   if len(dir) != 34 {
     return nil, errors.New("Passkey is invalid")
   }
   passkey := dir[1:33]
 
-  user, exists, err := tx.FindUser(passkey)
+  user, exists, err := conn.FindUser(passkey)
   if err != nil {
     log.Panicf("server: %s", err)
   }
