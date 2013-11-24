@@ -19,7 +19,7 @@ See [the wiki](https://github.com/pushrax/chihaya/wiki) for a discussion of the 
 
 ## Using Chihaya
 
-Chihaya is intended to work with existing torrent indexing web frameworks, such as [batter] and [Gazelle].
+Chihaya is intended to work with existing torrent indexing web frameworks, such as [Batter] and [Gazelle].
 Following the Unix way, it is built to perform a specific task, and interface with any system that
 needs its functionality. See [below](#drivers) for more info.
 
@@ -31,7 +31,7 @@ needs its functionality. See [below](#drivers) for more info.
 Make sure you have your `$GOROOT` and `$GOPATH` set up correctly, and have your `$GOBIN` in your `$PATH`.
 
 ```sh
-$ go get github.com/pushrax/chihaya
+$ go install github.com/pushrax/chihaya
 ```
 
 ### Configuring
@@ -47,24 +47,25 @@ The `$TESTCONFIGPATH` environment variable is required for the tests to function
 
 ```sh
 $ cd $GOPATH/src/github.com/pushrax/chihaya
-$ TESTCONFIGPATH=$GOPATH/src/github.com/pushrax/chihaya/config/example.json go test -v ./...
+$ export TESTCONFIGPATH=$GOPATH/src/github.com/pushrax/chihaya/config/example.json
+$ go test -v ./...
 ```
 
 ## Drivers
 
 Chihaya is designed to remain agnostic about the choice of data store for an
 application, and it is straightforward to [implement a new driver]. However, there
-are a number of directly supported drivers:
+are a number of drivers that plan to be directly supported:
 
-Cache:
+Tracker:
 
-* [redis](http://redis.io) — allows for multiple tracker instances to run at the same time for the same swarm
-* memory — only a single instance can run, but it requires no extra setup
+* [redis](http://redis.io)
+* memory
 
-Storage:
+Backend:
 
-* [batter-postgres](https://github.com/wafflesfm/batter)
-* [gazelle-mysql](https://github.com/whatcd/gazelle)
+* [batter (postgres)](https://github.com/wafflesfm/batter)
+* [gazelle (mysql)](https://github.com/whatcd/gazelle)
 
 [implement a new driver]: https://github.com/pushrax/chihaya/wiki/Implementing-a-driver
 
