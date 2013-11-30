@@ -18,7 +18,8 @@ type Pool struct {
 	torrents  map[string]*storage.Torrent
 	torrentsM sync.RWMutex
 
-	whitelist map[string]string
+	whitelist  map[string]bool
+	whitelistM sync.RWMutex
 }
 
 func (p *Pool) Get() (tracker.Conn, error) {

@@ -7,6 +7,7 @@
 package tracker
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/pushrax/chihaya/config"
@@ -14,7 +15,8 @@ import (
 )
 
 var (
-	drivers = make(map[string]Driver)
+	ErrMissingResource = errors.New("tracker: resource missing")
+	drivers            = make(map[string]Driver)
 )
 
 type Driver interface {
@@ -65,6 +67,7 @@ type Conn interface {
 	// Writes
 	RecordSnatch(u *storage.User, t *storage.Torrent) error
 	MarkActive(t *storage.Torrent) error
+	MarkInactive(t *storage.Torrent) error
 	AddLeecher(t *storage.Torrent, p *storage.Peer) error
 	AddSeeder(t *storage.Torrent, p *storage.Peer) error
 	RemoveLeecher(t *storage.Torrent, p *storage.Peer) error

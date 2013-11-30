@@ -19,6 +19,6 @@ func (d *driver) New(conf *config.DataStore) tracker.Pool {
 	return &Pool{
 		users:     make(map[string]*storage.User),
 		torrents:  make(map[string]*storage.Torrent),
-		whitelist: make(map[string]string),
+		whitelist: make(map[string]bool),
 	}
 }
