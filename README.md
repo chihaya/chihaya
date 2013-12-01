@@ -31,7 +31,7 @@ needs its functionality. See [below](#drivers) for more info.
 Make sure you have your `$GOROOT` and `$GOPATH` set up correctly, and have your `$GOBIN` in your `$PATH`.
 
 ```sh
-$ go install github.com/chihaya/chihaya
+$ go get github.com/chihaya/chihaya
 ```
 
 ### Configuring
@@ -55,17 +55,16 @@ $ go test -v ./...
 
 Chihaya is designed to remain agnostic about the choice of data store for an
 application, and it is straightforward to [implement a new driver]. However, there
-are a number of drivers that plan to be directly supported:
+are a number of drivers that will be directly supported:
 
 Tracker:
 
-* [redis](http://redis.io)
+* [redis](https://github.com/chihaya/chihaya-redis)
 * memory
 
 Backend:
 
-* [batter (postgres)](https://github.com/wafflesfm/batter)
-* [gazelle (mysql)](https://github.com/whatcd/gazelle)
+* [gazelle (mysql)](https://github.com/chihaya/chihaya-gazelle)
 
 [implement a new driver]: https://github.com/chihaya/chihaya/wiki/Implementing-a-driver
 
