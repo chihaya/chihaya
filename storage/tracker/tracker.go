@@ -10,8 +10,8 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/pushrax/chihaya/config"
-	"github.com/pushrax/chihaya/storage"
+	"github.com/chihaya/chihaya/config"
+	"github.com/chihaya/chihaya/storage"
 )
 
 var (

@@ -5,8 +5,8 @@
 package mock
 
 import (
-	"github.com/pushrax/chihaya/storage"
-	"github.com/pushrax/chihaya/storage/tracker"
+	"github.com/chihaya/chihaya/storage"
+	"github.com/chihaya/chihaya/storage/tracker"
 )
 
 type Conn struct {

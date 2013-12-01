@@ -5,7 +5,7 @@
 package gazelle
 
 import (
-	"github.com/pushrax/chihaya/storage"
+	"github.com/chihaya/chihaya/storage"
 )
 
 func (c *Conn) LoadTorrents(ids []uint64) ([]*storage.Torrent, error) {

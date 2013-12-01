@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/pushrax/chihaya/storage"
+	"github.com/chihaya/chihaya/storage"
 )
 
 func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {

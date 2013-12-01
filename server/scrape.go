@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"path"
 
-	"github.com/pushrax/chihaya/storage"
+	"github.com/chihaya/chihaya/storage"
 )
 
 func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request) {

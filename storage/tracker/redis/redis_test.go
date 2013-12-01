@@ -14,8 +14,8 @@ import (
 
 	"github.com/garyburd/redigo/redis"
 
-	"github.com/pushrax/chihaya/config"
-	"github.com/pushrax/chihaya/storage"
+	"github.com/chihaya/chihaya/config"
+	"github.com/chihaya/chihaya/storage"
 )
 
 var (

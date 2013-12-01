@@ -10,7 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/pushrax/chihaya/config"
+	"github.com/chihaya/chihaya/config"
 )
 
 type stats struct {

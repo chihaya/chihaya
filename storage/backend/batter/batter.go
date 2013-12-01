@@ -10,8 +10,8 @@ import (
 	"database/sql"
 	"fmt"
 
-	"github.com/pushrax/chihaya/config"
-	"github.com/pushrax/chihaya/storage/backend"
+	"github.com/chihaya/chihaya/config"
+	"github.com/chihaya/chihaya/storage/backend"
 
 	_ "github.com/bmizerany/pq"
 )

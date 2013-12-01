@@ -11,10 +11,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/pushrax/chihaya/config"
+	"github.com/chihaya/chihaya/config"
 
-	_ "github.com/pushrax/chihaya/storage/backend/batter"
-	_ "github.com/pushrax/chihaya/storage/tracker/redis"
+	_ "github.com/chihaya/chihaya/storage/backend/batter"
+	_ "github.com/chihaya/chihaya/storage/tracker/redis"
 )
 
 func newTestServer() (*Server, error) {

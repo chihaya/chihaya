@@ -9,8 +9,8 @@ package backend
 import (
 	"fmt"
 
-	"github.com/pushrax/chihaya/config"
-	"github.com/pushrax/chihaya/storage"
+	"github.com/chihaya/chihaya/config"
+	"github.com/chihaya/chihaya/storage"
 )
 
 var drivers = make(map[string]Driver)
