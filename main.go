@@ -15,9 +15,8 @@ import (
 	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/server"
 
-	_ "github.com/chihaya/chihaya/storage/backend/batter"
-	_ "github.com/chihaya/chihaya/storage/backend/gazelle"
-	_ "github.com/chihaya/chihaya/storage/tracker/redis"
+	_ "github.com/chihaya/chihaya-gazelle"
+	_ "github.com/chihaya/chihaya-redis"
 )
 
 var (
