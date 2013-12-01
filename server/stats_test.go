@@ -13,8 +13,7 @@ import (
 
 	"github.com/chihaya/chihaya/config"
 
-	_ "github.com/chihaya/chihaya/storage/backend/batter"
-	_ "github.com/chihaya/chihaya/storage/tracker/redis"
+	_ "github.com/chihaya/chihaya/storage/tracker/mock"
 )
 
 func newTestServer() (*Server, error) {
