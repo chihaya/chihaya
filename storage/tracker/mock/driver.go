@@ -22,3 +22,8 @@ func (d *driver) New(conf *config.DataStore) tracker.Pool {
 		whitelist: make(map[string]bool),
 	}
 }
+
+func init() {
+	tracker.Register("mock", &driver{})
+}
+
