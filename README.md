@@ -1,4 +1,4 @@
-# Chihaya [![Build Status](https://travis-ci.org/pushrax/chihaya.png?branch=master)](https://travis-ci.org/pushrax/chihaya)
+# Chihaya [![Build Status](https://travis-ci.org/chihaya/chihaya.png?branch=master)](https://travis-ci.org/chihaya/chihaya)
 
 Chihaya is a high-performance [BitTorrent tracker](http://en.wikipedia.org/wiki/BitTorrent_tracker)
 written in the Go programming language. It is still heavily under development and the current `master` branch
@@ -15,7 +15,7 @@ Planned features include:
 
 ### Technical Details
 
-See [the wiki](https://github.com/pushrax/chihaya/wiki) for a discussion of the design behind Chihaya.
+See [the wiki](https://github.com/chihaya/chihaya/wiki) for a discussion of the design behind Chihaya.
 
 ## Using Chihaya
 
@@ -31,14 +31,14 @@ needs its functionality. See [below](#drivers) for more info.
 Make sure you have your `$GOROOT` and `$GOPATH` set up correctly, and have your `$GOBIN` in your `$PATH`.
 
 ```sh
-$ go install github.com/pushrax/chihaya
+$ go install github.com/chihaya/chihaya
 ```
 
 ### Configuring
 
 Configuration is done in a JSON formatted file specified with the `-config`
 flag. An example configuration file can be found
-[here](https://github.com/pushrax/chihaya/blob/master/config/example.json).
+[here](https://github.com/chihaya/chihaya/blob/master/config/example.json).
 
 ### Running the tests
 
@@ -46,8 +46,8 @@ The tests require a running redis server to function correctly, and a config to 
 The `$TESTCONFIGPATH` environment variable is required for the tests to function:
 
 ```sh
-$ cd $GOPATH/src/github.com/pushrax/chihaya
-$ export TESTCONFIGPATH=$GOPATH/src/github.com/pushrax/chihaya/config/example.json
+$ cd $GOPATH/src/github.com/chihaya/chihaya
+$ export TESTCONFIGPATH=$GOPATH/src/github.com/chihaya/chihaya/config/example.json
 $ go test -v ./...
 ```
 
@@ -67,7 +67,7 @@ Backend:
 * [batter (postgres)](https://github.com/wafflesfm/batter)
 * [gazelle (mysql)](https://github.com/whatcd/gazelle)
 
-[implement a new driver]: https://github.com/pushrax/chihaya/wiki/Implementing-a-driver
+[implement a new driver]: https://github.com/chihaya/chihaya/wiki/Implementing-a-driver
 
 
 ## Contributing
