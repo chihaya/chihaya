@@ -13,6 +13,7 @@ import (
 
 	"github.com/chihaya/chihaya/config"
 
+	_ "github.com/chihaya/chihaya-gazelle"
 	_ "github.com/chihaya/chihaya/storage/tracker/mock"
 )
 

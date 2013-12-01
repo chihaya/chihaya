@@ -14,3 +14,4 @@ notifications:
       - "irc.freenode.net#chihaya"
     on_success: always
     on_failure: always
+  email: false
