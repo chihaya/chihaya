@@ -67,15 +67,12 @@ type Conn interface {
 	// Writes
 	RecordSnatch(u *storage.User, t *storage.Torrent) error
 	MarkActive(t *storage.Torrent) error
-	MarkInactive(t *storage.Torrent) error
 	AddLeecher(t *storage.Torrent, p *storage.Peer) error
 	AddSeeder(t *storage.Torrent, p *storage.Peer) error
 	RemoveLeecher(t *storage.Torrent, p *storage.Peer) error
 	RemoveSeeder(t *storage.Torrent, p *storage.Peer) error
 	SetLeecher(t *storage.Torrent, p *storage.Peer) error
 	SetSeeder(t *storage.Torrent, p *storage.Peer) error
-	IncrementSlots(u *storage.User) error
-	DecrementSlots(u *storage.User) error
 	LeecherFinished(t *storage.Torrent, p *storage.Peer) error
 
 	// Priming / Testing

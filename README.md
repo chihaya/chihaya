@@ -42,12 +42,8 @@ flag. An example configuration file can be found
 
 ### Running the tests
 
-The tests require a running redis server to function correctly, and a config to use for the tests.
-The `$TESTCONFIGPATH` environment variable is required for the tests to function:
-
 ```sh
 $ cd $GOPATH/src/github.com/chihaya/chihaya
-$ export TESTCONFIGPATH=$GOPATH/src/github.com/chihaya/chihaya/config/example.json
 $ go test -v ./...
 ```
 
@@ -59,11 +55,12 @@ are a number of drivers that will be directly supported:
 
 Tracker:
 
+* mock (memory)
 * [redis](https://github.com/chihaya/chihaya-redis)
-* memory
 
 Backend:
 
+* mock (memory)
 * [gazelle (mysql)](https://github.com/chihaya/chihaya-gazelle)
 
 [implement a new driver]: https://github.com/chihaya/chihaya/wiki/Implementing-a-driver

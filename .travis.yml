@@ -2,9 +2,6 @@ language: go
 
 go: 1.2
 
-env:
-  - TESTCONFIGPATH=/home/travis/gopath/src/github.com/chihaya/chihaya/config/example.json
-
 services:
   - redis-server
 

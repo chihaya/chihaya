@@ -8,22 +8,15 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"github.com/chihaya/chihaya/config"
-
-	_ "github.com/chihaya/chihaya-gazelle"
+	_ "github.com/chihaya/chihaya/storage/backend/mock"
 	_ "github.com/chihaya/chihaya/storage/tracker/mock"
 )
 
 func newTestServer() (*Server, error) {
-	testConfig, err := config.Open(os.Getenv("TESTCONFIGPATH"))
-	if err != nil {
-		return nil, err
-	}
-
-	s, err := New(testConfig)
+	s, err := New(&config.MockConfig)
 	if err != nil {
 		return nil, err
 	}

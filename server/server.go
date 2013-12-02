@@ -37,7 +37,7 @@ type Server struct {
 }
 
 func New(conf *config.Config) (*Server, error) {
-	pool, err := tracker.Open(&conf.Cache)
+	pool, err := tracker.Open(&conf.Tracker)
 	if err != nil {
 		return nil, err
 	}

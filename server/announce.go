@@ -114,14 +114,6 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		}
 
 	default:
-		// Check the user's slots to see if they're allowed to leech
-		if s.conf.Slots && user.Slots != -1 && left != 0 {
-			if user.SlotsUsed >= user.Slots {
-				fail(errors.New("You've run out of download slots."), w, r)
-				return
-			}
-		}
-
 		if left == 0 {
 			// Save the peer as a new seeder
 			err := conn.AddSeeder(torrent, peer)
@@ -129,11 +121,6 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 				log.Panicf("server: %s", err)
 			}
 		} else {
-			// Save the peer as a new leecher and increment the user's slots
-			err := conn.IncrementSlots(user)
-			if err != nil {
-				log.Panicf("server: %s", err)
-			}
 			err = conn.AddLeecher(torrent, peer)
 			if err != nil {
 				log.Panicf("server: %s", err)
@@ -152,10 +139,6 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		}
 		if leecher {
 			err := conn.RemoveLeecher(torrent, peer)
-			if err != nil {
-				log.Panicf("server: %s", err)
-			}
-			err = conn.DecrementSlots(user)
 			if err != nil {
 				log.Panicf("server: %s", err)
 			}

@@ -46,13 +46,11 @@ type DataStore struct {
 // Config represents a configuration for a server.Server.
 type Config struct {
 	Addr    string    `json:"addr"`
-	PubAddr string    `json:"pub_addr"`
-	Cache   DataStore `json:"cache"`
-	Storage DataStore `json:"storage"`
+	Tracker DataStore `json:"tracker"`
+	Backend DataStore `json:"backend"`
 
 	Private   bool `json:"private"`
 	Freeleech bool `json:"freeleech"`
-	Slots     bool `json:"slots"`
 
 	Announce       Duration `json:"announce"`
 	MinAnnounce    Duration `json:"min_announce"`
