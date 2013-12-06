@@ -3,7 +3,8 @@
 // which can be found in the LICENSE file.
 
 // Package backend provides a generic interface for manipulating a
-// BitTorrent tracker's backend data (usually for a web application).
+// BitTorrent tracker's consistent backend data store (usually for
+// a web application).
 package backend
 
 import (
@@ -24,10 +25,10 @@ type Driver interface {
 // it panics.
 func Register(name string, driver Driver) {
 	if driver == nil {
-		panic("web: Register driver is nil")
+		panic("backend: Register driver is nil")
 	}
 	if _, dup := drivers[name]; dup {
-		panic("web: Register called twice for driver " + name)
+		panic("backend: Register called twice for driver " + name)
 	}
 	drivers[name] = driver
 }
@@ -37,7 +38,7 @@ func Open(conf *config.DataStore) (Conn, error) {
 	driver, ok := drivers[conf.Driver]
 	if !ok {
 		return nil, fmt.Errorf(
-			"web: unknown driver %q (forgotten import?)",
+			"backend: unknown driver %q (forgotten import?)",
 			conf.Driver,
 		)
 	}
