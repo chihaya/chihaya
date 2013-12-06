@@ -83,18 +83,6 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer atomic.AddInt64(&s.deltaRequests, 1)
 	r.Close = true
 
-	switch r.URL.Path {
-	case "/stats":
-		s.serveStats(w, r)
-		return
-	case "/add":
-		s.serveAdd(w, r)
-		return
-	case "/remove":
-		s.serveRemove(w, r)
-		return
-	}
-
 	_, action := path.Split(r.URL.Path)
 	switch action {
 	case "announce":
@@ -102,6 +90,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	case "scrape":
 		s.serveScrape(w, r)
+		return
+	case "stats":
+		s.serveStats(w, r)
 		return
 	default:
 		fail(errors.New("Unknown action"), w, r)
