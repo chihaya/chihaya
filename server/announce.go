@@ -201,11 +201,11 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 
 		if left > 0 {
 			// If they're seeding, give them only leechers
-			writeLeechers(w, torrent, count, numWant, compact)
+			count += writeLeechers(w, user, torrent, numWant, compact)
 		} else {
 			// If they're leeching, prioritize giving them seeders
-			writeSeeders(w, torrent, count, numWant, compact)
-			writeLeechers(w, torrent, count, numWant, compact)
+			count += writeSeeders(w, user, torrent, numWant, compact)
+			count += writeLeechers(w, user, torrent, numWant - count, compact)
 		}
 
 		if compact && peerCount != count {
@@ -289,44 +289,54 @@ func minInt(a, b int) int {
 	return b
 }
 
-func writeSeeders(w http.ResponseWriter, t *storage.Torrent, count, numWant int, compact bool) {
-	for _, seed := range t.Seeders {
+func writeSeeders(w http.ResponseWriter, user *storage.User, t *storage.Torrent, numWant int, compact bool) int {
+	count := 0
+	for _, peer := range t.Seeders {
 		if count >= numWant {
 			break
+		}
+		if peer.UserID == user.ID {
+			continue
 		}
 		if compact {
 			// TODO writeBencoded(w, compactAddr)
 		} else {
 			writeBencoded(w, "d")
 			writeBencoded(w, "ip")
-			writeBencoded(w, seed.IP)
+			writeBencoded(w, peer.IP)
 			writeBencoded(w, "peer id")
-			writeBencoded(w, seed.ID)
+			writeBencoded(w, peer.ID)
 			writeBencoded(w, "port")
-			writeBencoded(w, seed.Port)
+			writeBencoded(w, peer.Port)
 			writeBencoded(w, "e")
 		}
 		count++
 	}
+	return count
 }
 
-func writeLeechers(w http.ResponseWriter, t *storage.Torrent, count, numWant int, compact bool) {
-	for _, leech := range t.Leechers {
+func writeLeechers(w http.ResponseWriter, user *storage.User, t *storage.Torrent, numWant int, compact bool) int {
+	count := 0
+	for _, peer := range t.Leechers {
 		if count >= numWant {
 			break
+		}
+		if peer.UserID == user.ID {
+			continue
 		}
 		if compact {
 			// TODO writeBencoded(w, compactAddr)
 		} else {
 			writeBencoded(w, "d")
 			writeBencoded(w, "ip")
-			writeBencoded(w, leech.IP)
+			writeBencoded(w, peer.IP)
 			writeBencoded(w, "peer id")
-			writeBencoded(w, leech.ID)
+			writeBencoded(w, peer.ID)
 			writeBencoded(w, "port")
-			writeBencoded(w, leech.Port)
+			writeBencoded(w, peer.Port)
 			writeBencoded(w, "e")
 		}
 		count++
 	}
+	return count
 }
