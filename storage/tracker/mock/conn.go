@@ -153,30 +153,6 @@ func (c *Conn) SetSeeder(t *storage.Torrent, p *storage.Peer) error {
 	return nil
 }
 
-func (c *Conn) IncrementSlots(u *storage.User) error {
-	c.usersM.Lock()
-	defer c.usersM.Unlock()
-	user, ok := c.users[u.Passkey]
-	if !ok {
-		return tracker.ErrMissingResource
-	}
-	user.Slots++
-	u.Slots++
-	return nil
-}
-
-func (c *Conn) DecrementSlots(u *storage.User) error {
-	c.usersM.Lock()
-	defer c.usersM.Unlock()
-	user, ok := c.users[u.Passkey]
-	if !ok {
-		return tracker.ErrMissingResource
-	}
-	user.Slots--
-	u.Slots--
-	return nil
-}
-
 func (c *Conn) LeecherFinished(t *storage.Torrent, p *storage.Peer) error {
 	c.torrentsM.Lock()
 	defer c.torrentsM.Unlock()
