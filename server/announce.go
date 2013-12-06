@@ -260,32 +260,26 @@ func requestedPeerCount(fallback int, pq *parsedQuery) int {
 }
 
 func requestedIP(r *http.Request, pq *parsedQuery) (string, error) {
-	ip, ok := pq.Params["ip"]
-	ipv4, okv4 := pq.Params["ipv4"]
-	xRealIPs, xRealOk := pq.Params["X-Real-Ip"]
-
-	switch {
-	case ok:
+	if ip, ok := pq.Params["ip"]; ok {
 		return ip, nil
-
-	case okv4:
-		return ipv4, nil
-
-	case xRealOk && len(xRealIPs) > 0:
-		return string(xRealIPs[0]), nil
-
-	default:
-		portIndex := len(r.RemoteAddr) - 1
-		for ; portIndex >= 0; portIndex-- {
-			if r.RemoteAddr[portIndex] == ':' {
-				break
-			}
-		}
-		if portIndex != -1 {
-			return r.RemoteAddr[0:portIndex], nil
-		}
-		return "", errors.New("Failed to parse IP address")
 	}
+	if ip, ok := pq.Params["ipv4"]; ok {
+		return ip, nil
+	}
+	if xRealIPs, ok := pq.Params["X-Real-Ip"]; ok {
+		return string(xRealIPs[0]), nil
+	}
+
+	portIndex := len(r.RemoteAddr) - 1
+	for ; portIndex >= 0; portIndex-- {
+		if r.RemoteAddr[portIndex] == ':' {
+			break
+		}
+	}
+	if portIndex != -1 {
+		return r.RemoteAddr[0:portIndex], nil
+	}
+	return "", errors.New("Failed to parse IP address")
 }
 
 func minInt(a, b int) int {
