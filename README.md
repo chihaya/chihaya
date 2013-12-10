@@ -38,7 +38,7 @@ $ go get github.com/chihaya/chihaya
 
 Configuration is done in a JSON formatted file specified with the `-config`
 flag. An example configuration file can be found
-[here](https://github.com/chihaya/chihaya/blob/master/config/example.json).
+[here](https://github.com/chihaya/chihaya/blob/master/example.json).
 
 ### Running the tests
 
