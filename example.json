@@ -1,0 +1,25 @@
+{
+  "network": "tcp",
+  "addr": ":34000",
+
+  "tracker": {
+    "driver": "redis",
+    "network": "tcp",
+    "host": "127.0.0.1",
+    "port": "6379",
+    "user": "root",
+    "pass": "",
+    "prefix": "test:",
+
+    "max_idle_conns": 3,
+    "idle_timeout": "240s"
+  },
+
+  "private": true,
+  "freeleech": false,
+
+  "announce": "30m",
+  "min_announce": "15m",
+  "read_timeout": "20s",
+  "default_num_want": 50
+}
