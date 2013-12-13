@@ -5,7 +5,6 @@
 package server
 
 import (
-	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -16,12 +15,7 @@ import (
 )
 
 func newTestServer() (*Server, error) {
-	s, err := New(&config.MockConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	return s, nil
+	return New(&config.MockConfig)
 }
 
 func TestStats(t *testing.T) {
@@ -39,10 +33,10 @@ func TestStats(t *testing.T) {
 	s.serveStats(w, r)
 
 	if w.Code != 200 {
-		t.Error(errors.New("/stats did not return HTTP 200"))
+		t.Error("/stats did not return 200 OK")
 	}
 
 	if w.Header()["Content-Type"][0] != "application/json" {
-		t.Error(errors.New("/stats did not return the proper Content-Type header"))
+		t.Error("/stats did not return JSON")
 	}
 }

@@ -35,10 +35,7 @@ func mapArrayEqual(boxed map[string][]string, unboxed map[string]string) bool {
 	}
 	for mapKey, mapVal := range boxed {
 		// Always expect box to hold only one element
-		if len(mapVal) != 1 {
-			return false
-		}
-		if ub_mapVal, eleExists := unboxed[mapKey]; !eleExists || mapVal[0] != ub_mapVal {
+		if len(mapVal) != 1 || mapVal[0] != unboxed[mapKey] {
 			return false
 		}
 	}
@@ -61,10 +58,10 @@ func TestInvalidQueries(t *testing.T) {
 	for parseIndex, parseStr := range InvalidQueries {
 		parsedQueryObj, err := parseQuery(parseStr)
 		if err == nil {
-			t.Error("Should have produced error ", parseIndex)
+			t.Error("Should have produced error", parseIndex)
 		}
 		if parsedQueryObj != nil {
-			t.Error("Should be nil after error ", parsedQueryObj, parseIndex)
+			t.Error("Should be nil after error", parsedQueryObj, parseIndex)
 		}
 	}
 }
