@@ -26,4 +26,3 @@ func (d *driver) New(conf *config.DataStore) tracker.Pool {
 func init() {
 	tracker.Register("mock", &driver{})
 }
-

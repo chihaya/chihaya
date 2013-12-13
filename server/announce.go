@@ -205,7 +205,7 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		} else {
 			// If they're leeching, prioritize giving them seeders
 			count += writeSeeders(w, user, torrent, numWant, compact)
-			count += writeLeechers(w, user, torrent, numWant - count, compact)
+			count += writeLeechers(w, user, torrent, numWant-count, compact)
 		}
 
 		if compact && peerCount != count {

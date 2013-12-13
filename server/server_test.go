@@ -14,7 +14,7 @@ type PeerClientPair struct {
 }
 
 var (
-	AzTestClients = []PeerClientPair{
+	TestClients = []PeerClientPair{
 		{"-AZ3034-6wfG2wk6wWLc", "AZ3034"},
 		{"-AZ3042-6ozMq5q6Q3NX", "AZ3042"},
 		{"-BS5820-oy4La2MWGEFj", "BS5820"},
@@ -33,15 +33,11 @@ var (
 		{"-A~0010-a9mn9DFkj39J", "A~0010"},
 		{"-UT2300-MNu93JKnm930", "UT2300"},
 		{"-UT2300-KT4310KT4301", "UT2300"},
-	}
 
-	ShadowTestClients = []PeerClientPair{
 		{"T03A0----f089kjsdf6e", "T03A0-"},
 		{"S58B-----nKl34GoNb75", "S58B--"},
 		{"M4-4-0--9aa757Efd5Bl", "M4-4-0"},
-	}
 
-	OtherTestClients = []PeerClientPair{
 		{"AZ2500BTeYUzyabAfo6U", "AZ2500"}, // BitTyrant
 		{"exbc0JdSklm834kj9Udf", "exbc0J"}, // Old BitComet
 		{"FUTB0L84j542mVc84jkd", "FUTB0L"}, // Alt BitComet
@@ -53,29 +49,20 @@ var (
 		{"Q1-10-0-Yoiumn39BDfO", "Q1-10-"}, // Queen Bee Alt
 		{"346------SDFknl33408", "346---"}, // TorreTopia
 		{"QVOD0054ABFFEDCCDEDB", "QVOD00"}, // Qvod
+
+		{"", ""},
+		{"-", ""},
+		{"12345", ""},
+		{"-12345", ""},
+		{"123456", "123456"},
+		{"-123456", "123456"},
 	}
 )
 
-func TestParseAZClientID(t *testing.T) {
-	for _, pair := range AzTestClients {
-		if pair.clientId != parsePeerID(pair.peerId) {
-			t.Error("PeerID incorrectly parsed", pair)
-		}
-	}
-}
-
-func TestParseShadowClientID(t *testing.T) {
-	for _, pair := range ShadowTestClients {
-		if pair.clientId != parsePeerID(pair.peerId) {
-			t.Error("PeerID incorrectly parsed", pair)
-		}
-	}
-}
-
-func TestParseOtherClientID(t *testing.T) {
-	for _, pair := range OtherTestClients {
-		if pair.clientId != parsePeerID(pair.peerId) {
-			t.Error("PeerID incorrectly parsed", pair)
+func TestParseClientID(t *testing.T) {
+	for _, pair := range TestClients {
+		if parsedId := parsePeerID(pair.peerId); parsedId != pair.clientId {
+			t.Error("Incorrectly parsed peer ID", pair.peerId, "as", parsedId)
 		}
 	}
 }

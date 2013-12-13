@@ -127,10 +127,15 @@ func validateUser(conn tracker.Conn, dir string) (*storage.User, error) {
 
 // Takes a peer_id and returns a ClientID
 func parsePeerID(peerID string) (clientID string) {
-	if peerID[0] == '-' {
-		clientID = peerID[1:7]
-	} else {
-		clientID = peerID[0:6]
+	length := len(peerID)
+	if length >= 6 {
+		if peerID[0] == '-' {
+			if length >= 7 {
+				clientID = peerID[1:7]
+			}
+		} else {
+			clientID = peerID[0:6]
+		}
 	}
 	return
 }
