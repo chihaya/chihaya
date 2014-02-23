@@ -23,7 +23,7 @@ func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get a connection to the tracker db
-	conn, err := s.dbConnPool.Get()
+	conn, err := s.trackerPool.Get()
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/chihaya/chihaya/storage"
+	"github.com/chihaya/chihaya/storage/backend"
 )
 
 func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
@@ -24,7 +25,7 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get a connection to the tracker db
-	conn, err := s.dbConnPool.Get()
+	conn, err := s.trackerPool.Get()
 	if err != nil {
 		log.Panicf("server: %s", err)
 	}
@@ -65,6 +66,7 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	now := time.Now().Unix()
 	// Create a new peer object from the request
 	peer := &storage.Peer{
 		ID:           peerID,
@@ -75,7 +77,14 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		Uploaded:     uploaded,
 		Downloaded:   downloaded,
 		Left:         left,
-		LastAnnounce: time.Now().Unix(),
+		LastAnnounce: now,
+	}
+
+	delta := &backend.AnnounceDelta{
+		Peer:      peer,
+		Torrent:   torrent,
+		User:      user,
+		Timestamp: now,
 	}
 
 	// Look for the user in in the pool of seeders and leechers
@@ -126,6 +135,7 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 				log.Panicf("server: %s", err)
 			}
 		}
+		delta.Created = true
 	}
 
 	// Handle any events in the request
@@ -149,6 +159,7 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Panicf("server: %s", err)
 		}
+		delta.Snatched = true
 		if leecher {
 			err := conn.LeecherFinished(torrent, peer)
 			if err != nil {
@@ -217,6 +228,22 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeBencoded(w, "e")
+
+	rawDeltaUp := peer.Uploaded - uploaded
+	rawDeltaDown := peer.Downloaded - downloaded
+
+	// Restarting a torrent may cause a delta to be negative.
+	if rawDeltaUp < 0 {
+		rawDeltaUp = 0
+	}
+	if rawDeltaDown < 0 {
+		rawDeltaDown = 0
+	}
+
+	delta.Uploaded = uint64(float64(rawDeltaUp) * user.UpMultiplier * torrent.UpMultiplier)
+	delta.Downloaded = uint64(float64(rawDeltaDown) * user.DownMultiplier * torrent.DownMultiplier)
+
+	s.backendCon.RecordAnnounce(delta)
 }
 
 func (s Server) validateAnnounceQuery(r *http.Request) (compact bool, numWant int, infohash, peerID, event, ip string, port, uploaded, downloaded, left uint64, err error) {

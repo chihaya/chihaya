@@ -20,13 +20,15 @@ import (
 
 	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/storage"
+	"github.com/chihaya/chihaya/storage/backend"
 	"github.com/chihaya/chihaya/storage/tracker"
 )
 
 type Server struct {
-	conf       *config.Config
-	listener   *stoppableListener.StoppableListener
-	dbConnPool tracker.Pool
+	conf        *config.Config
+	listener    *stoppableListener.StoppableListener
+	trackerPool tracker.Pool
+	backendCon  backend.Conn
 
 	startTime time.Time
 
@@ -37,14 +39,23 @@ type Server struct {
 }
 
 func New(conf *config.Config) (*Server, error) {
-	pool, err := tracker.Open(&conf.Tracker)
+	trackerPool, err := tracker.Open(&conf.Tracker)
+	if err != nil {
+		return nil, err
+	}
+	backendConn, err := backend.Open(&conf.Backend)
+	if err != nil {
+		return nil, err
+	}
+	err = backendConn.Start()
 	if err != nil {
 		return nil, err
 	}
 
 	s := &Server{
-		conf:       conf,
-		dbConnPool: pool,
+		conf:        conf,
+		trackerPool: trackerPool,
+		backendCon:  backendConn,
 		Server: http.Server{
 			Addr:        conf.Addr,
 			ReadTimeout: conf.ReadTimeout.Duration,
@@ -72,7 +83,7 @@ func (s *Server) ListenAndServe() error {
 
 func (s *Server) Stop() error {
 	s.listener.Stop <- true
-	err := s.dbConnPool.Close()
+	err := s.trackerPool.Close()
 	if err != nil {
 		return err
 	}

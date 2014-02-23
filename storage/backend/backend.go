@@ -91,7 +91,7 @@ type AnnounceDelta struct {
 	Downloaded uint64
 
 	// Timestamp is the unix timestamp this announce occurred at
-	Timestamp float64
+	Timestamp int64
 
 	// Snatched is true if this announce completed the download
 	Snatched bool
