@@ -28,7 +28,7 @@ type Server struct {
 	conf        *config.Config
 	listener    *stoppableListener.StoppableListener
 	trackerPool tracker.Pool
-	backendCon  backend.Conn
+	backendConn backend.Conn
 
 	startTime time.Time
 
@@ -55,7 +55,7 @@ func New(conf *config.Config) (*Server, error) {
 	s := &Server{
 		conf:        conf,
 		trackerPool: trackerPool,
-		backendCon:  backendConn,
+		backendConn: backendConn,
 		Server: http.Server{
 			Addr:        conf.Addr,
 			ReadTimeout: conf.ReadTimeout.Duration,

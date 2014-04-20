@@ -243,7 +243,7 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 	delta.Uploaded = uint64(float64(rawDeltaUp) * user.UpMultiplier * torrent.UpMultiplier)
 	delta.Downloaded = uint64(float64(rawDeltaDown) * user.DownMultiplier * torrent.DownMultiplier)
 
-	s.backendCon.RecordAnnounce(delta)
+	s.backendConn.RecordAnnounce(delta)
 }
 
 func (s Server) validateAnnounceQuery(r *http.Request) (compact bool, numWant int, infohash, peerID, event, ip string, port, uploaded, downloaded, left uint64, err error) {
