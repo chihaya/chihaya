@@ -8,18 +8,18 @@ import (
 var (
 	baseAddr     = "https://www.subdomain.tracker.com:80/"
 	testInfoHash = "01234567890123456789"
-	testPeerId   = "-TEST01-6wfG2wk6wWLc"
+	testPeerID   = "-TEST01-6wfG2wk6wWLc"
 
 	ValidAnnounceArguments = []url.Values{
-		url.Values{"info_hash": {testInfoHash}, "peer_id": {testPeerId}, "port": {"6881"}, "downloaded": {"1234"}, "left": {"4321"}},
-		url.Values{"info_hash": {testInfoHash}, "peer_id": {testPeerId}, "ip": {"192.168.0.1"}, "port": {"6881"}, "downloaded": {"1234"}, "left": {"4321"}},
-		url.Values{"info_hash": {testInfoHash}, "peer_id": {testPeerId}, "ip": {"192.168.0.1"}, "port": {"6881"}, "downloaded": {"1234"}, "left": {"4321"}, "numwant": {"28"}},
-		url.Values{"info_hash": {testInfoHash}, "peer_id": {testPeerId}, "ip": {"192.168.0.1"}, "port": {"6881"}, "downloaded": {"1234"}, "left": {"4321"}, "event": {"stopped"}},
-		url.Values{"info_hash": {testInfoHash}, "peer_id": {testPeerId}, "ip": {"192.168.0.1"}, "port": {"6881"}, "downloaded": {"1234"}, "left": {"4321"}, "event": {"started"}, "numwant": {"13"}},
-		url.Values{"info_hash": {testInfoHash}, "peer_id": {testPeerId}, "port": {"6881"}, "downloaded": {"1234"}, "left": {"4321"}, "no_peer_id": {"1"}},
-		url.Values{"info_hash": {testInfoHash}, "peer_id": {testPeerId}, "port": {"6881"}, "downloaded": {"1234"}, "left": {"4321"}, "compact": {"0"}, "no_peer_id": {"1"}},
-		url.Values{"info_hash": {testInfoHash}, "peer_id": {testPeerId}, "port": {"6881"}, "downloaded": {"1234"}, "left": {"4321"}, "compact": {"0"}, "no_peer_id": {"1"}, "key": {"peerKey"}},
-		url.Values{"info_hash": {testInfoHash}, "peer_id": {testPeerId}, "port": {"6881"}, "downloaded": {"1234"}, "left": {"4321"}, "compact": {"0"}, "no_peer_id": {"1"}, "key": {"peerKey"}, "trackerid": {"trackerId"}},
+		url.Values{"info_hash": {testInfoHash}, "peer_id": {testPeerID}, "port": {"6881"}, "downloaded": {"1234"}, "left": {"4321"}},
+		url.Values{"info_hash": {testInfoHash}, "peer_id": {testPeerID}, "ip": {"192.168.0.1"}, "port": {"6881"}, "downloaded": {"1234"}, "left": {"4321"}},
+		url.Values{"info_hash": {testInfoHash}, "peer_id": {testPeerID}, "ip": {"192.168.0.1"}, "port": {"6881"}, "downloaded": {"1234"}, "left": {"4321"}, "numwant": {"28"}},
+		url.Values{"info_hash": {testInfoHash}, "peer_id": {testPeerID}, "ip": {"192.168.0.1"}, "port": {"6881"}, "downloaded": {"1234"}, "left": {"4321"}, "event": {"stopped"}},
+		url.Values{"info_hash": {testInfoHash}, "peer_id": {testPeerID}, "ip": {"192.168.0.1"}, "port": {"6881"}, "downloaded": {"1234"}, "left": {"4321"}, "event": {"started"}, "numwant": {"13"}},
+		url.Values{"info_hash": {testInfoHash}, "peer_id": {testPeerID}, "port": {"6881"}, "downloaded": {"1234"}, "left": {"4321"}, "no_peer_id": {"1"}},
+		url.Values{"info_hash": {testInfoHash}, "peer_id": {testPeerID}, "port": {"6881"}, "downloaded": {"1234"}, "left": {"4321"}, "compact": {"0"}, "no_peer_id": {"1"}},
+		url.Values{"info_hash": {testInfoHash}, "peer_id": {testPeerID}, "port": {"6881"}, "downloaded": {"1234"}, "left": {"4321"}, "compact": {"0"}, "no_peer_id": {"1"}, "key": {"peerKey"}},
+		url.Values{"info_hash": {testInfoHash}, "peer_id": {testPeerID}, "port": {"6881"}, "downloaded": {"1234"}, "left": {"4321"}, "compact": {"0"}, "no_peer_id": {"1"}, "key": {"peerKey"}, "trackerid": {"trackerId"}},
 		url.Values{"info_hash": {testInfoHash}, "peer_id": {"%3Ckey%3A+0x90%3E"}, "port": {"6881"}, "downloaded": {"1234"}, "left": {"4321"}, "compact": {"0"}, "no_peer_id": {"1"}, "key": {"peerKey"}, "trackerid": {"trackerId"}},
 		url.Values{"info_hash": {testInfoHash}, "peer_id": {"%3Ckey%3A+0x90%3E"}, "compact": {"1"}},
 	}

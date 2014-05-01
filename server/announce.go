@@ -44,7 +44,7 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		log.Panicf("server: %s", err)
 	}
 	if !whitelisted {
-		fail(errors.New("Your client is not approved"), w, r)
+		fail(errors.New("client is not approved"), w, r)
 		return
 	}
 
@@ -54,7 +54,7 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		log.Panicf("server: %s", err)
 	}
 	if !exists {
-		fail(errors.New("This torrent does not exist"), w, r)
+		fail(errors.New("torrent does not exist"), w, r)
 		return
 	}
 
@@ -270,7 +270,7 @@ func (s Server) validateAnnounceQuery(r *http.Request) (compact bool, numWant in
 		uploadedErr != nil ||
 		downloadedErr != nil ||
 		leftErr != nil {
-		return false, 0, "", "", "", "", 0, 0, 0, 0, errors.New("Malformed request")
+		return false, 0, "", "", "", "", 0, 0, 0, 0, errors.New("malformed request")
 	}
 	return
 }
@@ -306,7 +306,7 @@ func requestedIP(r *http.Request, pq *parsedQuery) (string, error) {
 	if portIndex != -1 {
 		return r.RemoteAddr[0:portIndex], nil
 	}
-	return "", errors.New("Failed to parse IP address")
+	return "", errors.New("failed to parse IP address")
 }
 
 func minInt(a, b int) int {

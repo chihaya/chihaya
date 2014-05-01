@@ -15,10 +15,14 @@ import (
 )
 
 var (
+	// ErrMissingResource is an error returned when a resource does not exist.
 	ErrMissingResource = errors.New("tracker: resource missing")
-	drivers            = make(map[string]Driver)
+
+	drivers = make(map[string]Driver)
 )
 
+// Driver represents an interface to pool of connections to storage used for
+// the tracker.
 type Driver interface {
 	New(*config.DataStore) Pool
 }

@@ -12,14 +12,17 @@ import (
 	"time"
 )
 
+// Duration wraps a time.Duration and adds JSON marshalling.
 type Duration struct {
 	time.Duration
 }
 
+// MarshalJSON transforms a duration into JSON.
 func (d *Duration) MarshalJSON() ([]byte, error) {
 	return json.Marshal(d.String())
 }
 
+// UnmarshalJSON transform JSON into a Duration.
 func (d *Duration) UnmarshalJSON(b []byte) error {
 	var str string
 	err := json.Unmarshal(b, &str)
@@ -61,8 +64,7 @@ type Config struct {
 // Open is a shortcut to open a file, read it, and generate a Config.
 // It supports relative and absolute paths.
 func Open(path string) (*Config, error) {
-	expandedPath := os.ExpandEnv(path)
-	f, err := os.Open(expandedPath)
+	f, err := os.Open(os.ExpandEnv(path))
 	if err != nil {
 		return nil, err
 	}

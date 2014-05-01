@@ -9,8 +9,8 @@ import (
 )
 
 type PeerClientPair struct {
-	peerId   string
-	clientId string
+	peerID   string
+	clientID string
 }
 
 var TestClients = []PeerClientPair{
@@ -59,8 +59,8 @@ var TestClients = []PeerClientPair{
 
 func TestParseClientID(t *testing.T) {
 	for _, pair := range TestClients {
-		if parsedId := parsePeerID(pair.peerId); parsedId != pair.clientId {
-			t.Error("Incorrectly parsed peer ID", pair.peerId, "as", parsedId)
+		if parsedID := parsePeerID(pair.peerID); parsedID != pair.clientID {
+			t.Error("Incorrectly parsed peer ID", pair.peerID, "as", parsedID)
 		}
 	}
 }

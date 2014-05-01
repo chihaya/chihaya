@@ -16,6 +16,8 @@ import (
 
 var drivers = make(map[string]Driver)
 
+// Driver represents an interface to a long-running connection with a
+// consistent data store.
 type Driver interface {
 	New(*config.DataStore) Conn
 }

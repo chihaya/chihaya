@@ -18,7 +18,7 @@ func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request) {
 	// Parse the query
 	pq, err := parseQuery(r.URL.RawQuery)
 	if err != nil {
-		fail(errors.New("Error parsing query"), w, r)
+		fail(errors.New("error parsing query"), w, r)
 		return
 	}
 

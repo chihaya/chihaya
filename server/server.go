@@ -24,6 +24,7 @@ import (
 	"github.com/chihaya/chihaya/storage/tracker"
 )
 
+// Server represents BitTorrent tracker server.
 type Server struct {
 	conf        *config.Config
 	listener    *stoppableListener.StoppableListener
@@ -38,6 +39,7 @@ type Server struct {
 	http.Server
 }
 
+// New creates a new Server.
 func New(conf *config.Config) (*Server, error) {
 	trackerPool, err := tracker.Open(&conf.Tracker)
 	if err != nil {
@@ -66,6 +68,7 @@ func New(conf *config.Config) (*Server, error) {
 	return s, nil
 }
 
+// ListenAndServe starts listening and handling incoming HTTP requests.
 func (s *Server) ListenAndServe() error {
 	l, err := net.Listen("tcp", s.Addr)
 	if err != nil {
@@ -81,6 +84,7 @@ func (s *Server) ListenAndServe() error {
 	return nil
 }
 
+// Stop cleanly ends the handling of incoming HTTP requests.
 func (s *Server) Stop() error {
 	s.listener.Stop <- true
 	err := s.trackerPool.Close()
@@ -106,7 +110,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.serveStats(w, r)
 		return
 	default:
-		fail(errors.New("Unknown action"), w, r)
+		fail(errors.New("unknown action"), w, r)
 		return
 	}
 }
@@ -121,7 +125,7 @@ func fail(err error, w http.ResponseWriter, r *http.Request) {
 
 func validateUser(conn tracker.Conn, dir string) (*storage.User, error) {
 	if len(dir) != 34 {
-		return nil, errors.New("Passkey is invalid")
+		return nil, errors.New("passkey is invalid")
 	}
 	passkey := dir[1:33]
 
@@ -130,7 +134,7 @@ func validateUser(conn tracker.Conn, dir string) (*storage.User, error) {
 		log.Panicf("server: %s", err)
 	}
 	if !exists {
-		return nil, errors.New("User not found")
+		return nil, errors.New("user not found")
 	}
 
 	return user, nil
