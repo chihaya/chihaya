@@ -12,13 +12,72 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/storage"
 	"github.com/chihaya/chihaya/storage/backend"
 )
 
+// announce represents all of the data from an announce request.
+type announce struct {
+	Compact    bool
+	Downloaded uint64
+	Event      string
+	IP         string
+	Infohash   string
+	Left       uint64
+	NumWant    int
+	Passkey    string
+	PeerID     string
+	Port       uint64
+	Uploaded   uint64
+}
+
+// newAnnounce parses an HTTP request and generates an Announce.
+func newAnnounce(r *http.Request, conf *config.Config) (*announce, error) {
+	pq, err := parseQuery(r.URL.RawQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	compact := pq.Params["compact"] == "1"
+	downloaded, downloadedErr := pq.getUint64("downloaded")
+	event, _ := pq.Params["event"]
+	infohash, _ := pq.Params["info_hash"]
+	ip, _ := requestedIP(r, pq)
+	left, leftErr := pq.getUint64("left")
+	numWant := requestedPeerCount(conf.DefaultNumWant, pq)
+	passkey, _ := path.Split(r.URL.Path)
+	peerID, _ := pq.Params["peer_id"]
+	port, portErr := pq.getUint64("port")
+	uploaded, uploadedErr := pq.getUint64("uploaded")
+
+	if downloadedErr != nil ||
+		infohash == "" ||
+		leftErr != nil ||
+		peerID == "" ||
+		portErr != nil ||
+		uploadedErr != nil ||
+		ip == "" {
+		return nil, errors.New("malformed request")
+	}
+
+	return &announce{
+		Compact:    compact,
+		Downloaded: downloaded,
+		Event:      event,
+		IP:         ip,
+		Left:       left,
+		NumWant:    numWant,
+		Passkey:    passkey,
+		PeerID:     peerID,
+		Port:       port,
+		Uploaded:   uploaded,
+	}, nil
+}
+
 func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
-	// Parse the required parameters off of a query
-	compact, numWant, infohash, peerID, event, ip, port, uploaded, downloaded, left, err := s.validateAnnounceQuery(r)
+	// Parse the required data from a request
+	ann, err := newAnnounce(r, s.conf)
 	if err != nil {
 		fail(err, w, r)
 		return
@@ -31,15 +90,14 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate the user's passkey
-	passkey, _ := path.Split(r.URL.Path)
-	user, err := validateUser(conn, passkey)
+	user, err := validateUser(conn, ann.Passkey)
 	if err != nil {
 		fail(err, w, r)
 		return
 	}
 
 	// Check if the user's client is whitelisted
-	whitelisted, err := conn.ClientWhitelisted(parsePeerID(peerID))
+	whitelisted, err := conn.ClientWhitelisted(parsePeerID(ann.PeerID))
 	if err != nil {
 		log.Panicf("server: %s", err)
 	}
@@ -49,7 +107,7 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Find the specified torrent
-	torrent, exists, err := conn.FindTorrent(infohash)
+	torrent, exists, err := conn.FindTorrent(ann.Infohash)
 	if err != nil {
 		log.Panicf("server: %s", err)
 	}
@@ -59,7 +117,7 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// If the torrent was pruned and the user is seeding, unprune it
-	if !torrent.Active && left == 0 {
+	if !torrent.Active && ann.Left == 0 {
 		err := conn.MarkActive(torrent)
 		if err != nil {
 			log.Panicf("server: %s", err)
@@ -69,14 +127,14 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 	now := time.Now().Unix()
 	// Create a new peer object from the request
 	peer := &storage.Peer{
-		ID:           peerID,
+		ID:           ann.PeerID,
 		UserID:       user.ID,
 		TorrentID:    torrent.ID,
-		IP:           ip,
-		Port:         port,
-		Uploaded:     uploaded,
-		Downloaded:   downloaded,
-		Left:         left,
+		IP:           ann.IP,
+		Port:         ann.Port,
+		Uploaded:     ann.Uploaded,
+		Downloaded:   ann.Downloaded,
+		Left:         ann.Left,
 		LastAnnounce: now,
 	}
 
@@ -94,7 +152,7 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 	switch {
 	// Guarantee that no user is in both pools
 	case seeder && leecher:
-		if left == 0 {
+		if ann.Left == 0 {
 			err := conn.RemoveLeecher(torrent, peer)
 			if err != nil {
 				log.Panicf("server: %s", err)
@@ -123,7 +181,7 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		}
 
 	default:
-		if left == 0 {
+		if ann.Left == 0 {
 			// Save the peer as a new seeder
 			err := conn.AddSeeder(torrent, peer)
 			if err != nil {
@@ -140,7 +198,7 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 
 	// Handle any events in the request
 	switch {
-	case event == "stopped" || event == "paused":
+	case ann.Event == "stopped" || ann.Event == "paused":
 		if seeder {
 			err := conn.RemoveSeeder(torrent, peer)
 			if err != nil {
@@ -154,7 +212,7 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-	case event == "completed":
+	case ann.Event == "completed":
 		err := conn.RecordSnatch(user, torrent)
 		if err != nil {
 			log.Panicf("server: %s", err)
@@ -167,7 +225,7 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-	case leecher && left == 0:
+	case leecher && ann.Left == 0:
 		// A leecher completed but the event was never received
 		err := conn.LeecherFinished(torrent, peer)
 		if err != nil {
@@ -175,9 +233,9 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if ip != peer.IP || port != peer.Port {
-		peer.Port = port
-		peer.IP = ip
+	if ann.IP != peer.IP || ann.Port != peer.Port {
+		peer.Port = ann.Port
+		peer.IP = ann.IP
 	}
 
 	// Generate the response
@@ -194,15 +252,15 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 	writeBencoded(w, "min interval")
 	writeBencoded(w, s.conf.MinAnnounce.Duration)
 
-	if numWant > 0 && event != "stopped" && event != "paused" {
+	if ann.NumWant > 0 && ann.Event != "stopped" && ann.Event != "paused" {
 		writeBencoded(w, "peers")
 		var peerCount, count int
 
-		if compact {
-			if left > 0 {
-				peerCount = minInt(numWant, leechCount)
+		if ann.Compact {
+			if ann.Left > 0 {
+				peerCount = minInt(ann.NumWant, leechCount)
 			} else {
-				peerCount = minInt(numWant, leechCount+seedCount-1)
+				peerCount = minInt(ann.NumWant, leechCount+seedCount-1)
 			}
 			writeBencoded(w, strconv.Itoa(peerCount*6))
 			writeBencoded(w, ":")
@@ -210,27 +268,27 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 			writeBencoded(w, "l")
 		}
 
-		if left > 0 {
+		if ann.Left > 0 {
 			// If they're seeding, give them only leechers
-			count += writeLeechers(w, user, torrent, numWant, compact)
+			count += writeLeechers(w, user, torrent, ann.NumWant, ann.Compact)
 		} else {
 			// If they're leeching, prioritize giving them seeders
-			count += writeSeeders(w, user, torrent, numWant, compact)
-			count += writeLeechers(w, user, torrent, numWant-count, compact)
+			count += writeSeeders(w, user, torrent, ann.NumWant, ann.Compact)
+			count += writeLeechers(w, user, torrent, ann.NumWant-count, ann.Compact)
 		}
 
-		if compact && peerCount != count {
+		if ann.Compact && peerCount != count {
 			log.Panicf("Calculated peer count (%d) != real count (%d)", peerCount, count)
 		}
 
-		if !compact {
+		if !ann.Compact {
 			writeBencoded(w, "e")
 		}
 	}
 	writeBencoded(w, "e")
 
-	rawDeltaUp := peer.Uploaded - uploaded
-	rawDeltaDown := peer.Downloaded - downloaded
+	rawDeltaUp := peer.Uploaded - ann.Uploaded
+	rawDeltaDown := peer.Downloaded - ann.Downloaded
 
 	// Restarting a torrent may cause a delta to be negative.
 	if rawDeltaUp < 0 {
@@ -244,35 +302,6 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 	delta.Downloaded = uint64(float64(rawDeltaDown) * user.DownMultiplier * torrent.DownMultiplier)
 
 	s.backendConn.RecordAnnounce(delta)
-}
-
-func (s Server) validateAnnounceQuery(r *http.Request) (compact bool, numWant int, infohash, peerID, event, ip string, port, uploaded, downloaded, left uint64, err error) {
-	pq, err := parseQuery(r.URL.RawQuery)
-	if err != nil {
-		return false, 0, "", "", "", "", 0, 0, 0, 0, err
-	}
-
-	compact = pq.Params["compact"] == "1"
-	numWant = requestedPeerCount(s.conf.DefaultNumWant, pq)
-	infohash, _ = pq.Params["info_hash"]
-	peerID, _ = pq.Params["peer_id"]
-	event, _ = pq.Params["event"]
-	ip, _ = requestedIP(r, pq)
-	port, portErr := pq.getUint64("port")
-	uploaded, uploadedErr := pq.getUint64("uploaded")
-	downloaded, downloadedErr := pq.getUint64("downloaded")
-	left, leftErr := pq.getUint64("left")
-
-	if infohash == "" ||
-		peerID == "" ||
-		ip == "" ||
-		portErr != nil ||
-		uploadedErr != nil ||
-		downloadedErr != nil ||
-		leftErr != nil {
-		return false, 0, "", "", "", "", 0, 0, 0, 0, errors.New("malformed request")
-	}
-	return
 }
 
 func requestedPeerCount(fallback int, pq *parsedQuery) int {
