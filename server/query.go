@@ -16,15 +16,18 @@ type parsedQuery struct {
 	Params     map[string]string
 }
 
+// getUint64 is a helper to obtain a uint64 from a parsedQuery.
 func (pq *parsedQuery) getUint64(key string) (uint64, error) {
 	str, exists := pq.Params[key]
 	if !exists {
-		return 0, errors.New("Value does not exist for key: " + key)
+		return 0, errors.New("value does not exist for key: " + key)
 	}
+
 	val, err := strconv.ParseUint(str, 10, 64)
 	if err != nil {
 		return 0, err
 	}
+
 	return val, nil
 }
 
@@ -63,6 +66,7 @@ func parseQuery(query string) (*parsedQuery, error) {
 			if err != nil {
 				return nil, err
 			}
+
 			valStr, err := url.QueryUnescape(query[valStart : valEnd+1])
 			if err != nil {
 				return nil, err
@@ -85,6 +89,7 @@ func parseQuery(query string) (*parsedQuery, error) {
 
 			onKey = true
 			keyStart = i + 1
+
 		} else if query[i] == '=' {
 			onKey = false
 			valStart = i + 1
@@ -94,5 +99,6 @@ func parseQuery(query string) (*parsedQuery, error) {
 			valEnd = i
 		}
 	}
+
 	return pq, nil
 }

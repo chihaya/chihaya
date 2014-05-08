@@ -33,12 +33,14 @@ func mapArrayEqual(boxed map[string][]string, unboxed map[string]string) bool {
 	if len(boxed) != len(unboxed) {
 		return false
 	}
+
 	for mapKey, mapVal := range boxed {
 		// Always expect box to hold only one element
 		if len(mapVal) != 1 || mapVal[0] != unboxed[mapKey] {
 			return false
 		}
 	}
+
 	return true
 }
 
@@ -48,6 +50,7 @@ func TestValidQueries(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
+
 		if !mapArrayEqual(parseVal, parsedQueryObj.Params) {
 			t.Errorf("Incorrect parse at item %d.\n Expected=%v\n Recieved=%v\n", parseIndex, parseVal, parsedQueryObj.Params)
 		}
@@ -60,6 +63,7 @@ func TestInvalidQueries(t *testing.T) {
 		if err == nil {
 			t.Error("Should have produced error", parseIndex)
 		}
+
 		if parsedQueryObj != nil {
 			t.Error("Should be nil after error", parsedQueryObj, parseIndex)
 		}

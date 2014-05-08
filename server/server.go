@@ -26,13 +26,15 @@ import (
 
 // Server represents BitTorrent tracker server.
 type Server struct {
-	conf        *config.Config
+	conf *config.Config
+
+	// These are open connections.
 	listener    *stoppableListener.StoppableListener
 	trackerPool tracker.Pool
 	backendConn backend.Conn
 
-	startTime time.Time
-
+	// These are for collecting stats.
+	startTime     time.Time
 	deltaRequests int64
 	rpm           int64
 
@@ -45,10 +47,12 @@ func New(conf *config.Config) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	backendConn, err := backend.Open(&conf.Backend)
 	if err != nil {
 		return nil, err
 	}
+
 	err = backendConn.Start()
 	if err != nil {
 		return nil, err
@@ -74,6 +78,7 @@ func (s *Server) ListenAndServe() error {
 	if err != nil {
 		return err
 	}
+
 	sl := stoppableListener.Handle(l)
 	s.listener = sl
 	s.startTime = time.Now()
@@ -86,11 +91,19 @@ func (s *Server) ListenAndServe() error {
 
 // Stop cleanly ends the handling of incoming HTTP requests.
 func (s *Server) Stop() error {
+	// Wait for current requests to finish being handled.
 	s.listener.Stop <- true
+
 	err := s.trackerPool.Close()
 	if err != nil {
 		return err
 	}
+
+	err = s.backendConn.Close()
+	if err != nil {
+		return err
+	}
+
 	return s.listener.Close()
 }
 
@@ -117,17 +130,17 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func fail(err error, w http.ResponseWriter, r *http.Request) {
 	errmsg := err.Error()
-	message := "d14:failure reason" + strconv.Itoa(len(errmsg)) + ":" + errmsg + "e"
-	length, _ := io.WriteString(w, message)
+	msg := "d14:failure reason" + strconv.Itoa(len(errmsg)) + ":" + errmsg + "e"
+	length, _ := io.WriteString(w, msg)
 	w.Header().Add("Content-Length", string(length))
 	w.(http.Flusher).Flush()
 }
 
 func validateUser(conn tracker.Conn, dir string) (*storage.User, error) {
+	passkey := dir[1:33]
 	if len(dir) != 34 {
 		return nil, errors.New("passkey is invalid")
 	}
-	passkey := dir[1:33]
 
 	user, exists, err := conn.FindUser(passkey)
 	if err != nil {
@@ -140,7 +153,7 @@ func validateUser(conn tracker.Conn, dir string) (*storage.User, error) {
 	return user, nil
 }
 
-// Takes a peer_id and returns a ClientID
+// parsePeerID returns the clientID for a given peerID.
 func parsePeerID(peerID string) (clientID string) {
 	length := len(peerID)
 	if length >= 6 {
@@ -152,5 +165,6 @@ func parsePeerID(peerID string) (clientID string) {
 			clientID = peerID[0:6]
 		}
 	}
+
 	return
 }
