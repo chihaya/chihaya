@@ -138,10 +138,10 @@ func fail(err error, w http.ResponseWriter, r *http.Request) {
 }
 
 func validateUser(conn tracker.Conn, dir string) (*storage.User, error) {
-	passkey := dir[1:33]
 	if len(dir) != 34 {
 		return nil, errors.New("passkey is invalid")
 	}
+	passkey := dir[1:33]
 
 	user, exists, err := conn.FindUser(passkey)
 	if err != nil {
