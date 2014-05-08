@@ -28,7 +28,7 @@ import (
 type Server struct {
 	conf *config.Config
 
-	// These are open connections.
+	// These are open connections/pools.
 	listener    *stoppableListener.StoppableListener
 	trackerPool tracker.Pool
 	backendConn backend.Conn
@@ -130,6 +130,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func fail(err error, w http.ResponseWriter, r *http.Request) {
 	errmsg := err.Error()
+	log.Println("handled failure: " + errmsg)
 	msg := "d14:failure reason" + strconv.Itoa(len(errmsg)) + ":" + errmsg + "e"
 	length, _ := io.WriteString(w, msg)
 	w.Header().Add("Content-Length", string(length))

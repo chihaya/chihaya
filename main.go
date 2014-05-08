@@ -30,28 +30,34 @@ func main() {
 	flag.Parse()
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
+	// Enable the profile if flagged.
 	if profile {
-		log.Println("Running with profiling enabled")
+		log.Println("running with profiling enabled")
 		f, err := os.Create("chihaya.cpu")
 		if err != nil {
-			log.Fatalf("Failed to create profile file: %s\n", err)
+			log.Fatalf("failed to create profile file: %s\n", err)
 		}
 		defer f.Close()
 		pprof.StartCPUProfile(f)
 	}
 
+	// Load the config file.
 	if configPath == "" {
-		log.Fatalf("Must specify a configuration file")
+		log.Fatalf("must specify a configuration file")
 	}
 	conf, err := config.Open(configPath)
 	if err != nil {
-		log.Fatalf("Failed to parse configuration file: %s\n", err)
+		log.Fatalf("failed to parse configuration file: %s\n", err)
 	}
+	log.Println("succesfully loaded config")
+
+	// Create a new server.
 	s, err := server.New(conf)
 	if err != nil {
-		log.Fatalf("Failed to create server: %s\n", err)
+		log.Fatalf("failed to create server: %s\n", err)
 	}
 
+	// Spawn a goroutine to handle interrupts and safely shut down.
 	go func() {
 		c := make(chan os.Signal, 1)
 		signal.Notify(c, os.Interrupt)
@@ -61,18 +67,19 @@ func main() {
 			pprof.StopCPUProfile()
 		}
 
-		log.Println("Caught interrupt, shutting down..")
+		log.Println("caught interrupt, shutting down.")
 		err := s.Stop()
 		if err != nil {
-			panic("Failed to shutdown cleanly")
+			panic("failed to shutdown cleanly")
 		}
-		log.Println("Shutdown successfully")
+		log.Println("shutdown successfully")
 		<-c
 		os.Exit(0)
 	}()
 
+	// Start the server listening and handling requests.
 	err = s.ListenAndServe()
 	if err != nil {
-		log.Fatalf("Failed to start server: %s\n", err)
+		log.Fatalf("failed to start server: %s\n", err)
 	}
 }
