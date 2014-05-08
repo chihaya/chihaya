@@ -10,7 +10,7 @@ import (
 
 // MockConfig is a pre-initialized config that can be used for testing purposes.
 var MockConfig = Config{
-	Addr: ":80",
+	Addr: ":34000",
 	Tracker: DataStore{
 		Driver: "mock",
 	},
