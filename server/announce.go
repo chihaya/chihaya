@@ -62,6 +62,7 @@ func newAnnounce(r *http.Request, conf *config.Config) (*announce, error) {
 		Downloaded: downloaded,
 		Event:      event,
 		IP:         ip,
+		Infohash:   infohash,
 		Left:       left,
 		NumWant:    numWant,
 		Passkey:    passkey,
@@ -94,6 +95,10 @@ func requestedIP(r *http.Request, pq *parsedQuery) (string, error) {
 
 	if xRealIPs, ok := pq.Params["X-Real-Ip"]; ok {
 		return string(xRealIPs[0]), nil
+	}
+
+	if r.RemoteAddr == "" {
+		return "127.0.0.1", nil
 	}
 
 	portIndex := len(r.RemoteAddr) - 1
