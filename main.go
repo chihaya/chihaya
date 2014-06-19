@@ -14,6 +14,9 @@ import (
 
 	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/server"
+
+	_ "github.com/chihaya/chihaya/storage/backend/mock"
+	_ "github.com/chihaya/chihaya/storage/tracker/mock"
 )
 
 var (
