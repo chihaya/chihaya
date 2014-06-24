@@ -51,15 +51,15 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	peer := models.NewPeer(torrent, user, announce)
+	peer := models.NewPeer(announce, user, torrent)
 
-	created, err := updateTorrent(peer, torrent, conn, announce)
+	created, err := updateTorrent(conn, announce, peer, torrent)
 	if err != nil {
 		fail(err, w, r)
 		return
 	}
 
-	snatched, err := handleEvent(announce, user, torrent, peer, conn)
+	snatched, err := handleEvent(conn, announce, peer, user, torrent)
 	if err != nil {
 		fail(err, w, r)
 		return
@@ -67,15 +67,15 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 
 	writeAnnounceResponse(w, announce, user, torrent)
 
-	delta := models.NewAnnounceDelta(peer, user, announce, torrent, created, snatched)
+	delta := models.NewAnnounceDelta(announce, peer, user, torrent, created, snatched)
 	s.backendConn.RecordAnnounce(delta)
 
-	log.V(3).Infof("chihaya: handled announce from %s", announce.IP)
+	log.Infof("chihaya: handled announce from %s", announce.IP)
 }
 
-func updateTorrent(p *models.Peer, t *models.Torrent, conn tracker.Conn, a *models.Announce) (created bool, err error) {
+func updateTorrent(c tracker.Conn, a *models.Announce, p *models.Peer, t *models.Torrent) (created bool, err error) {
 	if !t.Active && a.Left == 0 {
-		err = conn.MarkActive(t)
+		err = c.MarkActive(t)
 		if err != nil {
 			return
 		}
@@ -83,25 +83,25 @@ func updateTorrent(p *models.Peer, t *models.Torrent, conn tracker.Conn, a *mode
 
 	switch {
 	case t.InSeederPool(p):
-		err = conn.SetSeeder(t, p)
+		err = c.SetSeeder(t, p)
 		if err != nil {
 			return
 		}
 
 	case t.InLeecherPool(p):
-		err = conn.SetLeecher(t, p)
+		err = c.SetLeecher(t, p)
 		if err != nil {
 			return
 		}
 
 	default:
 		if a.Left == 0 {
-			err = conn.AddSeeder(t, p)
+			err = c.AddSeeder(t, p)
 			if err != nil {
 				return
 			}
 		} else {
-			err = conn.AddLeecher(t, p)
+			err = c.AddLeecher(t, p)
 			if err != nil {
 				return
 			}
@@ -112,31 +112,31 @@ func updateTorrent(p *models.Peer, t *models.Torrent, conn tracker.Conn, a *mode
 	return
 }
 
-func handleEvent(a *models.Announce, u *models.User, t *models.Torrent, p *models.Peer, conn tracker.Conn) (snatched bool, err error) {
+func handleEvent(c tracker.Conn, a *models.Announce, p *models.Peer, u *models.User, t *models.Torrent) (snatched bool, err error) {
 	switch {
 	case a.Event == "stopped" || a.Event == "paused":
 		if t.InSeederPool(p) {
-			err = conn.RemoveSeeder(t, p)
+			err = c.RemoveSeeder(t, p)
 			if err != nil {
 				return
 			}
 		}
 		if t.InLeecherPool(p) {
-			err = conn.RemoveLeecher(t, p)
+			err = c.RemoveLeecher(t, p)
 			if err != nil {
 				return
 			}
 		}
 
 	case a.Event == "completed":
-		err = conn.IncrementSnatches(t)
+		err = c.IncrementSnatches(t)
 		if err != nil {
 			return
 		}
 		snatched = true
 
 		if t.InLeecherPool(p) {
-			err = tracker.LeecherFinished(conn, t, p)
+			err = tracker.LeecherFinished(c, t, p)
 			if err != nil {
 				return
 			}
@@ -144,7 +144,7 @@ func handleEvent(a *models.Announce, u *models.User, t *models.Torrent, p *model
 
 	case t.InLeecherPool(p) && a.Left == 0:
 		// A leecher completed but the event was never received
-		err = tracker.LeecherFinished(conn, t, p)
+		err = tracker.LeecherFinished(c, t, p)
 		if err != nil {
 			return
 		}

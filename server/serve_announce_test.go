@@ -9,16 +9,16 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/drivers/backend"
-	"github.com/chihaya/chihaya/drivers/tracker"
-	"github.com/chihaya/chihaya/models"
-
 	_ "github.com/chihaya/chihaya/drivers/backend/mock"
+	"github.com/chihaya/chihaya/drivers/tracker"
 	_ "github.com/chihaya/chihaya/drivers/tracker/mock"
+	"github.com/chihaya/chihaya/models"
 )
 
 func TestAnnounce(t *testing.T) {
-	s, err := newTestServer()
+	s, err := New(config.New())
 	if err != nil {
 		t.Error(err)
 	}

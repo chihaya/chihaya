@@ -6,17 +6,17 @@ package main
 
 import (
 	"flag"
-	"log"
 	"os"
 	"os/signal"
 	"runtime"
 	"runtime/pprof"
 
-	"github.com/chihaya/chihaya/config"
-	"github.com/chihaya/chihaya/server"
+	log "github.com/golang/glog"
 
+	"github.com/chihaya/chihaya/config"
 	_ "github.com/chihaya/chihaya/drivers/backend/mock"
 	_ "github.com/chihaya/chihaya/drivers/tracker/mock"
+	"github.com/chihaya/chihaya/server"
 )
 
 var (
@@ -25,8 +25,8 @@ var (
 )
 
 func init() {
-	flag.BoolVar(&profile, "profile", false, "Generate profiling data for pprof into chihaya.cpu")
-	flag.StringVar(&configPath, "config", "", "The location of a valid configuration file.")
+	flag.BoolVar(&profile, "profile", false, "Generate profiling data for pprof into ./chihaya.cpu")
+	flag.StringVar(&configPath, "config", "", "Provide the filesystem path of a valid configuration file.")
 }
 
 func main() {
@@ -35,54 +35,58 @@ func main() {
 
 	// Enable the profile if flagged.
 	if profile {
-		log.Println("running with profiling enabled")
 		f, err := os.Create("chihaya.cpu")
 		if err != nil {
-			log.Fatalf("failed to create profile file: %s\n", err)
+			log.Fatalf("chihaya: failed to create profile file: %s\n", err)
 		}
 		defer f.Close()
+
 		pprof.StartCPUProfile(f)
+		log.Info("chihaya: started profiling")
 	}
 
 	// Load the config file.
-	if configPath == "" {
-		log.Fatalf("must specify a configuration file")
-	}
 	conf, err := config.Open(configPath)
 	if err != nil {
-		log.Fatalf("failed to parse configuration file: %s\n", err)
+		log.Fatalf("chihaya: failed to parse configuration file: %s\n", err)
 	}
-	log.Println("succesfully loaded config")
+	log.Infoln("chihaya: succesfully loaded config")
 
 	// Create a new server.
 	s, err := server.New(conf)
 	if err != nil {
-		log.Fatalf("failed to create server: %s\n", err)
+		log.Fatalf("chihaya: failed to create server: %s\n", err)
 	}
 
 	// Spawn a goroutine to handle interrupts and safely shut down.
 	go func() {
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Interrupt)
-		<-c
+		interrupts := make(chan os.Signal, 1)
+		signal.Notify(interrupts, os.Interrupt)
+
+		<-interrupts
+		log.Info("chihaya: caught interrupt, shutting down...")
 
 		if profile {
 			pprof.StopCPUProfile()
+			log.Info("chihaya: stopped profiling")
 		}
 
-		log.Println("caught interrupt, shutting down.")
 		err := s.Stop()
 		if err != nil {
-			panic("failed to shutdown cleanly")
+			log.Fatalf("chihaya: failed to shutdown cleanly: %s", err)
 		}
-		log.Println("shutdown successfully")
-		<-c
+
+		log.Info("chihaya: shutdown cleanly")
+
+		<-interrupts
+
+		log.Flush()
 		os.Exit(0)
 	}()
 
 	// Start the server listening and handling requests.
 	err = s.ListenAndServe()
 	if err != nil {
-		log.Fatalf("failed to start server: %s\n", err)
+		log.Fatalf("chihaya: failed to start server: %s\n", err)
 	}
 }

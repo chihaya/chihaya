@@ -15,7 +15,7 @@ import (
 
 type driver struct{}
 
-func (d *driver) New(conf *config.DataStore) tracker.Pool {
+func (d *driver) New(conf *config.DriverConfig) tracker.Pool {
 	return &Pool{
 		users:     make(map[string]*models.User),
 		torrents:  make(map[string]*models.Torrent),

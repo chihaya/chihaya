@@ -19,7 +19,7 @@ var drivers = make(map[string]Driver)
 // Driver represents an interface to a long-running connection with a
 // consistent data store.
 type Driver interface {
-	New(*config.DataStore) Conn
+	New(*config.DriverConfig) Conn
 }
 
 // Register makes a database driver available by the provided name.
@@ -36,7 +36,7 @@ func Register(name string, driver Driver) {
 }
 
 // Open creates a connection specified by a models configuration.
-func Open(conf *config.DataStore) (Conn, error) {
+func Open(conf *config.DriverConfig) (Conn, error) {
 	driver, ok := drivers[conf.Driver]
 	if !ok {
 		return nil, fmt.Errorf(

@@ -30,7 +30,7 @@ var (
 // Driver represents an interface to pool of connections to models used for
 // the tracker.
 type Driver interface {
-	New(*config.DataStore) Pool
+	New(*config.DriverConfig) Pool
 }
 
 // Register makes a database driver available by the provided name.
@@ -47,7 +47,7 @@ func Register(name string, driver Driver) {
 }
 
 // Open creates a pool of data store connections specified by a models configuration.
-func Open(conf *config.DataStore) (Pool, error) {
+func Open(conf *config.DriverConfig) (Pool, error) {
 	driver, ok := drivers[conf.Driver]
 	if !ok {
 		return nil, fmt.Errorf(

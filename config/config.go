@@ -10,6 +10,8 @@ import (
 	"io"
 	"os"
 	"time"
+
+	log "github.com/golang/glog"
 )
 
 // Duration wraps a time.Duration and adds JSON marshalling.
@@ -30,8 +32,9 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 	return err
 }
 
-// DataStore represents the configuration used to connect to a data store.
-type DataStore struct {
+// DriverConfig is the configuration used to connect to a tracker.Driver or
+// a backend.Driver.
+type DriverConfig struct {
 	Driver   string `json:"driver"`
 	Network  string `json:"network`
 	Host     string `json:"host"`
@@ -46,41 +49,66 @@ type DataStore struct {
 	IdleTimeout  *Duration `json:"idle_timeout,omitempty"`
 }
 
-// Config represents a configuration for a server.Server.
+// Config is a configuration for a Server.
 type Config struct {
-	Addr    string    `json:"addr"`
-	Tracker DataStore `json:"tracker"`
-	Backend DataStore `json:"backend"`
+	Addr    string       `json:"addr"`
+	Tracker DriverConfig `json:"tracker"`
+	Backend DriverConfig `json:"backend"`
 
 	Private   bool `json:"private"`
 	Freeleech bool `json:"freeleech"`
 
-	Announce       Duration `json:"announce"`
-	MinAnnounce    Duration `json:"min_announce"`
-	ReadTimeout    Duration `json:"read_timeout"`
-	DefaultNumWant int      `json:"default_num_want"`
+	Announce        Duration `json:"announce"`
+	MinAnnounce     Duration `json:"min_announce"`
+	ReadTimeout     Duration `json:"read_timeout"`
+	NumWantFallback int      `json:"default_num_want"`
+}
+
+// New returns a default configuration.
+func New() *Config {
+	return &Config{
+		Addr: ":6881",
+		Tracker: DriverConfig{
+			Driver: "mock",
+		},
+		Backend: DriverConfig{
+			Driver: "mock",
+		},
+		Private:         true,
+		Freeleech:       false,
+		Announce:        Duration{30 * time.Minute},
+		MinAnnounce:     Duration{15 * time.Minute},
+		ReadTimeout:     Duration{20 % time.Second},
+		NumWantFallback: 50,
+	}
 }
 
 // Open is a shortcut to open a file, read it, and generate a Config.
-// It supports relative and absolute paths.
+// It supports relative and absolute paths. Given "", it returns the result of
+// New.
 func Open(path string) (*Config, error) {
+	if path == "" {
+		log.Info("chihaya: using default configuration")
+		return New(), nil
+	}
+
 	f, err := os.Open(os.ExpandEnv(path))
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
 
-	conf, err := decode(f)
+	conf, err := Decode(f)
 	if err != nil {
 		return nil, err
 	}
 	return conf, nil
 }
 
-// decode transforms Reader populated with JSON into a *Config.
-func decode(raw io.Reader) (*Config, error) {
+// Decode attempts to decode a JSON encoded reader into a *Config.
+func Decode(r io.Reader) (*Config, error) {
 	conf := &Config{}
-	err := json.NewDecoder(raw).Decode(conf)
+	err := json.NewDecoder(r).Decode(conf)
 	if err != nil {
 		return nil, err
 	}

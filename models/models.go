@@ -18,12 +18,12 @@ import (
 )
 
 var (
-	// ErrMalformedRequest is returned when a request does no have the required
-	// parameters.
+	// ErrMalformedRequest is returned when an http.Request does no have the
+	// required parameters to create a model.
 	ErrMalformedRequest = errors.New("malformed request")
 )
 
-// Peer is the internal representation of a participant in a swarm.
+// Peer is a participant in a swarm.
 type Peer struct {
 	ID        string `json:"id"`
 	UserID    uint64 `json:"user_id"`
@@ -38,13 +38,13 @@ type Peer struct {
 	LastAnnounce int64  `json:"last_announce"`
 }
 
-// Key is a helper that returns the proper format for keys used for maps
-// of peers (i.e. torrent.Seeders & torrent.Leechers).
+// Key returns the unique key used to look-up a peer in a swarm (i.e
+// Torrent.Seeders & Torrent.Leechers).
 func (p Peer) Key() string {
 	return p.ID + ":" + strconv.FormatUint(p.UserID, 36)
 }
 
-// Torrent is the internal representation of a swarm for a given torrent file.
+// Torrent is a swarm for a given torrent file.
 type Torrent struct {
 	ID       uint64 `json:"id"`
 	Infohash string `json:"infohash"`
@@ -59,20 +59,20 @@ type Torrent struct {
 	LastAction     int64   `json:"last_action"`
 }
 
-// InSeederPool returns true if a peer is within a torrent's pool of seeders.
+// InSeederPool returns true if a peer is within a Torrent's pool of seeders.
 func (t *Torrent) InSeederPool(p *Peer) bool {
 	_, exists := t.Seeders[p.Key()]
 	return exists
 }
 
-// InLeecherPool returns true if a peer is within a torrent's pool of leechers.
+// InLeecherPool returns true if a peer is within a Torrent's pool of leechers.
 func (t *Torrent) InLeecherPool(p *Peer) bool {
 	_, exists := t.Leechers[p.Key()]
 	return exists
 }
 
-// NewPeer creates a new peer using the information provided by an announce.
-func NewPeer(t *Torrent, u *User, a *Announce) *Peer {
+// NewPeer returns the Peer representation of an Announce.
+func NewPeer(a *Announce, u *User, t *Torrent) *Peer {
 	return &Peer{
 		ID:           a.PeerID,
 		UserID:       u.ID,
@@ -86,7 +86,7 @@ func NewPeer(t *Torrent, u *User, a *Announce) *Peer {
 	}
 }
 
-// User is the internal representation of registered user for private trackers.
+// User is a registered user for private trackers.
 type User struct {
 	ID      uint64 `json:"id"`
 	Passkey string `json:"passkey"`
@@ -96,7 +96,7 @@ type User struct {
 	Snatches       uint64  `json:"snatches"`
 }
 
-// Announce represents all of the data from an announce request.
+// Announce is an Announce by a Peer.
 type Announce struct {
 	Config  *config.Config `json:"config"`
 	Request *http.Request  `json:"request"`
@@ -127,7 +127,7 @@ func NewAnnounce(r *http.Request, conf *config.Config) (*Announce, error) {
 	infohash, _ := q.Params["info_hash"]
 	ip, _ := q.RequestedIP(r)
 	left, leftErr := q.Uint64("left")
-	numWant := q.RequestedPeerCount(conf.DefaultNumWant)
+	numWant := q.RequestedPeerCount(conf.NumWantFallback)
 	dir, _ := path.Split(r.URL.Path)
 	peerID, _ := q.Params["peer_id"]
 	port, portErr := q.Uint64("port")
@@ -161,7 +161,8 @@ func NewAnnounce(r *http.Request, conf *config.Config) (*Announce, error) {
 	}, nil
 }
 
-// ClientID returns the part of a PeerID that identifies the client software.
+// ClientID returns the part of a PeerID that identifies a Peer's client
+// software.
 func (a Announce) ClientID() (clientID string) {
 	length := len(a.PeerID)
 	if length >= 6 {
@@ -177,8 +178,8 @@ func (a Announce) ClientID() (clientID string) {
 	return
 }
 
-// AnnounceDelta contains a difference in statistics for a peer.
-// It is used for communicating changes to be recorded by the driver.
+// AnnounceDelta contains the changes to a Peer's state. These changes are
+// recorded by the backend driver.
 type AnnounceDelta struct {
 	Peer    *Peer
 	Torrent *Torrent
@@ -196,10 +197,17 @@ type AnnounceDelta struct {
 	Downloaded uint64
 }
 
-// NewAnnounceDelta does stuff
-func NewAnnounceDelta(p *Peer, u *User, a *Announce, t *Torrent, created, snatched bool) *AnnounceDelta {
-	rawDeltaUp := p.Uploaded - a.Uploaded
-	rawDeltaDown := p.Downloaded - a.Downloaded
+// NewAnnounceDelta calculates a Peer's download and upload deltas between
+// Announces and generates an AnnounceDelta.
+func NewAnnounceDelta(a *Announce, p *Peer, u *User, t *Torrent, created, snatched bool) *AnnounceDelta {
+	var (
+		rawDeltaUp   = p.Uploaded - a.Uploaded
+		rawDeltaDown uint64
+	)
+
+	if !a.Config.Freeleech {
+		rawDeltaDown = p.Downloaded - a.Downloaded
+	}
 
 	// Restarting a torrent may cause a delta to be negative.
 	if rawDeltaUp < 0 {
@@ -222,7 +230,7 @@ func NewAnnounceDelta(p *Peer, u *User, a *Announce, t *Torrent, created, snatch
 	}
 }
 
-// Scrape represents all of the data from an scrape request.
+// Scrape is a Scrape by a Peer.
 type Scrape struct {
 	Config  *config.Config `json:"config"`
 	Request *http.Request  `json:"request"`

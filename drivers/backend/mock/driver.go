@@ -24,7 +24,7 @@ type Mock struct {
 	deltaHistoryM sync.RWMutex
 }
 
-func (d *driver) New(conf *config.DataStore) backend.Conn {
+func (d *driver) New(conf *config.DriverConfig) backend.Conn {
 	return &Mock{}
 }
 

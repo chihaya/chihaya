@@ -14,12 +14,8 @@ import (
 	_ "github.com/chihaya/chihaya/drivers/tracker/mock"
 )
 
-func newTestServer() (*Server, error) {
-	return New(&config.MockConfig)
-}
-
 func TestStats(t *testing.T) {
-	s, err := newTestServer()
+	s, err := New(config.New())
 	if err != nil {
 		t.Error(err)
 	}
