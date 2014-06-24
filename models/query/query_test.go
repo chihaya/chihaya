@@ -1,4 +1,7 @@
-package server
+// Copyright 2013 The Chihaya Authors. All rights reserved.
+// Use of this source code is governed by the BSD 2-Clause license,
+// which can be found in the LICENSE file.
+package query
 
 import (
 	"net/url"
@@ -46,7 +49,7 @@ func mapArrayEqual(boxed map[string][]string, unboxed map[string]string) bool {
 
 func TestValidQueries(t *testing.T) {
 	for parseIndex, parseVal := range ValidAnnounceArguments {
-		parsedQueryObj, err := parseQuery(baseAddr + "announce/?" + parseVal.Encode())
+		parsedQueryObj, err := New(baseAddr + "announce/?" + parseVal.Encode())
 		if err != nil {
 			t.Error(err)
 		}
@@ -59,7 +62,7 @@ func TestValidQueries(t *testing.T) {
 
 func TestInvalidQueries(t *testing.T) {
 	for parseIndex, parseStr := range InvalidQueries {
-		parsedQueryObj, err := parseQuery(parseStr)
+		parsedQueryObj, err := New(parseStr)
 		if err == nil {
 			t.Error("Should have produced error", parseIndex)
 		}
@@ -73,7 +76,7 @@ func TestInvalidQueries(t *testing.T) {
 func BenchmarkParseQuery(b *testing.B) {
 	for bCount := 0; bCount < b.N; bCount++ {
 		for parseIndex, parseStr := range ValidAnnounceArguments {
-			parsedQueryObj, err := parseQuery(baseAddr + "announce/?" + parseStr.Encode())
+			parsedQueryObj, err := New(baseAddr + "announce/?" + parseStr.Encode())
 			if err != nil {
 				b.Error(err, parseIndex)
 				b.Log(parsedQueryObj)

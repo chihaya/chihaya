@@ -7,15 +7,15 @@ package mock
 import (
 	"sync"
 
-	"github.com/chihaya/chihaya/storage"
-	"github.com/chihaya/chihaya/storage/tracker"
+	"github.com/chihaya/chihaya/drivers/tracker"
+	"github.com/chihaya/chihaya/models"
 )
 
 type Pool struct {
-	users  map[string]*storage.User
+	users  map[string]*models.User
 	usersM sync.RWMutex
 
-	torrents  map[string]*storage.Torrent
+	torrents  map[string]*models.Torrent
 	torrentsM sync.RWMutex
 
 	whitelist  map[string]bool

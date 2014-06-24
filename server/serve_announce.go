@@ -5,242 +5,236 @@
 package server
 
 import (
-	"errors"
-	"log"
+	"io"
+	"net"
 	"net/http"
 	"strconv"
-	"time"
 
-	"github.com/chihaya/chihaya/storage"
-	"github.com/chihaya/chihaya/storage/backend"
+	log "github.com/golang/glog"
+
+	"github.com/chihaya/chihaya/bencode"
+	"github.com/chihaya/chihaya/drivers/tracker"
+	"github.com/chihaya/chihaya/models"
 )
 
 func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
-	// Parse the required data from a request
-	announce, err := newAnnounce(r, s.conf)
+	announce, err := models.NewAnnounce(r, s.conf)
 	if err != nil {
 		fail(err, w, r)
 		return
 	}
 
-	// Get a connection to the tracker db
 	conn, err := s.trackerPool.Get()
 	if err != nil {
-		log.Panicf("server: %s", err)
+		fail(err, w, r)
+		return
 	}
 
-	// Validate the user's passkey
-	user, err := validateUser(conn, announce.Passkey)
+	err = conn.ClientWhitelisted(announce.ClientID())
 	if err != nil {
 		fail(err, w, r)
 		return
 	}
 
-	// Check if the user's client is whitelisted
-	whitelisted, err := conn.ClientWhitelisted(parsePeerID(announce.PeerID))
-	if err != nil {
-		log.Panicf("server: %s", err)
-	}
-	if !whitelisted {
-		fail(errors.New("client is not approved"), w, r)
-		return
-	}
-
-	// Find the specified torrent
-	torrent, exists, err := conn.FindTorrent(announce.Infohash)
-	if err != nil {
-		log.Panicf("server: %s", err)
-	}
-	if !exists {
-		fail(errors.New("torrent does not exist"), w, r)
-		return
-	}
-
-	// If the torrent was pruned and the user is seeding, unprune it
-	if !torrent.Active && announce.Left == 0 {
-		err := conn.MarkActive(torrent)
+	var user *models.User
+	if s.conf.Private {
+		user, err = conn.FindUser(announce.Passkey)
 		if err != nil {
-			log.Panicf("server: %s", err)
+			fail(err, w, r)
+			return
 		}
 	}
 
-	now := time.Now().Unix()
-	// Create a new peer object from the request
-	peer := &storage.Peer{
-		ID:           announce.PeerID,
-		UserID:       user.ID,
-		TorrentID:    torrent.ID,
-		IP:           announce.IP,
-		Port:         announce.Port,
-		Uploaded:     announce.Uploaded,
-		Downloaded:   announce.Downloaded,
-		Left:         announce.Left,
-		LastAnnounce: now,
-	}
-	delta := &backend.AnnounceDelta{
-		Peer:      peer,
-		Torrent:   torrent,
-		User:      user,
-		Timestamp: now,
+	torrent, err := conn.FindTorrent(announce.Infohash)
+	if err != nil {
+		fail(err, w, r)
+		return
 	}
 
-	// Look for the user in in the pool of seeders and leechers
-	_, seeder := torrent.Seeders[storage.PeerMapKey(peer)]
-	_, leecher := torrent.Leechers[storage.PeerMapKey(peer)]
+	peer := models.NewPeer(torrent, user, announce)
+
+	created, err := updateTorrent(peer, torrent, conn, announce)
+	if err != nil {
+		fail(err, w, r)
+		return
+	}
+
+	snatched, err := handleEvent(announce, user, torrent, peer, conn)
+	if err != nil {
+		fail(err, w, r)
+		return
+	}
+
+	writeAnnounceResponse(w, announce, user, torrent)
+
+	delta := models.NewAnnounceDelta(peer, user, announce, torrent, created, snatched)
+	s.backendConn.RecordAnnounce(delta)
+
+	log.V(3).Infof("chihaya: handled announce from %s", announce.IP)
+}
+
+func updateTorrent(p *models.Peer, t *models.Torrent, conn tracker.Conn, a *models.Announce) (created bool, err error) {
+	if !t.Active && a.Left == 0 {
+		err = conn.MarkActive(t)
+		if err != nil {
+			return
+		}
+	}
 
 	switch {
-	// Guarantee that no user is in both pools
-	case seeder && leecher:
-		if announce.Left == 0 {
-			err := conn.RemoveLeecher(torrent, peer)
-			if err != nil {
-				log.Panicf("server: %s", err)
-			}
-			leecher = false
-		} else {
-			err := conn.RemoveSeeder(torrent, peer)
-			if err != nil {
-				log.Panicf("server: %s", err)
-			}
-			seeder = false
+	case t.InSeederPool(p):
+		err = conn.SetSeeder(t, p)
+		if err != nil {
+			return
 		}
 
-	case seeder:
-		// Update the peer with the stats from the request
-		err := conn.SetSeeder(torrent, peer)
+	case t.InLeecherPool(p):
+		err = conn.SetLeecher(t, p)
 		if err != nil {
-			log.Panicf("server: %s", err)
-		}
-
-	case leecher:
-		// Update the peer with the stats from the request
-		err := conn.SetLeecher(torrent, peer)
-		if err != nil {
-			log.Panicf("server: %s", err)
+			return
 		}
 
 	default:
-		if announce.Left == 0 {
-			// Save the peer as a new seeder
-			err := conn.AddSeeder(torrent, peer)
+		if a.Left == 0 {
+			err = conn.AddSeeder(t, p)
 			if err != nil {
-				log.Panicf("server: %s", err)
+				return
 			}
 		} else {
-			err = conn.AddLeecher(torrent, peer)
+			err = conn.AddLeecher(t, p)
 			if err != nil {
-				log.Panicf("server: %s", err)
+				return
 			}
 		}
-		delta.Created = true
+		created = true
 	}
 
-	// Handle any events in the request
+	return
+}
+
+func handleEvent(a *models.Announce, u *models.User, t *models.Torrent, p *models.Peer, conn tracker.Conn) (snatched bool, err error) {
 	switch {
-	case announce.Event == "stopped" || announce.Event == "paused":
-		if seeder {
-			err := conn.RemoveSeeder(torrent, peer)
+	case a.Event == "stopped" || a.Event == "paused":
+		if t.InSeederPool(p) {
+			err = conn.RemoveSeeder(t, p)
 			if err != nil {
-				log.Panicf("server: %s", err)
+				return
 			}
 		}
-		if leecher {
-			err := conn.RemoveLeecher(torrent, peer)
+		if t.InLeecherPool(p) {
+			err = conn.RemoveLeecher(t, p)
 			if err != nil {
-				log.Panicf("server: %s", err)
+				return
 			}
 		}
 
-	case announce.Event == "completed":
-		err := conn.RecordSnatch(user, torrent)
+	case a.Event == "completed":
+		err = conn.IncrementSnatches(t)
 		if err != nil {
-			log.Panicf("server: %s", err)
+			return
 		}
-		delta.Snatched = true
-		if leecher {
-			err := conn.LeecherFinished(torrent, peer)
+		snatched = true
+
+		if t.InLeecherPool(p) {
+			err = tracker.LeecherFinished(conn, t, p)
 			if err != nil {
-				log.Panicf("server: %s", err)
+				return
 			}
 		}
 
-	case leecher && announce.Left == 0:
+	case t.InLeecherPool(p) && a.Left == 0:
 		// A leecher completed but the event was never received
-		err := conn.LeecherFinished(torrent, peer)
+		err = tracker.LeecherFinished(conn, t, p)
 		if err != nil {
-			log.Panicf("server: %s", err)
+			return
 		}
 	}
 
-	if announce.IP != peer.IP || announce.Port != peer.Port {
-		peer.Port = announce.Port
-		peer.IP = announce.IP
-	}
+	return
+}
 
-	// Generate the response
-	seedCount := len(torrent.Seeders)
-	leechCount := len(torrent.Leechers)
+func writeAnnounceResponse(w io.Writer, a *models.Announce, u *models.User, t *models.Torrent) {
+	bencoder := bencode.NewEncoder(w)
+	seedCount := len(t.Seeders)
+	leechCount := len(t.Leechers)
 
-	writeBencoded(w, "d")
-	writeBencoded(w, "complete")
-	writeBencoded(w, seedCount)
-	writeBencoded(w, "incomplete")
-	writeBencoded(w, leechCount)
-	writeBencoded(w, "interval")
-	writeBencoded(w, s.conf.Announce.Duration)
-	writeBencoded(w, "min interval")
-	writeBencoded(w, s.conf.MinAnnounce.Duration)
+	bencoder.Encode("d")
+	bencoder.Encode("complete")
+	bencoder.Encode(seedCount)
+	bencoder.Encode("incomplete")
+	bencoder.Encode(leechCount)
+	bencoder.Encode("interval")
+	bencoder.Encode(a.Config.Announce.Duration)
+	bencoder.Encode("min interval")
+	bencoder.Encode(a.Config.MinAnnounce.Duration)
 
-	if announce.NumWant > 0 && announce.Event != "stopped" && announce.Event != "paused" {
-		writeBencoded(w, "peers")
-		var peerCount, count int
+	if a.NumWant > 0 && a.Event != "stopped" && a.Event != "paused" {
+		bencoder.Encode("peers")
 
-		if announce.Compact {
-			if announce.Left > 0 {
-				peerCount = minInt(announce.NumWant, leechCount)
+		var peerCount int
+		if a.Compact {
+			if a.Left == 0 {
+				peerCount = minInt(a.NumWant, leechCount)
 			} else {
-				peerCount = minInt(announce.NumWant, leechCount+seedCount-1)
+				peerCount = minInt(a.NumWant, leechCount+seedCount-1)
 			}
-			writeBencoded(w, strconv.Itoa(peerCount*6))
-			writeBencoded(w, ":")
+			// 6 is the number of bytes 1 compact peer takes up.
+			bencoder.Encode(strconv.Itoa(peerCount * 6))
+			bencoder.Encode(":")
 		} else {
-			writeBencoded(w, "l")
+			bencoder.Encode("l")
 		}
 
-		if announce.Left > 0 {
+		var count int
+		if a.Left == 0 {
 			// If they're seeding, give them only leechers
-			count += writeLeechers(w, user, torrent, announce.NumWant, announce.Compact)
+			count = writePeers(w, u, t.Leechers, a.NumWant, a.Compact)
 		} else {
 			// If they're leeching, prioritize giving them seeders
-			count += writeSeeders(w, user, torrent, announce.NumWant, announce.Compact)
-			count += writeLeechers(w, user, torrent, announce.NumWant-count, announce.Compact)
+			count += writePeers(w, u, t.Seeders, a.NumWant, a.Compact)
+			count += writePeers(w, u, t.Leechers, a.NumWant-count, a.Compact)
+		}
+		if a.Compact && peerCount != count {
+			log.Errorf("calculated peer count (%d) != real count (%d)", peerCount, count)
 		}
 
-		if announce.Compact && peerCount != count {
-			log.Panicf("calculated peer count (%d) != real count (%d)", peerCount, count)
-		}
-
-		if !announce.Compact {
-			writeBencoded(w, "e")
+		if !a.Compact {
+			bencoder.Encode("e")
 		}
 	}
-	writeBencoded(w, "e")
+	bencoder.Encode("e")
+}
 
-	rawDeltaUp := peer.Uploaded - announce.Uploaded
-	rawDeltaDown := peer.Downloaded - announce.Downloaded
+func writePeers(w io.Writer, user *models.User, peers map[string]models.Peer, numWant int, compact bool) (count int) {
+	bencoder := bencode.NewEncoder(w)
+	for _, peer := range peers {
+		if count >= numWant {
+			break
+		}
 
-	// Restarting a torrent may cause a delta to be negative.
-	if rawDeltaUp < 0 {
-		rawDeltaUp = 0
+		if peer.UserID == user.ID {
+			continue
+		}
+
+		if compact {
+			if ip := net.ParseIP(peer.IP); ip != nil {
+				w.Write(ip)
+				w.Write([]byte{byte(peer.Port >> 8), byte(peer.Port & 0xff)})
+			}
+		} else {
+			bencoder.Encode("d")
+			bencoder.Encode("ip")
+			bencoder.Encode(peer.IP)
+			bencoder.Encode("peer id")
+			bencoder.Encode(peer.ID)
+			bencoder.Encode("port")
+			bencoder.Encode(peer.Port)
+			bencoder.Encode("e")
+		}
+		count++
 	}
-	if rawDeltaDown < 0 {
-		rawDeltaDown = 0
-	}
 
-	delta.Uploaded = uint64(float64(rawDeltaUp) * user.UpMultiplier * torrent.UpMultiplier)
-	delta.Downloaded = uint64(float64(rawDeltaDown) * user.DownMultiplier * torrent.DownMultiplier)
-
-	s.backendConn.RecordAnnounce(delta)
+	return
 }
 
 func minInt(a, b int) int {
@@ -249,62 +243,4 @@ func minInt(a, b int) int {
 	}
 
 	return b
-}
-
-func writeSeeders(w http.ResponseWriter, user *storage.User, t *storage.Torrent, numWant int, compact bool) int {
-	count := 0
-	for _, peer := range t.Seeders {
-		if count >= numWant {
-			break
-		}
-
-		if peer.UserID == user.ID {
-			continue
-		}
-
-		if compact {
-			// TODO writeBencoded(w, compactAddr)
-		} else {
-			writeBencoded(w, "d")
-			writeBencoded(w, "ip")
-			writeBencoded(w, peer.IP)
-			writeBencoded(w, "peer id")
-			writeBencoded(w, peer.ID)
-			writeBencoded(w, "port")
-			writeBencoded(w, peer.Port)
-			writeBencoded(w, "e")
-		}
-		count++
-	}
-
-	return count
-}
-
-func writeLeechers(w http.ResponseWriter, user *storage.User, t *storage.Torrent, numWant int, compact bool) int {
-	count := 0
-	for _, peer := range t.Leechers {
-		if count >= numWant {
-			break
-		}
-
-		if peer.UserID == user.ID {
-			continue
-		}
-
-		if compact {
-			// TODO writeBencoded(w, compactAddr)
-		} else {
-			writeBencoded(w, "d")
-			writeBencoded(w, "ip")
-			writeBencoded(w, peer.IP)
-			writeBencoded(w, "peer id")
-			writeBencoded(w, peer.ID)
-			writeBencoded(w, "port")
-			writeBencoded(w, peer.Port)
-			writeBencoded(w, "e")
-		}
-		count++
-	}
-
-	return count
 }

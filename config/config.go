@@ -70,15 +70,15 @@ func Open(path string) (*Config, error) {
 	}
 	defer f.Close()
 
-	conf, err := newConfig(f)
+	conf, err := decode(f)
 	if err != nil {
 		return nil, err
 	}
 	return conf, nil
 }
 
-// New decodes JSON from a Reader into a Config.
-func newConfig(raw io.Reader) (*Config, error) {
+// decode transforms Reader populated with JSON into a *Config.
+func decode(raw io.Reader) (*Config, error) {
 	conf := &Config{}
 	err := json.NewDecoder(raw).Decode(conf)
 	if err != nil {

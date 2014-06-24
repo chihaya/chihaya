@@ -2,23 +2,23 @@
 // Use of this source code is governed by the BSD 2-Clause license,
 // which can be found in the LICENSE file.
 
-// Package mock implements the storage interface for a BitTorrent tracker
+// Package mock implements the models interface for a BitTorrent tracker
 // within memory. It can be used in production, but isn't recommended.
 // Stored values will not persist if the tracker is restarted.
 package mock
 
 import (
 	"github.com/chihaya/chihaya/config"
-	"github.com/chihaya/chihaya/storage"
-	"github.com/chihaya/chihaya/storage/tracker"
+	"github.com/chihaya/chihaya/drivers/tracker"
+	"github.com/chihaya/chihaya/models"
 )
 
 type driver struct{}
 
 func (d *driver) New(conf *config.DataStore) tracker.Pool {
 	return &Pool{
-		users:     make(map[string]*storage.User),
-		torrents:  make(map[string]*storage.Torrent),
+		users:     make(map[string]*models.User),
+		torrents:  make(map[string]*models.Torrent),
 		whitelist: make(map[string]bool),
 	}
 }

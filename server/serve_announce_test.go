@@ -9,12 +9,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/chihaya/chihaya/storage"
-	"github.com/chihaya/chihaya/storage/backend"
-	"github.com/chihaya/chihaya/storage/tracker"
+	"github.com/chihaya/chihaya/drivers/backend"
+	"github.com/chihaya/chihaya/drivers/tracker"
+	"github.com/chihaya/chihaya/models"
 
-	_ "github.com/chihaya/chihaya/storage/backend/mock"
-	_ "github.com/chihaya/chihaya/storage/tracker/mock"
+	_ "github.com/chihaya/chihaya/drivers/backend/mock"
+	_ "github.com/chihaya/chihaya/drivers/tracker/mock"
 )
 
 func TestAnnounce(t *testing.T) {
@@ -29,7 +29,7 @@ func TestAnnounce(t *testing.T) {
 			return
 		}
 
-		err = conn.AddUser(&storage.User{
+		err = conn.AddUser(&models.User{
 			ID:      1,
 			Passkey: "yby47f04riwpndba456rqxtmifenq5h6",
 		})
@@ -42,11 +42,11 @@ func TestAnnounce(t *testing.T) {
 			return
 		}
 
-		err = conn.AddTorrent(&storage.Torrent{
+		err = conn.AddTorrent(&models.Torrent{
 			ID:       1,
 			Infohash: string([]byte{0x89, 0xd4, 0xbc, 0x52, 0x11, 0x16, 0xca, 0x1d, 0x42, 0xa2, 0xf3, 0x0d, 0x1f, 0x27, 0x4d, 0x94, 0xe4, 0x68, 0x1d, 0xaf}),
-			Seeders:  make(map[string]storage.Peer),
-			Leechers: make(map[string]storage.Peer),
+			Seeders:  make(map[string]models.Peer),
+			Leechers: make(map[string]models.Peer),
 		})
 
 		return
@@ -64,8 +64,8 @@ func TestAnnounce(t *testing.T) {
 	w := httptest.NewRecorder()
 	s.serveAnnounce(w, r)
 
-	if w.Body.String() != "1:d8:completei0e10:incompletei1e8:intervali1800e12:min intervali900e1:e" {
-		t.Errorf("improper response from server")
+	if w.Body.String() != "1:d8:completei0e10:incompletei0e8:intervali1800e12:min intervali900e1:e" {
+		t.Errorf("improper response from server:\n%s", w.Body.String())
 	}
 
 }

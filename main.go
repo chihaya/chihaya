@@ -15,8 +15,8 @@ import (
 	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/server"
 
-	_ "github.com/chihaya/chihaya/storage/backend/mock"
-	_ "github.com/chihaya/chihaya/storage/tracker/mock"
+	_ "github.com/chihaya/chihaya/drivers/backend/mock"
+	_ "github.com/chihaya/chihaya/drivers/tracker/mock"
 )
 
 var (

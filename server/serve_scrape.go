@@ -5,72 +5,67 @@
 package server
 
 import (
-	"errors"
 	"io"
-	"log"
 	"net/http"
-	"path"
 
-	"github.com/chihaya/chihaya/storage"
+	log "github.com/golang/glog"
+
+	"github.com/chihaya/chihaya/bencode"
+	"github.com/chihaya/chihaya/models"
 )
 
 func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request) {
-	// Parse the query
-	pq, err := parseQuery(r.URL.RawQuery)
-	if err != nil {
-		fail(errors.New("error parsing query"), w, r)
-		return
-	}
-
-	// Get a connection to the tracker db
-	conn, err := s.trackerPool.Get()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Find and validate the user
-	passkey, _ := path.Split(r.URL.Path)
-	_, err = validateUser(conn, passkey)
+	scrape, err := models.NewScrape(r, s.conf)
 	if err != nil {
 		fail(err, w, r)
 		return
 	}
 
-	io.WriteString(w, "d")
-	writeBencoded(w, "files")
-	if pq.Infohashes != nil {
-		for _, infohash := range pq.Infohashes {
-			torrent, exists, err := conn.FindTorrent(infohash)
-			if err != nil {
-				log.Panicf("server: %s", err)
-			}
-			if exists {
-				writeBencoded(w, infohash)
-				writeScrapeInfo(w, torrent)
-			}
-		}
-	} else if infohash, exists := pq.Params["info_hash"]; exists {
-		torrent, exists, err := conn.FindTorrent(infohash)
+	conn, err := s.trackerPool.Get()
+	if err != nil {
+		fail(err, w, r)
+	}
+
+	if s.conf.Private {
+		_, err = conn.FindUser(scrape.Passkey)
 		if err != nil {
-			log.Panicf("server: %s", err)
-		}
-		if exists {
-			writeBencoded(w, infohash)
-			writeScrapeInfo(w, torrent)
+			fail(err, w, r)
+			return
 		}
 	}
-	io.WriteString(w, "e")
+
+	var torrents []*models.Torrent
+	for _, infohash := range scrape.Infohashes {
+		torrent, err := conn.FindTorrent(infohash)
+		if err != nil {
+			fail(err, w, r)
+			return
+		}
+		torrents = append(torrents, torrent)
+	}
+
+	bencoder := bencode.NewEncoder(w)
+	bencoder.Encode("d")
+	bencoder.Encode("files")
+	for _, torrent := range torrents {
+		writeTorrentStatus(w, torrent)
+	}
+	bencoder.Encode("e")
+
+	log.V(3).Infof("chihaya: handled scrape from %s", r.RemoteAddr)
 
 	w.(http.Flusher).Flush()
 }
 
-func writeScrapeInfo(w io.Writer, torrent *storage.Torrent) {
-	io.WriteString(w, "d")
-	writeBencoded(w, "complete")
-	writeBencoded(w, len(torrent.Seeders))
-	writeBencoded(w, "downloaded")
-	writeBencoded(w, torrent.Snatches)
-	writeBencoded(w, "incomplete")
-	writeBencoded(w, len(torrent.Leechers))
-	io.WriteString(w, "e")
+func writeTorrentStatus(w io.Writer, t *models.Torrent) {
+	bencoder := bencode.NewEncoder(w)
+	bencoder.Encode("t.Infohash")
+	bencoder.Encode("d")
+	bencoder.Encode("complete")
+	bencoder.Encode(len(t.Seeders))
+	bencoder.Encode("downloaded")
+	bencoder.Encode(t.Snatches)
+	bencoder.Encode("incomplete")
+	bencoder.Encode(len(t.Leechers))
+	bencoder.Encode("e")
 }

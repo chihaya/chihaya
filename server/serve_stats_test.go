@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"github.com/chihaya/chihaya/config"
-	_ "github.com/chihaya/chihaya/storage/backend/mock"
-	_ "github.com/chihaya/chihaya/storage/tracker/mock"
+	_ "github.com/chihaya/chihaya/drivers/backend/mock"
+	_ "github.com/chihaya/chihaya/drivers/tracker/mock"
 )
 
 func newTestServer() (*Server, error) {

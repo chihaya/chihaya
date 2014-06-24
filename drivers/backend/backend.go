@@ -11,7 +11,7 @@ import (
 	"fmt"
 
 	"github.com/chihaya/chihaya/config"
-	"github.com/chihaya/chihaya/storage"
+	"github.com/chihaya/chihaya/models"
 )
 
 var drivers = make(map[string]Driver)
@@ -35,7 +35,7 @@ func Register(name string, driver Driver) {
 	drivers[name] = driver
 }
 
-// Open creates a connection specified by a storage configuration.
+// Open creates a connection specified by a models configuration.
 func Open(conf *config.DataStore) (Conn, error) {
 	driver, ok := drivers[conf.Driver]
 	if !ok {
@@ -50,51 +50,23 @@ func Open(conf *config.DataStore) (Conn, error) {
 
 // Conn represents a connection to the data store.
 type Conn interface {
-	// Start is called once when the server starts.
-	// It starts any necessary goroutines a given driver requires, and sets
-	// up the driver's initial state
-	Start() error
-
 	// Close terminates connections to the database(s) and gracefully shuts
 	// down the driver
 	Close() error
 
 	// RecordAnnounce is called once per announce, and is passed the delta in
 	// statistics for the client peer since its last announce.
-	RecordAnnounce(delta *AnnounceDelta) error
+	RecordAnnounce(delta *models.AnnounceDelta) error
 
 	// LoadTorrents fetches and returns the specified torrents.
-	LoadTorrents(ids []uint64) ([]*storage.Torrent, error)
+	LoadTorrents(ids []uint64) ([]*models.Torrent, error)
 
 	// LoadAllTorrents fetches and returns all torrents.
-	LoadAllTorrents() ([]*storage.Torrent, error)
+	LoadAllTorrents() ([]*models.Torrent, error)
 
 	// LoadUsers fetches and returns the specified users.
-	LoadUsers(ids []uint64) ([]*storage.User, error)
+	LoadUsers(ids []uint64) ([]*models.User, error)
 
 	// LoadAllUsers fetches and returns all users.
-	LoadAllUsers(ids []uint64) ([]*storage.User, error)
-}
-
-// AnnounceDelta contains a difference in statistics for a peer.
-// It is used for communicating changes to be recorded by the driver.
-type AnnounceDelta struct {
-	Peer    *storage.Peer
-	Torrent *storage.Torrent
-	User    *storage.User
-
-	// Created is true if this announce created a new peer or changed an existing peer's address
-	Created bool
-
-	// Uploaded contains the raw upload delta for this announce, in bytes
-	Uploaded uint64
-
-	// Downloaded contains the raw download delta for this announce, in bytes
-	Downloaded uint64
-
-	// Timestamp is the unix timestamp this announce occurred at
-	Timestamp int64
-
-	// Snatched is true if this announce completed the download
-	Snatched bool
+	LoadAllUsers(ids []uint64) ([]*models.User, error)
 }

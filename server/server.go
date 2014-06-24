@@ -8,7 +8,6 @@ package server
 import (
 	"errors"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"path"
@@ -17,11 +16,11 @@ import (
 	"time"
 
 	"github.com/etix/stoppableListener"
+	log "github.com/golang/glog"
 
 	"github.com/chihaya/chihaya/config"
-	"github.com/chihaya/chihaya/storage"
-	"github.com/chihaya/chihaya/storage/backend"
-	"github.com/chihaya/chihaya/storage/tracker"
+	"github.com/chihaya/chihaya/drivers/backend"
+	"github.com/chihaya/chihaya/drivers/tracker"
 )
 
 // Server represents BitTorrent tracker server.
@@ -49,11 +48,6 @@ func New(conf *config.Config) (*Server, error) {
 	}
 
 	backendConn, err := backend.Open(&conf.Backend)
-	if err != nil {
-		return nil, err
-	}
-
-	err = backendConn.Start()
 	if err != nil {
 		return nil, err
 	}
@@ -130,42 +124,11 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func fail(err error, w http.ResponseWriter, r *http.Request) {
 	errmsg := err.Error()
-	log.Println("handled failure: " + errmsg)
 	msg := "d14:failure reason" + strconv.Itoa(len(errmsg)) + ":" + errmsg + "e"
 	length, _ := io.WriteString(w, msg)
 	w.Header().Add("Content-Length", string(length))
+
+	log.V(2).Infof("chihaya: handled failure: %s from %s ", errmsg, r.RemoteAddr)
+
 	w.(http.Flusher).Flush()
-}
-
-func validateUser(conn tracker.Conn, dir string) (*storage.User, error) {
-	if len(dir) != 34 {
-		return nil, errors.New("passkey is invalid")
-	}
-	passkey := dir[1:33]
-
-	user, exists, err := conn.FindUser(passkey)
-	if err != nil {
-		log.Panicf("server: %s", err)
-	}
-	if !exists {
-		return nil, errors.New("user not found")
-	}
-
-	return user, nil
-}
-
-// parsePeerID returns the clientID for a given peerID.
-func parsePeerID(peerID string) (clientID string) {
-	length := len(peerID)
-	if length >= 6 {
-		if peerID[0] == '-' {
-			if length >= 7 {
-				clientID = peerID[1:7]
-			}
-		} else {
-			clientID = peerID[0:6]
-		}
-	}
-
-	return
 }
