@@ -37,25 +37,24 @@ func main() {
 	if profile {
 		f, err := os.Create("chihaya.cpu")
 		if err != nil {
-			log.Fatalf("chihaya: failed to create profile file: %s\n", err)
+			log.Fatalf("failed to create profile file: %s\n", err)
 		}
 		defer f.Close()
 
 		pprof.StartCPUProfile(f)
-		log.Info("chihaya: started profiling")
+		log.V(1).Info("started profiling")
 	}
 
 	// Load the config file.
 	conf, err := config.Open(configPath)
 	if err != nil {
-		log.Fatalf("chihaya: failed to parse configuration file: %s\n", err)
+		log.Fatalf("failed to parse configuration file: %s\n", err)
 	}
-	log.Infoln("chihaya: succesfully loaded config")
 
 	// Create a new server.
 	s, err := server.New(conf)
 	if err != nil {
-		log.Fatalf("chihaya: failed to create server: %s\n", err)
+		log.Fatalf("failed to create server: %s\n", err)
 	}
 
 	// Spawn a goroutine to handle interrupts and safely shut down.
@@ -64,19 +63,19 @@ func main() {
 		signal.Notify(interrupts, os.Interrupt)
 
 		<-interrupts
-		log.Info("chihaya: caught interrupt, shutting down...")
+		log.V(1).Info("caught interrupt, shutting down...")
 
 		if profile {
 			pprof.StopCPUProfile()
-			log.Info("chihaya: stopped profiling")
+			log.V(1).Info("stopped profiling")
 		}
 
 		err := s.Stop()
 		if err != nil {
-			log.Fatalf("chihaya: failed to shutdown cleanly: %s", err)
+			log.Fatalf("failed to shutdown cleanly: %s", err)
 		}
 
-		log.Info("chihaya: shutdown cleanly")
+		log.V(1).Info("shutdown cleanly")
 
 		<-interrupts
 
@@ -87,6 +86,6 @@ func main() {
 	// Start the server listening and handling requests.
 	err = s.ListenAndServe()
 	if err != nil {
-		log.Fatalf("chihaya: failed to start server: %s\n", err)
+		log.Fatalf("failed to start server: %s\n", err)
 	}
 }

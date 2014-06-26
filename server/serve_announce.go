@@ -72,7 +72,16 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 
 	writeAnnounceResponse(w, announce, user, torrent)
 
-	log.Infof("chihaya: handled announce from %s", announce.IP)
+	w.(http.Flusher).Flush()
+
+	if log.V(5) {
+		log.Infof(
+			"announce: ip: %s, user: %s, torrent: %s",
+			announce.IP,
+			user.ID,
+			torrent.ID,
+		)
+	}
 }
 
 func updateTorrent(c tracker.Conn, a *models.Announce, p *models.Peer, t *models.Torrent) (created bool, err error) {
@@ -174,12 +183,13 @@ func writeAnnounceResponse(w io.Writer, a *models.Announce, u *models.User, t *m
 		bencoder.Encode("peers")
 
 		var peerCount int
+		if a.Left == 0 {
+			peerCount = minInt(a.NumWant, leechCount)
+		} else {
+			peerCount = minInt(a.NumWant, leechCount+seedCount-1)
+		}
+
 		if a.Compact {
-			if a.Left == 0 {
-				peerCount = minInt(a.NumWant, leechCount)
-			} else {
-				peerCount = minInt(a.NumWant, leechCount+seedCount-1)
-			}
 			// 6 is the number of bytes 1 compact peer takes up.
 			bencoder.Encode(strconv.Itoa(peerCount * 6))
 			bencoder.Encode(":")
@@ -187,17 +197,13 @@ func writeAnnounceResponse(w io.Writer, a *models.Announce, u *models.User, t *m
 			bencoder.Encode("l")
 		}
 
-		var count int
 		if a.Left == 0 {
 			// If they're seeding, give them only leechers
-			count = writePeers(w, u, t.Leechers, a.NumWant, a.Compact)
+			writePeers(w, u, t.Leechers, peerCount, a.Compact)
 		} else {
 			// If they're leeching, prioritize giving them seeders
-			count += writePeers(w, u, t.Seeders, a.NumWant, a.Compact)
-			count += writePeers(w, u, t.Leechers, a.NumWant-count, a.Compact)
-		}
-		if a.Compact && peerCount != count {
-			log.Errorf("calculated peer count (%d) != real count (%d)", peerCount, count)
+			count := writePeers(w, u, t.Seeders, peerCount, a.Compact)
+			writePeers(w, u, t.Leechers, peerCount-count, a.Compact)
 		}
 
 		if !a.Compact {

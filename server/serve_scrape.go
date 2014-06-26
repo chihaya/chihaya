@@ -7,6 +7,7 @@ package server
 import (
 	"io"
 	"net/http"
+	"strings"
 
 	log "github.com/golang/glog"
 
@@ -26,15 +27,19 @@ func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request) {
 		fail(err, w, r)
 	}
 
+	var user *models.User
 	if s.conf.Private {
-		_, err = conn.FindUser(scrape.Passkey)
+		user, err = conn.FindUser(scrape.Passkey)
 		if err != nil {
 			fail(err, w, r)
 			return
 		}
 	}
 
-	var torrents []*models.Torrent
+	var (
+		torrents   []*models.Torrent
+		torrentIDs []string
+	)
 	for _, infohash := range scrape.Infohashes {
 		torrent, err := conn.FindTorrent(infohash)
 		if err != nil {
@@ -42,6 +47,7 @@ func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		torrents = append(torrents, torrent)
+		torrentIDs = append(torrentIDs, string(torrent.ID))
 	}
 
 	bencoder := bencode.NewEncoder(w)
@@ -52,9 +58,14 @@ func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request) {
 	}
 	bencoder.Encode("e")
 
-	log.V(3).Infof("chihaya: handled scrape from %s", r.RemoteAddr)
-
 	w.(http.Flusher).Flush()
+
+	log.V(5).Infof(
+		"scrape: ip: %s user: %s torrents: %s",
+		r.RemoteAddr,
+		user.ID,
+		strings.Join(torrentIDs, ", "),
+	)
 }
 
 func writeTorrentStatus(w io.Writer, t *models.Torrent) {

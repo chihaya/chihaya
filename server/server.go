@@ -128,7 +128,11 @@ func fail(err error, w http.ResponseWriter, r *http.Request) {
 	length, _ := io.WriteString(w, msg)
 	w.Header().Add("Content-Length", string(length))
 
-	log.V(2).Infof("chihaya: handled failure: %s from %s ", errmsg, r.RemoteAddr)
-
 	w.(http.Flusher).Flush()
+
+	log.V(5).Infof(
+		"failed request: ip: %s failure: %s",
+		r.RemoteAddr,
+		errmsg,
+	)
 }
