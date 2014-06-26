@@ -43,6 +43,11 @@ func main() {
 
 		pprof.StartCPUProfile(f)
 		log.V(1).Info("started profiling")
+
+		defer func() {
+			pprof.StopCPUProfile()
+			log.V(1).Info("stopped profiling")
+		}()
 	}
 
 	// Load the config file.
@@ -64,11 +69,6 @@ func main() {
 
 		<-interrupts
 		log.V(1).Info("caught interrupt, shutting down...")
-
-		if profile {
-			pprof.StopCPUProfile()
-			log.V(1).Info("stopped profiling")
-		}
 
 		err := s.Stop()
 		if err != nil {
