@@ -38,6 +38,38 @@ type Peer struct {
 	LastAnnounce int64  `json:"last_announce"`
 }
 
+// NewPeer returns the Peer representation of an Announce. When provided nil
+// for the announce parameter, it panics. When provided nil for the user or
+// torrent parameter, it returns a Peer{UserID: 0} or Peer{TorrentID: 0}
+// respectively.
+func NewPeer(a *Announce, u *User, t *Torrent) *Peer {
+	if a == nil {
+		panic("models: announce cannot equal nil")
+	}
+
+	var userID uint64
+	if u == nil {
+		userID = u.ID
+	}
+
+	var torrentID uint64
+	if t == nil {
+		torrentID = u.ID
+	}
+
+	return &Peer{
+		ID:           a.PeerID,
+		UserID:       userID,
+		TorrentID:    torrentID,
+		IP:           a.IP,
+		Port:         a.Port,
+		Uploaded:     a.Uploaded,
+		Downloaded:   a.Downloaded,
+		Left:         a.Left,
+		LastAnnounce: time.Now().Unix(),
+	}
+}
+
 // Key returns the unique key used to look-up a peer in a swarm (i.e
 // Torrent.Seeders & Torrent.Leechers).
 func (p Peer) Key() string {
@@ -69,21 +101,6 @@ func (t *Torrent) InSeederPool(p *Peer) bool {
 func (t *Torrent) InLeecherPool(p *Peer) bool {
 	_, exists := t.Leechers[p.Key()]
 	return exists
-}
-
-// NewPeer returns the Peer representation of an Announce.
-func NewPeer(a *Announce, u *User, t *Torrent) *Peer {
-	return &Peer{
-		ID:           a.PeerID,
-		UserID:       u.ID,
-		TorrentID:    t.ID,
-		IP:           a.IP,
-		Port:         a.Port,
-		Uploaded:     a.Uploaded,
-		Downloaded:   a.Downloaded,
-		Left:         a.Left,
-		LastAnnounce: time.Now().Unix(),
-	}
 }
 
 // User is a registered user for private trackers.
