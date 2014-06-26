@@ -65,10 +65,12 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeAnnounceResponse(w, announce, user, torrent)
+	if s.conf.Private {
+		delta := models.NewAnnounceDelta(announce, peer, user, torrent, created, snatched)
+		s.backendConn.RecordAnnounce(delta)
+	}
 
-	delta := models.NewAnnounceDelta(announce, peer, user, torrent, created, snatched)
-	s.backendConn.RecordAnnounce(delta)
+	writeAnnounceResponse(w, announce, user, torrent)
 
 	log.Infof("chihaya: handled announce from %s", announce.IP)
 }
