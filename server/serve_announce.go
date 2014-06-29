@@ -6,7 +6,6 @@ package server
 
 import (
 	"io"
-	"net"
 	"net/http"
 	"strconv"
 
@@ -74,14 +73,12 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 
 	w.(http.Flusher).Flush()
 
-	if log.V(5) {
-		log.Infof(
-			"announce: ip: %s, user: %s, torrent: %s",
-			announce.IP,
-			user.ID,
-			torrent.ID,
-		)
-	}
+	log.V(5).Infof(
+		"announce: ip: %s, user: %s, torrent: %s",
+		announce.IP,
+		user.ID,
+		torrent.ID,
+	)
 }
 
 func updateTorrent(c tracker.Conn, a *models.Announce, p *models.Peer, t *models.Torrent) (created bool, err error) {
@@ -165,10 +162,17 @@ func handleEvent(c tracker.Conn, a *models.Announce, p *models.Peer, u *models.U
 }
 
 func writeAnnounceResponse(w io.Writer, a *models.Announce, u *models.User, t *models.Torrent) {
-	bencoder := bencode.NewEncoder(w)
 	seedCount := len(t.Seeders)
 	leechCount := len(t.Leechers)
 
+	var peerCount int
+	if a.Left == 0 {
+		peerCount = minInt(a.NumWant, leechCount)
+	} else {
+		peerCount = minInt(a.NumWant, leechCount+seedCount-1)
+	}
+
+	bencoder := bencode.NewEncoder(w)
 	bencoder.Encode("d")
 	bencoder.Encode("complete")
 	bencoder.Encode(seedCount)
@@ -180,69 +184,123 @@ func writeAnnounceResponse(w io.Writer, a *models.Announce, u *models.User, t *m
 	bencoder.Encode(a.Config.MinAnnounce.Duration)
 
 	if a.NumWant > 0 && a.Event != "stopped" && a.Event != "paused" {
-		bencoder.Encode("peers")
-
-		var peerCount int
-		if a.Left == 0 {
-			peerCount = minInt(a.NumWant, leechCount)
-		} else {
-			peerCount = minInt(a.NumWant, leechCount+seedCount-1)
-		}
-
 		if a.Compact {
-			// 6 is the number of bytes 1 compact peer takes up.
-			bencoder.Encode(strconv.Itoa(peerCount * 6))
-			bencoder.Encode(":")
+			writePeersCompact(w, a, u, t, peerCount)
 		} else {
-			bencoder.Encode("l")
-		}
-
-		if a.Left == 0 {
-			// If they're seeding, give them only leechers
-			writePeers(w, u, t.Leechers, peerCount, a.Compact)
-		} else {
-			// If they're leeching, prioritize giving them seeders
-			count := writePeers(w, u, t.Seeders, peerCount, a.Compact)
-			writePeers(w, u, t.Leechers, peerCount-count, a.Compact)
-		}
-
-		if !a.Compact {
-			bencoder.Encode("e")
+			writePeersList(w, a, u, t, peerCount)
 		}
 	}
+
 	bencoder.Encode("e")
 }
 
-func writePeers(w io.Writer, user *models.User, peers map[string]models.Peer, numWant int, compact bool) (count int) {
+func writePeersCompact(w io.Writer, a *models.Announce, u *models.User, t *models.Torrent, peerCount int) {
+	ipv4s, ipv6s := getPeers(a, u, t, peerCount)
 	bencoder := bencode.NewEncoder(w)
-	for _, peer := range peers {
-		if count >= numWant {
-			break
-		}
 
-		if peer.UserID == user.ID {
-			continue
-		}
-
-		if compact {
-			if ip := net.ParseIP(peer.IP); ip != nil {
+	if len(ipv4s) > 0 {
+		// 6 is the number of bytes that represents 1 compact IPv4 address.
+		bencoder.Encode("peers")
+		bencoder.Encode(strconv.Itoa(len(ipv4s) * 6))
+		bencoder.Encode(":")
+		for _, peer := range ipv4s {
+			if ip := peer.IP.To4(); ip != nil {
 				w.Write(ip)
 				w.Write([]byte{byte(peer.Port >> 8), byte(peer.Port & 0xff)})
 			}
-		} else {
-			bencoder.Encode("d")
-			bencoder.Encode("ip")
-			bencoder.Encode(peer.IP)
-			bencoder.Encode("peer id")
-			bencoder.Encode(peer.ID)
-			bencoder.Encode("port")
-			bencoder.Encode(peer.Port)
-			bencoder.Encode("e")
 		}
+	}
+
+	if len(ipv6s) > 0 {
+		// 18 is the number of bytes that represents 1 compact IPv6 address.
+		bencoder.Encode("peers6")
+		bencoder.Encode(strconv.Itoa(len(ipv6s) * 18))
+		for _, peer := range ipv6s {
+			if ip := peer.IP.To16(); ip != nil {
+				w.Write(ip)
+				w.Write([]byte{byte(peer.Port >> 8), byte(peer.Port & 0xff)})
+			}
+		}
+	}
+}
+
+func getPeers(a *models.Announce, u *models.User, t *models.Torrent, peerCount int) (ipv4s, ipv6s []*models.Peer) {
+	if a.Left == 0 {
+		// If they're seeding, give them only leechers.
+		splitPeers(ipv4s, ipv6s, u, t.Leechers, peerCount)
+	} else {
+		// If they're leeching, prioritize giving them seeders.
+		count := splitPeers(ipv4s, ipv6s, u, t.Seeders, peerCount)
+		splitPeers(ipv4s, ipv6s, u, t.Leechers, peerCount-count)
+	}
+
+	return
+}
+
+func splitPeers(ipv4s, ipv6s []*models.Peer, u *models.User, peers map[string]models.Peer, peerCount int) (count int) {
+	for _, peer := range peers {
+		if count >= peerCount {
+			break
+		}
+
+		if peer.UserID == u.ID {
+			continue
+		}
+
+		if ip := peer.IP.To4(); ip != nil {
+			ipv4s = append(ipv4s, &peer)
+		} else {
+			ipv6s = append(ipv6s, &peer)
+		}
+
 		count++
 	}
 
 	return
+}
+
+func writePeersList(w io.Writer, a *models.Announce, u *models.User, t *models.Torrent, peerCount int) {
+	bencoder := bencode.NewEncoder(w)
+	bencoder.Encode("peers")
+	bencoder.Encode("l")
+
+	if a.Left == 0 {
+		// If they're seeding, give them only leechers
+		writePeerDicts(w, u, t.Leechers, peerCount)
+	} else {
+		// If they're leeching, prioritize giving them seeders
+		count := writePeerDicts(w, u, t.Seeders, peerCount)
+		writePeerDicts(w, u, t.Leechers, peerCount-count)
+	}
+
+	bencoder.Encode("e")
+}
+
+func writePeerDicts(w io.Writer, u *models.User, peers map[string]models.Peer, peerCount int) (count int) {
+	bencoder := bencode.NewEncoder(w)
+
+	for _, peer := range peers {
+		if count >= peerCount {
+			break
+		}
+
+		if peer.UserID == u.ID {
+			continue
+		}
+
+		bencoder.Encode("d")
+		bencoder.Encode("ip")
+		bencoder.Encode(peer.IP)
+		bencoder.Encode("peer id")
+		bencoder.Encode(peer.ID)
+		bencoder.Encode("port")
+		bencoder.Encode(peer.Port)
+		bencoder.Encode("e")
+
+		count++
+	}
+
+	return count
 }
 
 func minInt(a, b int) int {

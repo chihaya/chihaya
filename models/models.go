@@ -8,6 +8,7 @@ package models
 
 import (
 	"errors"
+	"net"
 	"net/http"
 	"path"
 	"strconv"
@@ -29,7 +30,7 @@ type Peer struct {
 	UserID    uint64 `json:"user_id"`
 	TorrentID uint64 `json:"torrent_id"`
 
-	IP   string `json:"ip"`
+	IP   net.IP `json:"ip"`
 	Port uint64 `json:"port"`
 
 	Uploaded     uint64 `json:"uploaded"`
@@ -92,15 +93,15 @@ type Torrent struct {
 }
 
 // InSeederPool returns true if a peer is within a Torrent's pool of seeders.
-func (t *Torrent) InSeederPool(p *Peer) bool {
-	_, exists := t.Seeders[p.Key()]
-	return exists
+func (t *Torrent) InSeederPool(p *Peer) (exists bool) {
+	_, exists = t.Seeders[p.Key()]
+	return
 }
 
 // InLeecherPool returns true if a peer is within a Torrent's pool of leechers.
-func (t *Torrent) InLeecherPool(p *Peer) bool {
-	_, exists := t.Leechers[p.Key()]
-	return exists
+func (t *Torrent) InLeecherPool(p *Peer) (exists bool) {
+	_, exists = t.Leechers[p.Key()]
+	return
 }
 
 // User is a registered user for private trackers.
@@ -121,7 +122,7 @@ type Announce struct {
 	Compact    bool   `json:"compact"`
 	Downloaded uint64 `json:"downloaded"`
 	Event      string `json:"event"`
-	IP         string `json:"ip"`
+	IP         net.IP `json:"ip"`
 	Infohash   string `json:"infohash"`
 	Left       uint64 `json:"left"`
 	NumWant    int    `json:"numwant"`
@@ -139,15 +140,18 @@ func NewAnnounce(r *http.Request, conf *config.Config) (*Announce, error) {
 	}
 
 	compact := q.Params["compact"] != "0"
-	downloaded, downloadedErr := q.Uint64("downloaded")
 	event, _ := q.Params["event"]
 	infohash, _ := q.Params["info_hash"]
-	ip, _ := q.RequestedIP(r)
-	left, leftErr := q.Uint64("left")
-	numWant := q.RequestedPeerCount(conf.NumWantFallback)
-	dir, _ := path.Split(r.URL.Path)
 	peerID, _ := q.Params["peer_id"]
+
+	dir, _ := path.Split(r.URL.Path)
+	numWant := q.RequestedPeerCount(conf.NumWantFallback)
+
+	ip, ipErr := q.RequestedIP(r)
 	port, portErr := q.Uint64("port")
+
+	left, leftErr := q.Uint64("left")
+	downloaded, downloadedErr := q.Uint64("downloaded")
 	uploaded, uploadedErr := q.Uint64("uploaded")
 
 	if downloadedErr != nil ||
@@ -156,7 +160,7 @@ func NewAnnounce(r *http.Request, conf *config.Config) (*Announce, error) {
 		peerID == "" ||
 		portErr != nil ||
 		uploadedErr != nil ||
-		ip == "" ||
+		ipErr != nil ||
 		len(dir) != 34 {
 		return nil, ErrMalformedRequest
 	}

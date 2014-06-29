@@ -7,6 +7,7 @@ package query
 
 import (
 	"errors"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -120,21 +121,35 @@ func (q Query) RequestedPeerCount(fallback int) int {
 }
 
 // RequestedIP returns the requested IP address from a Query.
-func (q Query) RequestedIP(r *http.Request) (string, error) {
-	if ip, ok := q.Params["ip"]; ok {
-		return ip, nil
+func (q Query) RequestedIP(r *http.Request) (net.IP, error) {
+	if ipstr, ok := q.Params["ip"]; ok {
+		if ip := net.ParseIP(ipstr); ip != nil {
+			return ip, nil
+		}
 	}
 
-	if ip, ok := q.Params["ipv4"]; ok {
-		return ip, nil
+	if ipstr, ok := q.Params["ipv4"]; ok {
+		if ip := net.ParseIP(ipstr); ip != nil {
+			return ip, nil
+		}
+	}
+
+	if ipstr, ok := q.Params["ipv6"]; ok {
+		if ip := net.ParseIP(ipstr); ip != nil {
+			return ip, nil
+		}
 	}
 
 	if xRealIPs, ok := q.Params["X-Real-Ip"]; ok {
-		return string(xRealIPs[0]), nil
+		if ip := net.ParseIP(string(xRealIPs[0])); ip != nil {
+			return ip, nil
+		}
 	}
 
 	if r.RemoteAddr == "" {
-		return "127.0.0.1", nil
+		if ip := net.ParseIP("127.0.0.1"); ip != nil {
+			return ip, nil
+		}
 	}
 
 	portIndex := len(r.RemoteAddr) - 1
@@ -145,8 +160,11 @@ func (q Query) RequestedIP(r *http.Request) (string, error) {
 	}
 
 	if portIndex != -1 {
-		return r.RemoteAddr[0:portIndex], nil
+		ipstr := r.RemoteAddr[0:portIndex]
+		if ip := net.ParseIP(ipstr); ip != nil {
+			return ip, nil
+		}
 	}
 
-	return "", errors.New("failed to parse IP address")
+	return nil, errors.New("failed to parse IP address")
 }
