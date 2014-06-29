@@ -227,17 +227,17 @@ func writePeersCompact(w io.Writer, a *models.Announce, u *models.User, t *model
 func getPeers(a *models.Announce, u *models.User, t *models.Torrent, peerCount int) (ipv4s, ipv6s []*models.Peer) {
 	if a.Left == 0 {
 		// If they're seeding, give them only leechers.
-		splitPeers(ipv4s, ipv6s, u, t.Leechers, peerCount)
+		splitPeers(&ipv4s, &ipv6s, u, t.Leechers, peerCount)
 	} else {
 		// If they're leeching, prioritize giving them seeders.
-		count := splitPeers(ipv4s, ipv6s, u, t.Seeders, peerCount)
-		splitPeers(ipv4s, ipv6s, u, t.Leechers, peerCount-count)
+		count := splitPeers(&ipv4s, &ipv6s, u, t.Seeders, peerCount)
+		splitPeers(&ipv4s, &ipv6s, u, t.Leechers, peerCount-count)
 	}
 
 	return
 }
 
-func splitPeers(ipv4s, ipv6s []*models.Peer, u *models.User, peers map[string]models.Peer, peerCount int) (count int) {
+func splitPeers(ipv4s, ipv6s *[]*models.Peer, u *models.User, peers map[string]models.Peer, peerCount int) (count int) {
 	for _, peer := range peers {
 		if count >= peerCount {
 			break
@@ -248,9 +248,9 @@ func splitPeers(ipv4s, ipv6s []*models.Peer, u *models.User, peers map[string]mo
 		}
 
 		if ip := peer.IP.To4(); ip != nil {
-			ipv4s = append(ipv4s, &peer)
+			*ipv4s = append(*ipv4s, &peer)
 		} else {
-			ipv6s = append(ipv6s, &peer)
+			*ipv6s = append(*ipv6s, &peer)
 		}
 
 		count++
