@@ -74,7 +74,7 @@ func New() *Config {
 		Backend: DriverConfig{
 			Driver: "mock",
 		},
-		Private:         true,
+		Private:         false,
 		Freeleech:       false,
 		Announce:        Duration{30 * time.Minute},
 		MinAnnounce:     Duration{15 * time.Minute},

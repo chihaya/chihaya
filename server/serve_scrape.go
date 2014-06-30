@@ -5,6 +5,7 @@
 package server
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -70,13 +71,13 @@ func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request) {
 
 func writeTorrentStatus(w io.Writer, t *models.Torrent) {
 	bencoder := bencode.NewEncoder(w)
-	bencoder.Encode("t.Infohash")
-	bencoder.Encode("d")
+	bencoder.Encode(t.Infohash)
+	fmt.Fprintf(w, "d")
 	bencoder.Encode("complete")
 	bencoder.Encode(len(t.Seeders))
 	bencoder.Encode("downloaded")
 	bencoder.Encode(t.Snatches)
 	bencoder.Encode("incomplete")
 	bencoder.Encode(len(t.Leechers))
-	bencoder.Encode("e")
+	fmt.Fprintf(w, "e")
 }

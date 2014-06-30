@@ -5,6 +5,7 @@
 package server
 
 import (
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -42,11 +43,25 @@ func TestAnnounce(t *testing.T) {
 			return
 		}
 
-		err = conn.AddTorrent(&models.Torrent{
+		torrent := &models.Torrent{
 			ID:       1,
 			Infohash: string([]byte{0x89, 0xd4, 0xbc, 0x52, 0x11, 0x16, 0xca, 0x1d, 0x42, 0xa2, 0xf3, 0x0d, 0x1f, 0x27, 0x4d, 0x94, 0xe4, 0x68, 0x1d, 0xaf}),
 			Seeders:  make(map[string]models.Peer),
 			Leechers: make(map[string]models.Peer),
+		}
+
+		err = conn.AddTorrent(torrent)
+		if err != nil {
+			return
+		}
+
+		err = conn.AddLeecher(torrent, &models.Peer{
+			ID:        "-TR2820-l71jtqkl898b",
+			UserID:    1,
+			TorrentID: torrent.ID,
+			IP:        net.ParseIP("127.0.0.1"),
+			Port:      34000,
+			Left:      0,
 		})
 
 		return
@@ -55,7 +70,7 @@ func TestAnnounce(t *testing.T) {
 		t.Error(err)
 	}
 
-	url := "http://localhost:34000/yby47f04riwpndba456rqxtmifenq5h6/announce?info_hash=%89%d4%bcR%11%16%ca%1dB%a2%f3%0d%1f%27M%94%e4h%1d%af&peer_id=-TR2820-l71jtqkl898b&port=51413&uploaded=0&downloaded=0&left=0&numwant=0&key=3c8e3319&compact=1&supportcrypto=1&event=stopped"
+	url := "http://localhost:6881/yby47f04riwpndba456rqxtmifenq5h6/announce?info_hash=%89%d4%bcR%11%16%ca%1dB%a2%f3%0d%1f%27M%94%e4h%1d%af&peer_id=-TR2820-l71jtqkl898b&port=51413&uploaded=0&downloaded=0&left=0&numwant=1&key=3c8e3319&compact=0&supportcrypto=1"
 	r, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		t.Error(err)
@@ -64,7 +79,7 @@ func TestAnnounce(t *testing.T) {
 	w := httptest.NewRecorder()
 	s.serveAnnounce(w, r)
 
-	if w.Body.String() != "1:d8:completei0e10:incompletei0e8:intervali1800e12:min intervali900e1:e" {
+	if w.Body.String() != "d8:completei1e10:incompletei1e8:intervali1800e12:min intervali900e5:peersld2:ip9:127.0.0.17:peer id20:-TR2820-l71jtqkl898b4:porti34000eeee" {
 		t.Errorf("improper response from server:\n%s", w.Body.String())
 	}
 

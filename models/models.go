@@ -49,13 +49,13 @@ func NewPeer(a *Announce, u *User, t *Torrent) *Peer {
 	}
 
 	var userID uint64
-	if u == nil {
+	if u != nil {
 		userID = u.ID
 	}
 
 	var torrentID uint64
-	if t == nil {
-		torrentID = u.ID
+	if t != nil {
+		torrentID = t.ID
 	}
 
 	return &Peer{
