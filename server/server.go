@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/etix/stoppableListener"
-	log "github.com/golang/glog"
+	"github.com/golang/glog"
 
 	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/drivers/backend"
@@ -130,7 +130,7 @@ func fail(err error, w http.ResponseWriter, r *http.Request) {
 
 	w.(http.Flusher).Flush()
 
-	log.V(5).Infof(
+	glog.V(5).Infof(
 		"failed request: ip: %s failure: %s",
 		r.RemoteAddr,
 		errmsg,

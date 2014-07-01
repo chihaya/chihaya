@@ -11,7 +11,7 @@ import (
 	"os"
 	"time"
 
-	log "github.com/golang/glog"
+	"github.com/golang/glog"
 )
 
 // Duration wraps a time.Duration and adds JSON marshalling.
@@ -88,7 +88,7 @@ func New() *Config {
 // New.
 func Open(path string) (*Config, error) {
 	if path == "" {
-		log.V(1).Info("using default config")
+		glog.V(1).Info("using default config")
 		return New(), nil
 	}
 
@@ -102,7 +102,7 @@ func Open(path string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	log.V(1).Infof("loaded config file: %s", path)
+	glog.V(1).Infof("loaded config file: %s", path)
 	return conf, nil
 }
 

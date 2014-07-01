@@ -11,7 +11,7 @@ import (
 	"runtime"
 	"runtime/pprof"
 
-	log "github.com/golang/glog"
+	"github.com/golang/glog"
 
 	"github.com/chihaya/chihaya/config"
 	_ "github.com/chihaya/chihaya/drivers/backend/mock"
@@ -37,29 +37,29 @@ func main() {
 	if profile {
 		f, err := os.Create("chihaya.cpu")
 		if err != nil {
-			log.Fatalf("failed to create profile file: %s\n", err)
+			glog.Fatalf("failed to create profile file: %s\n", err)
 		}
 		defer f.Close()
 
 		pprof.StartCPUProfile(f)
-		log.V(1).Info("started profiling")
+		glog.V(1).Info("started profiling")
 
 		defer func() {
 			pprof.StopCPUProfile()
-			log.V(1).Info("stopped profiling")
+			glog.V(1).Info("stopped profiling")
 		}()
 	}
 
 	// Load the config file.
 	conf, err := config.Open(configPath)
 	if err != nil {
-		log.Fatalf("failed to parse configuration file: %s\n", err)
+		glog.Fatalf("failed to parse configuration file: %s\n", err)
 	}
 
 	// Create a new server.
 	s, err := server.New(conf)
 	if err != nil {
-		log.Fatalf("failed to create server: %s\n", err)
+		glog.Fatalf("failed to create server: %s\n", err)
 	}
 
 	// Spawn a goroutine to handle interrupts and safely shut down.
@@ -68,24 +68,24 @@ func main() {
 		signal.Notify(interrupts, os.Interrupt)
 
 		<-interrupts
-		log.V(1).Info("caught interrupt, shutting down...")
+		glog.V(1).Info("caught interrupt, shutting down...")
 
 		err := s.Stop()
 		if err != nil {
-			log.Fatalf("failed to shutdown cleanly: %s", err)
+			glog.Fatalf("failed to shutdown cleanly: %s", err)
 		}
 
-		log.V(1).Info("shutdown cleanly")
+		glog.V(1).Info("shutdown cleanly")
 
 		<-interrupts
 
-		log.Flush()
+		glog.Flush()
 		os.Exit(0)
 	}()
 
 	// Start the server listening and handling requests.
 	err = s.ListenAndServe()
 	if err != nil {
-		log.Fatalf("failed to start server: %s\n", err)
+		glog.Fatalf("failed to start server: %s\n", err)
 	}
 }

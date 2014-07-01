@@ -9,7 +9,7 @@ import (
 	"io"
 	"net/http"
 
-	log "github.com/golang/glog"
+	"github.com/golang/glog"
 
 	"github.com/chihaya/chihaya/bencode"
 	"github.com/chihaya/chihaya/drivers/tracker"
@@ -74,19 +74,14 @@ func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
 	w.(http.Flusher).Flush()
 
 	if s.conf.Private {
-
-		log.V(5).Infof(
+		glog.V(5).Infof(
 			"announce: ip: %s user: %s torrent: %s",
 			announce.IP,
 			user.ID,
 			torrent.ID,
 		)
 	} else {
-		log.V(5).Infof(
-			"announce: ip: %s torrent: %s",
-			announce.IP,
-			torrent.ID,
-		)
+		glog.V(5).Infof("announce: ip: %s torrent: %s", announce.IP, torrent.ID)
 	}
 }
 

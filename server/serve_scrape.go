@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"strings"
 
-	log "github.com/golang/glog"
+	"github.com/golang/glog"
 
 	"github.com/chihaya/chihaya/bencode"
 	"github.com/chihaya/chihaya/models"
@@ -52,21 +52,29 @@ func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request) {
 	}
 
 	bencoder := bencode.NewEncoder(w)
-	bencoder.Encode("d")
+	fmt.Fprintf(w, "d")
 	bencoder.Encode("files")
 	for _, torrent := range torrents {
 		writeTorrentStatus(w, torrent)
 	}
-	bencoder.Encode("e")
+	fmt.Fprintf(w, "e")
 
 	w.(http.Flusher).Flush()
 
-	log.V(5).Infof(
-		"scrape: ip: %s user: %s torrents: %s",
-		r.RemoteAddr,
-		user.ID,
-		strings.Join(torrentIDs, ", "),
-	)
+	if s.conf.Private {
+		glog.V(5).Infof(
+			"scrape: ip: %s user: %s torrents: %s",
+			r.RemoteAddr,
+			user.ID,
+			strings.Join(torrentIDs, ", "),
+		)
+	} else {
+		glog.V(5).Infof(
+			"scrape: ip: %s torrents: %s",
+			r.RemoteAddr,
+			strings.Join(torrentIDs, ", "),
+		)
+	}
 }
 
 func writeTorrentStatus(w io.Writer, t *models.Torrent) {
