@@ -10,12 +10,12 @@ import (
 	"errors"
 	"net"
 	"net/http"
-	"path"
 	"strconv"
 	"time"
 
 	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/models/query"
+	"github.com/julienschmidt/httprouter"
 )
 
 var (
@@ -133,7 +133,7 @@ type Announce struct {
 }
 
 // NewAnnounce parses an HTTP request and generates an Announce.
-func NewAnnounce(r *http.Request, conf *config.Config) (*Announce, error) {
+func NewAnnounce(cfg *config.Config, r *http.Request, p httprouter.Params) (*Announce, error) {
 	q, err := query.New(r.URL.RawQuery)
 	if err != nil {
 		return nil, err
@@ -144,8 +144,7 @@ func NewAnnounce(r *http.Request, conf *config.Config) (*Announce, error) {
 	infohash, _ := q.Params["info_hash"]
 	peerID, _ := q.Params["peer_id"]
 
-	dir, _ := path.Split(r.URL.Path)
-	numWant := q.RequestedPeerCount(conf.NumWantFallback)
+	numWant := q.RequestedPeerCount(cfg.NumWantFallback)
 
 	ip, ipErr := q.RequestedIP(r)
 	port, portErr := q.Uint64("port")
@@ -160,13 +159,12 @@ func NewAnnounce(r *http.Request, conf *config.Config) (*Announce, error) {
 		peerID == "" ||
 		portErr != nil ||
 		uploadedErr != nil ||
-		ipErr != nil ||
-		len(dir) != 34 {
+		ipErr != nil {
 		return nil, ErrMalformedRequest
 	}
 
 	return &Announce{
-		Config:     conf,
+		Config:     cfg,
 		Request:    r,
 		Compact:    compact,
 		Downloaded: downloaded,
@@ -175,7 +173,7 @@ func NewAnnounce(r *http.Request, conf *config.Config) (*Announce, error) {
 		Infohash:   infohash,
 		Left:       left,
 		NumWant:    numWant,
-		Passkey:    dir[1:33],
+		Passkey:    p.ByName("passkey"),
 		PeerID:     peerID,
 		Port:       port,
 		Uploaded:   uploaded,
@@ -261,19 +259,10 @@ type Scrape struct {
 }
 
 // NewScrape parses an HTTP request and generates a Scrape.
-func NewScrape(r *http.Request, c *config.Config) (*Scrape, error) {
+func NewScrape(cfg *config.Config, r *http.Request, p httprouter.Params) (*Scrape, error) {
 	q, err := query.New(r.URL.RawQuery)
 	if err != nil {
 		return nil, err
-	}
-
-	var passkey string
-	if c.Private {
-		dir, _ := path.Split(r.URL.Path)
-		if len(dir) != 34 {
-			return nil, ErrMalformedRequest
-		}
-		passkey = dir[1:34]
 	}
 
 	if q.Infohashes == nil {
@@ -285,10 +274,10 @@ func NewScrape(r *http.Request, c *config.Config) (*Scrape, error) {
 	}
 
 	return &Scrape{
-		Config:  c,
+		Config:  cfg,
 		Request: r,
 
-		Passkey:    passkey,
+		Passkey:    p.ByName("passkey"),
 		Infohashes: q.Infohashes,
 	}, nil
 }

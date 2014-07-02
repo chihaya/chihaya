@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
 // Query represents a parsed URL.Query.
@@ -60,7 +61,7 @@ func New(query string) (*Query, error) {
 				return nil, err
 			}
 
-			q.Params[keyStr] = valStr
+			q.Params[strings.ToLower(keyStr)] = valStr
 
 			if keyStr == "info_hash" {
 				if hasInfohash {
@@ -109,7 +110,7 @@ func (q *Query) Uint64(key string) (uint64, error) {
 
 // RequestedPeerCount returns the request peer count or the provided fallback.
 func (q Query) RequestedPeerCount(fallback int) int {
-	if numWantStr, exists := q.Params["numWant"]; exists {
+	if numWantStr, exists := q.Params["numwant"]; exists {
 		numWant, err := strconv.Atoi(numWantStr)
 		if err != nil {
 			return fallback
@@ -140,7 +141,7 @@ func (q Query) RequestedIP(r *http.Request) (net.IP, error) {
 		}
 	}
 
-	if xRealIPs, ok := q.Params["X-Real-Ip"]; ok {
+	if xRealIPs, ok := q.Params["x-real-ip"]; ok {
 		if ip := net.ParseIP(string(xRealIPs[0])); ip != nil {
 			return ip, nil
 		}

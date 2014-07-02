@@ -2,53 +2,47 @@
 // Use of this source code is governed by the BSD 2-Clause license,
 // which can be found in the LICENSE file.
 
-package server
+package http
 
 import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 
-	"github.com/golang/glog"
+	"github.com/julienschmidt/httprouter"
 
 	"github.com/chihaya/chihaya/bencode"
 	"github.com/chihaya/chihaya/models"
 )
 
-func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request) {
-	scrape, err := models.NewScrape(r, s.conf)
+func (t *Tracker) ServeScrape(w http.ResponseWriter, r *http.Request, p httprouter.Params) int {
+	scrape, err := models.NewScrape(t.cfg, r, p)
 	if err != nil {
-		fail(err, w, r)
-		return
+		fail(w, r, err)
+		return http.StatusOK
 	}
 
-	conn, err := s.trackerPool.Get()
+	conn, err := t.tp.Get()
 	if err != nil {
-		fail(err, w, r)
+		return http.StatusInternalServerError
 	}
 
-	var user *models.User
-	if s.conf.Private {
-		user, err = conn.FindUser(scrape.Passkey)
+	if t.cfg.Private {
+		_, err = conn.FindUser(scrape.Passkey)
 		if err != nil {
-			fail(err, w, r)
-			return
+			fail(w, r, err)
+			return http.StatusOK
 		}
 	}
 
-	var (
-		torrents   []*models.Torrent
-		torrentIDs []string
-	)
+	var torrents []*models.Torrent
 	for _, infohash := range scrape.Infohashes {
 		torrent, err := conn.FindTorrent(infohash)
 		if err != nil {
-			fail(err, w, r)
-			return
+			fail(w, r, err)
+			return http.StatusOK
 		}
 		torrents = append(torrents, torrent)
-		torrentIDs = append(torrentIDs, string(torrent.ID))
 	}
 
 	bencoder := bencode.NewEncoder(w)
@@ -59,22 +53,7 @@ func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Fprintf(w, "e")
 
-	w.(http.Flusher).Flush()
-
-	if s.conf.Private {
-		glog.V(5).Infof(
-			"scrape: ip: %s user: %s torrents: %s",
-			r.RemoteAddr,
-			user.ID,
-			strings.Join(torrentIDs, ", "),
-		)
-	} else {
-		glog.V(5).Infof(
-			"scrape: ip: %s torrents: %s",
-			r.RemoteAddr,
-			strings.Join(torrentIDs, ", "),
-		)
-	}
+	return http.StatusOK
 }
 
 func writeTorrentStatus(w io.Writer, t *models.Torrent) {

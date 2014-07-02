@@ -2,87 +2,78 @@
 // Use of this source code is governed by the BSD 2-Clause license,
 // which can be found in the LICENSE file.
 
-package server
+package http
 
 import (
 	"fmt"
 	"io"
 	"net/http"
 
-	"github.com/golang/glog"
+	"github.com/julienschmidt/httprouter"
 
 	"github.com/chihaya/chihaya/bencode"
 	"github.com/chihaya/chihaya/drivers/tracker"
 	"github.com/chihaya/chihaya/models"
 )
 
-func (s Server) serveAnnounce(w http.ResponseWriter, r *http.Request) {
-	announce, err := models.NewAnnounce(r, s.conf)
+func (t *Tracker) ServeAnnounce(w http.ResponseWriter, r *http.Request, p httprouter.Params) int {
+	ann, err := models.NewAnnounce(t.cfg, r, p)
 	if err != nil {
-		fail(err, w, r)
-		return
+		fail(w, r, err)
+		return http.StatusOK
 	}
 
-	conn, err := s.trackerPool.Get()
+	conn, err := t.tp.Get()
 	if err != nil {
-		fail(err, w, r)
-		return
+		return http.StatusInternalServerError
 	}
 
-	err = conn.ClientWhitelisted(announce.ClientID())
-	if err != nil {
-		fail(err, w, r)
-		return
-	}
-
-	var user *models.User
-	if s.conf.Private {
-		user, err = conn.FindUser(announce.Passkey)
+	if t.cfg.Whitelist {
+		err = conn.ClientWhitelisted(ann.ClientID())
 		if err != nil {
-			fail(err, w, r)
-			return
+			fail(w, r, err)
+			return http.StatusOK
 		}
 	}
 
-	torrent, err := conn.FindTorrent(announce.Infohash)
+	var user *models.User
+	if t.cfg.Private {
+		user, err = conn.FindUser(ann.Passkey)
+		if err != nil {
+			fail(w, r, err)
+			return http.StatusOK
+		}
+	}
+
+	torrent, err := conn.FindTorrent(ann.Infohash)
 	if err != nil {
-		fail(err, w, r)
-		return
+		fail(w, r, err)
+		return http.StatusOK
 	}
 
-	peer := models.NewPeer(announce, user, torrent)
+	peer := models.NewPeer(ann, user, torrent)
 
-	created, err := updateTorrent(conn, announce, peer, torrent)
+	created, err := updateTorrent(conn, ann, peer, torrent)
 	if err != nil {
-		fail(err, w, r)
-		return
+		return http.StatusInternalServerError
 	}
 
-	snatched, err := handleEvent(conn, announce, peer, user, torrent)
+	snatched, err := handleEvent(conn, ann, peer, user, torrent)
 	if err != nil {
-		fail(err, w, r)
-		return
+		return http.StatusInternalServerError
 	}
 
-	if s.conf.Private {
-		delta := models.NewAnnounceDelta(announce, peer, user, torrent, created, snatched)
-		s.backendConn.RecordAnnounce(delta)
+	if t.cfg.Private {
+		delta := models.NewAnnounceDelta(ann, peer, user, torrent, created, snatched)
+		err = t.bc.RecordAnnounce(delta)
+		if err != nil {
+			return http.StatusInternalServerError
+		}
 	}
 
-	writeAnnounceResponse(w, announce, user, torrent)
+	writeAnnounceResponse(w, ann, user, torrent)
 
-	w.(http.Flusher).Flush()
-
-	if s.conf.Private {
-		glog.V(5).Infof(
-			"announce: ip: %s user: %s torrent: %s",
-			announce.IP,
-			user.ID,
-			torrent.ID,
-		)
-	} else {
-		glog.V(5).Infof("announce: ip: %s torrent: %s", announce.IP, torrent.ID)
-	}
+	return http.StatusOK
 }
 
 func updateTorrent(c tracker.Conn, a *models.Announce, p *models.Peer, t *models.Torrent) (created bool, err error) {
@@ -199,11 +190,13 @@ func writeAnnounceResponse(w io.Writer, a *models.Announce, u *models.User, t *m
 }
 
 func writePeersCompact(w io.Writer, a *models.Announce, u *models.User, t *models.Torrent, peerCount int) {
+	bencoder := bencode.NewEncoder(w)
 	ipv4s, ipv6s := getPeers(a, u, t, peerCount)
 
 	if len(ipv4s) > 0 {
 		// 6 is the number of bytes that represents 1 compact IPv4 address.
-		fmt.Fprintf(w, "peers%d:", len(ipv4s)*6)
+		bencoder.Encode("peers")
+		fmt.Fprintf(w, "%d:", len(ipv4s)*6)
 
 		for _, peer := range ipv4s {
 			if ip := peer.IP.To4(); ip != nil {
@@ -215,7 +208,8 @@ func writePeersCompact(w io.Writer, a *models.Announce, u *models.User, t *model
 
 	if len(ipv6s) > 0 {
 		// 18 is the number of bytes that represents 1 compact IPv6 address.
-		fmt.Fprintf(w, "peers6%d:", len(ipv6s)*18)
+		bencoder.Encode("peers6")
+		fmt.Fprintf(w, "%d:", len(ipv6s)*18)
 
 		for _, peer := range ipv6s {
 			if ip := peer.IP.To16(); ip != nil {
@@ -226,7 +220,7 @@ func writePeersCompact(w io.Writer, a *models.Announce, u *models.User, t *model
 	}
 }
 
-func getPeers(a *models.Announce, u *models.User, t *models.Torrent, peerCount int) (ipv4s, ipv6s []*models.Peer) {
+func getPeers(a *models.Announce, u *models.User, t *models.Torrent, peerCount int) (ipv4s, ipv6s []models.Peer) {
 	if a.Left == 0 {
 		// If they're seeding, give them only leechers.
 		splitPeers(&ipv4s, &ipv6s, a, u, t.Leechers, peerCount)
@@ -239,7 +233,7 @@ func getPeers(a *models.Announce, u *models.User, t *models.Torrent, peerCount i
 	return
 }
 
-func splitPeers(ipv4s, ipv6s *[]*models.Peer, a *models.Announce, u *models.User, peers map[string]models.Peer, peerCount int) (count int) {
+func splitPeers(ipv4s, ipv6s *[]models.Peer, a *models.Announce, u *models.User, peers map[string]models.Peer, peerCount int) (count int) {
 	for _, peer := range peers {
 		if count >= peerCount {
 			break
@@ -250,9 +244,9 @@ func splitPeers(ipv4s, ipv6s *[]*models.Peer, a *models.Announce, u *models.User
 		}
 
 		if ip := peer.IP.To4(); len(ip) == 4 {
-			*ipv4s = append(*ipv4s, &peer)
+			*ipv4s = append(*ipv4s, peer)
 		} else if ip := peer.IP.To16(); len(ip) == 16 {
-			*ipv6s = append(*ipv6s, &peer)
+			*ipv6s = append(*ipv6s, peer)
 		}
 
 		count++
@@ -269,10 +263,10 @@ func writePeersList(w io.Writer, a *models.Announce, u *models.User, t *models.T
 	fmt.Fprintf(w, "l")
 
 	for _, peer := range ipv4s {
-		writePeerDict(w, peer)
+		writePeerDict(w, &peer)
 	}
 	for _, peer := range ipv6s {
-		writePeerDict(w, peer)
+		writePeerDict(w, &peer)
 	}
 
 	fmt.Fprintf(w, "e")

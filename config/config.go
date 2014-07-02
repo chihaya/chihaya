@@ -10,8 +10,6 @@ import (
 	"io"
 	"os"
 	"time"
-
-	"github.com/golang/glog"
 )
 
 // Duration wraps a time.Duration and adds JSON marshalling.
@@ -57,30 +55,29 @@ type Config struct {
 
 	Private   bool `json:"private"`
 	Freeleech bool `json:"freeleech"`
+	Whitelist bool `json:"whitelist"`
 
 	Announce        Duration `json:"announce"`
 	MinAnnounce     Duration `json:"min_announce"`
-	ReadTimeout     Duration `json:"read_timeout"`
+	RequestTimeout  Duration `json:"request_timeout"`
 	NumWantFallback int      `json:"default_num_want"`
 }
 
-// New returns a default configuration.
-func New() *Config {
-	return &Config{
-		Addr: ":6881",
-		Tracker: DriverConfig{
-			Driver: "mock",
-		},
-		Backend: DriverConfig{
-			Driver: "mock",
-		},
-		Private:         false,
-		Freeleech:       false,
-		Announce:        Duration{30 * time.Minute},
-		MinAnnounce:     Duration{15 * time.Minute},
-		ReadTimeout:     Duration{20 % time.Second},
-		NumWantFallback: 50,
-	}
+var DefaultConfig = Config{
+	Addr: ":6881",
+	Tracker: DriverConfig{
+		Driver: "mock",
+	},
+	Backend: DriverConfig{
+		Driver: "mock",
+	},
+	Private:         false,
+	Freeleech:       false,
+	Whitelist:       false,
+	Announce:        Duration{30 * time.Minute},
+	MinAnnounce:     Duration{15 * time.Minute},
+	RequestTimeout:  Duration{10 * time.Second},
+	NumWantFallback: 50,
 }
 
 // Open is a shortcut to open a file, read it, and generate a Config.
@@ -88,8 +85,7 @@ func New() *Config {
 // New.
 func Open(path string) (*Config, error) {
 	if path == "" {
-		glog.V(1).Info("using default config")
-		return New(), nil
+		return &DefaultConfig, nil
 	}
 
 	f, err := os.Open(os.ExpandEnv(path))
@@ -102,7 +98,6 @@ func Open(path string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	glog.V(1).Infof("loaded config file: %s", path)
 	return conf, nil
 }
 
