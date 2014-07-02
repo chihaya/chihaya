@@ -12,14 +12,17 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"github.com/chihaya/chihaya/bencode"
+	"github.com/chihaya/chihaya/drivers/tracker"
 	"github.com/chihaya/chihaya/models"
 )
 
 func (t *Tracker) ServeScrape(w http.ResponseWriter, r *http.Request, p httprouter.Params) int {
 	scrape, err := models.NewScrape(t.cfg, r, p)
-	if err != nil {
+	if err == models.ErrMalformedRequest {
 		fail(w, r, err)
 		return http.StatusOK
+	} else if err != nil {
+		return http.StatusInternalServerError
 	}
 
 	conn, err := t.tp.Get()
@@ -29,18 +32,22 @@ func (t *Tracker) ServeScrape(w http.ResponseWriter, r *http.Request, p httprout
 
 	if t.cfg.Private {
 		_, err = conn.FindUser(scrape.Passkey)
-		if err != nil {
+		if err == tracker.ErrUserDNE {
 			fail(w, r, err)
 			return http.StatusOK
+		} else if err != nil {
+			return http.StatusInternalServerError
 		}
 	}
 
 	var torrents []*models.Torrent
 	for _, infohash := range scrape.Infohashes {
 		torrent, err := conn.FindTorrent(infohash)
-		if err != nil {
+		if err == tracker.ErrTorrentDNE {
 			fail(w, r, err)
 			return http.StatusOK
+		} else if err != nil {
+			return http.StatusInternalServerError
 		}
 		torrents = append(torrents, torrent)
 	}

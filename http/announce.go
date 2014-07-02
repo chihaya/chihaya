@@ -18,9 +18,12 @@ import (
 
 func (t *Tracker) ServeAnnounce(w http.ResponseWriter, r *http.Request, p httprouter.Params) int {
 	ann, err := models.NewAnnounce(t.cfg, r, p)
-	if err != nil {
+	if err == models.ErrMalformedRequest {
 		fail(w, r, err)
 		return http.StatusOK
+	}
+	if err != nil {
+		return http.StatusInternalServerError
 	}
 
 	conn, err := t.tp.Get()
@@ -30,25 +33,31 @@ func (t *Tracker) ServeAnnounce(w http.ResponseWriter, r *http.Request, p httpro
 
 	if t.cfg.Whitelist {
 		err = conn.ClientWhitelisted(ann.ClientID())
-		if err != nil {
+		if err == tracker.ErrClientUnapproved {
 			fail(w, r, err)
 			return http.StatusOK
+		} else if err != nil {
+			return http.StatusInternalServerError
 		}
 	}
 
 	var user *models.User
 	if t.cfg.Private {
 		user, err = conn.FindUser(ann.Passkey)
-		if err != nil {
+		if err == tracker.ErrUserDNE {
 			fail(w, r, err)
 			return http.StatusOK
+		} else if err != nil {
+			return http.StatusInternalServerError
 		}
 	}
 
 	torrent, err := conn.FindTorrent(ann.Infohash)
-	if err != nil {
+	if err == tracker.ErrTorrentDNE {
 		fail(w, r, err)
 		return http.StatusOK
+	} else if err != nil {
+		return http.StatusInternalServerError
 	}
 
 	peer := models.NewPeer(ann, user, torrent)
