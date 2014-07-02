@@ -30,9 +30,11 @@ func init() {
 
 func main() {
 	flag.Parse()
-	runtime.GOMAXPROCS(runtime.NumCPU())
+	glog.Info("parsed flags")
 
-	// Enable the profile if flagged.
+	runtime.GOMAXPROCS(runtime.NumCPU())
+	glog.Info("set gomaxprocs to ", runtime.NumCPU())
+
 	if profile {
 		f, err := os.Create("chihaya.cpu")
 		if err != nil {
@@ -49,7 +51,6 @@ func main() {
 		}()
 	}
 
-	// Load the config file.
 	cfg, err := config.Open(configPath)
 	if err != nil {
 		glog.Fatalf("failed to parse configuration file: %s\n", err)
@@ -60,7 +61,6 @@ func main() {
 		glog.Infof("loaded config file: %s", configPath)
 	}
 
-	// Start the server listening and handling requests.
 	http.Serve(cfg)
 	glog.Info("gracefully shutdown")
 }
