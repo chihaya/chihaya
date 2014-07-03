@@ -47,15 +47,15 @@ func Register(name string, driver Driver) {
 }
 
 // Open creates a pool of data store connections specified by a models configuration.
-func Open(conf *config.DriverConfig) (Pool, error) {
-	driver, ok := drivers[conf.Driver]
+func Open(cfg *config.DriverConfig) (Pool, error) {
+	driver, ok := drivers[cfg.Name]
 	if !ok {
 		return nil, fmt.Errorf(
 			"unknown driver %q (forgotten import?)",
-			conf.Driver,
+			cfg.Name,
 		)
 	}
-	pool := driver.New(conf)
+	pool := driver.New(cfg)
 	return pool, nil
 }
 

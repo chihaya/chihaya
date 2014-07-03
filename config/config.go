@@ -13,9 +13,7 @@ import (
 )
 
 // Duration wraps a time.Duration and adds JSON marshalling.
-type Duration struct {
-	time.Duration
-}
+type Duration struct{ time.Duration }
 
 // MarshalJSON transforms a duration into JSON.
 func (d *Duration) MarshalJSON() ([]byte, error) {
@@ -33,18 +31,8 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 // DriverConfig is the configuration used to connect to a tracker.Driver or
 // a backend.Driver.
 type DriverConfig struct {
-	Driver   string `json:"driver"`
-	Network  string `json:"network`
-	Host     string `json:"host"`
-	Port     string `json:"port"`
-	Username string `json:"user"`
-	Password string `json:"pass"`
-	Schema   string `json:"schema,omitempty"`
-	Encoding string `json:"encoding,omitempty"`
-	Prefix   string `json:"prefix,omitempty"`
-
-	MaxIdleConns int       `json:"max_idle_conns,omitempty"`
-	IdleTimeout  *Duration `json:"idle_timeout,omitempty"`
+	Name   string            `json:"driver"`
+	Params map[string]string `json:"params,omitempty"`
 }
 
 // Config is a configuration for a Server.
@@ -66,10 +54,10 @@ type Config struct {
 var DefaultConfig = Config{
 	Addr: ":6881",
 	Tracker: DriverConfig{
-		Driver: "mock",
+		Name: "mock",
 	},
 	Backend: DriverConfig{
-		Driver: "mock",
+		Name: "mock",
 	},
 	Private:         false,
 	Freeleech:       false,
