@@ -1,4 +1,4 @@
-# Chihaya [![Build Status](https://travis-ci.org/chihaya/chihaya.png?branch=master)](https://travis-ci.org/chihaya/chihaya)
+# Chihaya [![Build Status](https://api.travis-ci.org/chihaya/chihaya.svg?branch=master)](https://travis-ci.org/chihaya/chihaya)
 
 Chihaya is a high-performance [BitTorrent tracker](http://en.wikipedia.org/wiki/BitTorrent_tracker)
 written in the Go programming language. It is still heavily under development and the current `master` branch
