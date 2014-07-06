@@ -9,24 +9,39 @@ import (
 	"time"
 )
 
-var scalarTests = map[interface{}]string{
-	int(42):    "i42e",
-	int(-42):   "i-42e",
-	uint(42):   "i42e",
-	int64(42):  "i42e",
-	uint64(42): "i42e",
+var tests = []struct {
+	input    interface{}
+	expected string
+}{
+	{int(42), "i42e"},
+	{int(-42), "i-42e"},
+	{uint(43), "i43e"},
+	{int64(44), "i44e"},
+	{uint64(45), "i45e"},
 
-	"example":        "7:example",
-	30 * time.Minute: "i1800e",
+	{"example", "7:example"},
+	{30 * time.Minute, "i1800e"},
+
+	{[]string{"one", "two"}, "l3:one3:twoe"},
+	{[]string{}, "le"},
+
+	{
+		map[string]interface{}{
+			"one": "aa",
+			"two": "bb",
+		},
+		"d3:one2:aa3:two2:bbe",
+	},
+	{map[string]interface{}{}, "de"},
 }
 
-func TestScalar(t *testing.T) {
-	for val, expected := range scalarTests {
-		got, err := Marshal(val)
+func TestMarshal(t *testing.T) {
+	for _, test := range tests {
+		got, err := Marshal(test.input)
 		if err != nil {
 			t.Error(err)
-		} else if string(got) != expected {
-			t.Errorf("\ngot:      %s\nexpected: %s", got, expected)
+		} else if string(got) != test.expected {
+			t.Errorf("\ngot:      %s\nexpected: %s", got, test.expected)
 		}
 	}
 }
