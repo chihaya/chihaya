@@ -25,13 +25,7 @@ var tests = []struct {
 	{[]string{"one", "two"}, "l3:one3:twoe"},
 	{[]string{}, "le"},
 
-	{
-		map[string]interface{}{
-			"one": "aa",
-			"two": "bb",
-		},
-		"d3:one2:aa3:two2:bbe",
-	},
+	{map[string]interface{}{"one": "aa", "two": "bb"}, "d3:one2:aa3:two2:bbe"},
 	{map[string]interface{}{}, "de"},
 }
 

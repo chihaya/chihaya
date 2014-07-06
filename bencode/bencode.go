@@ -83,6 +83,7 @@ func marshal(w io.Writer, data interface{}) error {
 				return err
 			}
 		}
+		fmt.Fprintf(w, "e")
 
 	case []string:
 		fmt.Fprintf(w, "l")
