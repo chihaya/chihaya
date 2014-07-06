@@ -3,7 +3,7 @@
 // which can be found in the LICENSE file.
 
 // Package bencode implements bencoding of objects as defined in BEP 3 using
-// type assertion rather than the use of reflection.
+// type assertion over reflection for performance.
 package bencode
 
 import (

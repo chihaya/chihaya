@@ -4,4 +4,29 @@
 
 package bencode
 
-// TODO Write bencode tests
+import (
+	"testing"
+	"time"
+)
+
+var scalarTests = map[interface{}]string{
+	int(42):    "i42e",
+	int(-42):   "i-42e",
+	uint(42):   "i42e",
+	int64(42):  "i42e",
+	uint64(42): "i42e",
+
+	"example":        "7:example",
+	30 * time.Minute: "i1800e",
+}
+
+func TestScalar(t *testing.T) {
+	for val, expected := range scalarTests {
+		got, err := Marshal(val)
+		if err != nil {
+			t.Error(err)
+		} else if string(got) != expected {
+			t.Errorf("\ngot:      %s\nexpected: %s", got, expected)
+		}
+	}
+}
