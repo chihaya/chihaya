@@ -11,7 +11,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
-	"github.com/chihaya/chihaya/bencode"
+	"github.com/chihaya/bencode"
 	"github.com/chihaya/chihaya/drivers/tracker"
 	"github.com/chihaya/chihaya/models"
 )
