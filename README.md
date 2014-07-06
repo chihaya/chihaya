@@ -28,11 +28,14 @@ needs its functionality. See [below](#drivers) for more info.
 
 ### Installing
 
-Make sure you have your `$GOROOT` and `$GOPATH` set up correctly, and have your `$GOBIN` in your `$PATH`.
+Chihaya requires Go 1.3+ to build.
 
 ```sh
 $ go get github.com/chihaya/chihaya
 ```
+
+Make sure you have your `$GOPATH` set up correctly, and have `$GOPATH/bin` in your `$PATH`.
+If you're new to Go, an overview of the directory structure can be found [here](http://golang.org/doc/code.html).
 
 ### Configuring
 
