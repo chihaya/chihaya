@@ -34,7 +34,7 @@ type Peer struct {
 	Port uint64 `json:"port"`
 
 	Uploaded     uint64 `json:"uploaded"`
-	Downloaded   uint64 `json:"downloaded`
+	Downloaded   uint64 `json:"downloaded"`
 	Left         uint64 `json:"left"`
 	LastAnnounce int64  `json:"last_announce"`
 }
