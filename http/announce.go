@@ -21,8 +21,7 @@ func (t *Tracker) ServeAnnounce(w http.ResponseWriter, r *http.Request, p httpro
 	if err == models.ErrMalformedRequest {
 		fail(w, r, err)
 		return http.StatusOK
-	}
-	if err != nil {
+	} else if err != nil {
 		return http.StatusInternalServerError
 	}
 
@@ -155,7 +154,7 @@ func handleEvent(c tracker.Conn, a *models.Announce, p *models.Peer, u *models.U
 		}
 
 	case t.InLeecherPool(p) && a.Left == 0:
-		// A leecher completed but the event was never received
+		// A leecher completed but the event was never received.
 		err = tracker.LeecherFinished(c, t, p)
 		if err != nil {
 			return
