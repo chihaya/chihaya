@@ -6,11 +6,13 @@ package http
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
 
 	"github.com/chihaya/chihaya/drivers/tracker"
+	"github.com/chihaya/chihaya/models"
 )
 
 func (t *Tracker) getTorrent(w http.ResponseWriter, r *http.Request, p httprouter.Params) int {
@@ -36,6 +38,27 @@ func (t *Tracker) getTorrent(w http.ResponseWriter, r *http.Request, p httproute
 }
 
 func (t *Tracker) putTorrent(w http.ResponseWriter, r *http.Request, p httprouter.Params) int {
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return http.StatusInternalServerError
+	}
+
+	var torrent models.Torrent
+	err = json.Unmarshal(body, &torrent)
+	if err != nil {
+		return http.StatusBadRequest
+	}
+
+	conn, err := t.tp.Get()
+	if err != nil {
+		return http.StatusInternalServerError
+	}
+
+	err = conn.PutTorrent(&torrent)
+	if err != nil {
+		return http.StatusInternalServerError
+	}
+
 	return http.StatusOK
 }
 
@@ -78,6 +101,27 @@ func (t *Tracker) getUser(w http.ResponseWriter, r *http.Request, p httprouter.P
 }
 
 func (t *Tracker) putUser(w http.ResponseWriter, r *http.Request, p httprouter.Params) int {
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return http.StatusInternalServerError
+	}
+
+	var user models.User
+	err = json.Unmarshal(body, &user)
+	if err != nil {
+		return http.StatusBadRequest
+	}
+
+	conn, err := t.tp.Get()
+	if err != nil {
+		return http.StatusInternalServerError
+	}
+
+	err = conn.PutUser(&user)
+	if err != nil {
+		return http.StatusInternalServerError
+	}
+
 	return http.StatusOK
 }
 
