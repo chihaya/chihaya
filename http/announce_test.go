@@ -54,7 +54,7 @@ func loadTestData(tkr *Tracker) (err error) {
 			return
 		}
 
-		err = conn.WhitelistClient("TR2820")
+		err = conn.AddClient("TR2820")
 		if err != nil {
 			return
 		}

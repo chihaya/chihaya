@@ -36,7 +36,7 @@ func (c *Conn) FindTorrent(infohash string) (*models.Torrent, error) {
 	return &*torrent, nil
 }
 
-func (c *Conn) ClientWhitelisted(peerID string) error {
+func (c *Conn) FindClient(peerID string) error {
 	c.whitelistM.RLock()
 	defer c.whitelistM.RUnlock()
 
@@ -191,11 +191,11 @@ func (c *Conn) AddTorrent(t *models.Torrent) error {
 	return nil
 }
 
-func (c *Conn) RemoveTorrent(t *models.Torrent) error {
+func (c *Conn) RemoveTorrent(infohash string) error {
 	c.torrentsM.Lock()
 	defer c.torrentsM.Unlock()
 
-	delete(c.torrents, t.Infohash)
+	delete(c.torrents, infohash)
 
 	return nil
 }
@@ -210,16 +210,16 @@ func (c *Conn) AddUser(u *models.User) error {
 	return nil
 }
 
-func (c *Conn) RemoveUser(u *models.User) error {
+func (c *Conn) RemoveUser(passkey string) error {
 	c.usersM.Lock()
 	defer c.usersM.Unlock()
 
-	delete(c.users, u.Passkey)
+	delete(c.users, passkey)
 
 	return nil
 }
 
-func (c *Conn) WhitelistClient(peerID string) error {
+func (c *Conn) AddClient(peerID string) error {
 	c.whitelistM.Lock()
 	defer c.whitelistM.Unlock()
 
@@ -228,7 +228,7 @@ func (c *Conn) WhitelistClient(peerID string) error {
 	return nil
 }
 
-func (c *Conn) UnWhitelistClient(peerID string) error {
+func (c *Conn) RemoveClient(peerID string) error {
 	c.whitelistM.Lock()
 	defer c.whitelistM.Unlock()
 

@@ -31,7 +31,7 @@ func (t *Tracker) ServeAnnounce(w http.ResponseWriter, r *http.Request, p httpro
 	}
 
 	if t.cfg.Whitelist {
-		err = conn.ClientWhitelisted(ann.ClientID())
+		err = conn.FindClient(ann.ClientID())
 		if err == tracker.ErrClientUnapproved {
 			fail(w, r, err)
 			return http.StatusOK

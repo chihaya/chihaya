@@ -69,28 +69,30 @@ type Pool interface {
 // Conn represents a connection to the data store that can be used
 // to make reads/writes.
 type Conn interface {
-	// Reads
-	FindUser(passkey string) (*models.User, error)
+	// Torrent interactions
 	FindTorrent(infohash string) (*models.Torrent, error)
-	ClientWhitelisted(clientID string) error
-
-	// Writes
+	AddTorrent(t *models.Torrent) error
+	RemoveTorrent(infohash string) error
 	IncrementSnatches(t *models.Torrent) error
 	MarkActive(t *models.Torrent) error
-	AddLeecher(t *models.Torrent, p *models.Peer) error
-	AddSeeder(t *models.Torrent, p *models.Peer) error
-	RemoveLeecher(t *models.Torrent, p *models.Peer) error
-	RemoveSeeder(t *models.Torrent, p *models.Peer) error
-	SetLeecher(t *models.Torrent, p *models.Peer) error
-	SetSeeder(t *models.Torrent, p *models.Peer) error
 
-	// Priming / Testing
-	AddTorrent(t *models.Torrent) error
-	RemoveTorrent(t *models.Torrent) error
+	AddLeecher(t *models.Torrent, p *models.Peer) error
+	SetLeecher(t *models.Torrent, p *models.Peer) error
+	RemoveLeecher(t *models.Torrent, p *models.Peer) error
+
+	AddSeeder(t *models.Torrent, p *models.Peer) error
+	SetSeeder(t *models.Torrent, p *models.Peer) error
+	RemoveSeeder(t *models.Torrent, p *models.Peer) error
+
+	// User interactions
+	FindUser(passkey string) (*models.User, error)
 	AddUser(u *models.User) error
-	RemoveUser(u *models.User) error
-	WhitelistClient(clientID string) error
-	UnWhitelistClient(clientID string) error
+	RemoveUser(passkey string) error
+
+	// Whitelist interactions
+	FindClient(clientID string) error
+	AddClient(clientID string) error
+	RemoveClient(clientID string) error
 }
 
 // LeecherFinished moves a peer from the leeching pool to the seeder pool.
