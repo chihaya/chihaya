@@ -32,21 +32,21 @@ func loadTestData(tkr *Tracker) (err error) {
 			return
 		}
 
-		err = conn.AddUser(&models.User{
+		err = conn.PutUser(&models.User{
 			ID:      1,
 			Passkey: "yby47f04riwpndba456rqxtmifenqxx1",
 		})
 		if err != nil {
 			return
 		}
-		err = conn.AddUser(&models.User{
+		err = conn.PutUser(&models.User{
 			ID:      2,
 			Passkey: "yby47f04riwpndba456rqxtmifenqxx2",
 		})
 		if err != nil {
 			return
 		}
-		err = conn.AddUser(&models.User{
+		err = conn.PutUser(&models.User{
 			ID:      3,
 			Passkey: "yby47f04riwpndba456rqxtmifenqxx3",
 		})
@@ -54,7 +54,7 @@ func loadTestData(tkr *Tracker) (err error) {
 			return
 		}
 
-		err = conn.AddClient("TR2820")
+		err = conn.PutClient("TR2820")
 		if err != nil {
 			return
 		}
@@ -66,12 +66,12 @@ func loadTestData(tkr *Tracker) (err error) {
 			Leechers: make(map[string]models.Peer),
 		}
 
-		err = conn.AddTorrent(torrent)
+		err = conn.PutTorrent(torrent)
 		if err != nil {
 			return
 		}
 
-		err = conn.AddLeecher(torrent, &models.Peer{
+		err = conn.PutLeecher(torrent.Infohash, &models.Peer{
 			ID:        "-TR2820-l71jtqkl8xx1",
 			UserID:    1,
 			TorrentID: torrent.ID,
@@ -83,7 +83,7 @@ func loadTestData(tkr *Tracker) (err error) {
 			return
 		}
 
-		err = conn.AddLeecher(torrent, &models.Peer{
+		err = conn.PutLeecher(torrent.Infohash, &models.Peer{
 			ID:        "-TR2820-l71jtqkl8xx3",
 			UserID:    3,
 			TorrentID: torrent.ID,

@@ -71,36 +71,32 @@ type Pool interface {
 type Conn interface {
 	// Torrent interactions
 	FindTorrent(infohash string) (*models.Torrent, error)
-	AddTorrent(t *models.Torrent) error
-	RemoveTorrent(infohash string) error
-	IncrementSnatches(t *models.Torrent) error
-	MarkActive(t *models.Torrent) error
-
-	AddLeecher(t *models.Torrent, p *models.Peer) error
-	SetLeecher(t *models.Torrent, p *models.Peer) error
-	RemoveLeecher(t *models.Torrent, p *models.Peer) error
-
-	AddSeeder(t *models.Torrent, p *models.Peer) error
-	SetSeeder(t *models.Torrent, p *models.Peer) error
-	RemoveSeeder(t *models.Torrent, p *models.Peer) error
+	PutTorrent(t *models.Torrent) error
+	DeleteTorrent(infohash string) error
+	IncrementSnatches(infohash string) error
+	MarkActive(infohash string) error
+	PutLeecher(infohash string, p *models.Peer) error
+	DeleteLeecher(infohash, peerkey string) error
+	PutSeeder(infohash string, p *models.Peer) error
+	DeleteSeeder(infohash, peerkey string) error
 
 	// User interactions
 	FindUser(passkey string) (*models.User, error)
-	AddUser(u *models.User) error
-	RemoveUser(passkey string) error
+	PutUser(u *models.User) error
+	DeleteUser(passkey string) error
 
 	// Whitelist interactions
 	FindClient(clientID string) error
-	AddClient(clientID string) error
-	RemoveClient(clientID string) error
+	PutClient(clientID string) error
+	DeleteClient(clientID string) error
 }
 
 // LeecherFinished moves a peer from the leeching pool to the seeder pool.
-func LeecherFinished(c Conn, t *models.Torrent, p *models.Peer) error {
-	err := c.RemoveLeecher(t, p)
+func LeecherFinished(c Conn, infohash string, p *models.Peer) error {
+	err := c.DeleteLeecher(infohash, p.Key())
 	if err != nil {
 		return err
 	}
-	err = c.AddSeeder(t, p)
+	err = c.PutSeeder(infohash, p)
 	return err
 }

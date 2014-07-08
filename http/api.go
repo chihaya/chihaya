@@ -45,7 +45,7 @@ func (t *Tracker) delTorrent(w http.ResponseWriter, r *http.Request, p httproute
 		return http.StatusInternalServerError
 	}
 
-	err = conn.RemoveTorrent(p.ByName("infohash"))
+	err = conn.DeleteTorrent(p.ByName("infohash"))
 	if err == tracker.ErrTorrentDNE {
 		return http.StatusNotFound
 	} else if err != nil {
@@ -87,7 +87,7 @@ func (t *Tracker) delUser(w http.ResponseWriter, r *http.Request, p httprouter.P
 		return http.StatusInternalServerError
 	}
 
-	err = conn.RemoveUser(p.ByName("passkey"))
+	err = conn.DeleteUser(p.ByName("passkey"))
 	if err == tracker.ErrUserDNE {
 		return http.StatusNotFound
 	} else if err != nil {
@@ -103,7 +103,7 @@ func (t *Tracker) putClient(w http.ResponseWriter, r *http.Request, p httprouter
 		return http.StatusInternalServerError
 	}
 
-	err = conn.FindClient(p.ByName("clientID"))
+	err = conn.PutClient(p.ByName("clientID"))
 	if err != nil {
 		return http.StatusInternalServerError
 	}
@@ -117,7 +117,7 @@ func (t *Tracker) delClient(w http.ResponseWriter, r *http.Request, p httprouter
 		return http.StatusInternalServerError
 	}
 
-	err = conn.RemoveClient(p.ByName("clientID"))
+	err = conn.DeleteClient(p.ByName("clientID"))
 	if err != nil {
 		return http.StatusInternalServerError
 	}

@@ -86,36 +86,41 @@ func (t *Tracker) ServeAnnounce(w http.ResponseWriter, r *http.Request, p httpro
 
 func updateTorrent(c tracker.Conn, a *models.Announce, p *models.Peer, t *models.Torrent) (created bool, err error) {
 	if !t.Active && a.Left == 0 {
-		err = c.MarkActive(t)
+		err = c.MarkActive(t.Infohash)
 		if err != nil {
 			return
 		}
+		t.Active = true
 	}
 
 	switch {
 	case t.InSeederPool(p):
-		err = c.SetSeeder(t, p)
+		err = c.PutSeeder(t.Infohash, p)
 		if err != nil {
 			return
 		}
+		t.Seeders[p.Key()] = *p
 
 	case t.InLeecherPool(p):
-		err = c.SetLeecher(t, p)
+		err = c.PutLeecher(t.Infohash, p)
 		if err != nil {
 			return
 		}
+		t.Leechers[p.Key()] = *p
 
 	default:
 		if a.Left == 0 {
-			err = c.AddSeeder(t, p)
+			err = c.PutSeeder(t.Infohash, p)
 			if err != nil {
 				return
 			}
+			t.Seeders[p.Key()] = *p
 		} else {
-			err = c.AddLeecher(t, p)
+			err = c.PutLeecher(t.Infohash, p)
 			if err != nil {
 				return
 			}
+			t.Leechers[p.Key()] = *p
 		}
 		created = true
 	}
@@ -127,27 +132,30 @@ func handleEvent(c tracker.Conn, a *models.Announce, p *models.Peer, u *models.U
 	switch {
 	case a.Event == "stopped" || a.Event == "paused":
 		if t.InSeederPool(p) {
-			err = c.RemoveSeeder(t, p)
+			err = c.DeleteSeeder(t.Infohash, p.Key())
 			if err != nil {
 				return
 			}
+			delete(t.Seeders, p.Key())
 		}
 		if t.InLeecherPool(p) {
-			err = c.RemoveLeecher(t, p)
+			err = c.DeleteLeecher(t.Infohash, p.Key())
 			if err != nil {
 				return
 			}
+			delete(t.Leechers, p.Key())
 		}
 
 	case a.Event == "completed":
-		err = c.IncrementSnatches(t)
+		err = c.IncrementSnatches(t.Infohash)
 		if err != nil {
 			return
 		}
 		snatched = true
+		t.Snatches++
 
 		if t.InLeecherPool(p) {
-			err = tracker.LeecherFinished(c, t, p)
+			err = tracker.LeecherFinished(c, t.Infohash, p)
 			if err != nil {
 				return
 			}
@@ -155,7 +163,7 @@ func handleEvent(c tracker.Conn, a *models.Announce, p *models.Peer, u *models.U
 
 	case t.InLeecherPool(p) && a.Left == 0:
 		// A leecher completed but the event was never received.
-		err = tracker.LeecherFinished(c, t, p)
+		err = tracker.LeecherFinished(c, t.Infohash, p)
 		if err != nil {
 			return
 		}
