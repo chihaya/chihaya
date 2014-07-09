@@ -141,25 +141,40 @@ func NewAnnounce(cfg *config.Config, r *http.Request, p httprouter.Params) (*Ann
 
 	compact := q.Params["compact"] != "0"
 	event, _ := q.Params["event"]
-	infohash, _ := q.Params["info_hash"]
-	peerID, _ := q.Params["peer_id"]
-
 	numWant := q.RequestedPeerCount(cfg.NumWantFallback)
 
-	ip, ipErr := q.RequestedIP(r)
-	port, portErr := q.Uint64("port")
+	infohash, exists := q.Params["info_hash"]
+	if !exists {
+		return nil, ErrMalformedRequest
+	}
 
-	left, leftErr := q.Uint64("left")
-	downloaded, downloadedErr := q.Uint64("downloaded")
-	uploaded, uploadedErr := q.Uint64("uploaded")
+	peerID, exists := q.Params["peer_id"]
+	if !exists {
+		return nil, ErrMalformedRequest
+	}
 
-	if downloadedErr != nil ||
-		infohash == "" ||
-		leftErr != nil ||
-		peerID == "" ||
-		portErr != nil ||
-		uploadedErr != nil ||
-		ipErr != nil {
+	ip, err := q.RequestedIP(r)
+	if err != nil {
+		return nil, ErrMalformedRequest
+	}
+
+	port, err := q.Uint64("port")
+	if err != nil {
+		return nil, ErrMalformedRequest
+	}
+
+	left, err := q.Uint64("left")
+	if err != nil {
+		return nil, ErrMalformedRequest
+	}
+
+	downloaded, err := q.Uint64("downloaded")
+	if err != nil {
+		return nil, ErrMalformedRequest
+	}
+
+	uploaded, err := q.Uint64("uploaded")
+	if err != nil {
 		return nil, ErrMalformedRequest
 	}
 
