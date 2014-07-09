@@ -16,27 +16,27 @@ import (
 	"github.com/chihaya/chihaya/models"
 )
 
-func (t *Tracker) ServeAnnounce(w http.ResponseWriter, r *http.Request, p httprouter.Params) int {
+func (t *Tracker) ServeAnnounce(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
 	ann, err := models.NewAnnounce(t.cfg, r, p)
 	if err == models.ErrMalformedRequest {
 		fail(w, r, err)
-		return http.StatusOK
+		return http.StatusOK, nil
 	} else if err != nil {
-		return http.StatusInternalServerError
+		return http.StatusInternalServerError, err
 	}
 
 	conn, err := t.tp.Get()
 	if err != nil {
-		return http.StatusInternalServerError
+		return http.StatusInternalServerError, err
 	}
 
 	if t.cfg.Whitelist {
 		err = conn.FindClient(ann.ClientID())
 		if err == tracker.ErrClientUnapproved {
 			fail(w, r, err)
-			return http.StatusOK
+			return http.StatusOK, nil
 		} else if err != nil {
-			return http.StatusInternalServerError
+			return http.StatusInternalServerError, err
 		}
 	}
 
@@ -45,43 +45,43 @@ func (t *Tracker) ServeAnnounce(w http.ResponseWriter, r *http.Request, p httpro
 		user, err = conn.FindUser(ann.Passkey)
 		if err == tracker.ErrUserDNE {
 			fail(w, r, err)
-			return http.StatusOK
+			return http.StatusOK, nil
 		} else if err != nil {
-			return http.StatusInternalServerError
+			return http.StatusInternalServerError, err
 		}
 	}
 
 	torrent, err := conn.FindTorrent(ann.Infohash)
 	if err == tracker.ErrTorrentDNE {
 		fail(w, r, err)
-		return http.StatusOK
+		return http.StatusOK, nil
 	} else if err != nil {
-		return http.StatusInternalServerError
+		return http.StatusInternalServerError, err
 	}
 
 	peer := models.NewPeer(ann, user, torrent)
 
 	created, err := updateTorrent(conn, ann, peer, torrent)
 	if err != nil {
-		return http.StatusInternalServerError
+		return http.StatusInternalServerError, err
 	}
 
 	snatched, err := handleEvent(conn, ann, peer, user, torrent)
 	if err != nil {
-		return http.StatusInternalServerError
+		return http.StatusInternalServerError, err
 	}
 
 	if t.cfg.Private {
 		delta := models.NewAnnounceDelta(ann, peer, user, torrent, created, snatched)
 		err = t.bc.RecordAnnounce(delta)
 		if err != nil {
-			return http.StatusInternalServerError
+			return http.StatusInternalServerError, err
 		}
 	}
 
 	writeAnnounceResponse(w, ann, user, torrent)
 
-	return http.StatusOK
+	return http.StatusOK, nil
 }
 
 func updateTorrent(c tracker.Conn, a *models.Announce, p *models.Peer, t *models.Torrent) (created bool, err error) {

@@ -42,12 +42,15 @@ func NewTracker(cfg *config.Config) (*Tracker, error) {
 	}, nil
 }
 
-type ResponseHandler func(http.ResponseWriter, *http.Request, httprouter.Params) int
+type ResponseHandler func(http.ResponseWriter, *http.Request, httprouter.Params) (int, error)
 
 func makeHandler(handler ResponseHandler) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 		start := time.Now()
-		code := handler(w, r, p)
+		code, err := handler(w, r, p)
+		if err != nil {
+			http.Error(w, err.Error(), code)
+		}
 		glog.Infof(
 			"Completed %v %s %s in %v",
 			code,
@@ -60,12 +63,25 @@ func makeHandler(handler ResponseHandler) httprouter.Handle {
 
 func setupRoutes(t *Tracker, cfg *config.Config) *httprouter.Router {
 	r := httprouter.New()
+
+	r.GET("/torrents/:infohash", makeHandler(t.getTorrent))
+	r.PUT("/torrents/:infohash", makeHandler(t.putTorrent))
+	r.DELETE("/torrents/:infohash", makeHandler(t.delTorrent))
+
 	if cfg.Private {
 		r.GET("/:passkey/announce", makeHandler(t.ServeAnnounce))
 		r.GET("/:passkey/scrape", makeHandler(t.ServeScrape))
+
+		r.PUT("/users/:passkey", makeHandler(t.putUser))
+		r.DELETE("/users/:passkey", makeHandler(t.delUser))
 	} else {
 		r.GET("/announce", makeHandler(t.ServeAnnounce))
 		r.GET("/scrape", makeHandler(t.ServeScrape))
+	}
+
+	if cfg.Whitelist {
+		r.PUT("/clients/:clientID", makeHandler(t.putClient))
+		r.DELETE("/clients/:clientID", makeHandler(t.delClient))
 	}
 
 	return r

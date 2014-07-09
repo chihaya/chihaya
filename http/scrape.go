@@ -16,27 +16,27 @@ import (
 	"github.com/chihaya/chihaya/models"
 )
 
-func (t *Tracker) ServeScrape(w http.ResponseWriter, r *http.Request, p httprouter.Params) int {
+func (t *Tracker) ServeScrape(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
 	scrape, err := models.NewScrape(t.cfg, r, p)
 	if err == models.ErrMalformedRequest {
 		fail(w, r, err)
-		return http.StatusOK
+		return http.StatusOK, nil
 	} else if err != nil {
-		return http.StatusInternalServerError
+		return http.StatusInternalServerError, err
 	}
 
 	conn, err := t.tp.Get()
 	if err != nil {
-		return http.StatusInternalServerError
+		return http.StatusInternalServerError, err
 	}
 
 	if t.cfg.Private {
 		_, err = conn.FindUser(scrape.Passkey)
 		if err == tracker.ErrUserDNE {
 			fail(w, r, err)
-			return http.StatusOK
+			return http.StatusOK, nil
 		} else if err != nil {
-			return http.StatusInternalServerError
+			return http.StatusInternalServerError, err
 		}
 	}
 
@@ -45,9 +45,9 @@ func (t *Tracker) ServeScrape(w http.ResponseWriter, r *http.Request, p httprout
 		torrent, err := conn.FindTorrent(infohash)
 		if err == tracker.ErrTorrentDNE {
 			fail(w, r, err)
-			return http.StatusOK
+			return http.StatusOK, nil
 		} else if err != nil {
-			return http.StatusInternalServerError
+			return http.StatusInternalServerError, err
 		}
 		torrents = append(torrents, torrent)
 	}
@@ -60,7 +60,7 @@ func (t *Tracker) ServeScrape(w http.ResponseWriter, r *http.Request, p httprout
 	}
 	fmt.Fprintf(w, "e")
 
-	return http.StatusOK
+	return http.StatusOK, nil
 }
 
 func writeTorrentStatus(w io.Writer, t *models.Torrent) {
