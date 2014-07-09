@@ -64,13 +64,9 @@ func makeHandler(handler ResponseHandler) httprouter.Handle {
 func setupRoutes(t *Tracker, cfg *config.Config) *httprouter.Router {
 	r := httprouter.New()
 
-	r.GET("/torrents/:infohash", makeHandler(t.getTorrent))
-	r.PUT("/torrents/:infohash", makeHandler(t.putTorrent))
-	r.DELETE("/torrents/:infohash", makeHandler(t.delTorrent))
-
 	if cfg.Private {
-		r.GET("/:passkey/announce", makeHandler(t.ServeAnnounce))
-		r.GET("/:passkey/scrape", makeHandler(t.ServeScrape))
+		r.GET("/users/:passkey/announce", makeHandler(t.ServeAnnounce))
+		r.GET("/users/:passkey/scrape", makeHandler(t.ServeScrape))
 
 		r.PUT("/users/:passkey", makeHandler(t.putUser))
 		r.DELETE("/users/:passkey", makeHandler(t.delUser))
@@ -83,6 +79,10 @@ func setupRoutes(t *Tracker, cfg *config.Config) *httprouter.Router {
 		r.PUT("/clients/:clientID", makeHandler(t.putClient))
 		r.DELETE("/clients/:clientID", makeHandler(t.delClient))
 	}
+
+	r.GET("/torrents/:infohash", makeHandler(t.getTorrent))
+	r.PUT("/torrents/:infohash", makeHandler(t.putTorrent))
+	r.DELETE("/torrents/:infohash", makeHandler(t.delTorrent))
 
 	return r
 }
