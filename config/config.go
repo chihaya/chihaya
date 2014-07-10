@@ -52,7 +52,7 @@ type Config struct {
 }
 
 var DefaultConfig = Config{
-	Addr: ":6881",
+	Addr: "127.0.0.1:6881",
 	Tracker: DriverConfig{
 		Name: "mock",
 	},
