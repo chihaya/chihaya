@@ -5,8 +5,6 @@
 package http
 
 import (
-	"fmt"
-	"io"
 	"net/http"
 
 	"github.com/julienschmidt/httprouter"
@@ -52,26 +50,34 @@ func (t *Tracker) ServeScrape(w http.ResponseWriter, r *http.Request, p httprout
 		torrents = append(torrents, torrent)
 	}
 
+	resp := bencode.NewDict()
+	resp["files"] = filesDict(torrents)
+
 	bencoder := bencode.NewEncoder(w)
-	fmt.Fprintf(w, "d")
-	bencoder.Encode("files")
-	for _, torrent := range torrents {
-		writeTorrentStatus(w, torrent)
+	err = bencoder.Encode(resp)
+	if err != nil {
+		return http.StatusInternalServerError, err
 	}
-	fmt.Fprintf(w, "e")
 
 	return http.StatusOK, nil
 }
 
-func writeTorrentStatus(w io.Writer, t *models.Torrent) {
-	bencoder := bencode.NewEncoder(w)
-	bencoder.Encode(t.Infohash)
-	fmt.Fprintf(w, "d")
-	bencoder.Encode("complete")
-	bencoder.Encode(len(t.Seeders))
-	bencoder.Encode("downloaded")
-	bencoder.Encode(t.Snatches)
-	bencoder.Encode("incomplete")
-	bencoder.Encode(len(t.Leechers))
-	fmt.Fprintf(w, "e")
+func filesDict(torrents []*models.Torrent) bencode.Dict {
+	d := bencode.NewDict()
+
+	for _, torrent := range torrents {
+		d[torrent.Infohash] = torrentDict(torrent)
+	}
+
+	return d
+}
+
+func torrentDict(torrent *models.Torrent) bencode.Dict {
+	d := bencode.NewDict()
+
+	d["complete"] = len(torrent.Seeders)
+	d["incomplete"] = len(torrent.Leechers)
+	d["downloaded"] = torrent.Snatches
+
+	return d
 }
