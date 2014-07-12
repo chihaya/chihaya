@@ -51,11 +51,26 @@ func (t *Tracker) ServeAnnounce(w http.ResponseWriter, r *http.Request, p httpro
 		}
 	}
 
-	torrent, err := conn.FindTorrent(ann.Infohash)
-	if err == tracker.ErrTorrentDNE {
+	var torrent *models.Torrent
+	torrent, err = conn.FindTorrent(ann.Infohash)
+	switch {
+	case t.cfg.Private && err == tracker.ErrTorrentDNE:
+		torrent = &models.Torrent{
+			Infohash: ann.Infohash,
+			Seeders:  make(map[string]models.Peer),
+			Leechers: make(map[string]models.Peer),
+		}
+
+		err = conn.PutTorrent(torrent)
+		if err != nil {
+			return http.StatusInternalServerError, err
+		}
+
+	case !t.cfg.Private && err == tracker.ErrTorrentDNE:
 		fail(w, r, err)
 		return http.StatusOK, nil
-	} else if err != nil {
+
+	case err != nil:
 		return http.StatusInternalServerError, err
 	}
 
