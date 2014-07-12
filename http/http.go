@@ -5,7 +5,6 @@
 package http
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/stretchr/graceful"
 
+	"github.com/chihaya/bencode"
 	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/drivers/backend"
 	"github.com/chihaya/chihaya/drivers/tracker"
@@ -97,6 +97,9 @@ func Serve(cfg *config.Config) {
 }
 
 func fail(w http.ResponseWriter, r *http.Request, err error) {
-	errmsg := err.Error()
-	fmt.Fprintf(w, "d14:failure reason%d:%se", len(errmsg), errmsg)
+	dict := bencode.NewDict()
+	dict["failure reason"] = err.Error()
+
+	bencoder := bencode.NewEncoder(w)
+	bencoder.Encode(dict)
 }
