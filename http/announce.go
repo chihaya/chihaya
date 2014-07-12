@@ -54,7 +54,7 @@ func (t *Tracker) ServeAnnounce(w http.ResponseWriter, r *http.Request, p httpro
 	var torrent *models.Torrent
 	torrent, err = conn.FindTorrent(ann.Infohash)
 	switch {
-	case t.cfg.Private && err == tracker.ErrTorrentDNE:
+	case !t.cfg.Private && err == tracker.ErrTorrentDNE:
 		torrent = &models.Torrent{
 			Infohash: ann.Infohash,
 			Seeders:  make(map[string]models.Peer),
@@ -66,7 +66,7 @@ func (t *Tracker) ServeAnnounce(w http.ResponseWriter, r *http.Request, p httpro
 			return http.StatusInternalServerError, err
 		}
 
-	case !t.cfg.Private && err == tracker.ErrTorrentDNE:
+	case t.cfg.Private && err == tracker.ErrTorrentDNE:
 		fail(w, r, err)
 		return http.StatusOK, nil
 
