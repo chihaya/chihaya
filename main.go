@@ -29,6 +29,8 @@ func init() {
 }
 
 func main() {
+	defer glog.Flush()
+
 	flag.Parse()
 	glog.Info("parsed flags")
 
