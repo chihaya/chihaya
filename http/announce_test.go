@@ -9,8 +9,10 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 
+	"github.com/chihaya/bencode"
 	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/drivers/backend"
 	"github.com/chihaya/chihaya/drivers/tracker"
@@ -97,15 +99,15 @@ func loadTestData(tkr *Tracker) (err error) {
 	})
 }
 
-func testRoute(cfg *config.Config, url string) (bodystr string, err error) {
+func testRoute(cfg *config.Config, url string) ([]byte, error) {
 	tkr, err := NewTracker(cfg)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	err = loadTestData(tkr)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	srv := httptest.NewServer(setupRoutes(tkr, cfg))
@@ -115,44 +117,76 @@ func testRoute(cfg *config.Config, url string) (bodystr string, err error) {
 
 	resp, err := http.Get(url)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	return string(body), nil
+	return body, nil
 }
 
-// TODO Marshaling a bencode.Dict can generate any order of key, value. These
-// tests were hardcoded, but can no longer be.
 func TestPrivateAnnounce(t *testing.T) {
-	/*
-		cfg := config.DefaultConfig
-		cfg.Private = true
+	cfg := config.DefaultConfig
+	cfg.Private = true
 
-		url := "/users/yby47f04riwpndba456rqxtmifenqxx2/announce?info_hash=%89%d4%bcR%11%16%ca%1dB%a2%f3%0d%1f%27M%94%e4h%1d%af&peer_id=-TR2820-l71jtqkl898b&port=51413&uploaded=0&downloaded=0&left=0&numwant=1&key=3c8e3319&compact=0"
-		golden1 := "d8:completei1e10:incompletei2e8:intervali1800e12:min intervali900e5:peersld2:ip9:127.0.0.17:peer id20:-TR2820-l71jtqkl8xx14:porti34000eeee"
-		golden2 := "d8:completei1e10:incompletei2e8:intervali1800e12:min intervali900e5:peersld2:ip32:2001:0:53aa:64c:0:7f83:bc43:dec97:peer id20:-TR2820-l71jtqkl8xx34:porti34000eeee"
-		got, err := testRoute(&cfg, url)
-		if err != nil {
-			t.Error(err)
-		}
-		if got != golden1 && got != golden2 {
-			t.Errorf("\ngot:    %s\nwanted: %s\nwanted: %s", got, golden1, golden2)
-		}
+	url := "/users/yby47f04riwpndba456rqxtmifenqxx2/announce?info_hash=%89%d4%bcR%11%16%ca%1dB%a2%f3%0d%1f%27M%94%e4h%1d%af&peer_id=-TR2820-l71jtqkl898b&port=51413&uploaded=0&downloaded=0&left=0&numwant=1&key=3c8e3319&compact=0"
 
-		url = "/users/yby47f04riwpndba456rqxtmifenqxx2/announce?info_hash=%89%d4%bcR%11%16%ca%1dB%a2%f3%0d%1f%27M%94%e4h%1d%af&peer_id=-TR2820-l71jtqkl898b&port=51413&uploaded=0&downloaded=0&left=0&numwant=2&key=3c8e3319&compact=0"
-		golden1 = "d8:completei1e10:incompletei2e8:intervali1800e12:min intervali900e5:peersld2:ip9:127.0.0.17:peer id20:-TR2820-l71jtqkl8xx14:porti34000eed2:ip32:2001:0:53aa:64c:0:7f83:bc43:dec97:peer id20:-TR2820-l71jtqkl8xx34:porti34000eeee"
-		got, err = testRoute(&cfg, url)
-		if err != nil {
-			t.Error(err)
-		}
-		if got != golden1 {
-			t.Errorf("\ngot:    %s\nwanted: %s", got, golden1)
-		}
-	*/
+	expected := bencode.Dict{
+		"complete":     int64(1),
+		"incomplete":   int64(2),
+		"interval":     int64(1800),
+		"min interval": int64(900),
+		"peers": []interface{}{
+			bencode.Dict{
+				"ip":      "127.0.0.1",
+				"peer id": "-TR2820-l71jtqkl8xx1",
+				"port":    int64(34000),
+			},
+		},
+	}
+
+	response, err := testRoute(&cfg, url)
+	if err != nil {
+		t.Error(err)
+	}
+	got, err := bencode.Unmarshal(response)
+
+	if !reflect.DeepEqual(got, expected) {
+		t.Errorf("\ngot:    %#v\nwanted: %#v", got, expected)
+	}
+
+	url = "/users/yby47f04riwpndba456rqxtmifenqxx2/announce?info_hash=%89%d4%bcR%11%16%ca%1dB%a2%f3%0d%1f%27M%94%e4h%1d%af&peer_id=-TR2820-l71jtqkl898b&port=51413&uploaded=0&downloaded=0&left=0&numwant=2&key=3c8e3319&compact=0"
+
+	expected = bencode.Dict{
+		"complete":     int64(1),
+		"incomplete":   int64(2),
+		"interval":     int64(1800),
+		"min interval": int64(900),
+		"peers": []interface{}{
+			bencode.Dict{
+				"ip":      "127.0.0.1",
+				"peer id": "-TR2820-l71jtqkl8xx1",
+				"port":    int64(34000),
+			},
+			bencode.Dict{
+				"ip":      "2001:0:53aa:64c:0:7f83:bc43:dec9",
+				"peer id": "-TR2820-l71jtqkl8xx3",
+				"port":    int64(34000),
+			},
+		},
+	}
+
+	response, err = testRoute(&cfg, url)
+	if err != nil {
+		t.Error(err)
+	}
+	got, err = bencode.Unmarshal(response)
+
+	if !reflect.DeepEqual(got, expected) {
+		t.Errorf("\ngot:    %#v\nwanted: %#v", got, expected)
+	}
 }
