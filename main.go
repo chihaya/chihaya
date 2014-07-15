@@ -13,9 +13,11 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/chihaya/chihaya/config"
-	_ "github.com/chihaya/chihaya/drivers/backend/mock"
-	_ "github.com/chihaya/chihaya/drivers/tracker/mock"
 	"github.com/chihaya/chihaya/http"
+
+	// All drivers are imported here.
+	_ "github.com/chihaya/chihaya/drivers/backend/noop"
+	_ "github.com/chihaya/chihaya/drivers/tracker/memory"
 )
 
 var (

@@ -1,17 +1,14 @@
 # Chihaya [![Build Status](https://api.travis-ci.org/chihaya/chihaya.svg?branch=master)](https://travis-ci.org/chihaya/chihaya)
 
-Chihaya is a high-performance [BitTorrent tracker](http://en.wikipedia.org/wiki/BitTorrent_tracker)
-written in the Go programming language. It is still heavily under development and the current `master` branch
-should not be used in production.
+Chihaya is a high-performance [BitTorrent tracker](http://en.wikipedia.org/wiki/BitTorrent_tracker) written in the Go programming language. It is still heavily under development and the current `master` branch should not be used in production.
 
 Planned features include:
 
 - Light resource consumption
-- Fast request processing, sparing the network from exorbitant connection counts
+- Fast request processing using connection pools to spare the network from exorbitant connections
 - Maximum compatibility with what exists of the BitTorrent spec
-- Correct IPv6 support
-- Generic storage interfaces that are easily adapted to work with any existing web application
-- Scaling properties that directly correlate with those of the chosen data stores
+- Correct IPv6 support *gasp*
+- Generic storage interfaces that are easily adapted to work with any database.
 
 ### Technical Details
 
@@ -19,9 +16,7 @@ See [the wiki](https://github.com/chihaya/chihaya/wiki) for a discussion of the 
 
 ## Using Chihaya
 
-Chihaya is intended to work with existing torrent indexing web frameworks, such as [Batter] and [Gazelle].
-Following the Unix way, it is built to perform a specific task, and interface with any system that
-needs its functionality. See [below](#drivers) for more info.
+Chihaya can be ran as a public or private tracker and is intended to work with existing torrent-indexing web frameworks, such as [Gazelle], [Batter] and any others that spring up. Following the Unix way, it is built to perform one specific task: handling announces and scrapes. By cleanly separating the concerns between tracker and database, we can provide an interface that can be used by system that needs its functionality. See [below](#drivers) for more info.
 
 [batter]: https://github.com/wafflesfm/batter
 [gazelle]: https://github.com/whatcd/gazelle
@@ -54,16 +49,16 @@ $ go test -v ./...
 
 Chihaya is designed to remain agnostic about the choice of data store for an
 application, and it is straightforward to [implement a new driver]. However, there
-are a number of drivers that will be directly supported:
+are a number of drivers that will be directly supported "out of the box":
 
 Tracker:
 
-* mock (memory)
+* memory
 * [redis](https://github.com/chihaya/chihaya-redis)
 
 Backend:
 
-* mock (memory)
+* noop (for public trackers)
 * [gazelle (mysql)](https://github.com/chihaya/chihaya-gazelle)
 
 [implement a new driver]: https://github.com/chihaya/chihaya/wiki/Implementing-a-driver

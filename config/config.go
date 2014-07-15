@@ -60,10 +60,10 @@ type Config struct {
 var DefaultConfig = Config{
 	Addr: "127.0.0.1:6881",
 	Tracker: DriverConfig{
-		Name: "mock",
+		Name: "memory",
 	},
 	Backend: DriverConfig{
-		Name: "mock",
+		Name: "noop",
 	},
 	Private:         false,
 	Freeleech:       false,

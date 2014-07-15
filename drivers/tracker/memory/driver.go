@@ -2,10 +2,9 @@
 // Use of this source code is governed by the BSD 2-Clause license,
 // which can be found in the LICENSE file.
 
-// Package mock implements the models interface for a BitTorrent tracker
-// within memory. It can be used in production, but isn't recommended.
+// Package memory implements a Chihaya tracker storage driver within memory.
 // Stored values will not persist if the tracker is restarted.
-package mock
+package memory
 
 import (
 	"github.com/chihaya/chihaya/config"
@@ -24,5 +23,5 @@ func (d *driver) New(conf *config.DriverConfig) tracker.Pool {
 }
 
 func init() {
-	tracker.Register("mock", &driver{})
+	tracker.Register("memory", &driver{})
 }

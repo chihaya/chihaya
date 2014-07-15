@@ -1,16 +1,16 @@
 {
   "network": "tcp",
-  "addr": ":6881",
+  "addr": "127.0.0.1:6881",
 
   "tracker": {
-    "driver": "mock"
+    "driver": "memory"
   },
 
   "backend": {
-    "driver": "mock"
+    "driver": "noop"
   },
 
-  "private": true,
+  "private": false,
   "freeleech": false,
   "whitelist": false,
 

@@ -13,10 +13,11 @@ import (
 
 	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/drivers/backend"
-	_ "github.com/chihaya/chihaya/drivers/backend/mock"
 	"github.com/chihaya/chihaya/drivers/tracker"
-	_ "github.com/chihaya/chihaya/drivers/tracker/mock"
 	"github.com/chihaya/chihaya/models"
+
+	_ "github.com/chihaya/chihaya/drivers/backend/noop"
+	_ "github.com/chihaya/chihaya/drivers/tracker/memory"
 )
 
 type primer func(tracker.Pool, backend.Conn) error
