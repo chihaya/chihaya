@@ -7,10 +7,13 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"os"
 	"time"
 )
+
+var ErrMissingRequiredParam = errors.New("A parameter that was required by a driver is not present")
 
 // Duration wraps a time.Duration and adds JSON marshalling.
 type Duration struct{ time.Duration }
