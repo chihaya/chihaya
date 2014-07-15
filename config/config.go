@@ -13,6 +13,8 @@ import (
 	"time"
 )
 
+// ErrMissingRequiredParam is used by drivers to indicate that an entry required
+// to be within the DriverConfig.Params map is not present.
 var ErrMissingRequiredParam = errors.New("A parameter that was required by a driver is not present")
 
 // Duration wraps a time.Duration and adds JSON marshalling.
@@ -54,6 +56,7 @@ type Config struct {
 	NumWantFallback int      `json:"default_num_want"`
 }
 
+// DefaultConfig is a configuration that can be used as a fallback value.
 var DefaultConfig = Config{
 	Addr: "127.0.0.1:6881",
 	Tracker: DriverConfig{
@@ -72,8 +75,7 @@ var DefaultConfig = Config{
 }
 
 // Open is a shortcut to open a file, read it, and generate a Config.
-// It supports relative and absolute paths. Given "", it returns the result of
-// New.
+// It supports relative and absolute paths. Given "", it returns DefaultConfig.
 func Open(path string) (*Config, error) {
 	if path == "" {
 		return &DefaultConfig, nil
@@ -92,7 +94,7 @@ func Open(path string) (*Config, error) {
 	return conf, nil
 }
 
-// Decode attempts to decode a JSON encoded reader into a *Config.
+// Decode casts an io.Reader into a JSONDecoder and decodes it into a *Config.
 func Decode(r io.Reader) (*Config, error) {
 	conf := &Config{}
 	err := json.NewDecoder(r).Decode(conf)
