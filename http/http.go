@@ -52,6 +52,7 @@ func makeHandler(handler ResponseHandler) httprouter.Handle {
 		if err != nil {
 			http.Error(w, err.Error(), code)
 		}
+
 		glog.Infof(
 			"Completed %v %s %s in %v",
 			code,
