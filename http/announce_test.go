@@ -99,7 +99,15 @@ func checkAnnounce(p params, expected interface{}, srv *httptest.Server, t *test
 		return false
 	}
 
+	if e, ok := expected.(bencode.Dict); ok {
+		sortPeersInResponse(e)
+	}
+
 	got, err := bencode.Unmarshal(body)
+	if e, ok := got.(bencode.Dict); ok {
+		sortPeersInResponse(e)
+	}
+
 	if !reflect.DeepEqual(got, expected) {
 		t.Errorf("\ngot:    %#v\nwanted: %#v", got, expected)
 		return false

@@ -9,7 +9,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sort"
 
+	"github.com/chihaya/bencode"
 	"github.com/chihaya/chihaya/config"
 
 	_ "github.com/chihaya/chihaya/drivers/backend/noop"
@@ -46,4 +48,29 @@ func announce(p params, srv *httptest.Server) ([]byte, error) {
 	body, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
 	return body, err
+}
+
+type peerList bencode.List
+
+func (p peerList) Len() int {
+	return len(p)
+}
+
+func (p peerList) Less(i, j int) bool {
+	if peer1, ok := p[i].(bencode.Dict); ok {
+		if peer2, ok := p[j].(bencode.Dict); ok {
+			return peer1["peer id"].(string) < peer2["peer id"].(string)
+		}
+	}
+	return false
+}
+
+func (p peerList) Swap(i, j int) {
+	p[i], p[j] = p[j], p[i]
+}
+
+func sortPeersInResponse(dict bencode.Dict) {
+	if peers, ok := dict["peers"].(bencode.List); ok {
+		sort.Stable(peerList(peers))
+	}
 }

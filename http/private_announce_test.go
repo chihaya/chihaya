@@ -5,7 +5,6 @@
 package http
 
 import (
-	"net"
 	"testing"
 
 	"github.com/chihaya/bencode"
@@ -51,30 +50,7 @@ func loadTestData(tkr *Tracker) error {
 		Leechers: make(map[string]models.Peer),
 	}
 
-	err = conn.PutTorrent(torrent)
-	if err != nil {
-		return err
-	}
-
-	peer := &models.Peer{
-		ID:        "-TR2820-peer1",
-		UserID:    1,
-		TorrentID: torrent.ID,
-		IP:        net.ParseIP("127.0.0.1"),
-		Port:      1234,
-		Left:      0,
-	}
-
-	err = conn.PutLeecher(torrent.Infohash, peer)
-	if err != nil {
-		return err
-	}
-
-	peer = &*peer
-	peer.ID = "-TR2820-peer3"
-	peer.UserID = 3
-
-	return conn.PutLeecher(torrent.Infohash, peer)
+	return conn.PutTorrent(torrent)
 }
 
 func TestPrivateAnnounce(t *testing.T) {
@@ -95,14 +71,34 @@ func TestPrivateAnnounce(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	srv.URL = srv.URL + "/users/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv2"
 	defer srv.Close()
+	baseURL := srv.URL
 
-	peer := makePeerParams("-TR2820-peer2", true)
-	expected := makeResponse(1, 2, bencode.List{
+	peer := makePeerParams("-TR2820-peer1", false)
+	expected := makeResponse(0, 1, bencode.List{})
+	srv.URL = baseURL + "/users/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv1"
+	checkAnnounce(peer, expected, srv, t)
+
+	peer = makePeerParams("-TR2820-peer2", false)
+	expected = makeResponse(0, 2, bencode.List{
 		makePeerResponse("-TR2820-peer1"),
+	})
+	srv.URL = baseURL + "/users/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv2"
+	checkAnnounce(peer, expected, srv, t)
+
+	peer = makePeerParams("-TR2820-peer3", true)
+	expected = makeResponse(1, 2, bencode.List{
+		makePeerResponse("-TR2820-peer1"),
+		makePeerResponse("-TR2820-peer2"),
+	})
+	srv.URL = baseURL + "/users/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv3"
+	checkAnnounce(peer, expected, srv, t)
+
+	peer = makePeerParams("-TR2820-peer1", false)
+	expected = makeResponse(1, 2, bencode.List{
+		makePeerResponse("-TR2820-peer2"),
 		makePeerResponse("-TR2820-peer3"),
 	})
+	srv.URL = baseURL + "/users/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv1"
 	checkAnnounce(peer, expected, srv, t)
 }
