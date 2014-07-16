@@ -48,18 +48,21 @@ type ResponseHandler func(http.ResponseWriter, *http.Request, httprouter.Params)
 func makeHandler(handler ResponseHandler) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 		start := time.Now()
-		code, err := handler(w, r, p)
+
+		httpCode, err := handler(w, r, p)
 		if err != nil {
-			http.Error(w, err.Error(), code)
+			http.Error(w, err.Error(), httpCode)
 		}
 
-		glog.Infof(
-			"Completed %v %s %s in %v",
-			code,
-			http.StatusText(code),
-			r.URL.Path,
-			time.Since(start),
-		)
+		if glog.V(2) {
+			glog.Infof(
+				"Completed %v %s %s in %v",
+				httpCode,
+				http.StatusText(httpCode),
+				r.URL.Path,
+				time.Since(start),
+			)
+		}
 	}
 }
 
@@ -96,6 +99,7 @@ func Serve(cfg *config.Config) {
 		glog.Fatal("New: ", err)
 	}
 
+	glog.V(0).Info("Starting on ", cfg.Addr)
 	graceful.Run(cfg.Addr, cfg.RequestTimeout.Duration, NewRouter(t, cfg))
 }
 

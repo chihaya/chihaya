@@ -38,36 +38,36 @@ func Boot() {
 	flag.Parse()
 
 	runtime.GOMAXPROCS(maxprocs)
-	glog.Info("set max threads to ", maxprocs)
+	glog.V(1).Info("Set max threads to ", maxprocs)
 
 	if profile != "" {
 		f, err := os.Create(profile)
 		if err != nil {
-			glog.Fatalf("failed to create profile file: %s\n", err)
+			glog.Fatalf("Failed to create profile file: %s\n", err)
 		}
 		defer f.Close()
 
 		pprof.StartCPUProfile(f)
-		glog.Info("started profiling")
+		glog.Info("Started profiling")
 
 		defer func() {
 			pprof.StopCPUProfile()
-			glog.Info("stopped profiling")
+			glog.Info("Stopped profiling")
 		}()
 	}
 
 	cfg, err := config.Open(configPath)
 	if err != nil {
-		glog.Fatalf("failed to parse configuration file: %s\n", err)
+		glog.Fatalf("Failed to parse configuration file: %s\n", err)
 	}
 	if cfg == &config.DefaultConfig {
-		glog.Info("using default config")
+		glog.V(1).Info("Using default config")
 	} else {
-		glog.Infof("loaded config file: %s", configPath)
+		glog.V(1).Infof("Loaded config file: %s", configPath)
 	}
 
 	http.Serve(cfg)
-	glog.Info("gracefully shutdown")
+	glog.Info("Gracefully shut down")
 }
 
 func main() {
