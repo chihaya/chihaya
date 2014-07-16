@@ -30,11 +30,10 @@ func init() {
 	flag.StringVar(&configPath, "config", "", "Provide the filesystem path of a valid configuration file.")
 }
 
-func main() {
+func Boot() {
 	defer glog.Flush()
 
 	flag.Parse()
-	glog.Info("parsed flags")
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	glog.Info("set gomaxprocs to ", runtime.NumCPU())
@@ -67,4 +66,8 @@ func main() {
 
 	http.Serve(cfg)
 	glog.Info("gracefully shutdown")
+}
+
+func main() {
+	Boot()
 }
