@@ -62,7 +62,7 @@ func makeHandler(handler ResponseHandler) httprouter.Handle {
 	}
 }
 
-func setupRoutes(t *Tracker, cfg *config.Config) *httprouter.Router {
+func NewRouter(t *Tracker, cfg *config.Config) *httprouter.Router {
 	r := httprouter.New()
 
 	if cfg.Private {
@@ -94,7 +94,7 @@ func Serve(cfg *config.Config) {
 		glog.Fatal("New: ", err)
 	}
 
-	graceful.Run(cfg.Addr, cfg.RequestTimeout.Duration, setupRoutes(t, cfg))
+	graceful.Run(cfg.Addr, cfg.RequestTimeout.Duration, NewRouter(t, cfg))
 }
 
 func fail(w http.ResponseWriter, r *http.Request, err error) {
