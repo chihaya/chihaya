@@ -84,6 +84,7 @@ func NewRouter(t *Tracker, cfg *config.Config) *httprouter.Router {
 	r.GET("/torrents/:infohash", makeHandler(t.getTorrent))
 	r.PUT("/torrents/:infohash", makeHandler(t.putTorrent))
 	r.DELETE("/torrents/:infohash", makeHandler(t.delTorrent))
+	r.GET("/check", makeHandler(t.check))
 
 	return r
 }
