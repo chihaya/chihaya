@@ -104,13 +104,7 @@ func (t *Tracker) ServeAnnounce(w http.ResponseWriter, r *http.Request, p httpro
 }
 
 func updateTorrent(c tracker.Conn, a *models.Announce, p *models.Peer, t *models.Torrent) (created bool, err error) {
-	if !t.Active && a.Left == 0 {
-		err = c.MarkActive(t.Infohash)
-		if err != nil {
-			return
-		}
-		t.Active = true
-	}
+	c.TouchTorrent(t.Infohash)
 
 	switch {
 	case t.InSeederPool(p):

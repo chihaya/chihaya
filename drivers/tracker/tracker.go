@@ -74,7 +74,7 @@ type Conn interface {
 	PutTorrent(t *models.Torrent) error
 	DeleteTorrent(infohash string) error
 	IncrementSnatches(infohash string) error
-	MarkActive(infohash string) error
+	TouchTorrent(infohash string) error
 	PutLeecher(infohash string, p *models.Peer) error
 	DeleteLeecher(infohash, peerkey string) error
 	PutSeeder(infohash string, p *models.Peer) error

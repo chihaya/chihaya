@@ -5,6 +5,8 @@
 package memory
 
 import (
+	"time"
+
 	"github.com/chihaya/chihaya/drivers/tracker"
 	"github.com/chihaya/chihaya/models"
 )
@@ -60,7 +62,7 @@ func (c *Conn) IncrementSnatches(infohash string) error {
 	return nil
 }
 
-func (c *Conn) MarkActive(infohash string) error {
+func (c *Conn) TouchTorrent(infohash string) error {
 	c.torrentsM.Lock()
 	defer c.torrentsM.Unlock()
 
@@ -68,7 +70,7 @@ func (c *Conn) MarkActive(infohash string) error {
 	if !ok {
 		return tracker.ErrTorrentDNE
 	}
-	t.Active = true
+	t.LastAction = time.Now().Unix()
 
 	return nil
 }

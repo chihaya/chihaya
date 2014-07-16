@@ -81,7 +81,6 @@ func (p Peer) Key() string {
 type Torrent struct {
 	ID       uint64 `json:"id"`
 	Infohash string `json:"infohash"`
-	Active   bool   `json:"active"`
 
 	Seeders  map[string]Peer `json:"seeders"`
 	Leechers map[string]Peer `json:"leechers"`
