@@ -57,12 +57,7 @@ func (p peerList) Len() int {
 }
 
 func (p peerList) Less(i, j int) bool {
-	if peer1, ok := p[i].(bencode.Dict); ok {
-		if peer2, ok := p[j].(bencode.Dict); ok {
-			return peer1["peer id"].(string) < peer2["peer id"].(string)
-		}
-	}
-	return false
+	return p[i].(bencode.Dict)["peer id"].(string) < p[j].(bencode.Dict)["peer id"].(string)
 }
 
 func (p peerList) Swap(i, j int) {
