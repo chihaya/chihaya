@@ -171,6 +171,22 @@ func (c *Conn) DeleteTorrent(infohash string) error {
 	return nil
 }
 
+func (c *Conn) PurgeInactiveTorrent(infohash string) error {
+	c.torrentsM.Lock()
+	defer c.torrentsM.Unlock()
+
+	torrent, exists := c.torrents[infohash]
+	if !exists {
+		return tracker.ErrTorrentDNE
+	}
+
+	if torrent.PeerCount() == 0 {
+		delete(c.torrents, infohash)
+	}
+
+	return nil
+}
+
 func (c *Conn) PutUser(u *models.User) error {
 	c.usersM.Lock()
 	defer c.usersM.Unlock()
@@ -207,23 +223,3 @@ func (c *Conn) DeleteClient(peerID string) error {
 	return nil
 }
 
-func (c *Conn) PurgeInactiveTorrents(before time.Time) error {
-	unixtime := before.Unix()
-	var queue []string
-
-	c.torrentsM.RLock()
-	for key, torrent := range c.torrents {
-		if torrent.LastAction < unixtime && torrent.PeerCount() == 0 {
-			queue = append(queue, key)
-		}
-	}
-	c.torrentsM.RUnlock()
-
-	c.torrentsM.Lock()
-	for _, key := range queue {
-		delete(c.torrents, key)
-	}
-	c.torrentsM.Unlock()
-
-	return nil
-}
