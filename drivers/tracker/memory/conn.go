@@ -213,7 +213,7 @@ func (c *Conn) PurgeInactiveTorrents(before time.Time) error {
 
 	c.torrentsM.RLock()
 	for key, torrent := range c.torrents {
-		if torrent.LastAction < unixtime {
+		if torrent.LastAction < unixtime && torrent.PeerCount() == 0 {
 			queue = append(queue, key)
 		}
 	}

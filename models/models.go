@@ -103,6 +103,10 @@ func (t *Torrent) InLeecherPool(p *Peer) (exists bool) {
 	return
 }
 
+func (t *Torrent) PeerCount() int {
+	return len(t.Seeders) + len(t.Leechers)
+}
+
 // User is a registered user for private trackers.
 type User struct {
 	ID      uint64 `json:"id"`

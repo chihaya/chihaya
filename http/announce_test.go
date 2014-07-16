@@ -78,7 +78,15 @@ func TestTorrentPurging(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if status != http.StatusOK {
+		t.Fatalf("expected torrent to exist (got %s)", http.StatusText(status))
+	}
 
+	time.Sleep(1010 * time.Millisecond)
+	_, status, err = fetchPath(torrentApiPath)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if status != http.StatusOK {
 		t.Fatalf("expected torrent to exist (got %s)", http.StatusText(status))
 	}
@@ -88,13 +96,12 @@ func TestTorrentPurging(t *testing.T) {
 	peer["event"] = "stopped"
 	announce(peer, srv)
 
-	time.Sleep(1000 * time.Millisecond)
+	time.Sleep(1010 * time.Millisecond)
 
 	_, status, err = fetchPath(torrentApiPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	if status != http.StatusNotFound {
 		t.Fatalf("expected torrent to have been purged (got %s)", http.StatusText(status))
 	}
