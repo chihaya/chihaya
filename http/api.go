@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 
 	"github.com/julienschmidt/httprouter"
 
@@ -30,7 +31,12 @@ func (t *Tracker) getTorrent(w http.ResponseWriter, r *http.Request, p httproute
 		return http.StatusInternalServerError, err
 	}
 
-	torrent, err := conn.FindTorrent(p.ByName("infohash"))
+	infohash, err := url.QueryUnescape(p.ByName("infohash"))
+	if err != nil {
+		return http.StatusNotFound, err
+	}
+
+	torrent, err := conn.FindTorrent(infohash)
 	if err == tracker.ErrTorrentDNE {
 		return http.StatusNotFound, err
 	} else if err != nil {
@@ -77,7 +83,12 @@ func (t *Tracker) delTorrent(w http.ResponseWriter, r *http.Request, p httproute
 		return http.StatusInternalServerError, err
 	}
 
-	err = conn.DeleteTorrent(p.ByName("infohash"))
+	infohash, err := url.QueryUnescape(p.ByName("infohash"))
+	if err != nil {
+		return http.StatusNotFound, err
+	}
+
+	err = conn.DeleteTorrent(infohash)
 	if err == tracker.ErrTorrentDNE {
 		return http.StatusNotFound, err
 	} else if err != nil {
