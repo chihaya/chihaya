@@ -30,7 +30,7 @@ func (t *Tracker) ServeAnnounce(w http.ResponseWriter, r *http.Request, p httpro
 	}
 
 	if t.cfg.Whitelist {
-		err = conn.FindClient(ann.ClientID())
+		err = conn.(tracker.PrivateConn).FindClient(ann.ClientID())
 		if err == tracker.ErrClientUnapproved {
 			fail(w, r, err)
 			return http.StatusOK, nil
@@ -41,7 +41,7 @@ func (t *Tracker) ServeAnnounce(w http.ResponseWriter, r *http.Request, p httpro
 
 	var user *models.User
 	if t.cfg.Private {
-		user, err = conn.FindUser(ann.Passkey)
+		user, err = conn.(tracker.PrivateConn).FindUser(ann.Passkey)
 		if err == tracker.ErrUserDNE {
 			fail(w, r, err)
 			return http.StatusOK, nil

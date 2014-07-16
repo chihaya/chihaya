@@ -9,6 +9,7 @@ import (
 
 	"github.com/chihaya/bencode"
 	"github.com/chihaya/chihaya/config"
+	"github.com/chihaya/chihaya/drivers/tracker"
 	"github.com/chihaya/chihaya/models"
 )
 
@@ -75,7 +76,7 @@ func loadTestData(tkr *Tracker) error {
 	}
 
 	for i, passkey := range users {
-		err = conn.PutUser(&models.User{
+		err = conn.(tracker.PrivateConn).PutUser(&models.User{
 			ID:      uint64(i + 1),
 			Passkey: passkey,
 		})
@@ -85,7 +86,7 @@ func loadTestData(tkr *Tracker) error {
 		}
 	}
 
-	err = conn.PutClient("TR2820")
+	err = conn.(tracker.PrivateConn).PutClient("TR2820")
 	if err != nil {
 		return err
 	}
