@@ -14,89 +14,73 @@ import (
 
 	"github.com/chihaya/bencode"
 	"github.com/chihaya/chihaya/config"
-	"github.com/chihaya/chihaya/drivers/backend"
-	"github.com/chihaya/chihaya/drivers/tracker"
 	"github.com/chihaya/chihaya/models"
 
 	_ "github.com/chihaya/chihaya/drivers/backend/noop"
 	_ "github.com/chihaya/chihaya/drivers/tracker/memory"
 )
 
-type primer func(tracker.Pool, backend.Conn) error
-
-func (t *Tracker) prime(p primer) error {
-	return p(t.tp, t.bc)
-}
-
 func loadTestData(tkr *Tracker) (err error) {
-	return tkr.prime(func(tp tracker.Pool, bc backend.Conn) (err error) {
-		conn, err := tp.Get()
-		if err != nil {
-			return
-		}
-
-		err = conn.PutUser(&models.User{
-			ID:      1,
-			Passkey: "yby47f04riwpndba456rqxtmifenqxx1",
-		})
-		if err != nil {
-			return
-		}
-		err = conn.PutUser(&models.User{
-			ID:      2,
-			Passkey: "yby47f04riwpndba456rqxtmifenqxx2",
-		})
-		if err != nil {
-			return
-		}
-		err = conn.PutUser(&models.User{
-			ID:      3,
-			Passkey: "yby47f04riwpndba456rqxtmifenqxx3",
-		})
-		if err != nil {
-			return
-		}
-
-		err = conn.PutClient("TR2820")
-		if err != nil {
-			return
-		}
-
-		torrent := &models.Torrent{
-			ID:       1,
-			Infohash: string([]byte{0x89, 0xd4, 0xbc, 0x52, 0x11, 0x16, 0xca, 0x1d, 0x42, 0xa2, 0xf3, 0x0d, 0x1f, 0x27, 0x4d, 0x94, 0xe4, 0x68, 0x1d, 0xaf}),
-			Seeders:  make(map[string]models.Peer),
-			Leechers: make(map[string]models.Peer),
-		}
-
-		err = conn.PutTorrent(torrent)
-		if err != nil {
-			return
-		}
-
-		err = conn.PutLeecher(torrent.Infohash, &models.Peer{
-			ID:        "-TR2820-l71jtqkl8xx1",
-			UserID:    1,
-			TorrentID: torrent.ID,
-			IP:        net.ParseIP("127.0.0.1"),
-			Port:      34000,
-			Left:      0,
-		})
-		if err != nil {
-			return
-		}
-
-		err = conn.PutLeecher(torrent.Infohash, &models.Peer{
-			ID:        "-TR2820-l71jtqkl8xx3",
-			UserID:    3,
-			TorrentID: torrent.ID,
-			IP:        net.ParseIP("2001::53aa:64c:0:7f83:bc43:dec9"),
-			Port:      34000,
-			Left:      0,
-		})
-
+	conn, err := tkr.tp.Get()
+	if err != nil {
 		return
+	}
+
+	users := []string{
+		"yby47f04riwpndba456rqxtmifenqxx1",
+		"yby47f04riwpndba456rqxtmifenqxx2",
+		"yby47f04riwpndba456rqxtmifenqxx3",
+	}
+
+	for i, passkey := range users {
+		err = conn.PutUser(&models.User{
+			ID:      uint64(i + 1),
+			Passkey: passkey,
+		})
+
+		if err != nil {
+			return
+		}
+	}
+
+	err = conn.PutClient("TR2820")
+	if err != nil {
+		return
+	}
+
+	torrent := &models.Torrent{
+		ID:       1,
+		Infohash: string([]byte{0x89, 0xd4, 0xbc, 0x52, 0x11, 0x16, 0xca, 0x1d, 0x42, 0xa2, 0xf3, 0x0d, 0x1f, 0x27, 0x4d, 0x94, 0xe4, 0x68, 0x1d, 0xaf}),
+		Seeders:  make(map[string]models.Peer),
+		Leechers: make(map[string]models.Peer),
+	}
+
+	err = conn.PutTorrent(torrent)
+	if err != nil {
+		return
+	}
+
+	err = conn.PutLeecher(torrent.Infohash, &models.Peer{
+		ID:        "-TR2820-l71jtqkl8xx1",
+		UserID:    1,
+		TorrentID: torrent.ID,
+		IP:        net.ParseIP("127.0.0.1"),
+		Port:      34000,
+		Left:      0,
 	})
+	if err != nil {
+		return
+	}
+
+	err = conn.PutLeecher(torrent.Infohash, &models.Peer{
+		ID:        "-TR2820-l71jtqkl8xx3",
+		UserID:    3,
+		TorrentID: torrent.ID,
+		IP:        net.ParseIP("2001::53aa:64c:0:7f83:bc43:dec9"),
+		Port:      34000,
+		Left:      0,
+	})
+	return
 }
 
 func testRoute(cfg *config.Config, url string) ([]byte, error) {
