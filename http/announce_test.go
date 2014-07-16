@@ -80,7 +80,7 @@ func TestTorrentPurging(t *testing.T) {
 	}
 
 	if status != http.StatusOK {
-		t.Fatal("expected torrent to exist (got %s)", http.StatusText(status))
+		t.Fatalf("expected torrent to exist (got %s)", http.StatusText(status))
 	}
 
 	// Remove seeder.

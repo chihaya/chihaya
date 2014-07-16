@@ -26,7 +26,7 @@ func purgeTorrents(p Pool, threshold time.Duration, interval time.Duration) {
 
 		err = conn.PurgeInactiveTorrents(before)
 		if err != nil {
-			glog.Errorf("Error purging torrents: ", err)
+			glog.Errorf("Error purging torrents: %s", err)
 		}
 	}
 }
