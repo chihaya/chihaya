@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"reflect"
 	"testing"
 
@@ -48,9 +49,14 @@ func loadTestData(tkr *Tracker) (err error) {
 		return
 	}
 
+	hash, err := url.QueryUnescape(infoHash)
+	if err != nil {
+		return
+	}
+
 	torrent := &models.Torrent{
 		ID:       1,
-		Infohash: string([]byte{0x89, 0xd4, 0xbc, 0x52, 0x11, 0x16, 0xca, 0x1d, 0x42, 0xa2, 0xf3, 0x0d, 0x1f, 0x27, 0x4d, 0x94, 0xe4, 0x68, 0x1d, 0xaf}),
+		Infohash: hash,
 		Seeders:  make(map[string]models.Peer),
 		Leechers: make(map[string]models.Peer),
 	}
@@ -83,7 +89,7 @@ func loadTestData(tkr *Tracker) (err error) {
 	return
 }
 
-func testRoute(cfg *config.Config, url string) ([]byte, error) {
+func testRoute(cfg *config.Config, path string) ([]byte, error) {
 	tkr, err := NewTracker(cfg)
 	if err != nil {
 		return nil, err
@@ -97,7 +103,7 @@ func testRoute(cfg *config.Config, url string) ([]byte, error) {
 	srv := httptest.NewServer(setupRoutes(tkr, cfg))
 	defer srv.Close()
 
-	resp, err := http.Get(srv.URL + url)
+	resp, err := http.Get(srv.URL + path)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +121,7 @@ func TestPrivateAnnounce(t *testing.T) {
 	cfg := config.DefaultConfig
 	cfg.Private = true
 
-	url := "/users/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv2/announce?info_hash=%89%d4%bcR%11%16%ca%1dB%a2%f3%0d%1f%27M%94%e4h%1d%af&peer_id=-TR2820-vvvvvvvvvvv2&port=51413&uploaded=0&downloaded=0&left=0&numwant=1&key=3c8e3319&compact=0"
+	path := "/users/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv2/announce?info_hash=%89%d4%bcR%11%16%ca%1dB%a2%f3%0d%1f%27M%94%e4h%1d%af&peer_id=-TR2820-vvvvvvvvvvv2&port=51413&uploaded=0&downloaded=0&left=0&numwant=1&key=3c8e3319&compact=0"
 
 	expected := bencode.Dict{
 		"complete":     int64(1),
@@ -131,7 +137,7 @@ func TestPrivateAnnounce(t *testing.T) {
 		},
 	}
 
-	response, err := testRoute(&cfg, url)
+	response, err := testRoute(&cfg, path)
 	if err != nil {
 		t.Error(err)
 	}
@@ -141,7 +147,7 @@ func TestPrivateAnnounce(t *testing.T) {
 		t.Errorf("\ngot:    %#v\nwanted: %#v", got, expected)
 	}
 
-	url = "/users/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv2/announce?info_hash=%89%d4%bcR%11%16%ca%1dB%a2%f3%0d%1f%27M%94%e4h%1d%af&peer_id=-TR2820-vvvvvvvvvvv2&port=51413&uploaded=0&downloaded=0&left=0&numwant=2&key=3c8e3319&compact=0"
+	path = "/users/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv2/announce?info_hash=%89%d4%bcR%11%16%ca%1dB%a2%f3%0d%1f%27M%94%e4h%1d%af&peer_id=-TR2820-vvvvvvvvvvv2&port=51413&uploaded=0&downloaded=0&left=0&numwant=2&key=3c8e3319&compact=0"
 
 	expected = bencode.Dict{
 		"complete":     int64(1),
@@ -162,7 +168,7 @@ func TestPrivateAnnounce(t *testing.T) {
 		},
 	}
 
-	response, err = testRoute(&cfg, url)
+	response, err = testRoute(&cfg, path)
 	if err != nil {
 		t.Error(err)
 	}
