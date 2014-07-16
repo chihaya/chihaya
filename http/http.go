@@ -31,6 +31,11 @@ func NewTracker(cfg *config.Config) (*Tracker, error) {
 		return nil, err
 	}
 
+	err = tracker.StartPurgingRoutines(tp, &cfg.Tracker)
+	if err != nil {
+		return nil, err
+	}
+
 	bc, err := backend.Open(&cfg.Backend)
 	if err != nil {
 		return nil, err

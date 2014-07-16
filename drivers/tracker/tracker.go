@@ -9,6 +9,7 @@ package tracker
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/models"
@@ -79,6 +80,7 @@ type Conn interface {
 	DeleteLeecher(infohash, peerkey string) error
 	PutSeeder(infohash string, p *models.Peer) error
 	DeleteSeeder(infohash, peerkey string) error
+	PurgeInactiveTorrents(before time.Time) error
 
 	// User interactions
 	FindUser(passkey string) (*models.User, error)

@@ -206,3 +206,24 @@ func (c *Conn) DeleteClient(peerID string) error {
 
 	return nil
 }
+
+func (c *Conn) PurgeInactiveTorrents(before time.Time) error {
+	unix := before.Unix()
+	var queue []string
+
+	c.torrentsM.RLock()
+	for key, torrent := range c.torrents {
+		if torrent.LastAction < unix {
+			queue = append(queue, key)
+		}
+	}
+	c.torrentsM.RUnlock()
+
+	c.torrentsM.Lock()
+	for _, key := range queue {
+		delete(c.torrents, key)
+	}
+	c.torrentsM.Unlock()
+
+	return nil
+}
