@@ -16,6 +16,8 @@ import (
 	"github.com/chihaya/chihaya/models"
 )
 
+const jsonContentType = "application/json; charset=UTF-8"
+
 func (t *Tracker) check(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
 	_, err := w.Write([]byte("An easter egg goes here."))
 	if err != nil {
@@ -43,7 +45,7 @@ func (t *Tracker) getTorrent(w http.ResponseWriter, r *http.Request, p httproute
 		return http.StatusInternalServerError, err
 	}
 
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Header().Set("Content-Type", jsonContentType)
 	e := json.NewEncoder(w)
 	err = e.Encode(torrent)
 	if err != nil {
@@ -112,7 +114,7 @@ func (t *Tracker) getUser(w http.ResponseWriter, r *http.Request, p httprouter.P
 		return http.StatusInternalServerError, err
 	}
 
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.Header().Set("Content-Type", jsonContentType)
 	e := json.NewEncoder(w)
 	err = e.Encode(user)
 	if err != nil {
