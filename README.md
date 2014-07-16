@@ -61,8 +61,25 @@ Backend:
 * noop (for public trackers)
 * [gazelle (mysql)](https://github.com/chihaya/chihaya-gazelle)
 
-[implement a new driver]: https://github.com/chihaya/chihaya/wiki/Implementing-a-driver
+To use an external driver, make your own package and call it something like `github.com/yourusername/chihaya`. Then, import Chihaya like so:
 
+```go
+package chihaya // This is your own chihaya package.
+
+import (
+	c "github.com/chihaya/chihaya" // Use an alternate name to avoid the conflict.
+
+	_ "github.com/yourusername/chihaya-custom-backend" // Import any of your own drivers.
+)
+
+func main() {
+	c.Boot() // Start Chihaya normally.
+}
+```
+
+Then, when you do `go install github.com/yourusername/chihaya`, your own drivers will be included in the binary.
+
+[implement a new driver]: https://github.com/chihaya/chihaya/wiki/Implementing-a-driver
 
 ## Contributing
 
