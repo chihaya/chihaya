@@ -12,8 +12,8 @@ import (
 	"github.com/chihaya/chihaya/config"
 )
 
-func purgeTorrents(p Pool, threshold time.Duration) {
-	for _ = range time.NewTicker(time.Minute).C {
+func purgeTorrents(p Pool, threshold time.Duration, interval time.Duration) {
+	for _ = range time.NewTicker(interval).C {
 		before := time.Now().Add(-threshold)
 		glog.V(0).Infof("Purging torrents before %s", before)
 
@@ -32,13 +32,22 @@ func purgeTorrents(p Pool, threshold time.Duration) {
 }
 
 func StartPurgingRoutines(p Pool, cfg *config.DriverConfig) error {
-	if interval := cfg.Params["purge_after"]; interval != "" {
-		threshold, err := time.ParseDuration(interval)
+	if purgeThreshold := cfg.Params["purge_inactive"]; purgeThreshold != "" {
+		threshold, err := time.ParseDuration(purgeThreshold)
 		if err != nil {
 			return err
 		}
 
-		go purgeTorrents(p, threshold)
+		interval := time.Minute
+
+		if purgeInterval := cfg.Params["purge_interval"]; purgeInterval != "" {
+			interval, err = time.ParseDuration(purgeInterval)
+			if err != nil {
+				return err
+			}
+		}
+
+		go purgeTorrents(p, threshold, interval)
 	}
 	return nil
 }
