@@ -5,12 +5,7 @@
 package http
 
 import (
-	"io/ioutil"
 	"net"
-	"net/http"
-	"net/http/httptest"
-	"net/url"
-	"reflect"
 	"testing"
 
 	"github.com/chihaya/bencode"
@@ -21,10 +16,10 @@ import (
 	_ "github.com/chihaya/chihaya/drivers/tracker/memory"
 )
 
-func loadTestData(tkr *Tracker) (err error) {
+func loadTestData(tkr *Tracker) error {
 	conn, err := tkr.tp.Get()
 	if err != nil {
-		return
+		return err
 	}
 
 	users := []string{
@@ -40,141 +35,74 @@ func loadTestData(tkr *Tracker) (err error) {
 		})
 
 		if err != nil {
-			return
+			return err
 		}
 	}
 
 	err = conn.PutClient("TR2820")
 	if err != nil {
-		return
-	}
-
-	hash, err := url.QueryUnescape(infoHash)
-	if err != nil {
-		return
+		return err
 	}
 
 	torrent := &models.Torrent{
 		ID:       1,
-		Infohash: hash,
+		Infohash: infoHash,
 		Seeders:  make(map[string]models.Peer),
 		Leechers: make(map[string]models.Peer),
 	}
 
 	err = conn.PutTorrent(torrent)
 	if err != nil {
-		return
+		return err
 	}
 
-	err = conn.PutLeecher(torrent.Infohash, &models.Peer{
-		ID:        "-TR2820-vvvvvvvvvvv1",
+	peer := &models.Peer{
+		ID:        "-TR2820-peer1",
 		UserID:    1,
 		TorrentID: torrent.ID,
 		IP:        net.ParseIP("127.0.0.1"),
-		Port:      34000,
+		Port:      1234,
 		Left:      0,
-	})
-	if err != nil {
-		return
 	}
 
-	err = conn.PutLeecher(torrent.Infohash, &models.Peer{
-		ID:        "-TR2820-vvvvvvvvvvv3",
-		UserID:    3,
-		TorrentID: torrent.ID,
-		IP:        net.ParseIP("::1"),
-		Port:      34000,
-		Left:      0,
-	})
-	return
-}
-
-func testRoute(cfg *config.Config, path string) ([]byte, error) {
-	tkr, err := NewTracker(cfg)
+	err = conn.PutLeecher(torrent.Infohash, peer)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	err = loadTestData(tkr)
-	if err != nil {
-		return nil, err
-	}
+	peer = &*peer
+	peer.ID = "-TR2820-peer3"
+	peer.UserID = 3
 
-	srv := httptest.NewServer(setupRoutes(tkr, cfg))
-	defer srv.Close()
-
-	resp, err := http.Get(srv.URL + path)
-	if err != nil {
-		return nil, err
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
-	if err != nil {
-		return nil, err
-	}
-
-	return body, nil
+	return conn.PutLeecher(torrent.Infohash, peer)
 }
 
 func TestPrivateAnnounce(t *testing.T) {
 	cfg := config.DefaultConfig
 	cfg.Private = true
 
-	path := "/users/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv2/announce?info_hash=%89%d4%bcR%11%16%ca%1dB%a2%f3%0d%1f%27M%94%e4h%1d%af&peer_id=-TR2820-vvvvvvvvvvv2&port=51413&uploaded=0&downloaded=0&left=0&numwant=1&key=3c8e3319&compact=0"
-
-	expected := bencode.Dict{
-		"complete":     int64(1),
-		"incomplete":   int64(2),
-		"interval":     int64(1800),
-		"min interval": int64(900),
-		"peers": bencode.List{
-			bencode.Dict{
-				"ip":      "127.0.0.1",
-				"peer id": "-TR2820-vvvvvvvvvvv1",
-				"port":    int64(34000),
-			},
-		},
-	}
-
-	response, err := testRoute(&cfg, path)
+	tkr, err := NewTracker(&cfg)
 	if err != nil {
-		t.Error(err)
-	}
-	got, err := bencode.Unmarshal(response)
-
-	if !reflect.DeepEqual(got, expected) {
-		t.Errorf("\ngot:    %#v\nwanted: %#v", got, expected)
+		t.Fatal(err)
 	}
 
-	path = "/users/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv2/announce?info_hash=%89%d4%bcR%11%16%ca%1dB%a2%f3%0d%1f%27M%94%e4h%1d%af&peer_id=-TR2820-vvvvvvvvvvv2&port=51413&uploaded=0&downloaded=0&left=0&numwant=2&key=3c8e3319&compact=0"
-
-	expected = bencode.Dict{
-		"complete":     int64(1),
-		"incomplete":   int64(2),
-		"interval":     int64(1800),
-		"min interval": int64(900),
-		"peers": bencode.List{
-			bencode.Dict{
-				"ip":      "127.0.0.1",
-				"peer id": "-TR2820-vvvvvvvvvvv1",
-				"port":    int64(34000),
-			},
-			bencode.Dict{
-				"ip":      "::1",
-				"peer id": "-TR2820-vvvvvvvvvvv3",
-				"port":    int64(34000),
-			},
-		},
-	}
-
-	response, err = testRoute(&cfg, path)
+	err = loadTestData(tkr)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
-	got, err = bencode.Unmarshal(response)
 
-	if !reflect.DeepEqual(got, expected) {
-		t.Errorf("\ngot:    %#v\nwanted: %#v", got, expected)
+	srv, err := createServer(tkr, &cfg)
+	if err != nil {
+		t.Fatal(err)
 	}
+
+	srv.URL = srv.URL + "/users/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv2"
+	defer srv.Close()
+
+	peer := makePeerParams("-TR2820-peer2", true)
+	expected := makeResponse(1, 2, bencode.List{
+		makePeerResponse("-TR2820-peer1"),
+		makePeerResponse("-TR2820-peer3"),
+	})
+	checkAnnounce(peer, expected, srv, t)
 }

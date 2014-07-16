@@ -17,7 +17,10 @@ import (
 )
 
 func TestPublicScrape(t *testing.T) {
-	srv, _ := setupTracker(&config.DefaultConfig)
+	srv, err := setupTracker(&config.DefaultConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer srv.Close()
 
 	scrapeParams := params{

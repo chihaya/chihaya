@@ -14,7 +14,10 @@ import (
 )
 
 func TestPublicAnnounce(t *testing.T) {
-	srv, _ := setupTracker(&config.DefaultConfig)
+	srv, err := setupTracker(&config.DefaultConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer srv.Close()
 
 	// Add one seeder.
