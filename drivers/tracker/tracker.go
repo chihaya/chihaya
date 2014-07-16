@@ -69,6 +69,7 @@ type Pool interface {
 // Conn represents a connection to the data store that can be used
 // to make reads/writes.
 type Conn interface {
+	// Torrent interactions
 	FindTorrent(infohash string) (*models.Torrent, error)
 	PutTorrent(t *models.Torrent) error
 	DeleteTorrent(infohash string) error
@@ -78,14 +79,13 @@ type Conn interface {
 	DeleteLeecher(infohash, peerkey string) error
 	PutSeeder(infohash string, p *models.Peer) error
 	DeleteSeeder(infohash, peerkey string) error
-}
 
-// PrivateConn represents a connection that can service queries for private trackers.
-type PrivateConn interface {
+	// User interactions
 	FindUser(passkey string) (*models.User, error)
 	PutUser(u *models.User) error
 	DeleteUser(passkey string) error
 
+	// Whitelist interactions
 	FindClient(clientID string) error
 	PutClient(clientID string) error
 	DeleteClient(clientID string) error

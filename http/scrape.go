@@ -29,7 +29,7 @@ func (t *Tracker) ServeScrape(w http.ResponseWriter, r *http.Request, p httprout
 	}
 
 	if t.cfg.Private {
-		_, err = conn.(tracker.PrivateConn).FindUser(scrape.Passkey)
+		_, err = conn.FindUser(scrape.Passkey)
 		if err == tracker.ErrUserDNE {
 			fail(w, r, err)
 			return http.StatusOK, nil

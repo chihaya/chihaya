@@ -102,14 +102,9 @@ func (t *Tracker) delTorrent(w http.ResponseWriter, r *http.Request, p httproute
 }
 
 func (t *Tracker) getUser(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	base, err := t.pool.Get()
+	conn, err := t.pool.Get()
 	if err != nil {
 		return http.StatusInternalServerError, err
-	}
-
-	conn, private := base.(tracker.PrivateConn)
-	if !private {
-		return http.StatusNotFound, nil
 	}
 
 	user, err := conn.FindUser(p.ByName("passkey"))
@@ -141,14 +136,9 @@ func (t *Tracker) putUser(w http.ResponseWriter, r *http.Request, p httprouter.P
 		return http.StatusBadRequest, err
 	}
 
-	base, err := t.pool.Get()
+	conn, err := t.pool.Get()
 	if err != nil {
 		return http.StatusInternalServerError, err
-	}
-
-	conn, private := base.(tracker.PrivateConn)
-	if !private {
-		return http.StatusNotFound, nil
 	}
 
 	err = conn.PutUser(&user)
@@ -160,14 +150,9 @@ func (t *Tracker) putUser(w http.ResponseWriter, r *http.Request, p httprouter.P
 }
 
 func (t *Tracker) delUser(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	base, err := t.pool.Get()
+	conn, err := t.pool.Get()
 	if err != nil {
 		return http.StatusInternalServerError, err
-	}
-
-	conn, private := base.(tracker.PrivateConn)
-	if !private {
-		return http.StatusNotFound, nil
 	}
 
 	err = conn.DeleteUser(p.ByName("passkey"))
@@ -181,14 +166,9 @@ func (t *Tracker) delUser(w http.ResponseWriter, r *http.Request, p httprouter.P
 }
 
 func (t *Tracker) putClient(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	base, err := t.pool.Get()
+	conn, err := t.pool.Get()
 	if err != nil {
 		return http.StatusInternalServerError, err
-	}
-
-	conn, private := base.(tracker.PrivateConn)
-	if !private {
-		return http.StatusNotFound, nil
 	}
 
 	err = conn.PutClient(p.ByName("clientID"))
@@ -200,14 +180,9 @@ func (t *Tracker) putClient(w http.ResponseWriter, r *http.Request, p httprouter
 }
 
 func (t *Tracker) delClient(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	base, err := t.pool.Get()
+	conn, err := t.pool.Get()
 	if err != nil {
 		return http.StatusInternalServerError, err
-	}
-
-	conn, private := base.(tracker.PrivateConn)
-	if !private {
-		return http.StatusNotFound, nil
 	}
 
 	err = conn.DeleteClient(p.ByName("clientID"))
