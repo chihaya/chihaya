@@ -28,52 +28,38 @@ func TestPublicAnnounce(t *testing.T) {
 	defer srv.Close()
 
 	// Add one seeder.
-	peer := basePeer("peer1", true)
-	expected := baseResponse(1, 0, bencode.List{})
+	peer := makePeerParams("peer1", true)
+	expected := makeResponse(1, 0, bencode.List{})
 	checkResponse(peer, expected, srv, t)
 
 	// Add another seeder.
-	peer = basePeer("peer2", true)
-	expected = baseResponse(2, 0, bencode.List{})
+	peer = makePeerParams("peer2", true)
+	expected = makeResponse(2, 0, bencode.List{})
 	checkResponse(peer, expected, srv, t)
 
 	// Add a leecher.
-	peer = basePeer("peer3", false)
-	expected = baseResponse(2, 1, bencode.List{
-		bencode.Dict{
-			"ip":      "127.0.0.1",
-			"peer id": "peer1",
-			"port":    int64(1234),
-		},
-		bencode.Dict{
-			"ip":      "127.0.0.1",
-			"peer id": "peer2",
-			"port":    int64(1234),
-		},
+	peer = makePeerParams("peer3", false)
+	expected = makeResponse(2, 1, bencode.List{
+		makePeerResponse("peer1"),
+		makePeerResponse("peer2"),
 	})
-
 	checkResponse(peer, expected, srv, t)
 
 	// Remove seeder.
-	peer = basePeer("peer1", true)
+	peer = makePeerParams("peer1", true)
 	peer["event"] = "stopped"
-	expected = baseResponse(1, 1, nil)
+	expected = makeResponse(1, 1, nil)
 	checkResponse(peer, expected, srv, t)
 
 	// Check seeders.
-	peer = basePeer("peer3", false)
-	expected = baseResponse(1, 1, bencode.List{
-		bencode.Dict{
-			"ip":      "127.0.0.1",
-			"peer id": "peer2",
-			"port":    int64(1234),
-		},
+	peer = makePeerParams("peer3", false)
+	expected = makeResponse(1, 1, bencode.List{
+		makePeerResponse("peer2"),
 	})
-
 	checkResponse(peer, expected, srv, t)
 }
 
-func basePeer(id string, seed bool) params {
+func makePeerParams(id string, seed bool) params {
 	left := "1"
 	if seed {
 		left = "0"
@@ -91,7 +77,15 @@ func basePeer(id string, seed bool) params {
 	}
 }
 
-func baseResponse(seeders, leechers int64, peers bencode.List) bencode.Dict {
+func makePeerResponse(id string) bencode.Dict {
+	return bencode.Dict{
+		"ip":      "127.0.0.1",
+		"peer id": id,
+		"port":    int64(1234),
+	}
+}
+
+func makeResponse(seeders, leechers int64, peers bencode.List) bencode.Dict {
 	dict := bencode.Dict{
 		"complete":     seeders,
 		"incomplete":   leechers,
