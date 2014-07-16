@@ -22,14 +22,14 @@ import (
 
 var (
 	maxprocs   int
-	profile    bool
+	profile    string
 	configPath string
 )
 
 func init() {
-	flag.IntVar(&maxprocs, "maxprocs", runtime.NumCPU(), "Specify the amount of OS threads used by the runtime")
-	flag.BoolVar(&profile, "profile", false, "Generate profiling data for pprof into ./chihaya.cpu")
-	flag.StringVar(&configPath, "config", "", "Provide the filesystem path of a valid configuration file")
+	flag.IntVar(&maxprocs, "maxprocs", runtime.NumCPU(), "maximum parallel threads")
+	flag.StringVar(&profile, "profile", "", "if non-empty, path to write profiling data")
+	flag.StringVar(&configPath, "config", "", "path to the configuration file")
 }
 
 func Boot() {
@@ -38,10 +38,10 @@ func Boot() {
 	flag.Parse()
 
 	runtime.GOMAXPROCS(maxprocs)
-	glog.Info("set gomaxprocs to ", maxprocs)
+	glog.Info("set max threads to ", maxprocs)
 
-	if profile {
-		f, err := os.Create("chihaya.cpu")
+	if profile != "" {
+		f, err := os.Create(profile)
 		if err != nil {
 			glog.Fatalf("failed to create profile file: %s\n", err)
 		}
