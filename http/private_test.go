@@ -15,44 +15,6 @@ import (
 	_ "github.com/chihaya/chihaya/drivers/tracker/memory"
 )
 
-func loadTestData(tkr *Tracker) error {
-	conn, err := tkr.tp.Get()
-	if err != nil {
-		return err
-	}
-
-	users := []string{
-		"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv1",
-		"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv2",
-		"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv3",
-	}
-
-	for i, passkey := range users {
-		err = conn.PutUser(&models.User{
-			ID:      uint64(i + 1),
-			Passkey: passkey,
-		})
-
-		if err != nil {
-			return err
-		}
-	}
-
-	err = conn.PutClient("TR2820")
-	if err != nil {
-		return err
-	}
-
-	torrent := &models.Torrent{
-		ID:       1,
-		Infohash: infoHash,
-		Seeders:  make(map[string]models.Peer),
-		Leechers: make(map[string]models.Peer),
-	}
-
-	return conn.PutTorrent(torrent)
-}
-
 func TestPrivateAnnounce(t *testing.T) {
 	cfg := config.DefaultConfig
 	cfg.Private = true
@@ -101,4 +63,42 @@ func TestPrivateAnnounce(t *testing.T) {
 	})
 	srv.URL = baseURL + "/users/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv1"
 	checkAnnounce(peer, expected, srv, t)
+}
+
+func loadTestData(tkr *Tracker) error {
+	conn, err := tkr.tp.Get()
+	if err != nil {
+		return err
+	}
+
+	users := []string{
+		"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv1",
+		"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv2",
+		"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv3",
+	}
+
+	for i, passkey := range users {
+		err = conn.PutUser(&models.User{
+			ID:      uint64(i + 1),
+			Passkey: passkey,
+		})
+
+		if err != nil {
+			return err
+		}
+	}
+
+	err = conn.PutClient("TR2820")
+	if err != nil {
+		return err
+	}
+
+	torrent := &models.Torrent{
+		ID:       1,
+		Infohash: infoHash,
+		Seeders:  make(map[string]models.Peer),
+		Leechers: make(map[string]models.Peer),
+	}
+
+	return conn.PutTorrent(torrent)
 }
