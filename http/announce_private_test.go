@@ -10,9 +10,6 @@ import (
 	"github.com/chihaya/bencode"
 	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/models"
-
-	_ "github.com/chihaya/chihaya/drivers/backend/noop"
-	_ "github.com/chihaya/chihaya/drivers/tracker/memory"
 )
 
 func TestPrivateAnnounce(t *testing.T) {
