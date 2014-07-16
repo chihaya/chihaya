@@ -6,187 +6,138 @@ package http
 
 import (
 	"io/ioutil"
-	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"reflect"
 	"testing"
 
 	"github.com/chihaya/bencode"
 	"github.com/chihaya/chihaya/config"
-	"github.com/chihaya/chihaya/drivers/backend"
-	"github.com/chihaya/chihaya/drivers/tracker"
-	"github.com/chihaya/chihaya/models"
 
 	_ "github.com/chihaya/chihaya/drivers/backend/noop"
 	_ "github.com/chihaya/chihaya/drivers/tracker/memory"
 )
 
-type primer func(tracker.Pool, backend.Conn) error
+type params map[string]string
 
-func (t *Tracker) prime(p primer) error {
-	return p(t.tp, t.bc)
-}
+const infoHash = "%89%d4%bcR%11%16%ca%1dB%a2%f3%0d%1f%27M%94%e4h%1d%af"
 
-func loadTestData(tkr *Tracker) (err error) {
-	return tkr.prime(func(tp tracker.Pool, bc backend.Conn) (err error) {
-		conn, err := tp.Get()
-		if err != nil {
-			return
-		}
+func TestPublicAnnounce(t *testing.T) {
+	srv, _ := setupTracker(&config.DefaultConfig)
+	defer srv.Close()
 
-		err = conn.PutUser(&models.User{
-			ID:      1,
-			Passkey: "yby47f04riwpndba456rqxtmifenqxx1",
-		})
-		if err != nil {
-			return
-		}
-		err = conn.PutUser(&models.User{
-			ID:      2,
-			Passkey: "yby47f04riwpndba456rqxtmifenqxx2",
-		})
-		if err != nil {
-			return
-		}
-		err = conn.PutUser(&models.User{
-			ID:      3,
-			Passkey: "yby47f04riwpndba456rqxtmifenqxx3",
-		})
-		if err != nil {
-			return
-		}
+	// Add one seeder.
+	peer := basePeer("peer1", true)
+	expected := baseResponse(1, 0, []interface{}{})
+	checkResponse(peer, expected, srv, t)
 
-		err = conn.PutClient("TR2820")
-		if err != nil {
-			return
-		}
+	// Add another seeder.
+	peer = basePeer("peer2", true)
+	expected = baseResponse(2, 0, []interface{}{})
+	checkResponse(peer, expected, srv, t)
 
-		torrent := &models.Torrent{
-			ID:       1,
-			Infohash: string([]byte{0x89, 0xd4, 0xbc, 0x52, 0x11, 0x16, 0xca, 0x1d, 0x42, 0xa2, 0xf3, 0x0d, 0x1f, 0x27, 0x4d, 0x94, 0xe4, 0x68, 0x1d, 0xaf}),
-			Seeders:  make(map[string]models.Peer),
-			Leechers: make(map[string]models.Peer),
-		}
-
-		err = conn.PutTorrent(torrent)
-		if err != nil {
-			return
-		}
-
-		err = conn.PutLeecher(torrent.Infohash, &models.Peer{
-			ID:        "-TR2820-l71jtqkl8xx1",
-			UserID:    1,
-			TorrentID: torrent.ID,
-			IP:        net.ParseIP("127.0.0.1"),
-			Port:      34000,
-			Left:      0,
-		})
-		if err != nil {
-			return
-		}
-
-		err = conn.PutLeecher(torrent.Infohash, &models.Peer{
-			ID:        "-TR2820-l71jtqkl8xx3",
-			UserID:    3,
-			TorrentID: torrent.ID,
-			IP:        net.ParseIP("2001::53aa:64c:0:7f83:bc43:dec9"),
-			Port:      34000,
-			Left:      0,
-		})
-
-		return
+	// Add a leecher.
+	peer = basePeer("peer3", false)
+	expected = baseResponse(2, 1, []interface{}{
+		bencode.Dict{
+			"ip":      "127.0.0.1",
+			"peer id": "peer1",
+			"port":    int64(1234),
+		},
+		bencode.Dict{
+			"ip":      "127.0.0.1",
+			"peer id": "peer2",
+			"port":    int64(1234),
+		},
 	})
+
+	checkResponse(peer, expected, srv, t)
+
+	// Remove seeder.
+	peer = basePeer("peer1", true)
+	peer["event"] = "stopped"
+	expected = baseResponse(1, 1, nil)
+	checkResponse(peer, expected, srv, t)
+
+	// Check seeders.
+	peer = basePeer("peer3", false)
+	expected = baseResponse(1, 1, []interface{}{
+		bencode.Dict{
+			"ip":      "127.0.0.1",
+			"peer id": "peer2",
+			"port":    int64(1234),
+		},
+	})
+
+	checkResponse(peer, expected, srv, t)
 }
 
-func testRoute(cfg *config.Config, url string) ([]byte, error) {
+func basePeer(id string, seed bool) params {
+	left := "1"
+	if seed {
+		left = "0"
+	}
+
+	return params{
+		"info_hash":  infoHash,
+		"peer_id":    id,
+		"port":       "1234",
+		"uploaded":   "0",
+		"downloaded": "0",
+		"left":       left,
+		"compact":    "0",
+		"numwant":    "50",
+	}
+}
+
+func baseResponse(seeders, leechers int64, peers []interface{}) bencode.Dict {
+	dict := bencode.Dict{
+		"complete":     seeders,
+		"incomplete":   leechers,
+		"interval":     int64(1800),
+		"min interval": int64(900),
+	}
+
+	if peers != nil {
+		dict["peers"] = peers
+	}
+	return dict
+}
+
+func checkResponse(p params, expected interface{}, srv *httptest.Server, t *testing.T) bool {
+	values := &url.Values{}
+	for k, v := range p {
+		values.Add(k, v)
+	}
+
+	response, err := http.Get(srv.URL + "/announce?" + values.Encode())
+	if err != nil {
+		t.Error(err)
+		return false
+	}
+
+	body, err := ioutil.ReadAll(response.Body)
+	response.Body.Close()
+
+	if err != nil {
+		t.Error(err)
+		return false
+	}
+
+	got, err := bencode.Unmarshal(body)
+	if !reflect.DeepEqual(got, expected) {
+		t.Errorf("\ngot:    %#v\nwanted: %#v", got, expected)
+		return false
+	}
+	return true
+}
+
+func setupTracker(cfg *config.Config) (*httptest.Server, error) {
 	tkr, err := NewTracker(cfg)
 	if err != nil {
 		return nil, err
 	}
 
-	err = loadTestData(tkr)
-	if err != nil {
-		return nil, err
-	}
-
-	srv := httptest.NewServer(setupRoutes(tkr, cfg))
-	defer srv.Close()
-
-	url = srv.URL + url
-
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, err
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
-	if err != nil {
-		return nil, err
-	}
-
-	return body, nil
-}
-
-func TestPrivateAnnounce(t *testing.T) {
-	cfg := config.DefaultConfig
-	cfg.Private = true
-
-	url := "/users/yby47f04riwpndba456rqxtmifenqxx2/announce?info_hash=%89%d4%bcR%11%16%ca%1dB%a2%f3%0d%1f%27M%94%e4h%1d%af&peer_id=-TR2820-l71jtqkl898b&port=51413&uploaded=0&downloaded=0&left=0&numwant=1&key=3c8e3319&compact=0"
-
-	expected := bencode.Dict{
-		"complete":     int64(1),
-		"incomplete":   int64(2),
-		"interval":     int64(1800),
-		"min interval": int64(900),
-		"peers": []interface{}{
-			bencode.Dict{
-				"ip":      "127.0.0.1",
-				"peer id": "-TR2820-l71jtqkl8xx1",
-				"port":    int64(34000),
-			},
-		},
-	}
-
-	response, err := testRoute(&cfg, url)
-	if err != nil {
-		t.Error(err)
-	}
-	got, err := bencode.Unmarshal(response)
-
-	if !reflect.DeepEqual(got, expected) {
-		t.Errorf("\ngot:    %#v\nwanted: %#v", got, expected)
-	}
-
-	url = "/users/yby47f04riwpndba456rqxtmifenqxx2/announce?info_hash=%89%d4%bcR%11%16%ca%1dB%a2%f3%0d%1f%27M%94%e4h%1d%af&peer_id=-TR2820-l71jtqkl898b&port=51413&uploaded=0&downloaded=0&left=0&numwant=2&key=3c8e3319&compact=0"
-
-	expected = bencode.Dict{
-		"complete":     int64(1),
-		"incomplete":   int64(2),
-		"interval":     int64(1800),
-		"min interval": int64(900),
-		"peers": []interface{}{
-			bencode.Dict{
-				"ip":      "127.0.0.1",
-				"peer id": "-TR2820-l71jtqkl8xx1",
-				"port":    int64(34000),
-			},
-			bencode.Dict{
-				"ip":      "2001:0:53aa:64c:0:7f83:bc43:dec9",
-				"peer id": "-TR2820-l71jtqkl8xx3",
-				"port":    int64(34000),
-			},
-		},
-	}
-
-	response, err = testRoute(&cfg, url)
-	if err != nil {
-		t.Error(err)
-	}
-	got, err = bencode.Unmarshal(response)
-
-	if !reflect.DeepEqual(got, expected) {
-		t.Errorf("\ngot:    %#v\nwanted: %#v", got, expected)
-	}
+	return httptest.NewServer(setupRoutes(tkr, cfg)), nil
 }
