@@ -27,9 +27,9 @@ func loadTestData(tkr *Tracker) (err error) {
 	}
 
 	users := []string{
-		"yby47f04riwpndba456rqxtmifenqxx1",
-		"yby47f04riwpndba456rqxtmifenqxx2",
-		"yby47f04riwpndba456rqxtmifenqxx3",
+		"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv1",
+		"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv2",
+		"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv3",
 	}
 
 	for i, passkey := range users {
@@ -61,7 +61,7 @@ func loadTestData(tkr *Tracker) (err error) {
 	}
 
 	err = conn.PutLeecher(torrent.Infohash, &models.Peer{
-		ID:        "-TR2820-l71jtqkl8xx1",
+		ID:        "-TR2820-vvvvvvvvvvv1",
 		UserID:    1,
 		TorrentID: torrent.ID,
 		IP:        net.ParseIP("127.0.0.1"),
@@ -73,10 +73,10 @@ func loadTestData(tkr *Tracker) (err error) {
 	}
 
 	err = conn.PutLeecher(torrent.Infohash, &models.Peer{
-		ID:        "-TR2820-l71jtqkl8xx3",
+		ID:        "-TR2820-vvvvvvvvvvv3",
 		UserID:    3,
 		TorrentID: torrent.ID,
-		IP:        net.ParseIP("2001::53aa:64c:0:7f83:bc43:dec9"),
+		IP:        net.ParseIP("::1"),
 		Port:      34000,
 		Left:      0,
 	})
@@ -115,7 +115,7 @@ func TestPrivateAnnounce(t *testing.T) {
 	cfg := config.DefaultConfig
 	cfg.Private = true
 
-	url := "/users/yby47f04riwpndba456rqxtmifenqxx2/announce?info_hash=%89%d4%bcR%11%16%ca%1dB%a2%f3%0d%1f%27M%94%e4h%1d%af&peer_id=-TR2820-l71jtqkl898b&port=51413&uploaded=0&downloaded=0&left=0&numwant=1&key=3c8e3319&compact=0"
+	url := "/users/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv2/announce?info_hash=%89%d4%bcR%11%16%ca%1dB%a2%f3%0d%1f%27M%94%e4h%1d%af&peer_id=-TR2820-vvvvvvvvvvv2&port=51413&uploaded=0&downloaded=0&left=0&numwant=1&key=3c8e3319&compact=0"
 
 	expected := bencode.Dict{
 		"complete":     int64(1),
@@ -125,7 +125,7 @@ func TestPrivateAnnounce(t *testing.T) {
 		"peers": bencode.List{
 			bencode.Dict{
 				"ip":      "127.0.0.1",
-				"peer id": "-TR2820-l71jtqkl8xx1",
+				"peer id": "-TR2820-vvvvvvvvvvv1",
 				"port":    int64(34000),
 			},
 		},
@@ -141,7 +141,7 @@ func TestPrivateAnnounce(t *testing.T) {
 		t.Errorf("\ngot:    %#v\nwanted: %#v", got, expected)
 	}
 
-	url = "/users/yby47f04riwpndba456rqxtmifenqxx2/announce?info_hash=%89%d4%bcR%11%16%ca%1dB%a2%f3%0d%1f%27M%94%e4h%1d%af&peer_id=-TR2820-l71jtqkl898b&port=51413&uploaded=0&downloaded=0&left=0&numwant=2&key=3c8e3319&compact=0"
+	url = "/users/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv2/announce?info_hash=%89%d4%bcR%11%16%ca%1dB%a2%f3%0d%1f%27M%94%e4h%1d%af&peer_id=-TR2820-vvvvvvvvvvv2&port=51413&uploaded=0&downloaded=0&left=0&numwant=2&key=3c8e3319&compact=0"
 
 	expected = bencode.Dict{
 		"complete":     int64(1),
@@ -151,12 +151,12 @@ func TestPrivateAnnounce(t *testing.T) {
 		"peers": bencode.List{
 			bencode.Dict{
 				"ip":      "127.0.0.1",
-				"peer id": "-TR2820-l71jtqkl8xx1",
+				"peer id": "-TR2820-vvvvvvvvvvv1",
 				"port":    int64(34000),
 			},
 			bencode.Dict{
-				"ip":      "2001:0:53aa:64c:0:7f83:bc43:dec9",
-				"peer id": "-TR2820-l71jtqkl8xx3",
+				"ip":      "::1",
+				"peer id": "-TR2820-vvvvvvvvvvv3",
 				"port":    int64(34000),
 			},
 		},
