@@ -5,6 +5,7 @@
 package memory
 
 import (
+	"runtime"
 	"time"
 
 	"github.com/chihaya/chihaya/drivers/tracker"
@@ -223,3 +224,47 @@ func (c *Conn) DeleteClient(peerID string) error {
 	return nil
 }
 
+func (c *Conn) PurgeInactivePeers(purgeEmptyTorrents bool, before time.Time) error {
+	unixtime := before.Unix()
+
+	// Build array of map keys to operate on.
+	c.torrentsM.RLock()
+	index := 0
+	keys := make([]string, len(c.torrents))
+
+	for infohash, _ := range c.torrents {
+		keys[index] = infohash
+		index++
+	}
+
+	c.torrentsM.RUnlock()
+
+	// Process keys.
+	for _, infohash := range keys {
+		runtime.Gosched() // Let other goroutines run, since this is low priority.
+
+		c.torrentsM.Lock()
+		torrent := c.torrents[infohash]
+
+		for key, peer := range torrent.Seeders {
+			if peer.LastAnnounce < unixtime {
+				delete(torrent.Seeders, key)
+			}
+		}
+
+		for key, peer := range torrent.Leechers {
+			if peer.LastAnnounce < unixtime {
+				delete(torrent.Leechers, key)
+			}
+		}
+
+		peers := torrent.PeerCount()
+		c.torrentsM.Unlock()
+
+		if purgeEmptyTorrents && peers == 0 {
+			c.PurgeInactiveTorrent(infohash)
+		}
+	}
+
+	return nil
+}

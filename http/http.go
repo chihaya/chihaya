@@ -99,6 +99,13 @@ func Serve(cfg *config.Config) {
 		glog.Fatal("New: ", err)
 	}
 
+	go tracker.PurgeInactivePeers(
+		t.pool,
+		cfg.PurgeInactiveTorrents,
+		cfg.Announce.Duration*2,
+		cfg.Announce.Duration,
+	)
+
 	glog.V(0).Info("Starting on ", cfg.Addr)
 	graceful.Run(cfg.Addr, cfg.RequestTimeout.Duration, NewRouter(t, cfg))
 }

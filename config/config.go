@@ -50,6 +50,8 @@ type Config struct {
 	Freeleech bool `json:"freeleech"`
 	Whitelist bool `json:"whitelist"`
 
+	PurgeInactiveTorrents bool `json:"purge_inactive_torrents"`
+
 	Announce        Duration `json:"announce"`
 	MinAnnounce     Duration `json:"min_announce"`
 	RequestTimeout  Duration `json:"request_timeout"`
@@ -59,15 +61,21 @@ type Config struct {
 // DefaultConfig is a configuration that can be used as a fallback value.
 var DefaultConfig = Config{
 	Addr: "127.0.0.1:6881",
+
 	Tracker: DriverConfig{
 		Name: "memory",
 	},
+
 	Backend: DriverConfig{
 		Name: "noop",
 	},
-	Private:         false,
-	Freeleech:       false,
-	Whitelist:       false,
+
+	Private:   false,
+	Freeleech: false,
+	Whitelist: false,
+
+	PurgeInactiveTorrents: true,
+
 	Announce:        Duration{30 * time.Minute},
 	MinAnnounce:     Duration{15 * time.Minute},
 	RequestTimeout:  Duration{10 * time.Second},

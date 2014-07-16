@@ -91,7 +91,7 @@ func (t *Tracker) ServeAnnounce(w http.ResponseWriter, r *http.Request, p httpro
 		if err != nil {
 			return http.StatusInternalServerError, err
 		}
-	} else if torrent.PeerCount() == 0 {
+	} else if t.cfg.PurgeInactiveTorrents && torrent.PeerCount() == 0 {
 		// Rather than deleting the torrent explicitly, let the tracker driver
 		// ensure there are no race conditions.
 		conn.PurgeInactiveTorrent(torrent.Infohash)
