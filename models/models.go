@@ -281,11 +281,11 @@ func NewScrape(cfg *config.Config, r *http.Request, p httprouter.Params) (*Scrap
 	}
 
 	if q.Infohashes == nil {
-		if _, exists := q.Params["infohash"]; !exists {
+		if _, exists := q.Params["info_hash"]; !exists {
 			// There aren't any infohashes.
 			return nil, ErrMalformedRequest
 		}
-		q.Infohashes = []string{q.Params["infohash"]}
+		q.Infohashes = []string{q.Params["info_hash"]}
 	}
 
 	return &Scrape{

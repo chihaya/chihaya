@@ -5,23 +5,13 @@
 package http
 
 import (
-	"io/ioutil"
-	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"reflect"
 	"testing"
 
 	"github.com/chihaya/bencode"
 	"github.com/chihaya/chihaya/config"
-
-	_ "github.com/chihaya/chihaya/drivers/backend/noop"
-	_ "github.com/chihaya/chihaya/drivers/tracker/memory"
 )
-
-type params map[string]string
-
-const infoHash = "%89%d4%bcR%11%16%ca%1dB%a2%f3%0d%1f%27M%94%e4h%1d%af"
 
 func TestPublicAnnounce(t *testing.T) {
 	srv, _ := setupTracker(&config.DefaultConfig)
@@ -30,12 +20,12 @@ func TestPublicAnnounce(t *testing.T) {
 	// Add one seeder.
 	peer := makePeerParams("peer1", true)
 	expected := makeResponse(1, 0, bencode.List{})
-	checkResponse(peer, expected, srv, t)
+	checkAnnounce(peer, expected, srv, t)
 
 	// Add another seeder.
 	peer = makePeerParams("peer2", true)
 	expected = makeResponse(2, 0, bencode.List{})
-	checkResponse(peer, expected, srv, t)
+	checkAnnounce(peer, expected, srv, t)
 
 	// Add a leecher.
 	peer = makePeerParams("peer3", false)
@@ -43,20 +33,20 @@ func TestPublicAnnounce(t *testing.T) {
 		makePeerResponse("peer1"),
 		makePeerResponse("peer2"),
 	})
-	checkResponse(peer, expected, srv, t)
+	checkAnnounce(peer, expected, srv, t)
 
 	// Remove seeder.
 	peer = makePeerParams("peer1", true)
 	peer["event"] = "stopped"
 	expected = makeResponse(1, 1, nil)
-	checkResponse(peer, expected, srv, t)
+	checkAnnounce(peer, expected, srv, t)
 
 	// Check seeders.
 	peer = makePeerParams("peer3", false)
 	expected = makeResponse(1, 1, bencode.List{
 		makePeerResponse("peer2"),
 	})
-	checkResponse(peer, expected, srv, t)
+	checkAnnounce(peer, expected, srv, t)
 }
 
 func makePeerParams(id string, seed bool) params {
@@ -99,21 +89,8 @@ func makeResponse(seeders, leechers int64, peers bencode.List) bencode.Dict {
 	return dict
 }
 
-func checkResponse(p params, expected interface{}, srv *httptest.Server, t *testing.T) bool {
-	values := &url.Values{}
-	for k, v := range p {
-		values.Add(k, v)
-	}
-
-	response, err := http.Get(srv.URL + "/announce?" + values.Encode())
-	if err != nil {
-		t.Error(err)
-		return false
-	}
-
-	body, err := ioutil.ReadAll(response.Body)
-	response.Body.Close()
-
+func checkAnnounce(p params, expected interface{}, srv *httptest.Server, t *testing.T) bool {
+	body, err := announce(p, srv)
 	if err != nil {
 		t.Error(err)
 		return false
@@ -125,13 +102,4 @@ func checkResponse(p params, expected interface{}, srv *httptest.Server, t *test
 		return false
 	}
 	return true
-}
-
-func setupTracker(cfg *config.Config) (*httptest.Server, error) {
-	tkr, err := NewTracker(cfg)
-	if err != nil {
-		return nil, err
-	}
-
-	return httptest.NewServer(setupRoutes(tkr, cfg)), nil
 }
