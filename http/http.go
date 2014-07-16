@@ -20,9 +20,9 @@ import (
 )
 
 type Tracker struct {
-	cfg *config.Config
-	tp  tracker.Pool
-	bc  backend.Conn
+	cfg     *config.Config
+	pool    tracker.Pool
+	backend backend.Conn
 }
 
 func NewTracker(cfg *config.Config) (*Tracker, error) {
@@ -37,9 +37,9 @@ func NewTracker(cfg *config.Config) (*Tracker, error) {
 	}
 
 	return &Tracker{
-		cfg: cfg,
-		tp:  tp,
-		bc:  bc,
+		cfg:     cfg,
+		pool:    tp,
+		backend: bc,
 	}, nil
 }
 

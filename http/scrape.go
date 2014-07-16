@@ -23,7 +23,7 @@ func (t *Tracker) ServeScrape(w http.ResponseWriter, r *http.Request, p httprout
 		return http.StatusInternalServerError, err
 	}
 
-	conn, err := t.tp.Get()
+	conn, err := t.pool.Get()
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}

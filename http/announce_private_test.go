@@ -66,7 +66,7 @@ func TestPrivateAnnounce(t *testing.T) {
 }
 
 func loadTestData(tkr *Tracker) error {
-	conn, err := tkr.tp.Get()
+	conn, err := tkr.pool.Get()
 	if err != nil {
 		return err
 	}

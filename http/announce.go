@@ -24,7 +24,7 @@ func (t *Tracker) ServeAnnounce(w http.ResponseWriter, r *http.Request, p httpro
 		return http.StatusInternalServerError, err
 	}
 
-	conn, err := t.tp.Get()
+	conn, err := t.pool.Get()
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
@@ -87,7 +87,7 @@ func (t *Tracker) ServeAnnounce(w http.ResponseWriter, r *http.Request, p httpro
 
 	if t.cfg.Private {
 		delta := models.NewAnnounceDelta(ann, peer, user, torrent, created, snatched)
-		err = t.bc.RecordAnnounce(delta)
+		err = t.backend.RecordAnnounce(delta)
 		if err != nil {
 			return http.StatusInternalServerError, err
 		}

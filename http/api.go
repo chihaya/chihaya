@@ -26,7 +26,7 @@ func (t *Tracker) check(w http.ResponseWriter, r *http.Request, p httprouter.Par
 }
 
 func (t *Tracker) getTorrent(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	conn, err := t.tp.Get()
+	conn, err := t.pool.Get()
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
@@ -65,7 +65,7 @@ func (t *Tracker) putTorrent(w http.ResponseWriter, r *http.Request, p httproute
 		return http.StatusBadRequest, err
 	}
 
-	conn, err := t.tp.Get()
+	conn, err := t.pool.Get()
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
@@ -79,7 +79,7 @@ func (t *Tracker) putTorrent(w http.ResponseWriter, r *http.Request, p httproute
 }
 
 func (t *Tracker) delTorrent(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	conn, err := t.tp.Get()
+	conn, err := t.pool.Get()
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
@@ -100,7 +100,7 @@ func (t *Tracker) delTorrent(w http.ResponseWriter, r *http.Request, p httproute
 }
 
 func (t *Tracker) getUser(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	conn, err := t.tp.Get()
+	conn, err := t.pool.Get()
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
@@ -134,7 +134,7 @@ func (t *Tracker) putUser(w http.ResponseWriter, r *http.Request, p httprouter.P
 		return http.StatusBadRequest, err
 	}
 
-	conn, err := t.tp.Get()
+	conn, err := t.pool.Get()
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
@@ -148,7 +148,7 @@ func (t *Tracker) putUser(w http.ResponseWriter, r *http.Request, p httprouter.P
 }
 
 func (t *Tracker) delUser(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	conn, err := t.tp.Get()
+	conn, err := t.pool.Get()
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
@@ -164,7 +164,7 @@ func (t *Tracker) delUser(w http.ResponseWriter, r *http.Request, p httprouter.P
 }
 
 func (t *Tracker) putClient(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	conn, err := t.tp.Get()
+	conn, err := t.pool.Get()
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
@@ -178,7 +178,7 @@ func (t *Tracker) putClient(w http.ResponseWriter, r *http.Request, p httprouter
 }
 
 func (t *Tracker) delClient(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	conn, err := t.tp.Get()
+	conn, err := t.pool.Get()
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
