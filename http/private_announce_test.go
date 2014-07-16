@@ -138,7 +138,7 @@ func TestPrivateAnnounce(t *testing.T) {
 		"incomplete":   int64(2),
 		"interval":     int64(1800),
 		"min interval": int64(900),
-		"peers": []interface{}{
+		"peers": bencode.List{
 			bencode.Dict{
 				"ip":      "127.0.0.1",
 				"peer id": "-TR2820-l71jtqkl8xx1",
@@ -164,7 +164,7 @@ func TestPrivateAnnounce(t *testing.T) {
 		"incomplete":   int64(2),
 		"interval":     int64(1800),
 		"min interval": int64(900),
-		"peers": []interface{}{
+		"peers": bencode.List{
 			bencode.Dict{
 				"ip":      "127.0.0.1",
 				"peer id": "-TR2820-l71jtqkl8xx1",
