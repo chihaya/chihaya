@@ -40,14 +40,19 @@ func announce(p params, srv *httptest.Server) ([]byte, error) {
 		values.Add(k, v)
 	}
 
-	response, err := http.Get(srv.URL + "/announce?" + values.Encode())
+	body, _, err := fetchPath(srv.URL + "/announce?" + values.Encode())
+	return body, err
+}
+
+func fetchPath(path string) ([]byte, int, error) {
+	response, err := http.Get(path)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	body, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
-	return body, err
+	return body, response.StatusCode, err
 }
 
 type peerList bencode.List

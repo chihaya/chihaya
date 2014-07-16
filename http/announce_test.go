@@ -5,9 +5,12 @@
 package http
 
 import (
+	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/chihaya/bencode"
 	"github.com/chihaya/chihaya/config"
@@ -50,6 +53,51 @@ func TestPublicAnnounce(t *testing.T) {
 		makePeerResponse("peer2"),
 	})
 	checkAnnounce(peer, expected, srv, t)
+}
+
+func TestTorrentPurging(t *testing.T) {
+	config := config.DefaultConfig
+	config.Tracker.Params = map[string]string{
+		"purge_inactive": "200ms",
+		"purge_interval": "100ms",
+	}
+
+	srv, err := setupTracker(&config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srv.Close()
+
+	torrentApiPath := srv.URL + "/torrents/" + url.QueryEscape(infoHash)
+
+	// Add one seeder.
+	peer := makePeerParams("peer1", true)
+	announce(peer, srv)
+
+	_, status, err := fetchPath(torrentApiPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if status != http.StatusOK {
+		t.Fatal("expected torrent to exist (got %s)", http.StatusText(status))
+	}
+
+	// Remove seeder.
+	peer = makePeerParams("peer1", true)
+	peer["event"] = "stopped"
+	announce(peer, srv)
+
+	time.Sleep(1000 * time.Millisecond)
+
+	_, status, err = fetchPath(torrentApiPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if status != http.StatusNotFound {
+		t.Fatalf("expected torrent to have been purged (got %s)", http.StatusText(status))
+	}
 }
 
 func makePeerParams(id string, seed bool) params {
