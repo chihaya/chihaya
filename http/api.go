@@ -43,6 +43,7 @@ func (t *Tracker) getTorrent(w http.ResponseWriter, r *http.Request, p httproute
 		return http.StatusInternalServerError, err
 	}
 
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	e := json.NewEncoder(w)
 	err = e.Encode(torrent)
 	if err != nil {
@@ -111,6 +112,7 @@ func (t *Tracker) getUser(w http.ResponseWriter, r *http.Request, p httprouter.P
 		return http.StatusInternalServerError, err
 	}
 
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	e := json.NewEncoder(w)
 	err = e.Encode(user)
 	if err != nil {
