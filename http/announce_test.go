@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"reflect"
+	"strconv"
 	"testing"
 	"time"
 
@@ -184,6 +185,76 @@ func TestPrivateAnnounce(t *testing.T) {
 	checkAnnounce(peer, expected, srv, t)
 }
 
+func TestPreferredSubnet(t *testing.T) {
+	cfg := config.DefaultConfig
+	cfg.PreferredSubnet = true
+	cfg.PreferredIPv4Subnet = 8
+	cfg.PreferredIPv6Subnet = 8
+
+	srv, err := setupTracker(&cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srv.Close()
+
+	// Make a bunch of peers in two subnets.
+	peerA1 := makePeerParams("peerA1", false)
+	peerA1["ip"] = "44.0.0.1"
+
+	peerA2 := makePeerParams("peerA2", false)
+	peerA2["ip"] = "44.0.0.2"
+
+	peerA3 := makePeerParams("peerA3", false)
+	peerA3["ip"] = "44.0.0.3"
+
+	peerA4 := makePeerParams("peerA4", false)
+	peerA4["ip"] = "44.0.0.4"
+
+	peerB1 := makePeerParams("peerB1", false)
+	peerB1["ip"] = "45.0.0.1"
+
+	peerB2 := makePeerParams("peerB2", false)
+	peerB2["ip"] = "45.0.0.2"
+
+	// Check what peers their announces return.
+	expected := makeResponse(0, 1, bencode.List{})
+	checkAnnounce(peerA1, expected, srv, t)
+
+	expected = makeResponse(0, 2, bencode.List{
+		peerFromParams(peerA1),
+	})
+	checkAnnounce(peerA2, expected, srv, t)
+
+	expected = makeResponse(0, 3, bencode.List{
+		peerFromParams(peerA1),
+		peerFromParams(peerA2),
+	})
+	checkAnnounce(peerB1, expected, srv, t)
+
+	peerB2["numwant"] = "1"
+	expected = makeResponse(0, 4, bencode.List{
+		peerFromParams(peerB1),
+	})
+	checkAnnounce(peerB2, expected, srv, t)
+	checkAnnounce(peerB2, expected, srv, t)
+	checkAnnounce(peerB2, expected, srv, t)
+
+	peerA3["numwant"] = "2"
+	expected = makeResponse(0, 5, bencode.List{
+		peerFromParams(peerA1),
+		peerFromParams(peerA2),
+	})
+	checkAnnounce(peerA3, expected, srv, t)
+
+	peerA4["numwant"] = "3"
+	expected = makeResponse(0, 6, bencode.List{
+		peerFromParams(peerA1),
+		peerFromParams(peerA2),
+		peerFromParams(peerA3),
+	})
+	checkAnnounce(peerA4, expected, srv, t)
+}
+
 func makePeerParams(id string, seed bool) params {
 	left := "1"
 	if seed {
@@ -204,9 +275,24 @@ func makePeerParams(id string, seed bool) params {
 
 func makePeerResponse(id string) bencode.Dict {
 	return bencode.Dict{
-		"ip":      "127.0.0.1",
 		"peer id": id,
+		"ip":      "127.0.0.1",
 		"port":    int64(1234),
+	}
+}
+
+func peerFromParams(peer params) bencode.Dict {
+	ip := peer["ip"]
+	if ip == "" {
+		ip = "127.0.0.1"
+	}
+
+	port, _ := strconv.ParseInt(peer["port"], 10, 64)
+
+	return bencode.Dict{
+		"peer id": peer["peer_id"],
+		"ip":      ip,
+		"port":    port,
 	}
 }
 
