@@ -56,13 +56,8 @@ func TestPublicAnnounce(t *testing.T) {
 }
 
 func TestTorrentPurging(t *testing.T) {
-	config := config.DefaultConfig
-	config.Tracker.Params = map[string]string{
-		"purge_inactive": "200ms",
-		"purge_interval": "100ms",
-	}
-
-	srv, err := setupTracker(&config)
+	cfg := config.DefaultConfig
+	srv, err := setupTracker(&cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,8 +77,37 @@ func TestTorrentPurging(t *testing.T) {
 		t.Fatalf("expected torrent to exist (got %s)", http.StatusText(status))
 	}
 
-	time.Sleep(1010 * time.Millisecond)
+	// Remove seeder.
+	peer = makePeerParams("peer1", true)
+	peer["event"] = "stopped"
+	announce(peer, srv)
+
 	_, status, err = fetchPath(torrentApiPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status != http.StatusNotFound {
+		t.Fatalf("expected torrent to have been purged (got %s)", http.StatusText(status))
+	}
+}
+
+func TestStalePeerPurging(t *testing.T) {
+	cfg := config.DefaultConfig
+	cfg.Announce = config.Duration{10 * time.Millisecond}
+
+	srv, err := setupTracker(&cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srv.Close()
+
+	torrentApiPath := srv.URL + "/torrents/" + url.QueryEscape(infoHash)
+
+	// Add one seeder.
+	peer := makePeerParams("peer1", true)
+	announce(peer, srv)
+
+	_, status, err := fetchPath(torrentApiPath)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,12 +115,8 @@ func TestTorrentPurging(t *testing.T) {
 		t.Fatalf("expected torrent to exist (got %s)", http.StatusText(status))
 	}
 
-	// Remove seeder.
-	peer = makePeerParams("peer1", true)
-	peer["event"] = "stopped"
-	announce(peer, srv)
-
-	time.Sleep(1010 * time.Millisecond)
+	// Let them expire.
+	time.Sleep(50 * time.Millisecond)
 
 	_, status, err = fetchPath(torrentApiPath)
 	if err != nil {

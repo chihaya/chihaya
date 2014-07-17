@@ -36,6 +36,13 @@ func NewTracker(cfg *config.Config) (*Tracker, error) {
 		return nil, err
 	}
 
+	go tracker.PurgeInactivePeers(
+		tp,
+		cfg.PurgeInactiveTorrents,
+		cfg.Announce.Duration*2,
+		cfg.Announce.Duration,
+	)
+
 	return &Tracker{
 		cfg:     cfg,
 		pool:    tp,
@@ -98,13 +105,6 @@ func Serve(cfg *config.Config) {
 	if err != nil {
 		glog.Fatal("New: ", err)
 	}
-
-	go tracker.PurgeInactivePeers(
-		t.pool,
-		cfg.PurgeInactiveTorrents,
-		cfg.Announce.Duration*2,
-		cfg.Announce.Duration,
-	)
 
 	glog.V(0).Info("Starting on ", cfg.Addr)
 	graceful.Run(cfg.Addr, cfg.RequestTimeout.Duration, NewRouter(t, cfg))
