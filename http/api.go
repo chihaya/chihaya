@@ -12,13 +12,13 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
-	"github.com/chihaya/chihaya/drivers/tracker"
-	"github.com/chihaya/chihaya/models"
+	"github.com/chihaya/chihaya/tracker"
+	"github.com/chihaya/chihaya/tracker/models"
 )
 
 const jsonContentType = "application/json; charset=UTF-8"
 
-func (t *Tracker) check(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
+func (s *Server) check(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
 	_, err := w.Write([]byte("An easter egg goes here."))
 	if err != nil {
 		return http.StatusInternalServerError, err
@@ -27,8 +27,44 @@ func (t *Tracker) check(w http.ResponseWriter, r *http.Request, p httprouter.Par
 	return http.StatusOK, nil
 }
 
-func (t *Tracker) getTorrent(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	conn, err := t.pool.Get()
+func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
+	ann, err := models.NewAnnounce(s.config, r, p)
+	writer := &Writer{w}
+
+	if err == models.ErrMalformedRequest {
+		writer.WriteError(err)
+		return http.StatusOK, nil
+	} else if err != nil {
+		return http.StatusInternalServerError, err
+	}
+
+	if err = s.tracker.HandleAnnounce(ann, writer); err != nil {
+		return http.StatusInternalServerError, err
+	}
+
+	return http.StatusOK, nil
+}
+
+func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
+	scrape, err := models.NewScrape(s.config, r, p)
+	writer := &Writer{w}
+
+	if err == models.ErrMalformedRequest {
+		writer.WriteError(err)
+		return http.StatusOK, nil
+	} else if err != nil {
+		return http.StatusInternalServerError, err
+	}
+
+	if err = s.tracker.HandleScrape(scrape, writer); err != nil {
+		return http.StatusInternalServerError, err
+	}
+
+	return http.StatusOK, nil
+}
+
+func (s *Server) getTorrent(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
+	conn, err := s.tracker.Pool.Get()
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
@@ -55,7 +91,7 @@ func (t *Tracker) getTorrent(w http.ResponseWriter, r *http.Request, p httproute
 	return http.StatusOK, nil
 }
 
-func (t *Tracker) putTorrent(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
+func (s *Server) putTorrent(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return http.StatusInternalServerError, err
@@ -67,7 +103,7 @@ func (t *Tracker) putTorrent(w http.ResponseWriter, r *http.Request, p httproute
 		return http.StatusBadRequest, err
 	}
 
-	conn, err := t.pool.Get()
+	conn, err := s.tracker.Pool.Get()
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
@@ -80,8 +116,8 @@ func (t *Tracker) putTorrent(w http.ResponseWriter, r *http.Request, p httproute
 	return http.StatusOK, nil
 }
 
-func (t *Tracker) delTorrent(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	conn, err := t.pool.Get()
+func (s *Server) delTorrent(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
+	conn, err := s.tracker.Pool.Get()
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
@@ -101,8 +137,8 @@ func (t *Tracker) delTorrent(w http.ResponseWriter, r *http.Request, p httproute
 	return http.StatusOK, nil
 }
 
-func (t *Tracker) getUser(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	conn, err := t.pool.Get()
+func (s *Server) getUser(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
+	conn, err := s.tracker.Pool.Get()
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
@@ -124,7 +160,7 @@ func (t *Tracker) getUser(w http.ResponseWriter, r *http.Request, p httprouter.P
 	return http.StatusOK, nil
 }
 
-func (t *Tracker) putUser(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
+func (s *Server) putUser(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return http.StatusInternalServerError, err
@@ -136,7 +172,7 @@ func (t *Tracker) putUser(w http.ResponseWriter, r *http.Request, p httprouter.P
 		return http.StatusBadRequest, err
 	}
 
-	conn, err := t.pool.Get()
+	conn, err := s.tracker.Pool.Get()
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
@@ -149,8 +185,8 @@ func (t *Tracker) putUser(w http.ResponseWriter, r *http.Request, p httprouter.P
 	return http.StatusOK, nil
 }
 
-func (t *Tracker) delUser(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	conn, err := t.pool.Get()
+func (s *Server) delUser(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
+	conn, err := s.tracker.Pool.Get()
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
@@ -165,8 +201,8 @@ func (t *Tracker) delUser(w http.ResponseWriter, r *http.Request, p httprouter.P
 	return http.StatusOK, nil
 }
 
-func (t *Tracker) putClient(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	conn, err := t.pool.Get()
+func (s *Server) putClient(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
+	conn, err := s.tracker.Pool.Get()
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
@@ -179,8 +215,8 @@ func (t *Tracker) putClient(w http.ResponseWriter, r *http.Request, p httprouter
 	return http.StatusOK, nil
 }
 
-func (t *Tracker) delClient(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	conn, err := t.pool.Get()
+func (s *Server) delClient(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
+	conn, err := s.tracker.Pool.Get()
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}

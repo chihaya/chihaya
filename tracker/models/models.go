@@ -2,8 +2,6 @@
 // Use of this source code is governed by the BSD 2-Clause license,
 // which can be found in the LICENSE file.
 
-// Package models implements the models for an abstraction over the
-// multiple data stores used by a BitTorrent tracker.
 package models
 
 import (
@@ -19,7 +17,7 @@ import (
 )
 
 var (
-	// ErrMalformedRequest is returned when an http.Request does no have the
+	// ErrMalformedRequest is returned when an http.Request does not have the
 	// required parameters to create a model.
 	ErrMalformedRequest = errors.New("malformed request")
 )
@@ -45,7 +43,7 @@ type Peer struct {
 // respectively.
 func NewPeer(a *Announce, u *User, t *Torrent) *Peer {
 	if a == nil {
-		panic("models: announce cannot equal nil")
+		panic("tracker: announce cannot equal nil")
 	}
 
 	var userID uint64

@@ -2,8 +2,6 @@
 // Use of this source code is governed by the BSD 2-Clause license,
 // which can be found in the LICENSE file.
 
-// Package tracker provides a generic interface for manipulating a
-// BitTorrent tracker's fast-moving data.
 package tracker
 
 import (
@@ -12,7 +10,7 @@ import (
 	"time"
 
 	"github.com/chihaya/chihaya/config"
-	"github.com/chihaya/chihaya/models"
+	"github.com/chihaya/chihaya/tracker/models"
 )
 
 var (
@@ -47,7 +45,7 @@ func Register(name string, driver Driver) {
 	drivers[name] = driver
 }
 
-// Open creates a pool of data store connections specified by a models configuration.
+// Open creates a pool of data store connections specified by a configuration.
 func Open(cfg *config.DriverConfig) (Pool, error) {
 	driver, ok := drivers[cfg.Name]
 	if !ok {

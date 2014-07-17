@@ -7,8 +7,8 @@ package memory
 import (
 	"sync"
 
-	"github.com/chihaya/chihaya/drivers/tracker"
-	"github.com/chihaya/chihaya/models"
+	"github.com/chihaya/chihaya/tracker"
+	"github.com/chihaya/chihaya/tracker/models"
 )
 
 type Pool struct {

@@ -8,8 +8,8 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/chihaya/chihaya/drivers/tracker"
-	"github.com/chihaya/chihaya/models"
+	"github.com/chihaya/chihaya/tracker"
+	"github.com/chihaya/chihaya/tracker/models"
 )
 
 // Conn implements a connection to a memory-based tracker data store.

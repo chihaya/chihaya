@@ -14,10 +14,11 @@ import (
 
 	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/http"
+	"github.com/chihaya/chihaya/tracker"
 
 	// See the README for how to import custom drivers.
 	_ "github.com/chihaya/chihaya/drivers/backend/noop"
-	_ "github.com/chihaya/chihaya/drivers/tracker/memory"
+	_ "github.com/chihaya/chihaya/tracker/memory"
 )
 
 var (
@@ -67,6 +68,11 @@ func Boot() {
 		glog.V(1).Infof("Loaded config file: %s", configPath)
 	}
 
-	http.Serve(cfg)
+	tkr, err := tracker.New(cfg)
+	if err != nil {
+		glog.Fatal("New: ", err)
+	}
+
+	http.Serve(cfg, tkr)
 	glog.Info("Gracefully shut down")
 }

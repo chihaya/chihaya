@@ -9,7 +9,7 @@ import (
 
 	"github.com/chihaya/bencode"
 	"github.com/chihaya/chihaya/config"
-	"github.com/chihaya/chihaya/models"
+	"github.com/chihaya/chihaya/tracker"
 )
 
 func TestPrivateAnnounce(t *testing.T) {
@@ -64,7 +64,7 @@ func TestPrivateAnnounce(t *testing.T) {
 }
 
 func loadTestData(tkr *Tracker) error {
-	conn, err := tkr.pool.Get()
+	conn, err := tkr.Pool.Get()
 	if err != nil {
 		return err
 	}
@@ -76,7 +76,7 @@ func loadTestData(tkr *Tracker) error {
 	}
 
 	for i, passkey := range users {
-		err = conn.PutUser(&models.User{
+		err = conn.PutUser(&tracker.User{
 			ID:      uint64(i + 1),
 			Passkey: passkey,
 		})
@@ -91,11 +91,11 @@ func loadTestData(tkr *Tracker) error {
 		return err
 	}
 
-	torrent := &models.Torrent{
+	torrent := &tracker.Torrent{
 		ID:       1,
 		Infohash: infoHash,
-		Seeders:  make(map[string]models.Peer),
-		Leechers: make(map[string]models.Peer),
+		Seeders:  make(map[string]tracker.Peer),
+		Leechers: make(map[string]tracker.Peer),
 	}
 
 	return conn.PutTorrent(torrent)

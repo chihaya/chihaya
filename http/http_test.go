@@ -15,7 +15,7 @@ import (
 	"github.com/chihaya/chihaya/config"
 
 	_ "github.com/chihaya/chihaya/drivers/backend/noop"
-	_ "github.com/chihaya/chihaya/drivers/tracker/memory"
+	_ "github.com/chihaya/chihaya/tracker/memory"
 )
 
 type params map[string]string
@@ -23,7 +23,7 @@ type params map[string]string
 var infoHash = string([]byte{0x89, 0xd4, 0xbc, 0x52, 0x11, 0x16, 0xca, 0x1d, 0x42, 0xa2, 0xf3, 0x0d, 0x1f, 0x27, 0x4d, 0x94, 0xe4, 0x68, 0x1d, 0xaf})
 
 func setupTracker(cfg *config.Config) (*httptest.Server, error) {
-	tkr, err := NewTracker(cfg)
+	tkr, err := tracker.New(cfg)
 	if err != nil {
 		return nil, err
 	}

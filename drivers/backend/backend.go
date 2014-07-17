@@ -11,7 +11,7 @@ import (
 	"fmt"
 
 	"github.com/chihaya/chihaya/config"
-	"github.com/chihaya/chihaya/models"
+	"github.com/chihaya/chihaya/tracker/models"
 )
 
 var drivers = make(map[string]Driver)
@@ -35,7 +35,7 @@ func Register(name string, driver Driver) {
 	drivers[name] = driver
 }
 
-// Open creates a connection specified by a models configuration.
+// Open creates a connection specified by a configuration.
 func Open(cfg *config.DriverConfig) (Conn, error) {
 	driver, ok := drivers[cfg.Name]
 	if !ok {
