@@ -7,17 +7,25 @@
 package tracker
 
 import (
-	"github.com/chihaya/chihaya/config"
+	"time"
+
+	"github.com/golang/glog"
+
 	"github.com/chihaya/chihaya/backend"
+	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/tracker/models"
 )
 
+// Tracker represents the logic necessary to service BitTorrent announces,
+// independently of the underlying data transports used.
 type Tracker struct {
 	cfg     *config.Config
 	Pool    Pool
 	backend backend.Conn
 }
 
+// New creates a new Tracker, and opens any necessary connections.
+// Maintenance routines are automatically spawned in the background.
 func New(cfg *config.Config) (*Tracker, error) {
 	pool, err := Open(&cfg.Tracker)
 	if err != nil {
@@ -29,7 +37,7 @@ func New(cfg *config.Config) (*Tracker, error) {
 		return nil, err
 	}
 
-	go PurgeInactivePeers(
+	go purgeInactivePeers(
 		pool,
 		cfg.PurgeInactiveTorrents,
 		cfg.Announce.Duration*2,
@@ -43,8 +51,38 @@ func New(cfg *config.Config) (*Tracker, error) {
 	}, nil
 }
 
+// Writer serializes a tracker's responses, and is implemented for each
+// response transport used by the tracker.
+//
+// Note, data passed into any of these functions will not contain sensitive
+// information, so it may be passed back the client freely.
 type Writer interface {
-	WriteError(error) error
+	WriteError(err error) error
 	WriteAnnounce(*models.AnnounceResponse) error
 	WriteScrape(*models.ScrapeResponse) error
+}
+
+// purgeInactivePeers periodically walks the torrent database and removes
+// peers that haven't announced recently.
+//
+// The default interval is 2x the announce interval, which gives delayed
+// peers a chance to stay alive, while ensuring the majority of responses
+// contain active peers.
+func purgeInactivePeers(p Pool, purgeEmptyTorrents bool, threshold, interval time.Duration) {
+	for _ = range time.NewTicker(interval).C {
+		before := time.Now().Add(-threshold)
+		glog.V(0).Infof("Purging peers with no announces since %s", before)
+
+		conn, err := p.Get()
+
+		if err != nil {
+			glog.Error("Unable to get connection for a routine")
+			continue
+		}
+
+		err = conn.PurgeInactivePeers(purgeEmptyTorrents, before)
+		if err != nil {
+			glog.Errorf("Error purging torrents: %s", err)
+		}
+	}
 }

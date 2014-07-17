@@ -7,8 +7,8 @@
 package noop
 
 import (
-	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/backend"
+	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/tracker/models"
 )
 
