@@ -2,7 +2,7 @@
 // Use of this source code is governed by the BSD 2-Clause license,
 // which can be found in the LICENSE file.
 
-package main
+package chihaya
 
 import (
 	"flag"
@@ -21,13 +21,13 @@ import (
 )
 
 var (
-	maxprocs   int
+	maxProcs   int
 	profile    string
 	configPath string
 )
 
 func init() {
-	flag.IntVar(&maxprocs, "maxprocs", runtime.NumCPU(), "maximum parallel threads")
+	flag.IntVar(&maxProcs, "maxprocs", runtime.NumCPU(), "maximum parallel threads")
 	flag.StringVar(&profile, "profile", "", "if non-empty, path to write profiling data")
 	flag.StringVar(&configPath, "config", "", "path to the configuration file")
 }
@@ -37,8 +37,8 @@ func Boot() {
 
 	flag.Parse()
 
-	runtime.GOMAXPROCS(maxprocs)
-	glog.V(1).Info("Set max threads to ", maxprocs)
+	runtime.GOMAXPROCS(maxProcs)
+	glog.V(1).Info("Set max threads to ", maxProcs)
 
 	if profile != "" {
 		f, err := os.Create(profile)
@@ -69,8 +69,4 @@ func Boot() {
 
 	http.Serve(cfg)
 	glog.Info("Gracefully shut down")
-}
-
-func main() {
-	Boot()
 }

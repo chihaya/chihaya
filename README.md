@@ -64,16 +64,16 @@ Backend:
 To use an external driver, make your own package and call it something like `github.com/yourusername/chihaya`. Then, import Chihaya like so:
 
 ```go
-package chihaya // This is your own chihaya package.
+package main
 
 import (
-	c "github.com/chihaya/chihaya" // Use an alternate name to avoid the conflict.
+	"github.com/chihaya/chihaya"
 
 	_ "github.com/yourusername/chihaya-custom-backend" // Import any of your own drivers.
 )
 
 func main() {
-	c.Boot() // Start Chihaya normally.
+	chihaya.Boot() // Start Chihaya normally.
 }
 ```
 
