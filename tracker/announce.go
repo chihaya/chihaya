@@ -257,17 +257,15 @@ func appendSubnetPeers(ipv4s, ipv6s models.PeerList, ann *models.Announce, annou
 			}
 
 			if ip := peer.IP.To4(); len(ip) == 4 {
-				if peersLeftInSubnet && ipv4Subnet {
-					if subnet.Contains(ip) {
-						ipv4s = append(ipv4s, peer)
-						count++
-					}
+				if peersLeftInSubnet && ipv4Subnet && subnet.Contains(ip) {
+					ipv4s = append(ipv4s, peer)
+					count++
 				} else if !peersLeftInSubnet && !subnet.Contains(ip) {
 					ipv4s = append(ipv4s, peer)
 					count++
 				}
 			} else if ip := peer.IP.To16(); len(ip) == 16 {
-				if peersLeftInSubnet && ipv6Subnet {
+				if peersLeftInSubnet && ipv6Subnet && subnet.Contains(ip) {
 					ipv6s = append(ipv6s, peer)
 					count++
 				} else if !peersLeftInSubnet && !subnet.Contains(ip) {
