@@ -17,19 +17,20 @@ type Writer struct {
 }
 
 func (w *Writer) WriteError(err error) error {
-	dict := bencode.NewDict()
-	dict["failure reason"] = err.Error()
-
 	bencoder := bencode.NewEncoder(w)
-	return bencoder.Encode(dict)
+
+	return bencoder.Encode(bencode.Dict{
+		"failure reason": err.Error(),
+	})
 }
 
 func (w *Writer) WriteAnnounce(res *models.AnnounceResponse) error {
-	dict := bencode.NewDict()
-	dict["complete"] = res.Complete
-	dict["incomplete"] = res.Incomplete
-	dict["interval"] = res.Interval
-	dict["min interval"] = res.MinInterval
+	dict := bencode.Dict{
+		"complete":     res.Complete,
+		"incomplete":   res.Incomplete,
+		"interval":     res.Interval,
+		"min interval": res.MinInterval,
+	}
 
 	if res.IPv4Peers != nil || res.IPv4Peers != nil {
 		if res.Compact {
@@ -45,8 +46,9 @@ func (w *Writer) WriteAnnounce(res *models.AnnounceResponse) error {
 }
 
 func (w *Writer) WriteScrape(res *models.ScrapeResponse) error {
-	dict := bencode.NewDict()
-	dict["files"] = filesDict(res.Files)
+	dict := bencode.Dict{
+		"files": filesDict(res.Files),
+	}
 
 	bencoder := bencode.NewEncoder(w)
 	return bencoder.Encode(dict)
