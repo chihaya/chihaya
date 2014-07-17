@@ -251,13 +251,13 @@ func (c *Conn) PurgeInactivePeers(purgeEmptyTorrents bool, before time.Time) err
 		}
 
 		for key, peer := range torrent.Seeders {
-			if peer.LastAnnounce < unixtime {
+			if peer.LastAnnounce <= unixtime {
 				delete(torrent.Seeders, key)
 			}
 		}
 
 		for key, peer := range torrent.Leechers {
-			if peer.LastAnnounce < unixtime {
+			if peer.LastAnnounce <= unixtime {
 				delete(torrent.Leechers, key)
 			}
 		}
