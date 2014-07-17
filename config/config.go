@@ -56,6 +56,10 @@ type Config struct {
 	MinAnnounce     Duration `json:"min_announce"`
 	RequestTimeout  Duration `json:"request_timeout"`
 	NumWantFallback int      `json:"default_num_want"`
+
+	PreferredSubnet     bool `json:"preferred_subnet,omitempty"`
+	PreferredIPv4Subnet int  `json:"preferred_ipv4_subnet,omitempty"`
+	PreferredIPv6Subnet int  `json:"preferred_ipv6_subnet,omitempty"`
 }
 
 // DefaultConfig is a configuration that can be used as a fallback value.

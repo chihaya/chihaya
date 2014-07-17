@@ -5,6 +5,8 @@
 package tracker
 
 import (
+	"net"
+
 	"github.com/chihaya/chihaya/tracker/models"
 )
 
@@ -190,15 +192,19 @@ func getPeers(ann *models.Announce, announcer *models.Peer, t *models.Torrent, w
 
 	if ann.Left == 0 {
 		// If they're seeding, give them only leechers.
-		return appendPeers(ipv4s, ipv6s, announcer, t.Leechers, wanted)
+		return appendPeers(ipv4s, ipv6s, ann, announcer, t.Leechers, wanted)
 	}
 
 	// If they're leeching, prioritize giving them seeders.
-	ipv4s, ipv6s = appendPeers(ipv4s, ipv6s, announcer, t.Seeders, wanted)
-	return appendPeers(ipv4s, ipv6s, announcer, t.Leechers, wanted-len(ipv4s)-len(ipv6s))
+	ipv4s, ipv6s = appendPeers(ipv4s, ipv6s, ann, announcer, t.Seeders, wanted)
+	return appendPeers(ipv4s, ipv6s, ann, announcer, t.Leechers, wanted-len(ipv4s)-len(ipv6s))
 }
 
-func appendPeers(ipv4s, ipv6s models.PeerList, announcer *models.Peer, peers models.PeerMap, wanted int) (models.PeerList, models.PeerList) {
+func appendPeers(ipv4s, ipv6s models.PeerList, ann *models.Announce, announcer *models.Peer, peers models.PeerMap, wanted int) (models.PeerList, models.PeerList) {
+	if ann.Config.PreferredSubnet {
+		return appendSubnetPeers(ipv4s, ipv6s, ann, announcer, peers, wanted)
+	}
+
 	count := 0
 
 	for _, peer := range peers {
@@ -217,6 +223,59 @@ func appendPeers(ipv4s, ipv6s models.PeerList, announcer *models.Peer, peers mod
 		}
 
 		count++
+	}
+
+	return ipv4s, ipv6s
+}
+
+func appendSubnetPeers(ipv4s, ipv6s models.PeerList, ann *models.Announce, announcer *models.Peer, peers models.PeerMap, wanted int) (models.PeerList, models.PeerList) {
+	var (
+		subnet     net.IPNet
+		ipv4Subnet bool
+		ipv6Subnet bool
+	)
+
+	if aip := announcer.IP.To4(); len(aip) == 4 {
+		subnet = net.IPNet{aip, net.CIDRMask(ann.Config.PreferredIPv4Subnet, 32)}
+		ipv4Subnet = true
+	} else if aip := announcer.IP.To16(); len(aip) == 16 {
+		subnet = net.IPNet{aip, net.CIDRMask(ann.Config.PreferredIPv6Subnet, 128)}
+		ipv6Subnet = true
+	}
+
+	// Iterate over the peers twice: first add only peers in the same subnet and
+	// if we still need more peers grab any that have already been added.
+	count := 0
+	for _, peersLeftInSubnet := range [2]bool{true, false} {
+		for _, peer := range peers {
+			if count >= wanted {
+				break
+			}
+
+			if peer.ID == announcer.ID || peer.UserID != 0 && peer.UserID == announcer.UserID {
+				continue
+			}
+
+			if ip := peer.IP.To4(); len(ip) == 4 {
+				if peersLeftInSubnet && ipv4Subnet {
+					if subnet.Contains(ip) {
+						ipv4s = append(ipv4s, peer)
+						count++
+					}
+				} else if !peersLeftInSubnet && !subnet.Contains(ip) {
+					ipv4s = append(ipv4s, peer)
+					count++
+				}
+			} else if ip := peer.IP.To16(); len(ip) == 16 {
+				if peersLeftInSubnet && ipv6Subnet {
+					ipv6s = append(ipv6s, peer)
+					count++
+				} else if !peersLeftInSubnet && !subnet.Contains(ip) {
+					ipv6s = append(ipv6s, peer)
+					count++
+				}
+			}
+		}
 	}
 
 	return ipv4s, ipv6s
