@@ -60,6 +60,7 @@ func Boot() {
 	if err != nil {
 		glog.Fatalf("Failed to parse configuration file: %s\n", err)
 	}
+
 	if cfg == &config.DefaultConfig {
 		glog.V(1).Info("Using default config")
 	} else {

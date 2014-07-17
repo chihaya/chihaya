@@ -30,6 +30,7 @@ func TestPrivateAnnounce(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	defer srv.Close()
 	baseURL := srv.URL
 

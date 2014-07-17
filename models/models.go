@@ -250,6 +250,7 @@ func NewAnnounceDelta(a *Announce, p *Peer, u *User, t *Torrent, created, snatch
 	if rawDeltaUp < 0 {
 		rawDeltaUp = 0
 	}
+
 	if rawDeltaDown < 0 {
 		rawDeltaDown = 0
 	}

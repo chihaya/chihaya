@@ -154,8 +154,7 @@ func handleEvent(c tracker.Conn, a *models.Announce, p *models.Peer, u *models.U
 				return
 			}
 			delete(t.Seeders, p.Key())
-		}
-		if t.InLeecherPool(p) {
+		} else if t.InLeecherPool(p) {
 			err = c.DeleteLeecher(t.Infohash, p.Key())
 			if err != nil {
 				return

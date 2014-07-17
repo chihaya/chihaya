@@ -72,8 +72,7 @@ func TestTorrentPurging(t *testing.T) {
 	_, status, err := fetchPath(torrentApiPath)
 	if err != nil {
 		t.Fatal(err)
-	}
-	if status != http.StatusOK {
+	} else if status != http.StatusOK {
 		t.Fatalf("expected torrent to exist (got %s)", http.StatusText(status))
 	}
 
@@ -85,8 +84,7 @@ func TestTorrentPurging(t *testing.T) {
 	_, status, err = fetchPath(torrentApiPath)
 	if err != nil {
 		t.Fatal(err)
-	}
-	if status != http.StatusNotFound {
+	} else if status != http.StatusNotFound {
 		t.Fatalf("expected torrent to have been purged (got %s)", http.StatusText(status))
 	}
 }
@@ -110,19 +108,25 @@ func TestStalePeerPurging(t *testing.T) {
 	_, status, err := fetchPath(torrentApiPath)
 	if err != nil {
 		t.Fatal(err)
-	}
-	if status != http.StatusOK {
+	} else if status != http.StatusOK {
 		t.Fatalf("expected torrent to exist (got %s)", http.StatusText(status))
 	}
 
-	// Let them expire.
-	time.Sleep(50 * time.Millisecond)
+	// Add a leecher.
+	peer = makePeerParams("peer2", false)
+	expected := makeResponse(1, 1, bencode.List{
+		makePeerResponse("peer1"),
+	})
+	expected["interval"] = int64(0)
+	checkAnnounce(peer, expected, srv, t)
+
+	// Let them both expire.
+	time.Sleep(30 * time.Millisecond)
 
 	_, status, err = fetchPath(torrentApiPath)
 	if err != nil {
 		t.Fatal(err)
-	}
-	if status != http.StatusNotFound {
+	} else if status != http.StatusNotFound {
 		t.Fatalf("expected torrent to have been purged (got %s)", http.StatusText(status))
 	}
 }
