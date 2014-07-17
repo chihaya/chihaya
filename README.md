@@ -4,11 +4,10 @@ Chihaya is a high-performance [BitTorrent tracker](http://en.wikipedia.org/wiki/
 
 Features include:
 
-- Light resource consumption
-- Fast request processing using connection pools to spare the network from exorbitant connections
-- Maximum compatibility with what exists of the BitTorrent spec
+- Light resource consumption, and fast, asynchronous request processing
+- Full compatibility with what exists of the BitTorrent spec
 - Correct IPv6 support
-- Generic storage interfaces that are easily adapted to work with any database.
+- Generic storage interfaces that are easily adapted to work with any database
 
 ### Technical Details
 

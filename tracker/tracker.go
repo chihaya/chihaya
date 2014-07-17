@@ -65,9 +65,12 @@ type Writer interface {
 // purgeInactivePeers periodically walks the torrent database and removes
 // peers that haven't announced recently.
 //
-// The default interval is 2x the announce interval, which gives delayed
+// The default threshold is 2x the announce interval, which gives delayed
 // peers a chance to stay alive, while ensuring the majority of responses
 // contain active peers.
+//
+// The default interval is equal to the announce interval, since this is a
+// relatively expensive operation.
 func purgeInactivePeers(p Pool, purgeEmptyTorrents bool, threshold, interval time.Duration) {
 	for _ = range time.NewTicker(interval).C {
 		before := time.Now().Add(-threshold)
