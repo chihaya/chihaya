@@ -2,12 +2,12 @@
 
 Chihaya is a high-performance [BitTorrent tracker](http://en.wikipedia.org/wiki/BitTorrent_tracker) written in the Go programming language. It is still heavily under development and the current `master` branch should not be used in production.
 
-Planned features include:
+Features include:
 
 - Light resource consumption
 - Fast request processing using connection pools to spare the network from exorbitant connections
 - Maximum compatibility with what exists of the BitTorrent spec
-- Correct IPv6 support *gasp*
+- Correct IPv6 support
 - Generic storage interfaces that are easily adapted to work with any database.
 
 ### Technical Details
@@ -23,10 +23,10 @@ Chihaya can be ran as a public or private tracker and is intended to work with e
 
 ### Installing
 
-Chihaya requires Go 1.3+ to build.
+Chihaya requires Go 1.3+ to build. To install the Chihaya server, run:
 
 ```sh
-$ go get github.com/chihaya/chihaya
+$ go get github.com/chihaya/chihaya/cmd/chihaya
 ```
 
 Make sure you have your `$GOPATH` set up correctly, and have `$GOPATH/bin` in your `$PATH`.

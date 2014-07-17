@@ -13,6 +13,7 @@
   "private": false,
   "freeleech": false,
   "whitelist": false,
+  "purge_inactive_torrents": true,
 
   "announce": "30m",
   "min_announce": "15m",
