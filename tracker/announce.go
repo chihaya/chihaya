@@ -212,13 +212,13 @@ func appendPeers(ipv4s, ipv6s models.PeerList, ann *models.Announce, announcer *
 			break
 		}
 
-		if peer.ID == announcer.ID || peer.UserID != 0 && peer.UserID == announcer.UserID {
+		if peersEquivalent(&peer, announcer) {
 			continue
 		}
 
-		if ip := peer.IP.To4(); ip != nil {
+		if peer.IP.To4() != nil {
 			ipv4s = append(ipv4s, peer)
-		} else if ip := peer.IP.To16(); ip != nil {
+		} else if peer.IP.To16() != nil {
 			ipv6s = append(ipv6s, peer)
 		}
 
@@ -229,52 +229,41 @@ func appendPeers(ipv4s, ipv6s models.PeerList, ann *models.Announce, announcer *
 }
 
 func appendSubnetPeers(ipv4s, ipv6s models.PeerList, ann *models.Announce, announcer *models.Peer, peers models.PeerMap, wanted int) (models.PeerList, models.PeerList) {
-	var (
-		subnet     net.IPNet
-		ipv4Subnet bool
-		ipv6Subnet bool
-	)
+	var subnet net.IPNet
 
-	if aip := announcer.IP.To4(); len(aip) == 4 {
+	if aip := announcer.IP.To4(); aip != nil {
 		subnet = net.IPNet{aip, net.CIDRMask(ann.Config.PreferredIPv4Subnet, 32)}
-		ipv4Subnet = true
-	} else if aip := announcer.IP.To16(); len(aip) == 16 {
+	} else if aip := announcer.IP.To16(); aip != nil {
 		subnet = net.IPNet{aip, net.CIDRMask(ann.Config.PreferredIPv6Subnet, 128)}
-		ipv6Subnet = true
+	} else {
+		panic("impossible: missing IP")
 	}
 
 	// Iterate over the peers twice: first add only peers in the same subnet and
 	// if we still need more peers grab any that haven't already been added.
 	count := 0
-	for _, peersLeftInSubnet := range [2]bool{true, false} {
+	for _, checkInSubnet := range [2]bool{true, false} {
 		for _, peer := range peers {
 			if count >= wanted {
 				break
 			}
 
-			if peer.ID == announcer.ID || peer.UserID != 0 && peer.UserID == announcer.UserID {
+			if peersEquivalent(&peer, announcer) || checkInSubnet != subnet.Contains(peer.IP) {
 				continue
 			}
 
-			if ip := peer.IP.To4(); len(ip) == 4 {
-				if peersLeftInSubnet && ipv4Subnet && subnet.Contains(ip) {
-					ipv4s = append(ipv4s, peer)
-					count++
-				} else if !peersLeftInSubnet && !subnet.Contains(ip) {
-					ipv4s = append(ipv4s, peer)
-					count++
-				}
-			} else if ip := peer.IP.To16(); len(ip) == 16 {
-				if peersLeftInSubnet && ipv6Subnet && subnet.Contains(ip) {
-					ipv6s = append(ipv6s, peer)
-					count++
-				} else if !peersLeftInSubnet && !subnet.Contains(ip) {
-					ipv6s = append(ipv6s, peer)
-					count++
-				}
+			if peer.IP.To4() != nil {
+				ipv4s = append(ipv4s, peer)
+			} else if peer.IP.To16() != nil {
+				ipv6s = append(ipv6s, peer)
 			}
+			count++
 		}
 	}
 
 	return ipv4s, ipv6s
+}
+
+func peersEquivalent(a, b *models.Peer) bool {
+	return a.ID == b.ID || a.UserID != 0 && a.UserID == b.UserID
 }
