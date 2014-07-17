@@ -35,6 +35,7 @@ type Peer struct {
 }
 
 type PeerList []Peer
+type PeerMap map[string]Peer
 
 // NewPeer returns the Peer representation of an Announce. When provided nil
 // for the announce parameter, it panics. When provided nil for the user or
@@ -79,8 +80,8 @@ type Torrent struct {
 	ID       uint64 `json:"id"`
 	Infohash string `json:"infohash"`
 
-	Seeders  map[string]Peer `json:"seeders"`
-	Leechers map[string]Peer `json:"leechers"`
+	Seeders  PeerMap `json:"seeders"`
+	Leechers PeerMap `json:"leechers"`
 
 	Snatches       uint64  `json:"snatches"`
 	UpMultiplier   float64 `json:"up_multiplier"`

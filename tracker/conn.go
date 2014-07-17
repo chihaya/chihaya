@@ -93,8 +93,8 @@ type Conn interface {
 	DeleteClient(clientID string) error
 }
 
-// LeecherFinished moves a peer from the leeching pool to the seeder pool.
-func LeecherFinished(c Conn, infohash string, p *models.Peer) error {
+// leecherFinished moves a peer from the leeching pool to the seeder pool.
+func leecherFinished(c Conn, infohash string, p *models.Peer) error {
 	err := c.DeleteLeecher(infohash, p.Key())
 	if err != nil {
 		return err

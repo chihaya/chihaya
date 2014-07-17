@@ -41,8 +41,8 @@ func (t *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 	case !t.cfg.Private && err == ErrTorrentDNE:
 		torrent = &models.Torrent{
 			Infohash: ann.Infohash,
-			Seeders:  make(map[string]models.Peer),
-			Leechers: make(map[string]models.Peer),
+			Seeders:  models.PeerMap{},
+			Leechers: models.PeerMap{},
 		}
 
 		err = conn.PutTorrent(torrent)
@@ -149,7 +149,7 @@ func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t
 		t.Snatches++
 
 		if t.InLeecherPool(p) {
-			err = LeecherFinished(c, t.Infohash, p)
+			err = leecherFinished(c, t.Infohash, p)
 			if err != nil {
 				return
 			}
@@ -157,7 +157,7 @@ func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t
 
 	case t.InLeecherPool(p) && ann.Left == 0:
 		// A leecher completed but the event was never received.
-		err = LeecherFinished(c, t.Infohash, p)
+		err = leecherFinished(c, t.Infohash, p)
 		if err != nil {
 			return
 		}
@@ -198,7 +198,7 @@ func getPeers(ann *models.Announce, announcer *models.Peer, t *models.Torrent, w
 	return appendPeers(ipv4s, ipv6s, announcer, t.Leechers, wanted-len(ipv4s)-len(ipv6s))
 }
 
-func appendPeers(ipv4s, ipv6s models.PeerList, announcer *models.Peer, peers map[string]models.Peer, wanted int) (models.PeerList, models.PeerList) {
+func appendPeers(ipv4s, ipv6s models.PeerList, announcer *models.Peer, peers models.PeerMap, wanted int) (models.PeerList, models.PeerList) {
 	count := 0
 
 	for _, peer := range peers {

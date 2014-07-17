@@ -95,8 +95,8 @@ func loadTestData(tkr *tracker.Tracker) error {
 	torrent := &models.Torrent{
 		ID:       1,
 		Infohash: infoHash,
-		Seeders:  make(map[string]models.Peer),
-		Leechers: make(map[string]models.Peer),
+		Seeders:  models.PeerMap{},
+		Leechers: models.PeerMap{},
 	}
 
 	return conn.PutTorrent(torrent)
