@@ -181,23 +181,17 @@ func TestPreferredSubnet(t *testing.T) {
 	}
 	defer srv.Close()
 
-	peerA1 := makePeerParams("peerA1", false)
-	peerA1["ip"] = "44.0.0.1"
-
-	peerA2 := makePeerParams("peerA2", false)
-	peerA2["ip"] = "44.0.0.2"
-
-	peerA3 := makePeerParams("peerA3", false)
-	peerA3["ip"] = "44.0.0.3"
-
-	peerA4 := makePeerParams("peerA4", false)
-	peerA4["ip"] = "44.0.0.4"
-
-	peerB1 := makePeerParams("peerB1", false)
-	peerB1["ip"] = "45.0.0.1"
-
-	peerB2 := makePeerParams("peerB2", false)
-	peerB2["ip"] = "45.0.0.2"
+	peerA1 := makePeerParams("peerA1", false, "44.0.0.1")
+	peerA2 := makePeerParams("peerA2", false, "44.0.0.2")
+	peerA3 := makePeerParams("peerA3", false, "44.0.0.3")
+	peerA4 := makePeerParams("peerA4", false, "44.0.0.4")
+	peerB1 := makePeerParams("peerB1", false, "45.0.0.1")
+	peerB2 := makePeerParams("peerB2", false, "45.0.0.2")
+	peerC1 := makePeerParams("peerC1", false, "fc01::1")
+	peerC2 := makePeerParams("peerC2", false, "fc01::2")
+	peerC3 := makePeerParams("peerC3", false, "fc01::3")
+	peerD1 := makePeerParams("peerD1", false, "fc02::1")
+	peerD2 := makePeerParams("peerD2", false, "fc02::2")
 
 	expected := makeResponse(0, 1)
 	checkAnnounce(peerA1, expected, srv, t)
@@ -212,27 +206,54 @@ func TestPreferredSubnet(t *testing.T) {
 	expected = makeResponse(0, 4, peerB1)
 	checkAnnounce(peerB2, expected, srv, t)
 	checkAnnounce(peerB2, expected, srv, t)
-	checkAnnounce(peerB2, expected, srv, t)
 
 	peerA3["numwant"] = "2"
 	expected = makeResponse(0, 5, peerA1, peerA2)
+	checkAnnounce(peerA3, expected, srv, t)
 	checkAnnounce(peerA3, expected, srv, t)
 
 	peerA4["numwant"] = "3"
 	expected = makeResponse(0, 6, peerA1, peerA2, peerA3)
 	checkAnnounce(peerA4, expected, srv, t)
+	checkAnnounce(peerA4, expected, srv, t)
+
+	expected = makeResponse(0, 7, peerA1, peerA2, peerA3, peerA4, peerB1, peerB2)
+	checkAnnounce(peerC1, expected, srv, t)
+
+	peerC2["numwant"] = "1"
+	expected = makeResponse(0, 8, peerC1)
+	checkAnnounce(peerC2, expected, srv, t)
+	checkAnnounce(peerC2, expected, srv, t)
+
+	peerC3["numwant"] = "2"
+	expected = makeResponse(0, 9, peerC1, peerC2)
+	checkAnnounce(peerC3, expected, srv, t)
+	checkAnnounce(peerC3, expected, srv, t)
+
+	expected = makeResponse(0, 10, peerA1, peerA2, peerA3, peerA4, peerB1, peerB2, peerC1, peerC2, peerC3)
+	checkAnnounce(peerD1, expected, srv, t)
+
+	peerD2["numwant"] = "1"
+	expected = makeResponse(0, 11, peerD1)
+	checkAnnounce(peerD2, expected, srv, t)
+	checkAnnounce(peerD2, expected, srv, t)
 }
 
-func makePeerParams(id string, seed bool) params {
+func makePeerParams(id string, seed bool, extra ...string) params {
 	left := "1"
 	if seed {
 		left = "0"
 	}
 
+	ip := "10.0.0.1"
+	if len(extra) >= 1 {
+		ip = extra[0]
+	}
+
 	return params{
 		"info_hash":  infoHash,
 		"peer_id":    id,
-		"ip":         "10.0.0.1",
+		"ip":         ip,
 		"port":       "1234",
 		"uploaded":   "0",
 		"downloaded": "0",
