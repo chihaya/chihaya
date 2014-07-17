@@ -244,7 +244,7 @@ func appendSubnetPeers(ipv4s, ipv6s models.PeerList, ann *models.Announce, annou
 	}
 
 	// Iterate over the peers twice: first add only peers in the same subnet and
-	// if we still need more peers grab any that have already been added.
+	// if we still need more peers grab any that haven't already been added.
 	count := 0
 	for _, peersLeftInSubnet := range [2]bool{true, false} {
 		for _, peer := range peers {
