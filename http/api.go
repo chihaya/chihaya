@@ -28,7 +28,7 @@ func (s *Server) check(w http.ResponseWriter, r *http.Request, p httprouter.Para
 }
 
 func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	ann, err := models.NewAnnounce(s.config, r, p)
+	ann, err := NewAnnounce(s.config, r, p)
 	writer := &Writer{w}
 
 	if err == models.ErrMalformedRequest {
@@ -46,7 +46,7 @@ func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request, p httprou
 }
 
 func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	scrape, err := models.NewScrape(s.config, r, p)
+	scrape, err := NewScrape(s.config, r, p)
 	writer := &Writer{w}
 
 	if err == models.ErrMalformedRequest {
