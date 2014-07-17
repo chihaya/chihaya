@@ -45,7 +45,7 @@ func makeHandler(handler ResponseHandler) httprouter.Handle {
 	}
 }
 
-func NewRouter(s *Server) *httprouter.Router {
+func newRouter(s *Server) *httprouter.Router {
 	r := httprouter.New()
 
 	if s.config.Private {
@@ -79,5 +79,5 @@ func Serve(cfg *config.Config, tkr *tracker.Tracker) {
 	}
 
 	glog.V(0).Info("Starting on ", cfg.Addr)
-	graceful.Run(cfg.Addr, cfg.RequestTimeout.Duration, NewRouter(srv))
+	graceful.Run(cfg.Addr, cfg.RequestTimeout.Duration, newRouter(srv))
 }

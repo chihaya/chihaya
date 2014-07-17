@@ -36,7 +36,7 @@ func createServer(tkr *tracker.Tracker, cfg *config.Config) (*httptest.Server, e
 		config:  cfg,
 		tracker: tkr,
 	}
-	return httptest.NewServer(NewRouter(srv)), nil
+	return httptest.NewServer(newRouter(srv)), nil
 }
 
 func announce(p params, srv *httptest.Server) ([]byte, error) {

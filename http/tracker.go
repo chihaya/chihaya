@@ -10,7 +10,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"github.com/chihaya/chihaya/config"
-	"github.com/chihaya/chihaya/models/query"
+	"github.com/chihaya/chihaya/http/query"
 	"github.com/chihaya/chihaya/tracker/models"
 )
 
