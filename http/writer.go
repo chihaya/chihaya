@@ -9,7 +9,6 @@ import (
 	"net/http"
 
 	"github.com/chihaya/bencode"
-	"github.com/chihaya/chihaya/tracker"
 	"github.com/chihaya/chihaya/tracker/models"
 )
 
@@ -25,7 +24,7 @@ func (w *Writer) WriteError(err error) error {
 	return bencoder.Encode(dict)
 }
 
-func (w *Writer) WriteAnnounce(res *tracker.AnnounceResponse) error {
+func (w *Writer) WriteAnnounce(res *models.AnnounceResponse) error {
 	dict := bencode.NewDict()
 	dict["complete"] = res.Complete
 	dict["incomplete"] = res.Incomplete
@@ -45,7 +44,7 @@ func (w *Writer) WriteAnnounce(res *tracker.AnnounceResponse) error {
 	return bencoder.Encode(dict)
 }
 
-func (w *Writer) WriteScrape(res *tracker.ScrapeResponse) error {
+func (w *Writer) WriteScrape(res *models.ScrapeResponse) error {
 	dict := bencode.NewDict()
 	dict["files"] = filesDict(res.Files)
 
@@ -53,7 +52,7 @@ func (w *Writer) WriteScrape(res *tracker.ScrapeResponse) error {
 	return bencoder.Encode(dict)
 }
 
-func compactPeers(ipv6 bool, peers tracker.PeerList) []byte {
+func compactPeers(ipv6 bool, peers models.PeerList) []byte {
 	var compactPeers bytes.Buffer
 
 	if ipv6 {
@@ -75,7 +74,7 @@ func compactPeers(ipv6 bool, peers tracker.PeerList) []byte {
 	return compactPeers.Bytes()
 }
 
-func peersList(ipv4s, ipv6s tracker.PeerList) (peers []bencode.Dict) {
+func peersList(ipv4s, ipv6s models.PeerList) (peers []bencode.Dict) {
 	for _, peer := range ipv4s {
 		peers = append(peers, peerDict(&peer))
 	}

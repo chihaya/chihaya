@@ -9,6 +9,7 @@ package tracker
 import (
 	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/drivers/backend"
+	"github.com/chihaya/chihaya/tracker/models"
 )
 
 type Tracker struct {
@@ -40,4 +41,10 @@ func New(cfg *config.Config) (*Tracker, error) {
 		Pool:    pool,
 		backend: bc,
 	}, nil
+}
+
+type Writer interface {
+	WriteError(error) error
+	WriteAnnounce(*models.AnnounceResponse) error
+	WriteScrape(*models.ScrapeResponse) error
 }

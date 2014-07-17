@@ -166,11 +166,11 @@ func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t
 	return
 }
 
-func newAnnounceResponse(ann *models.Announce, announcer *models.Peer, t *models.Torrent) *AnnounceResponse {
+func newAnnounceResponse(ann *models.Announce, announcer *models.Peer, t *models.Torrent) *models.AnnounceResponse {
 	seedCount := len(t.Seeders)
 	leechCount := len(t.Leechers)
 
-	res := &AnnounceResponse{
+	res := &models.AnnounceResponse{
 		Complete:    seedCount,
 		Incomplete:  leechCount,
 		Interval:    ann.Config.Announce.Duration,
@@ -185,8 +185,8 @@ func newAnnounceResponse(ann *models.Announce, announcer *models.Peer, t *models
 	return res
 }
 
-func getPeers(ann *models.Announce, announcer *models.Peer, t *models.Torrent, wanted int) (ipv4s, ipv6s PeerList) {
-	ipv4s, ipv6s = PeerList{}, PeerList{}
+func getPeers(ann *models.Announce, announcer *models.Peer, t *models.Torrent, wanted int) (ipv4s, ipv6s models.PeerList) {
+	ipv4s, ipv6s = models.PeerList{}, models.PeerList{}
 
 	if ann.Left == 0 {
 		// If they're seeding, give them only leechers.
@@ -198,7 +198,7 @@ func getPeers(ann *models.Announce, announcer *models.Peer, t *models.Torrent, w
 	return appendPeers(ipv4s, ipv6s, announcer, t.Leechers, wanted-len(ipv4s)-len(ipv6s))
 }
 
-func appendPeers(ipv4s, ipv6s PeerList, announcer *models.Peer, peers map[string]models.Peer, wanted int) (PeerList, PeerList) {
+func appendPeers(ipv4s, ipv6s models.PeerList, announcer *models.Peer, peers map[string]models.Peer, wanted int) (models.PeerList, models.PeerList) {
 	count := 0
 
 	for _, peer := range peers {

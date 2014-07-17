@@ -34,6 +34,8 @@ type Peer struct {
 	LastAnnounce int64  `json:"last_announce"`
 }
 
+type PeerList []Peer
+
 // NewPeer returns the Peer representation of an Announce. When provided nil
 // for the announce parameter, it panics. When provided nil for the user or
 // torrent parameter, it returns a Peer{UserID: 0} or Peer{TorrentID: 0}
@@ -165,6 +167,15 @@ type AnnounceDelta struct {
 	Downloaded uint64
 }
 
+// AnnounceResponse contains the information needed to fulfill an announce.
+type AnnounceResponse struct {
+	Complete, Incomplete  int
+	Interval, MinInterval time.Duration
+	IPv4Peers, IPv6Peers  PeerList
+
+	Compact bool
+}
+
 // NewAnnounceDelta calculates a Peer's download and upload deltas between
 // Announces and generates an AnnounceDelta.
 func NewAnnounceDelta(a *Announce, p *Peer, u *User, t *Torrent, created, snatched bool) *AnnounceDelta {
@@ -205,4 +216,9 @@ type Scrape struct {
 
 	Passkey    string
 	Infohashes []string
+}
+
+// ScrapeResponse contains the information needed to fulfill a scrape.
+type ScrapeResponse struct {
+	Files []*Torrent
 }

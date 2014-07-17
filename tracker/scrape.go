@@ -36,5 +36,5 @@ func (t *Tracker) HandleScrape(scrape *models.Scrape, w Writer) error {
 		torrents = append(torrents, torrent)
 	}
 
-	return w.WriteScrape(&ScrapeResponse{torrents})
+	return w.WriteScrape(&models.ScrapeResponse{torrents})
 }
