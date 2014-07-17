@@ -246,6 +246,10 @@ func (c *Conn) PurgeInactivePeers(purgeEmptyTorrents bool, before time.Time) err
 		c.torrentsM.Lock()
 		torrent := c.torrents[infohash]
 
+		if torrent == nil {
+			continue // Torrent deleted since keys were computed.
+		}
+
 		for key, peer := range torrent.Seeders {
 			if peer.LastAnnounce < unixtime {
 				delete(torrent.Seeders, key)
