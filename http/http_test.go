@@ -13,6 +13,7 @@ import (
 
 	"github.com/chihaya/bencode"
 	"github.com/chihaya/chihaya/config"
+	"github.com/chihaya/chihaya/tracker"
 
 	_ "github.com/chihaya/chihaya/drivers/backend/noop"
 	_ "github.com/chihaya/chihaya/tracker/memory"
@@ -30,8 +31,12 @@ func setupTracker(cfg *config.Config) (*httptest.Server, error) {
 	return createServer(tkr, cfg)
 }
 
-func createServer(tkr *Tracker, cfg *config.Config) (*httptest.Server, error) {
-	return httptest.NewServer(NewRouter(tkr, cfg)), nil
+func createServer(tkr *tracker.Tracker, cfg *config.Config) (*httptest.Server, error) {
+	srv := &Server{
+		config:  cfg,
+		tracker: tkr,
+	}
+	return httptest.NewServer(NewRouter(srv)), nil
 }
 
 func announce(p params, srv *httptest.Server) ([]byte, error) {

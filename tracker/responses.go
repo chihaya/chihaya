@@ -10,7 +10,7 @@ import (
 	"github.com/chihaya/chihaya/tracker/models"
 )
 
-type PeerList []*models.Peer
+type PeerList []models.Peer
 
 type AnnounceResponse struct {
 	Complete, Incomplete  int

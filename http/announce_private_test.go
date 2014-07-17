@@ -10,13 +10,14 @@ import (
 	"github.com/chihaya/bencode"
 	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/tracker"
+	"github.com/chihaya/chihaya/tracker/models"
 )
 
 func TestPrivateAnnounce(t *testing.T) {
 	cfg := config.DefaultConfig
 	cfg.Private = true
 
-	tkr, err := NewTracker(&cfg)
+	tkr, err := tracker.New(&cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +64,7 @@ func TestPrivateAnnounce(t *testing.T) {
 	checkAnnounce(peer, expected, srv, t)
 }
 
-func loadTestData(tkr *Tracker) error {
+func loadTestData(tkr *tracker.Tracker) error {
 	conn, err := tkr.Pool.Get()
 	if err != nil {
 		return err
@@ -76,7 +77,7 @@ func loadTestData(tkr *Tracker) error {
 	}
 
 	for i, passkey := range users {
-		err = conn.PutUser(&tracker.User{
+		err = conn.PutUser(&models.User{
 			ID:      uint64(i + 1),
 			Passkey: passkey,
 		})
@@ -91,11 +92,11 @@ func loadTestData(tkr *Tracker) error {
 		return err
 	}
 
-	torrent := &tracker.Torrent{
+	torrent := &models.Torrent{
 		ID:       1,
 		Infohash: infoHash,
-		Seeders:  make(map[string]tracker.Peer),
-		Leechers: make(map[string]tracker.Peer),
+		Seeders:  make(map[string]models.Peer),
+		Leechers: make(map[string]models.Peer),
 	}
 
 	return conn.PutTorrent(torrent)

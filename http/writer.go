@@ -32,11 +32,13 @@ func (w *Writer) WriteAnnounce(res *tracker.AnnounceResponse) error {
 	dict["interval"] = res.Interval
 	dict["min interval"] = res.MinInterval
 
-	if res.Compact {
-		dict["peers"] = compactPeers(false, res.IPv4Peers)
-		dict["peers6"] = compactPeers(true, res.IPv6Peers)
-	} else {
-		dict["peers"] = peersList(res.IPv6Peers, res.IPv4Peers)
+	if res.IPv4Peers != nil || res.IPv4Peers != nil {
+		if res.Compact {
+			dict["peers"] = compactPeers(false, res.IPv4Peers)
+			dict["peers6"] = compactPeers(true, res.IPv6Peers)
+		} else {
+			dict["peers"] = peersList(res.IPv6Peers, res.IPv4Peers)
+		}
 	}
 
 	bencoder := bencode.NewEncoder(w)
@@ -75,10 +77,10 @@ func compactPeers(ipv6 bool, peers tracker.PeerList) []byte {
 
 func peersList(ipv4s, ipv6s tracker.PeerList) (peers []bencode.Dict) {
 	for _, peer := range ipv4s {
-		peers = append(peers, peerDict(peer))
+		peers = append(peers, peerDict(&peer))
 	}
 	for _, peer := range ipv6s {
-		peers = append(peers, peerDict(peer))
+		peers = append(peers, peerDict(&peer))
 	}
 	return peers
 }
