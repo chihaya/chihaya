@@ -17,7 +17,7 @@ import (
 	"github.com/chihaya/chihaya/tracker"
 
 	// See the README for how to import custom drivers.
-	_ "github.com/chihaya/chihaya/drivers/backend/noop"
+	_ "github.com/chihaya/chihaya/backend/noop"
 	_ "github.com/chihaya/chihaya/tracker/memory"
 )
 

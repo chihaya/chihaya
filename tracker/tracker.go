@@ -8,7 +8,7 @@ package tracker
 
 import (
 	"github.com/chihaya/chihaya/config"
-	"github.com/chihaya/chihaya/drivers/backend"
+	"github.com/chihaya/chihaya/backend"
 	"github.com/chihaya/chihaya/tracker/models"
 )
 
