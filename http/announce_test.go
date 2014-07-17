@@ -26,36 +26,30 @@ func TestPublicAnnounce(t *testing.T) {
 	}
 	defer srv.Close()
 
+	peer1 := makePeerParams("peer1", true)
+	peer2 := makePeerParams("peer2", true)
+	peer3 := makePeerParams("peer3", false)
+
 	// Add one seeder.
-	peer := makePeerParams("peer1", true)
-	expected := makeResponse(1, 0, bencode.List{})
-	checkAnnounce(peer, expected, srv, t)
+	expected := makeResponse(1, 0)
+	checkAnnounce(peer1, expected, srv, t)
 
 	// Add another seeder.
-	peer = makePeerParams("peer2", true)
-	expected = makeResponse(2, 0, bencode.List{})
-	checkAnnounce(peer, expected, srv, t)
+	expected = makeResponse(2, 0)
+	checkAnnounce(peer2, expected, srv, t)
 
 	// Add a leecher.
-	peer = makePeerParams("peer3", false)
-	expected = makeResponse(2, 1, bencode.List{
-		makePeerResponse("peer1"),
-		makePeerResponse("peer2"),
-	})
-	checkAnnounce(peer, expected, srv, t)
+	expected = makeResponse(2, 1, peer1, peer2)
+	checkAnnounce(peer3, expected, srv, t)
 
 	// Remove seeder.
-	peer = makePeerParams("peer1", true)
-	peer["event"] = "stopped"
+	peer1["event"] = "stopped"
 	expected = makeResponse(1, 1, nil)
-	checkAnnounce(peer, expected, srv, t)
+	checkAnnounce(peer1, expected, srv, t)
 
 	// Check seeders.
-	peer = makePeerParams("peer3", false)
-	expected = makeResponse(1, 1, bencode.List{
-		makePeerResponse("peer2"),
-	})
-	checkAnnounce(peer, expected, srv, t)
+	expected = makeResponse(1, 1, peer2)
+	checkAnnounce(peer3, expected, srv, t)
 }
 
 func TestTorrentPurging(t *testing.T) {
@@ -105,8 +99,8 @@ func TestStalePeerPurging(t *testing.T) {
 	torrentApiPath := srv.URL + "/torrents/" + url.QueryEscape(infoHash)
 
 	// Add one seeder.
-	peer := makePeerParams("peer1", true)
-	announce(peer, srv)
+	peer1 := makePeerParams("peer1", true)
+	announce(peer1, srv)
 
 	_, status, err := fetchPath(torrentApiPath)
 	if err != nil {
@@ -116,12 +110,10 @@ func TestStalePeerPurging(t *testing.T) {
 	}
 
 	// Add a leecher.
-	peer = makePeerParams("peer2", false)
-	expected := makeResponse(1, 1, bencode.List{
-		makePeerResponse("peer1"),
-	})
+	peer2 := makePeerParams("peer2", false)
+	expected := makeResponse(1, 1, peer1)
 	expected["interval"] = int64(0)
-	checkAnnounce(peer, expected, srv, t)
+	checkAnnounce(peer2, expected, srv, t)
 
 	// Let them both expire.
 	time.Sleep(30 * time.Millisecond)
@@ -156,40 +148,32 @@ func TestPrivateAnnounce(t *testing.T) {
 	defer srv.Close()
 	baseURL := srv.URL
 
-	peer := makePeerParams("-TR2820-peer1", false)
-	expected := makeResponse(0, 1, bencode.List{})
-	srv.URL = baseURL + "/users/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv1"
-	checkAnnounce(peer, expected, srv, t)
+	peer1 := makePeerParams("-TR2820-peer1", false)
+	peer2 := makePeerParams("-TR2820-peer2", false)
+	peer3 := makePeerParams("-TR2820-peer3", true)
 
-	peer = makePeerParams("-TR2820-peer2", false)
-	expected = makeResponse(0, 2, bencode.List{
-		makePeerResponse("-TR2820-peer1"),
-	})
+	expected := makeResponse(0, 1)
+	srv.URL = baseURL + "/users/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv1"
+	checkAnnounce(peer1, expected, srv, t)
+
+	expected = makeResponse(0, 2, peer1)
 	srv.URL = baseURL + "/users/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv2"
-	checkAnnounce(peer, expected, srv, t)
+	checkAnnounce(peer2, expected, srv, t)
 
-	peer = makePeerParams("-TR2820-peer3", true)
-	expected = makeResponse(1, 2, bencode.List{
-		makePeerResponse("-TR2820-peer1"),
-		makePeerResponse("-TR2820-peer2"),
-	})
+	expected = makeResponse(1, 2, peer1, peer2)
 	srv.URL = baseURL + "/users/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv3"
-	checkAnnounce(peer, expected, srv, t)
+	checkAnnounce(peer3, expected, srv, t)
 
-	peer = makePeerParams("-TR2820-peer1", false)
-	expected = makeResponse(1, 2, bencode.List{
-		makePeerResponse("-TR2820-peer2"),
-		makePeerResponse("-TR2820-peer3"),
-	})
+	expected = makeResponse(1, 2, peer2, peer3)
 	srv.URL = baseURL + "/users/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv1"
-	checkAnnounce(peer, expected, srv, t)
+	checkAnnounce(peer1, expected, srv, t)
 }
 
 func TestPreferredSubnet(t *testing.T) {
 	cfg := config.DefaultConfig
 	cfg.PreferredSubnet = true
 	cfg.PreferredIPv4Subnet = 8
-	cfg.PreferredIPv6Subnet = 8
+	cfg.PreferredIPv6Subnet = 16
 
 	srv, err := setupTracker(&cfg)
 	if err != nil {
@@ -197,7 +181,6 @@ func TestPreferredSubnet(t *testing.T) {
 	}
 	defer srv.Close()
 
-	// Make a bunch of peers in two subnets.
 	peerA1 := makePeerParams("peerA1", false)
 	peerA1["ip"] = "44.0.0.1"
 
@@ -216,42 +199,27 @@ func TestPreferredSubnet(t *testing.T) {
 	peerB2 := makePeerParams("peerB2", false)
 	peerB2["ip"] = "45.0.0.2"
 
-	// Check what peers their announces return.
-	expected := makeResponse(0, 1, bencode.List{})
+	expected := makeResponse(0, 1)
 	checkAnnounce(peerA1, expected, srv, t)
 
-	expected = makeResponse(0, 2, bencode.List{
-		peerFromParams(peerA1),
-	})
+	expected = makeResponse(0, 2, peerA1)
 	checkAnnounce(peerA2, expected, srv, t)
 
-	expected = makeResponse(0, 3, bencode.List{
-		peerFromParams(peerA1),
-		peerFromParams(peerA2),
-	})
+	expected = makeResponse(0, 3, peerA1, peerA2)
 	checkAnnounce(peerB1, expected, srv, t)
 
 	peerB2["numwant"] = "1"
-	expected = makeResponse(0, 4, bencode.List{
-		peerFromParams(peerB1),
-	})
+	expected = makeResponse(0, 4, peerB1)
 	checkAnnounce(peerB2, expected, srv, t)
 	checkAnnounce(peerB2, expected, srv, t)
 	checkAnnounce(peerB2, expected, srv, t)
 
 	peerA3["numwant"] = "2"
-	expected = makeResponse(0, 5, bencode.List{
-		peerFromParams(peerA1),
-		peerFromParams(peerA2),
-	})
+	expected = makeResponse(0, 5, peerA1, peerA2)
 	checkAnnounce(peerA3, expected, srv, t)
 
 	peerA4["numwant"] = "3"
-	expected = makeResponse(0, 6, bencode.List{
-		peerFromParams(peerA1),
-		peerFromParams(peerA2),
-		peerFromParams(peerA3),
-	})
+	expected = makeResponse(0, 6, peerA1, peerA2, peerA3)
 	checkAnnounce(peerA4, expected, srv, t)
 }
 
@@ -264,6 +232,7 @@ func makePeerParams(id string, seed bool) params {
 	return params{
 		"info_hash":  infoHash,
 		"peer_id":    id,
+		"ip":         "10.0.0.1",
 		"port":       "1234",
 		"uploaded":   "0",
 		"downloaded": "0",
@@ -273,30 +242,17 @@ func makePeerParams(id string, seed bool) params {
 	}
 }
 
-func makePeerResponse(id string) bencode.Dict {
-	return bencode.Dict{
-		"peer id": id,
-		"ip":      "127.0.0.1",
-		"port":    int64(1234),
-	}
-}
-
 func peerFromParams(peer params) bencode.Dict {
-	ip := peer["ip"]
-	if ip == "" {
-		ip = "127.0.0.1"
-	}
-
 	port, _ := strconv.ParseInt(peer["port"], 10, 64)
 
 	return bencode.Dict{
 		"peer id": peer["peer_id"],
-		"ip":      ip,
+		"ip":      peer["ip"],
 		"port":    port,
 	}
 }
 
-func makeResponse(seeders, leechers int64, peers bencode.List) bencode.Dict {
+func makeResponse(seeders, leechers int64, peers ...params) bencode.Dict {
 	dict := bencode.Dict{
 		"complete":     seeders,
 		"incomplete":   leechers,
@@ -304,8 +260,12 @@ func makeResponse(seeders, leechers int64, peers bencode.List) bencode.Dict {
 		"min interval": int64(900),
 	}
 
-	if peers != nil {
-		dict["peers"] = peers
+	if !(len(peers) == 1 && peers[0] == nil) {
+		peerList := bencode.List{}
+		for _, peer := range peers {
+			peerList = append(peerList, peerFromParams(peer))
+		}
+		dict["peers"] = peerList
 	}
 	return dict
 }
