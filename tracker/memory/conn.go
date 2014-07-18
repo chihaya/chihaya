@@ -17,6 +17,10 @@ type Conn struct {
 	*Pool
 }
 
+func (c *Conn) Close() error {
+	return nil
+}
+
 func (c *Conn) FindUser(passkey string) (*models.User, error) {
 	c.usersM.RLock()
 	defer c.usersM.RUnlock()

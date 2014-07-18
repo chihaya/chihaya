@@ -68,6 +68,8 @@ type Pool interface {
 // Conn represents a connection to the data store that can be used
 // to make reads/writes.
 type Conn interface {
+	Close() error
+
 	// Torrent interactions
 	FindTorrent(infohash string) (*models.Torrent, error)
 	PutTorrent(t *models.Torrent) error
