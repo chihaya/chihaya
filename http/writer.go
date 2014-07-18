@@ -12,10 +12,12 @@ import (
 	"github.com/chihaya/chihaya/tracker/models"
 )
 
+// Writer implements the tracker.Writer interface for the HTTP protocol.
 type Writer struct {
 	http.ResponseWriter
 }
 
+// WriteError writes a bencode dict with a failure reason.
 func (w *Writer) WriteError(err error) error {
 	bencoder := bencode.NewEncoder(w)
 
@@ -24,6 +26,7 @@ func (w *Writer) WriteError(err error) error {
 	})
 }
 
+// WriteAnnounce writes a bencode dict representation of an AnnounceResponse.
 func (w *Writer) WriteAnnounce(res *models.AnnounceResponse) error {
 	dict := bencode.Dict{
 		"complete":     res.Complete,
@@ -45,6 +48,7 @@ func (w *Writer) WriteAnnounce(res *models.AnnounceResponse) error {
 	return bencoder.Encode(dict)
 }
 
+// WriteScrape writes a bencode dict representation of a ScrapeResponse.
 func (w *Writer) WriteScrape(res *models.ScrapeResponse) error {
 	dict := bencode.Dict{
 		"files": filesDict(res.Files),

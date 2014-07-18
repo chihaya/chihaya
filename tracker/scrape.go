@@ -8,6 +8,8 @@ import (
 	"github.com/chihaya/chihaya/tracker/models"
 )
 
+// HandleScrape encapsulates all the logic of handling a BitTorrent client's
+// scrape without being coupled to any transport protocol.
 func (t *Tracker) HandleScrape(scrape *models.Scrape, w Writer) error {
 	conn, err := t.Pool.Get()
 	if err != nil {

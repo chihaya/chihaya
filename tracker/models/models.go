@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	// ErrMalformedRequest is returned when an http.Request does not have the
+	// ErrMalformedRequest is returned when a client request does not have the
 	// required parameters to create a model.
 	ErrMalformedRequest = errors.New("malformed request")
 )
@@ -69,8 +69,7 @@ func NewPeer(a *Announce, u *User, t *Torrent) *Peer {
 	}
 }
 
-// Key returns the unique key used to look-up a peer in a swarm (i.e
-// Torrent.Seeders & Torrent.Leechers).
+// Key returns the unique key used to look-up a peer in a PeerMap.
 func (p Peer) Key() string {
 	return p.ID + ":" + strconv.FormatUint(p.UserID, 36)
 }

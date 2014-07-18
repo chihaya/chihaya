@@ -51,6 +51,7 @@ func (n *NoOp) LoadAllUsers(ids []uint64) ([]*models.User, error) {
 	return nil, nil
 }
 
+// Init registers the noop driver as a backend for Chihaya.
 func init() {
 	backend.Register("noop", &driver{})
 }

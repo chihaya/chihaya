@@ -10,6 +10,8 @@ import (
 	"github.com/chihaya/chihaya/tracker/models"
 )
 
+// HandleAnnounce encapsulates all of the logic of handling a BitTorrent
+// client's Announce without being coupled to any transport protocol.
 func (t *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 	conn, err := t.Pool.Get()
 	if err != nil {
@@ -62,7 +64,7 @@ func (t *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 
 	peer := models.NewPeer(ann, user, torrent)
 
-	created, err := updateTorrent(conn, ann, peer, torrent)
+	created, err := updateSwarm(conn, ann, peer, torrent)
 	if err != nil {
 		return err
 	}
@@ -87,7 +89,8 @@ func (t *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 	return w.WriteAnnounce(newAnnounceResponse(ann, peer, torrent))
 }
 
-func updateTorrent(c Conn, ann *models.Announce, p *models.Peer, t *models.Torrent) (created bool, err error) {
+// updateSwarm handles the changes to a torrent's swarm given an announce.
+func updateSwarm(c Conn, ann *models.Announce, p *models.Peer, t *models.Torrent) (created bool, err error) {
 	c.TouchTorrent(t.Infohash)
 
 	switch {
@@ -125,6 +128,8 @@ func updateTorrent(c Conn, ann *models.Announce, p *models.Peer, t *models.Torre
 	return
 }
 
+// handleEvent checks to see whether an announce has an event and if it does,
+// properly handles that event.
 func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t *models.Torrent) (snatched bool, err error) {
 	switch {
 	case ann.Event == "stopped" || ann.Event == "paused":
@@ -187,6 +192,8 @@ func newAnnounceResponse(ann *models.Announce, announcer *models.Peer, t *models
 	return res
 }
 
+// getPeers returns lists IPv4 and IPv6 peers on a given torrent sized according
+// to the wanted parameter.
 func getPeers(ann *models.Announce, announcer *models.Peer, t *models.Torrent, wanted int) (ipv4s, ipv6s models.PeerList) {
 	ipv4s, ipv6s = models.PeerList{}, models.PeerList{}
 
@@ -200,6 +207,7 @@ func getPeers(ann *models.Announce, announcer *models.Peer, t *models.Torrent, w
 	return appendPeers(ipv4s, ipv6s, ann, announcer, t.Leechers, wanted-len(ipv4s)-len(ipv6s))
 }
 
+// appendPeers implements the logic of adding peers to the IPv4 or IPv6 lists.
 func appendPeers(ipv4s, ipv6s models.PeerList, ann *models.Announce, announcer *models.Peer, peers models.PeerMap, wanted int) (models.PeerList, models.PeerList) {
 	if ann.Config.PreferredSubnet {
 		return appendSubnetPeers(ipv4s, ipv6s, ann, announcer, peers, wanted)
@@ -228,6 +236,8 @@ func appendPeers(ipv4s, ipv6s models.PeerList, ann *models.Announce, announcer *
 	return ipv4s, ipv6s
 }
 
+// appendSubnetPeers is an alternative version of appendPeers used when the
+// config variable PreferredSubnet is enabled.
 func appendSubnetPeers(ipv4s, ipv6s models.PeerList, ann *models.Announce, announcer *models.Peer, peers models.PeerMap, wanted int) (models.PeerList, models.PeerList) {
 	var subnet net.IPNet
 
@@ -264,6 +274,7 @@ func appendSubnetPeers(ipv4s, ipv6s models.PeerList, ann *models.Announce, annou
 	return ipv4s, ipv6s
 }
 
+// peersEquivalent checks if two peers are one in the same.
 func peersEquivalent(a, b *models.Peer) bool {
 	return a.ID == b.ID || a.UserID != 0 && a.UserID == b.UserID
 }

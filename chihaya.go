@@ -33,6 +33,8 @@ func init() {
 	flag.StringVar(&configPath, "config", "", "path to the configuration file")
 }
 
+// Boot starts Chihaya. By exporting this function, anyone can import their own
+// custom drivers into their own package main and then call chihaya.Boot.
 func Boot() {
 	defer glog.Flush()
 
