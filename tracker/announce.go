@@ -148,12 +148,21 @@ func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t
 		}
 
 	case ann.Event == "completed":
-		err = c.IncrementSnatches(t.Infohash)
+		snatched = true
+
+		err = c.IncrementTorrentSnatches(t.Infohash)
 		if err != nil {
 			return
 		}
-		snatched = true
 		t.Snatches++
+
+		if ann.Config.Private {
+			err = c.IncrementUserSnatches(u.Passkey)
+			if err != nil {
+				return
+			}
+			u.Snatches++
+		}
 
 		if t.InLeecherPool(p) {
 			err = leecherFinished(c, t.Infohash, p)

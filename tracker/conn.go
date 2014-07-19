@@ -71,15 +71,17 @@ type Conn interface {
 	Close() error
 
 	// Torrent interactions
+	TouchTorrent(infohash string) error
 	FindTorrent(infohash string) (*models.Torrent, error)
 	PutTorrent(t *models.Torrent) error
 	DeleteTorrent(infohash string) error
-	IncrementSnatches(infohash string) error
-	TouchTorrent(infohash string) error
+	IncrementTorrentSnatches(infohash string) error
+
 	PutLeecher(infohash string, p *models.Peer) error
-	DeleteLeecher(infohash, peerkey string) error
+	DeleteLeecher(infohash, peerID string) error
+
 	PutSeeder(infohash string, p *models.Peer) error
-	DeleteSeeder(infohash, peerkey string) error
+	DeleteSeeder(infohash, peerID string) error
 
 	PurgeInactiveTorrent(infohash string) error
 	PurgeInactivePeers(purgeEmptyTorrents bool, before time.Time) error
@@ -88,6 +90,7 @@ type Conn interface {
 	FindUser(passkey string) (*models.User, error)
 	PutUser(u *models.User) error
 	DeleteUser(passkey string) error
+	IncrementUserSnatches(passkey string) error
 
 	// Whitelist interactions
 	FindClient(clientID string) error

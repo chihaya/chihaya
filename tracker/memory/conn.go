@@ -54,15 +54,28 @@ func (c *Conn) FindClient(peerID string) error {
 	return nil
 }
 
-func (c *Conn) IncrementSnatches(infohash string) error {
+func (c *Conn) IncrementTorrentSnatches(infohash string) error {
 	c.torrentsM.Lock()
 	defer c.torrentsM.Unlock()
 
-	t, ok := c.torrents[infohash]
-	if !ok {
+	t, exists := c.torrents[infohash]
+	if !exists {
 		return tracker.ErrTorrentDNE
 	}
 	t.Snatches++
+
+	return nil
+}
+
+func (c *Conn) IncrementUserSnatches(userID string) error {
+	c.usersM.Lock()
+	defer c.usersM.Unlock()
+
+	u, exists := c.users[userID]
+	if !exists {
+		return tracker.ErrUserDNE
+	}
+	u.Snatches++
 
 	return nil
 }
