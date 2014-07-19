@@ -99,14 +99,14 @@ func updateSwarm(c Conn, ann *models.Announce, p *models.Peer, t *models.Torrent
 		if err != nil {
 			return
 		}
-		t.Seeders[p.Key()] = *p
+		t.Seeders[p.ID] = *p
 
 	case t.InLeecherPool(p):
 		err = c.PutLeecher(t.Infohash, p)
 		if err != nil {
 			return
 		}
-		t.Leechers[p.Key()] = *p
+		t.Leechers[p.ID] = *p
 
 	default:
 		if ann.Left == 0 {
@@ -114,13 +114,13 @@ func updateSwarm(c Conn, ann *models.Announce, p *models.Peer, t *models.Torrent
 			if err != nil {
 				return
 			}
-			t.Seeders[p.Key()] = *p
+			t.Seeders[p.ID] = *p
 		} else {
 			err = c.PutLeecher(t.Infohash, p)
 			if err != nil {
 				return
 			}
-			t.Leechers[p.Key()] = *p
+			t.Leechers[p.ID] = *p
 		}
 		created = true
 	}
@@ -134,17 +134,17 @@ func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t
 	switch {
 	case ann.Event == "stopped" || ann.Event == "paused":
 		if t.InSeederPool(p) {
-			err = c.DeleteSeeder(t.Infohash, p.Key())
+			err = c.DeleteSeeder(t.Infohash, p.ID)
 			if err != nil {
 				return
 			}
-			delete(t.Seeders, p.Key())
+			delete(t.Seeders, p.ID)
 		} else if t.InLeecherPool(p) {
-			err = c.DeleteLeecher(t.Infohash, p.Key())
+			err = c.DeleteLeecher(t.Infohash, p.ID)
 			if err != nil {
 				return
 			}
-			delete(t.Leechers, p.Key())
+			delete(t.Leechers, p.ID)
 		}
 
 	case ann.Event == "completed":

@@ -7,7 +7,6 @@ package models
 import (
 	"errors"
 	"net"
-	"strconv"
 	"time"
 
 	"github.com/chihaya/chihaya/config"
@@ -35,6 +34,8 @@ type Peer struct {
 }
 
 type PeerList []Peer
+
+// PeerMap is a map from PeerIDs to Peers.
 type PeerMap map[string]Peer
 
 // NewPeer returns the Peer representation of an Announce. When provided nil
@@ -69,11 +70,6 @@ func NewPeer(a *Announce, u *User, t *Torrent) *Peer {
 	}
 }
 
-// Key returns the unique key used to look-up a peer in a PeerMap.
-func (p Peer) Key() string {
-	return p.ID + ":" + strconv.FormatUint(p.UserID, 36)
-}
-
 // Torrent is a swarm for a given torrent file.
 type Torrent struct {
 	ID       uint64 `json:"id"`
@@ -88,18 +84,19 @@ type Torrent struct {
 	LastAction     int64   `json:"last_action"`
 }
 
-// InSeederPool returns true if a peer is within a Torrent's pool of seeders.
+// InSeederPool returns true if a peer is within a Torrent's map of seeders.
 func (t *Torrent) InSeederPool(p *Peer) (exists bool) {
-	_, exists = t.Seeders[p.Key()]
+	_, exists = t.Seeders[p.ID]
 	return
 }
 
-// InLeecherPool returns true if a peer is within a Torrent's pool of leechers.
+// InLeecherPool returns true if a peer is within a Torrent's map of leechers.
 func (t *Torrent) InLeecherPool(p *Peer) (exists bool) {
-	_, exists = t.Leechers[p.Key()]
+	_, exists = t.Leechers[p.ID]
 	return
 }
 
+// PeerCount returns the total number of peers in a swarm.
 func (t *Torrent) PeerCount() int {
 	return len(t.Seeders) + len(t.Leechers)
 }

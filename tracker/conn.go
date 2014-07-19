@@ -97,7 +97,7 @@ type Conn interface {
 
 // leecherFinished moves a peer from the leeching pool to the seeder pool.
 func leecherFinished(c Conn, infohash string, p *models.Peer) error {
-	err := c.DeleteLeecher(infohash, p.Key())
+	err := c.DeleteLeecher(infohash, p.ID)
 	if err != nil {
 		return err
 	}

@@ -88,7 +88,7 @@ func (c *Conn) AddLeecher(infohash string, p *models.Peer) error {
 	if !ok {
 		return tracker.ErrTorrentDNE
 	}
-	t.Leechers[p.Key()] = *p
+	t.Leechers[p.ID] = *p
 
 	return nil
 }
@@ -101,7 +101,7 @@ func (c *Conn) AddSeeder(infohash string, p *models.Peer) error {
 	if !ok {
 		return tracker.ErrTorrentDNE
 	}
-	t.Seeders[p.Key()] = *p
+	t.Seeders[p.ID] = *p
 
 	return nil
 }
@@ -140,7 +140,7 @@ func (c *Conn) PutLeecher(infohash string, p *models.Peer) error {
 	if !ok {
 		return tracker.ErrTorrentDNE
 	}
-	t.Leechers[p.Key()] = *p
+	t.Leechers[p.ID] = *p
 
 	return nil
 }
@@ -153,7 +153,7 @@ func (c *Conn) PutSeeder(infohash string, p *models.Peer) error {
 	if !ok {
 		return tracker.ErrTorrentDNE
 	}
-	t.Seeders[p.Key()] = *p
+	t.Seeders[p.ID] = *p
 
 	return nil
 }
