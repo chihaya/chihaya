@@ -18,6 +18,8 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 		return err
 	}
 
+	defer conn.Close()
+
 	if tkr.cfg.Whitelist {
 		err = conn.FindClient(ann.ClientID())
 		if err == ErrClientUnapproved {
@@ -86,12 +88,7 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 		conn.PurgeInactiveTorrent(torrent.Infohash)
 	}
 
-	err = w.WriteAnnounce(newAnnounceResponse(ann, peer, torrent))
-	if err != nil {
-		return err
-	}
-
-	return conn.Close()
+	return w.WriteAnnounce(newAnnounceResponse(ann, peer, torrent))
 }
 
 // updateSwarm handles the changes to a torrent's swarm given an announce.
