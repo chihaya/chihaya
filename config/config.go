@@ -46,10 +46,9 @@ type Config struct {
 	Tracker DriverConfig `json:"tracker"`
 	Backend DriverConfig `json:"backend"`
 
-	Private   bool `json:"private"`
-	Freeleech bool `json:"freeleech"`
-	Whitelist bool `json:"whitelist"`
-
+	Private               bool `json:"private"`
+	Freeleech             bool `json:"freeleech"`
+	Whitelist             bool `json:"whitelist"`
 	PurgeInactiveTorrents bool `json:"purge_inactive_torrents"`
 
 	Announce        Duration `json:"announce"`
@@ -74,10 +73,9 @@ var DefaultConfig = Config{
 		Name: "noop",
 	},
 
-	Private:   false,
-	Freeleech: false,
-	Whitelist: false,
-
+	Private:               false,
+	Freeleech:             false,
+	Whitelist:             false,
 	PurgeInactiveTorrents: true,
 
 	Announce:        Duration{30 * time.Minute},
