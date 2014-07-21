@@ -7,6 +7,7 @@ package tracker
 import (
 	"net"
 
+	"github.com/chihaya/chihaya/stats"
 	"github.com/chihaya/chihaya/tracker/models"
 )
 
@@ -87,6 +88,8 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 		// ensure there are no race conditions.
 		conn.PurgeInactiveTorrent(torrent.Infohash)
 	}
+
+	stats.RecordEvent(stats.Announce)
 
 	return w.WriteAnnounce(newAnnounceResponse(ann, peer, torrent))
 }
