@@ -51,6 +51,21 @@ func New(cfg *config.Config) (*Tracker, error) {
 	}, nil
 }
 
+// Close gracefully shutdowns a Tracker by closing any database connections.
+func (tkr *Tracker) Close() (err error) {
+	err = tkr.Pool.Close()
+	if err != nil {
+		return
+	}
+
+	err = tkr.backend.Close()
+	if err != nil {
+		return
+	}
+
+	return
+}
+
 // Writer serializes a tracker's responses, and is implemented for each
 // response transport used by the tracker.
 //

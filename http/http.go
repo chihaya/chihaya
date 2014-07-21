@@ -80,4 +80,8 @@ func Serve(cfg *config.Config, tkr *tracker.Tracker) {
 
 	glog.V(0).Info("Starting on ", cfg.Addr)
 	graceful.Run(cfg.Addr, cfg.RequestTimeout.Duration, newRouter(srv))
+	err := srv.tracker.Close()
+	if err != nil {
+		glog.Errorf("Failed to shutdown tracker cleanly: %s", err.Error())
+	}
 }
