@@ -12,13 +12,13 @@ import (
 
 // HandleAnnounce encapsulates all of the logic of handling a BitTorrent
 // client's Announce without being coupled to any transport protocol.
-func (t *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
-	conn, err := t.Pool.Get()
+func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
+	conn, err := tkr.Pool.Get()
 	if err != nil {
 		return err
 	}
 
-	if t.cfg.Whitelist {
+	if tkr.cfg.Whitelist {
 		err = conn.FindClient(ann.ClientID())
 		if err == ErrClientUnapproved {
 			w.WriteError(err)
@@ -29,7 +29,7 @@ func (t *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 	}
 
 	var user *models.User
-	if t.cfg.Private {
+	if tkr.cfg.Private {
 		user, err = conn.FindUser(ann.Passkey)
 		if err == ErrUserDNE {
 			w.WriteError(err)
@@ -42,7 +42,7 @@ func (t *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 	var torrent *models.Torrent
 	torrent, err = conn.FindTorrent(ann.Infohash)
 	switch {
-	case !t.cfg.Private && err == ErrTorrentDNE:
+	case !tkr.cfg.Private && err == ErrTorrentDNE:
 		torrent = &models.Torrent{
 			Infohash: ann.Infohash,
 			Seeders:  models.PeerMap{},
@@ -54,7 +54,7 @@ func (t *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 			return err
 		}
 
-	case t.cfg.Private && err == ErrTorrentDNE:
+	case tkr.cfg.Private && err == ErrTorrentDNE:
 		w.WriteError(err)
 		return nil
 
@@ -74,19 +74,24 @@ func (t *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 		return err
 	}
 
-	if t.cfg.Private {
+	if tkr.cfg.Private {
 		delta := models.NewAnnounceDelta(ann, peer, user, torrent, created, snatched)
-		err = t.backend.RecordAnnounce(delta)
+		err = tkr.backend.RecordAnnounce(delta)
 		if err != nil {
 			return err
 		}
-	} else if t.cfg.PurgeInactiveTorrents && torrent.PeerCount() == 0 {
+	} else if tkr.cfg.PurgeInactiveTorrents && torrent.PeerCount() == 0 {
 		// Rather than deleting the torrent explicitly, let the tracker driver
 		// ensure there are no race conditions.
 		conn.PurgeInactiveTorrent(torrent.Infohash)
 	}
 
-	return w.WriteAnnounce(newAnnounceResponse(ann, peer, torrent))
+	err = w.WriteAnnounce(newAnnounceResponse(ann, peer, torrent))
+	if err != nil {
+		return err
+	}
+
+	return conn.Close()
 }
 
 // updateSwarm handles the changes to a torrent's swarm given an announce.
@@ -115,6 +120,7 @@ func updateSwarm(c Conn, ann *models.Announce, p *models.Peer, t *models.Torrent
 				return
 			}
 			t.Seeders[p.ID] = *p
+
 		} else {
 			err = c.PutLeecher(t.Infohash, p)
 			if err != nil {
@@ -148,8 +154,6 @@ func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t
 		}
 
 	case ann.Event == "completed":
-		snatched = true
-
 		err = c.IncrementTorrentSnatches(t.Infohash)
 		if err != nil {
 			return
@@ -170,6 +174,7 @@ func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t
 				return
 			}
 		}
+		snatched = true
 
 	case t.InLeecherPool(p) && ann.Left == 0:
 		// A leecher completed but the event was never received.

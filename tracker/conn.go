@@ -54,8 +54,7 @@ func Open(cfg *config.DriverConfig) (Pool, error) {
 			cfg.Name,
 		)
 	}
-	pool := driver.New(cfg)
-	return pool, nil
+	return driver.New(cfg), nil
 }
 
 // Pool represents a thread-safe pool of connections to the data store

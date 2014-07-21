@@ -102,5 +102,7 @@ func purgeInactivePeers(p Pool, purgeEmptyTorrents bool, threshold, interval tim
 		if err != nil {
 			glog.Errorf("Error purging torrents: %s", err)
 		}
+
+		conn.Close()
 	}
 }
