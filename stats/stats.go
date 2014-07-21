@@ -39,6 +39,14 @@ const (
 	ErroredRequest
 )
 
+// DefaultStats is a default instance of stats tracking that uses an unbuffered
+// channel for broadcasting events.
+var DefaultStats *Stats
+
+func init() {
+	DefaultStats = New(0)
+}
+
 type PeerStats struct {
 	// Stats for all peers.
 	Completed uint64
@@ -160,4 +168,9 @@ func (s *Stats) handleEvents() {
 			panic("stats: RecordEvent called with an unknown event")
 		}
 	}
+}
+
+// RecordEvent broadcasts an event to the default stats tracking.
+func RecordEvent(event int) {
+	DefaultStats.RecordEvent(event)
 }
