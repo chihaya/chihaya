@@ -30,24 +30,19 @@ func TestPublicAnnounce(t *testing.T) {
 	peer2 := makePeerParams("peer2", true)
 	peer3 := makePeerParams("peer3", false)
 
-	// Add one seeder.
 	expected := makeResponse(1, 0)
 	checkAnnounce(peer1, expected, srv, t)
 
-	// Add another seeder.
 	expected = makeResponse(2, 0)
 	checkAnnounce(peer2, expected, srv, t)
 
-	// Add a leecher.
 	expected = makeResponse(2, 1, peer1, peer2)
 	checkAnnounce(peer3, expected, srv, t)
 
-	// Remove seeder.
 	peer1["event"] = "stopped"
 	expected = makeResponse(1, 1, nil)
 	checkAnnounce(peer1, expected, srv, t)
 
-	// Check seeders.
 	expected = makeResponse(1, 1, peer2)
 	checkAnnounce(peer3, expected, srv, t)
 }

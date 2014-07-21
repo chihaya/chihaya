@@ -23,9 +23,7 @@ func TestPublicScrape(t *testing.T) {
 	}
 	defer srv.Close()
 
-	scrapeParams := params{
-		"info_hash": infoHash,
-	}
+	scrapeParams := params{"info_hash": infoHash}
 
 	// Add one seeder.
 	peer := makePeerParams("peer1", true)

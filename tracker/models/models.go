@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	// ErrMalformedRequest is returned when a client request does not have the
-	// required parameters to create a model.
+	// ErrMalformedRequest is returned when a request does not contain the
+	// required parameters needed to create a model.
 	ErrMalformedRequest = errors.New("malformed request")
 )
 
@@ -96,7 +96,7 @@ func (t *Torrent) InLeecherPool(p *Peer) (exists bool) {
 	return
 }
 
-// PeerCount returns the total number of peers in a swarm.
+// PeerCount returns the total number of peers connected on this Torrent.
 func (t *Torrent) PeerCount() int {
 	return len(t.Seeders) + len(t.Leechers)
 }
