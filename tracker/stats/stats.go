@@ -11,23 +11,66 @@ import "time"
 const (
 	Announce = iota
 	Scrape
-	Completed
-	NewPeer
-	DeletedPeer
-	NewSeeder
-	DeletedSeeder
+
+	CompletedIPv4
+	NewLeechIPv4
+	DeletedLeechIPv4
+	ReapedLeechIPv4
+	NewSeedIPv4
+	DeletedSeedIPv4
+	ReapedSeedIPv4
+
+	CompletedIPv6
+	NewLeechIPv6
+	DeletedLeechIPv6
+	ReapedLeechIPv6
+	NewSeedIPv6
+	DeletedSeedIPv6
+	ReapedSeedIPv6
+
 	NewTorrent
 	DeletedTorrent
+	ReapedTorrent
+
+	AcceptedConnection
+	ClosedConnection
+
+	HandledRequest
+	ErroredRequest
 )
 
+type PeerStats struct {
+	// Stats for all peers.
+	Completed uint64
+	Joined    uint64
+	Left      uint64
+	Reaped    uint64
+
+	// Stats for seeds only (subset of total).
+	SeedsJoined uint64
+	SeedsLeft   uint64
+	SeedsReaped uint64
+}
+
 type Stats struct {
-	Start     time.Time
+	Start time.Time
+
 	Announces uint64
 	Scrapes   uint64
-	Completed uint64
-	Peers     uint64
-	Seeders   uint64
-	Torrents  uint64
+
+	IPv4Peers PeerStats
+	IPv6Peers PeerStats
+
+	TorrentsAdded   uint64
+	TorrentsRemoved uint64
+	TorrentsReaped  uint64
+
+	ActiveConnections   uint64
+	ConnectionsAccepted uint64
+	BytesTransmitted    uint64
+
+	RequestsHandled uint64
+	RequestsErrored uint64
 
 	events chan int
 }
@@ -60,30 +103,58 @@ func (s *Stats) handleEvents() {
 		switch event {
 		case Announce:
 			s.Announces++
-
 		case Scrape:
 			s.Scrapes++
 
-		case Completed:
-			s.Completed++
+		case CompletedIPv4:
+			s.IPv4Peers.Completed++
+		case NewLeechIPv4:
+			s.IPv4Peers.Joined++
+		case DeletedLeechIPv4:
+			s.IPv4Peers.Left++
+		case ReapedLeechIPv4:
+			s.IPv4Peers.Reaped++
+		case NewSeedIPv4:
+			s.IPv4Peers.SeedsJoined++
+		case DeletedSeedIPv4:
+			s.IPv4Peers.SeedsLeft++
+		case ReapedSeedIPv4:
+			s.IPv4Peers.SeedsReaped++
 
-		case NewPeer:
-			s.Peers++
-
-		case DeletedPeer:
-			s.Peers--
-
-		case NewSeeder:
-			s.Seeders++
-
-		case DeletedSeeder:
-			s.Seeders--
+		case CompletedIPv6:
+			s.IPv6Peers.Completed++
+		case NewLeechIPv6:
+			s.IPv6Peers.Joined++
+		case DeletedLeechIPv6:
+			s.IPv6Peers.Left++
+		case ReapedLeechIPv6:
+			s.IPv6Peers.Reaped++
+		case NewSeedIPv6:
+			s.IPv6Peers.SeedsJoined++
+		case DeletedSeedIPv6:
+			s.IPv6Peers.SeedsLeft++
+		case ReapedSeedIPv6:
+			s.IPv6Peers.SeedsReaped++
 
 		case NewTorrent:
-			s.Torrents++
-
+			s.TorrentsAdded++
 		case DeletedTorrent:
-			s.Torrents--
+			s.TorrentsRemoved++
+		case ReapedTorrent:
+			s.TorrentsReaped++
+
+		case AcceptedConnection:
+			s.ConnectionsAccepted++
+			s.ActiveConnections++
+
+		case ClosedConnection:
+			s.ActiveConnections--
+
+		case HandledRequest:
+			s.RequestsHandled++
+
+		case ErroredRequest:
+			s.RequestsErrored++
 
 		default:
 			panic("stats: RecordEvent called with an unknown event")
