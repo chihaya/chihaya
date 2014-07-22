@@ -31,7 +31,10 @@ func makeHandler(handler ResponseHandler) httprouter.Handle {
 		start := time.Now()
 
 		httpCode, err := handler(w, r, p)
+		stats.RecordEvent(stats.HandledRequest)
+
 		if err != nil {
+			stats.RecordEvent(stats.ErroredRequest)
 			http.Error(w, err.Error(), httpCode)
 		}
 
