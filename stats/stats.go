@@ -49,36 +49,36 @@ func init() {
 
 type PeerStats struct {
 	// Stats for all peers.
-	Completed uint64
-	Joined    uint64
-	Left      uint64
-	Reaped    uint64
+	Completed uint64 `json:"completed"`
+	Joined    uint64 `json:"joined"`
+	Left      uint64 `json:"left"`
+	Reaped    uint64 `json:"reaped"`
 
 	// Stats for seeds only (subset of total).
-	SeedsJoined uint64
-	SeedsLeft   uint64
-	SeedsReaped uint64
+	SeedsJoined uint64 `json:"seeds_joined"`
+	SeedsLeft   uint64 `json:"seeds_left"`
+	SeedsReaped uint64 `json:"seeds_reaped"`
 }
 
 type Stats struct {
-	Start time.Time
+	Start time.Time `json:"time"`
 
-	Announces uint64
-	Scrapes   uint64
+	Announces uint64 `json:"announces"`
+	Scrapes   uint64 `json:"scrapes"`
 
-	IPv4Peers PeerStats
-	IPv6Peers PeerStats
+	IPv4Peers PeerStats `json:"ipv4_peers"`
+	IPv6Peers PeerStats `json:"ipv6_peers"`
 
-	TorrentsAdded   uint64
-	TorrentsRemoved uint64
-	TorrentsReaped  uint64
+	TorrentsAdded   uint64 `json:"torrents_added"`
+	TorrentsRemoved uint64 `json:"torrents_removed"`
+	TorrentsReaped  uint64 `json:"torrents_reaped"`
 
-	ActiveConnections   uint64
-	ConnectionsAccepted uint64
-	BytesTransmitted    uint64
+	ActiveConnections   uint64 `json:"active_connections"`
+	ConnectionsAccepted uint64 `json:"connections_accepted"`
+	BytesTransmitted    uint64 `json:"bytes_transmitted"`
 
-	RequestsHandled uint64
-	RequestsErrored uint64
+	RequestsHandled uint64 `json:"requests_handled"`
+	RequestsErrored uint64 `json:"requests_errored"`
 
 	events chan int
 }

@@ -20,7 +20,10 @@ import (
 const jsonContentType = "application/json; charset=UTF-8"
 
 func (s *Server) check(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	_, err := w.Write([]byte("An easter egg goes here."))
+	w.Header().Set("Content-Type", jsonContentType)
+
+	e := json.NewEncoder(w)
+	err := e.Encode(stats.DefaultStats)
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}
