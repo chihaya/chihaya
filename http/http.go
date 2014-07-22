@@ -6,6 +6,7 @@
 package http
 
 import (
+	"net"
 	"net/http"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/stretchr/graceful"
 
 	"github.com/chihaya/chihaya/config"
+	"github.com/chihaya/chihaya/stats"
 	"github.com/chihaya/chihaya/tracker"
 )
 
@@ -73,6 +75,25 @@ func newRouter(s *Server) *httprouter.Router {
 	return r
 }
 
+func (s *Server) connState(conn net.Conn, state http.ConnState) {
+	switch state {
+	case http.StateNew:
+		stats.RecordEvent(stats.AcceptedConnection)
+
+	case http.StateClosed:
+		stats.RecordEvent(stats.ClosedConnection)
+
+	case http.StateHijacked:
+		panic("connection impossibly hijacked")
+
+	case http.StateActive: // Ignore.
+	case http.StateIdle: // Ignore.
+
+	default:
+		glog.Errorf("Connection transitioned to unknown state %s (%d)", state, state)
+	}
+}
+
 func Serve(cfg *config.Config, tkr *tracker.Tracker) {
 	srv := &Server{
 		config:  cfg,
@@ -80,7 +101,18 @@ func Serve(cfg *config.Config, tkr *tracker.Tracker) {
 	}
 
 	glog.V(0).Info("Starting on ", cfg.Addr)
-	graceful.Run(cfg.Addr, cfg.RequestTimeout.Duration, newRouter(srv))
+
+	grace := graceful.Server{
+		Timeout:   cfg.RequestTimeout.Duration,
+		ConnState: srv.connState,
+		Server: &http.Server{
+			Addr:    cfg.Addr,
+			Handler: newRouter(srv),
+		},
+	}
+
+	grace.ListenAndServe()
+
 	err := srv.tracker.Close()
 	if err != nil {
 		glog.Errorf("Failed to shutdown tracker cleanly: %s", err.Error())

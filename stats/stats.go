@@ -73,7 +73,7 @@ type Stats struct {
 	TorrentsRemoved uint64 `json:"torrents_removed"`
 	TorrentsReaped  uint64 `json:"torrents_reaped"`
 
-	ActiveConnections   uint64 `json:"active_connections"`
+	OpenConnections     uint64 `json:"open_connections"`
 	ConnectionsAccepted uint64 `json:"connections_accepted"`
 	BytesTransmitted    uint64 `json:"bytes_transmitted"`
 
@@ -161,10 +161,10 @@ func (s *Stats) handleEvents() {
 
 		case AcceptedConnection:
 			s.ConnectionsAccepted++
-			s.ActiveConnections++
+			s.OpenConnections++
 
 		case ClosedConnection:
-			s.ActiveConnections--
+			s.OpenConnections--
 
 		case HandledRequest:
 			s.RequestsHandled++
