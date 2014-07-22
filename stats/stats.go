@@ -37,6 +37,8 @@ const (
 
 	HandledRequest
 	ErroredRequest
+
+	ResponseTime
 )
 
 // DefaultStats is a default instance of stats tracking that uses an unbuffered
@@ -60,6 +62,12 @@ type PeerStats struct {
 	SeedsReaped uint64 `json:"seeds_reaped"`
 }
 
+type PercentileTimes struct {
+	P50 *Percentile
+	P90 *Percentile
+	P95 *Percentile
+}
+
 type Stats struct {
 	Start time.Time `json:"start_time"`
 
@@ -80,16 +88,27 @@ type Stats struct {
 	RequestsHandled uint64 `json:"requests_handled"`
 	RequestsErrored uint64 `json:"requests_errored"`
 
-	events chan int
+	ResponseTime PercentileTimes `json:"response_time"`
+
+	events             chan int
+	responseTimeEvents chan time.Duration
 }
 
 func New(chanSize int) *Stats {
 	s := &Stats{
 		Start:  time.Now(),
 		events: make(chan int, chanSize),
+
+		responseTimeEvents: make(chan time.Duration, chanSize),
+		ResponseTime: PercentileTimes{
+			P50: NewPercentile(0.5, 128),
+			P90: NewPercentile(0.9, 128),
+			P95: NewPercentile(0.95, 128),
+		},
 	}
 
 	go s.handleEvents()
+	go s.handleTimings()
 
 	return s
 }
@@ -107,7 +126,12 @@ func (s *Stats) RecordEvent(event int) {
 }
 
 func (s *Stats) RecordTiming(event int, duration time.Duration) {
-	// s.timingEvents <- event
+	switch event {
+	case ResponseTime:
+		s.responseTimeEvents <- duration
+	default:
+		panic("stats: RecordTiming called with an unknown event")
+	}
 }
 
 func (s *Stats) handleEvents() {
@@ -178,6 +202,18 @@ func (s *Stats) handleEvents() {
 
 		default:
 			panic("stats: RecordEvent called with an unknown event")
+		}
+	}
+}
+
+func (s *Stats) handleTimings() {
+	for {
+		select {
+		case duration := <-s.responseTimeEvents:
+			f := float64(duration) / float64(time.Millisecond)
+			s.ResponseTime.P50.AddSample(f)
+			s.ResponseTime.P90.AddSample(f)
+			s.ResponseTime.P95.AddSample(f)
 		}
 	}
 }

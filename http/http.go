@@ -38,13 +38,16 @@ func makeHandler(handler ResponseHandler) httprouter.Handle {
 			http.Error(w, err.Error(), httpCode)
 		}
 
+		duration := time.Since(start)
+		stats.RecordTiming(stats.ResponseTime, duration)
+
 		if glog.V(2) {
 			glog.Infof(
 				"Completed %v %s %s in %v",
 				httpCode,
 				http.StatusText(httpCode),
 				r.URL.Path,
-				time.Since(start),
+				duration,
 			)
 		}
 	}

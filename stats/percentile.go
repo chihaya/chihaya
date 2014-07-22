@@ -1,6 +1,7 @@
 package stats
 
 import (
+	"encoding/json"
 	"math"
 	"sort"
 	"sync/atomic"
@@ -76,6 +77,10 @@ func (p *Percentile) index() int64 {
 	}
 
 	return idx
+}
+
+func (p *Percentile) MarshalJSON() ([]byte, error) {
+	return json.Marshal(p.Value())
 }
 
 func round(value float64) int64 {
