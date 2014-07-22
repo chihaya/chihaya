@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 )
 
+// Percentile implements an efficient percentile calculation of
+// arbitrary float64 samples.
 type Percentile struct {
 	percentile float64
 
@@ -17,6 +19,8 @@ type Percentile struct {
 	value  uint64 // These bits are really a float64.
 }
 
+// NewPercentile returns a Percentile with a given threshold
+// and window size (accuracy).
 func NewPercentile(percentile float64, sampleWindow int) *Percentile {
 	return &Percentile{
 		percentile: percentile,
@@ -24,6 +28,15 @@ func NewPercentile(percentile float64, sampleWindow int) *Percentile {
 	}
 }
 
+// Value returns the current value at the stored percentile.
+// It is thread-safe, and may be called concurrently with AddSample.
+func (p *Percentile) Value() float64 {
+	bits := atomic.LoadUint64(&p.value)
+	return math.Float64frombits(bits)
+}
+
+// AddSample adds a single float64 sample to the data set.
+// It is not thread-safe, and not be called concurrently.
 func (p *Percentile) AddSample(sample float64) {
 	p.samples++
 
@@ -61,11 +74,6 @@ func (p *Percentile) AddSample(sample float64) {
 
 	bits := math.Float64bits(p.values[p.index()])
 	atomic.StoreUint64(&p.value, bits)
-}
-
-func (p *Percentile) Value() float64 {
-	bits := atomic.LoadUint64(&p.value)
-	return math.Float64frombits(bits)
 }
 
 func (p *Percentile) index() int64 {
