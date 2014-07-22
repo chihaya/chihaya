@@ -122,7 +122,7 @@ func updateSwarm(c Conn, ann *models.Announce, p *models.Peer, t *models.Torrent
 			t.Seeders[p.ID] = *p
 			if p.IPv4() {
 				stats.RecordEvent(stats.NewSeedIPv4)
-			} else if p.IPv6() {
+			} else {
 				stats.RecordEvent(stats.NewSeedIPv6)
 			}
 
@@ -134,7 +134,7 @@ func updateSwarm(c Conn, ann *models.Announce, p *models.Peer, t *models.Torrent
 			t.Leechers[p.ID] = *p
 			if p.IPv4() {
 				stats.RecordEvent(stats.NewLeechIPv4)
-			} else if p.IPv6() {
+			} else {
 				stats.RecordEvent(stats.NewLeechIPv6)
 			}
 		}
@@ -157,7 +157,7 @@ func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t
 			delete(t.Seeders, p.ID)
 			if p.IPv4() {
 				stats.RecordEvent(stats.DeletedSeedIPv4)
-			} else if p.IPv6() {
+			} else {
 				stats.RecordEvent(stats.DeletedSeedIPv6)
 			}
 
@@ -169,7 +169,7 @@ func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t
 			delete(t.Leechers, p.ID)
 			if p.IPv4() {
 				stats.RecordEvent(stats.DeletedLeechIPv4)
-			} else if p.IPv6() {
+			} else {
 				stats.RecordEvent(stats.DeletedLeechIPv6)
 			}
 		}
@@ -198,7 +198,7 @@ func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t
 		snatched = true
 		if p.IPv4() {
 			stats.RecordEvent(stats.CompletedIPv4)
-		} else if p.IPv6() {
+		} else {
 			stats.RecordEvent(stats.CompletedIPv6)
 		}
 
