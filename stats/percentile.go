@@ -4,7 +4,6 @@ import (
 	"math"
 	"sort"
 	"sync/atomic"
-	"unsafe"
 )
 
 type Percentile struct {
@@ -14,18 +13,13 @@ type Percentile struct {
 	offset  int64
 
 	values []float64
-	value  *unsafe.Pointer
+	value  uint64 // These bits are really a float64.
 }
 
 func NewPercentile(percentile float64, sampleWindow int) *Percentile {
-	initial := 0
-	ptr := unsafe.Pointer(&initial)
-
 	return &Percentile{
 		percentile: percentile,
-
-		values: make([]float64, 0, sampleWindow),
-		value:  &ptr,
+		values:     make([]float64, 0, sampleWindow),
 	}
 }
 
@@ -64,13 +58,13 @@ func (p *Percentile) AddSample(sample float64) {
 		p.values[idx] = sample
 	}
 
-	value := p.values[p.index()]
-	atomic.SwapPointer(p.value, unsafe.Pointer(&value))
+	bits := math.Float64bits(p.values[p.index()])
+	atomic.StoreUint64(&p.value, bits)
 }
 
 func (p *Percentile) Value() float64 {
-	pointer := atomic.LoadPointer(p.value)
-	return *(*float64)(pointer)
+	bits := atomic.LoadUint64(&p.value)
+	return math.Float64frombits(bits)
 }
 
 func (p *Percentile) index() int64 {
