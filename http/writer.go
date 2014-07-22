@@ -35,7 +35,7 @@ func (w *Writer) WriteAnnounce(res *models.AnnounceResponse) error {
 		"min interval": res.MinInterval,
 	}
 
-	if res.IPv4Peers != nil || res.IPv4Peers != nil {
+	if res.IPv4Peers != nil || res.IPv6Peers != nil {
 		if res.Compact {
 			dict["peers"] = compactPeers(false, res.IPv4Peers)
 			dict["peers6"] = compactPeers(true, res.IPv6Peers)
