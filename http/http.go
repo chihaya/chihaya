@@ -68,6 +68,7 @@ func newRouter(s *Server) *httprouter.Router {
 	r.PUT("/torrents/:infohash", makeHandler(s.putTorrent))
 	r.DELETE("/torrents/:infohash", makeHandler(s.delTorrent))
 	r.GET("/check", makeHandler(s.check))
+	r.GET("/stats", makeHandler(s.stats))
 
 	return r
 }
