@@ -61,7 +61,7 @@ type PeerStats struct {
 }
 
 type Stats struct {
-	Start time.Time `json:"time"`
+	Start time.Time `json:"start_time"`
 
 	Announces uint64 `json:"announces"`
 	Scrapes   uint64 `json:"scrapes"`
