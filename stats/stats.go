@@ -106,6 +106,10 @@ func (s *Stats) RecordEvent(event int) {
 	s.events <- event
 }
 
+func (s *Stats) RecordTiming(event int, duration time.Duration) {
+	// s.timingEvents <- event
+}
+
 func (s *Stats) handleEvents() {
 	for event := range s.events {
 		switch event {
@@ -178,7 +182,12 @@ func (s *Stats) handleEvents() {
 	}
 }
 
-// RecordEvent broadcasts an event to the default stats tracking.
+// RecordEvent broadcasts an event to the default stats queue.
 func RecordEvent(event int) {
 	DefaultStats.RecordEvent(event)
+}
+
+// RecordTiming broadcasts a timing event to the default stats queue.
+func RecordTiming(event int, duration time.Duration) {
+	DefaultStats.RecordTiming(event, duration)
 }

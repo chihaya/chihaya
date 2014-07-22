@@ -3,6 +3,8 @@ package stats
 import (
 	"math"
 	"sort"
+	"sync/atomic"
+	"unsafe"
 )
 
 type Percentile struct {
@@ -10,17 +12,23 @@ type Percentile struct {
 
 	samples int64
 	offset  int64
-	values  []float64
+
+	values []float64
+	value  *unsafe.Pointer
 }
 
 func NewPercentile(percentile float64, sampleWindow int) *Percentile {
+	initial := 0
+	ptr := unsafe.Pointer(&initial)
+
 	return &Percentile{
 		percentile: percentile,
-		values:     make([]float64, 0, sampleWindow),
+
+		values: make([]float64, 0, sampleWindow),
+		value:  &ptr,
 	}
 }
 
-// Not thread safe.
 func (p *Percentile) AddSample(sample float64) {
 	p.samples++
 
@@ -55,14 +63,14 @@ func (p *Percentile) AddSample(sample float64) {
 		copy(p.values[idx+1:], p.values[idx:])
 		p.values[idx] = sample
 	}
+
+	value := p.values[p.index()]
+	atomic.SwapPointer(p.value, unsafe.Pointer(&value))
 }
 
 func (p *Percentile) Value() float64 {
-	if len(p.values) == 0 {
-		return 0
-	}
-
-	return p.values[p.index()]
+	pointer := atomic.LoadPointer(p.value)
+	return *(*float64)(pointer)
 }
 
 func (p *Percentile) index() int64 {
