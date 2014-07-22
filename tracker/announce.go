@@ -88,7 +88,7 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 		// Rather than deleting the torrent explicitly, let the tracker driver
 		// ensure there are no race conditions.
 		conn.PurgeInactiveTorrent(torrent.Infohash)
-		stats.RecordEvent(stats.ReapedTorrent)
+		stats.RecordEvent(stats.DeletedTorrent)
 	}
 
 	return w.WriteAnnounce(newAnnounceResponse(ann, peer, torrent))
