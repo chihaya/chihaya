@@ -35,13 +35,15 @@ func (w *Writer) WriteAnnounce(res *models.AnnounceResponse) error {
 		"min interval": res.MinInterval,
 	}
 
-	if res.IPv4Peers != nil || res.IPv6Peers != nil {
-		if res.Compact {
+	if res.Compact {
+		if res.IPv4Peers != nil {
 			dict["peers"] = compactPeers(false, res.IPv4Peers)
-			dict["peers6"] = compactPeers(true, res.IPv6Peers)
-		} else {
-			dict["peers"] = peersList(res.IPv6Peers, res.IPv4Peers)
 		}
+		if res.IPv6Peers != nil {
+			dict["peers6"] = compactPeers(true, res.IPv6Peers)
+		}
+	} else if res.IPv4Peers != nil || res.IPv6Peers != nil {
+		dict["peers"] = peersList(res.IPv6Peers, res.IPv4Peers)
 	}
 
 	bencoder := bencode.NewEncoder(w)
