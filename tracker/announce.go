@@ -56,6 +56,7 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 		if err != nil {
 			return err
 		}
+		stats.RecordEvent(stats.NewTorrent)
 
 	case tkr.cfg.Private && err == ErrTorrentDNE:
 		w.WriteError(err)
@@ -87,9 +88,8 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 		// Rather than deleting the torrent explicitly, let the tracker driver
 		// ensure there are no race conditions.
 		conn.PurgeInactiveTorrent(torrent.Infohash)
+		stats.RecordEvent(stats.ReapedTorrent)
 	}
-
-	stats.RecordEvent(stats.Announce)
 
 	return w.WriteAnnounce(newAnnounceResponse(ann, peer, torrent))
 }
@@ -120,6 +120,11 @@ func updateSwarm(c Conn, ann *models.Announce, p *models.Peer, t *models.Torrent
 				return
 			}
 			t.Seeders[p.ID] = *p
+			if p.IPv4() {
+				stats.RecordEvent(stats.NewSeedIPv4)
+			} else if p.IPv6() {
+				stats.RecordEvent(stats.NewSeedIPv6)
+			}
 
 		} else {
 			err = c.PutLeecher(t.Infohash, p)
@@ -127,6 +132,11 @@ func updateSwarm(c Conn, ann *models.Announce, p *models.Peer, t *models.Torrent
 				return
 			}
 			t.Leechers[p.ID] = *p
+			if p.IPv4() {
+				stats.RecordEvent(stats.NewLeechIPv4)
+			} else if p.IPv6() {
+				stats.RecordEvent(stats.NewLeechIPv6)
+			}
 		}
 		created = true
 	}
@@ -145,12 +155,23 @@ func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t
 				return
 			}
 			delete(t.Seeders, p.ID)
+			if p.IPv4() {
+				stats.RecordEvent(stats.DeletedSeedIPv4)
+			} else if p.IPv6() {
+				stats.RecordEvent(stats.DeletedSeedIPv6)
+			}
+
 		} else if t.InLeecherPool(p) {
 			err = c.DeleteLeecher(t.Infohash, p.ID)
 			if err != nil {
 				return
 			}
 			delete(t.Leechers, p.ID)
+			if p.IPv4() {
+				stats.RecordEvent(stats.DeletedLeechIPv4)
+			} else if p.IPv6() {
+				stats.RecordEvent(stats.DeletedLeechIPv6)
+			}
 		}
 
 	case ann.Event == "completed":
@@ -175,6 +196,11 @@ func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t
 			}
 		}
 		snatched = true
+		if p.IPv4() {
+			stats.RecordEvent(stats.CompletedIPv4)
+		} else if p.IPv6() {
+			stats.RecordEvent(stats.CompletedIPv6)
+		}
 
 	case t.InLeecherPool(p) && ann.Left == 0:
 		// A leecher completed but the event was never received.
@@ -182,6 +208,7 @@ func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t
 		if err != nil {
 			return
 		}
+		// TODO Should this return snatched=true and stats for completed?
 	}
 
 	return

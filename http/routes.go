@@ -12,6 +12,7 @@ import (
 
 	"github.com/julienschmidt/httprouter"
 
+	"github.com/chihaya/chihaya/stats"
 	"github.com/chihaya/chihaya/tracker"
 	"github.com/chihaya/chihaya/tracker/models"
 )
@@ -42,6 +43,8 @@ func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request, p httprou
 		return http.StatusInternalServerError, err
 	}
 
+	stats.RecordEvent(stats.Announce)
+
 	return http.StatusOK, nil
 }
 
@@ -59,6 +62,8 @@ func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request, p httproute
 	if err = s.tracker.HandleScrape(scrape, writer); err != nil {
 		return http.StatusInternalServerError, err
 	}
+
+	stats.RecordEvent(stats.Scrape)
 
 	return http.StatusOK, nil
 }
