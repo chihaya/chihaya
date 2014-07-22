@@ -259,9 +259,7 @@ func appendPeers(ipv4s, ipv6s models.PeerList, ann *models.Announce, announcer *
 	for _, peer := range peers {
 		if count >= wanted {
 			break
-		}
-
-		if peersEquivalent(&peer, announcer) {
+		} else if peersEquivalent(&peer, announcer) {
 			continue
 		}
 

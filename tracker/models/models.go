@@ -71,11 +71,11 @@ func NewPeer(a *Announce, u *User, t *Torrent) *Peer {
 }
 
 func (p *Peer) IPv4() bool {
-	return len(p.IP.To4()) == 4
+	return p.IP.To4() != nil
 }
 
 func (p *Peer) IPv6() bool {
-	return len(p.IP.To16()) == 16
+	return !p.IPv4()
 }
 
 // Torrent is a swarm for a given torrent file.

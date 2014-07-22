@@ -122,12 +122,16 @@ func (s *Stats) handleEvents() {
 			s.IPv4Peers.Left++
 		case ReapedLeechIPv4:
 			s.IPv4Peers.Reaped++
+
 		case NewSeedIPv4:
 			s.IPv4Peers.SeedsJoined++
+			s.IPv4Peers.Joined++
 		case DeletedSeedIPv4:
 			s.IPv4Peers.SeedsLeft++
+			s.IPv4Peers.Left++
 		case ReapedSeedIPv4:
 			s.IPv4Peers.SeedsReaped++
+			s.IPv4Peers.Reaped++
 
 		case CompletedIPv6:
 			s.IPv6Peers.Completed++
@@ -137,12 +141,16 @@ func (s *Stats) handleEvents() {
 			s.IPv6Peers.Left++
 		case ReapedLeechIPv6:
 			s.IPv6Peers.Reaped++
+
 		case NewSeedIPv6:
 			s.IPv6Peers.SeedsJoined++
+			s.IPv6Peers.Joined++
 		case DeletedSeedIPv6:
 			s.IPv6Peers.SeedsLeft++
+			s.IPv6Peers.Left++
 		case ReapedSeedIPv6:
 			s.IPv6Peers.SeedsReaped++
+			s.IPv6Peers.Reaped++
 
 		case NewTorrent:
 			s.TorrentsAdded++
