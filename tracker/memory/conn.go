@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/chihaya/chihaya/stats"
 	"github.com/chihaya/chihaya/tracker"
 	"github.com/chihaya/chihaya/tracker/models"
 )
@@ -270,12 +271,24 @@ func (c *Conn) PurgeInactivePeers(purgeEmptyTorrents bool, before time.Time) err
 		for key, peer := range torrent.Seeders {
 			if peer.LastAnnounce <= unixtime {
 				delete(torrent.Seeders, key)
+
+				if peer.IPv4() {
+					stats.RecordEvent(stats.ReapedSeedIPv4)
+				} else {
+					stats.RecordEvent(stats.ReapedSeedIPv6)
+				}
 			}
 		}
 
 		for key, peer := range torrent.Leechers {
 			if peer.LastAnnounce <= unixtime {
 				delete(torrent.Leechers, key)
+
+				if peer.IPv4() {
+					stats.RecordEvent(stats.ReapedLeechIPv4)
+				} else {
+					stats.RecordEvent(stats.ReapedLeechIPv6)
+				}
 			}
 		}
 
@@ -284,6 +297,7 @@ func (c *Conn) PurgeInactivePeers(purgeEmptyTorrents bool, before time.Time) err
 
 		if purgeEmptyTorrents && peers == 0 {
 			c.PurgeInactiveTorrent(infohash)
+			stats.RecordEvent(stats.ReapedTorrent)
 		}
 	}
 
