@@ -107,9 +107,6 @@ func New(chanSize int) *Stats {
 	}
 
 	go s.handleEvents()
-	go s.handlePeerEvents()
-	go s.handleTimings()
-
 	return s
 }
 
@@ -143,51 +140,58 @@ func (s *Stats) RecordTiming(event int, duration time.Duration) {
 }
 
 func (s *Stats) handleEvents() {
-	for event := range s.events {
-		switch event {
-		case Announce:
-			s.Announces++
-
-		case Scrape:
-			s.Scrapes++
-
-		case NewTorrent:
-			s.TorrentsAdded++
-
-		case DeletedTorrent:
-			s.TorrentsRemoved++
-
-		case ReapedTorrent:
-			s.TorrentsReaped++
-
-		case AcceptedConnection:
-			s.ConnectionsAccepted++
-			s.OpenConnections++
-
-		case ClosedConnection:
-			s.OpenConnections--
-
-		case HandledRequest:
-			s.RequestsHandled++
-
-		case ErroredRequest:
-			s.RequestsErrored++
-
-		default:
-			panic("stats: RecordEvent called with an unknown event")
-		}
-	}
-}
-
-func (s *Stats) handlePeerEvents() {
 	for {
 		select {
+		case event := <-s.events:
+			s.handleEvent(event)
+
 		case event := <-s.ipv4PeerEvents:
 			s.handlePeerEvent(&s.IPv4Peers, event)
 
 		case event := <-s.ipv6PeerEvents:
 			s.handlePeerEvent(&s.IPv6Peers, event)
+
+		case duration := <-s.responseTimeEvents:
+			f := float64(duration) / float64(time.Millisecond)
+			s.ResponseTime.P50.AddSample(f)
+			s.ResponseTime.P90.AddSample(f)
+			s.ResponseTime.P95.AddSample(f)
 		}
+	}
+}
+
+func (s *Stats) handleEvent(event int) {
+	switch event {
+	case Announce:
+		s.Announces++
+
+	case Scrape:
+		s.Scrapes++
+
+	case NewTorrent:
+		s.TorrentsAdded++
+
+	case DeletedTorrent:
+		s.TorrentsRemoved++
+
+	case ReapedTorrent:
+		s.TorrentsReaped++
+
+	case AcceptedConnection:
+		s.ConnectionsAccepted++
+		s.OpenConnections++
+
+	case ClosedConnection:
+		s.OpenConnections--
+
+	case HandledRequest:
+		s.RequestsHandled++
+
+	case ErroredRequest:
+		s.RequestsErrored++
+
+	default:
+		panic("stats: RecordEvent called with an unknown event")
 	}
 }
 
@@ -226,18 +230,9 @@ func (s *Stats) handlePeerEvent(ps *PeerStats, event int) {
 		ps.SeedsCurrent--
 		ps.Reaped++
 		ps.Current--
-	}
-}
 
-func (s *Stats) handleTimings() {
-	for {
-		select {
-		case duration := <-s.responseTimeEvents:
-			f := float64(duration) / float64(time.Millisecond)
-			s.ResponseTime.P50.AddSample(f)
-			s.ResponseTime.P90.AddSample(f)
-			s.ResponseTime.P95.AddSample(f)
-		}
+	default:
+		panic("stats: RecordPeerEvent called with an unknown event")
 	}
 }
 
