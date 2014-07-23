@@ -71,9 +71,7 @@ func Boot() {
 		glog.V(1).Infof("Loaded config file: %s", configPath)
 	}
 
-	stats.DefaultBufferSize = cfg.StatsBufferSize
-	stats.DefaultIncludeMemStats = cfg.IncludeMemStats
-	stats.DefaultVerboseMemStats = cfg.VerboseMemStats
+	stats.DefaultStats = stats.New(cfg.StatsConfig)
 
 	tkr, err := tracker.New(cfg)
 	if err != nil {

@@ -51,6 +51,14 @@ type NetConfig struct {
 	PreferredIPv6Subnet int  `json:"preferred_ipv6_subnet,omitempty"`
 }
 
+type StatsConfig struct {
+	BufferSize int  `json:"stats_buffer_size"`
+	IncludeMem bool `json:"include_mem_stats"`
+	VerboseMem bool `json:"verbose_mem_stats"`
+
+	MemUpdateInterval Duration `json:"mem_stats_interval"`
+}
+
 // Config is a configuration for a Server.
 type Config struct {
 	Addr    string       `json:"addr"`
@@ -66,11 +74,8 @@ type Config struct {
 	MinAnnounce     Duration `json:"min_announce"`
 	RequestTimeout  Duration `json:"request_timeout"`
 	NumWantFallback int      `json:"default_num_want"`
-	StatsBufferSize int      `json:"stats_buffer_size"`
-	IncludeMemStats bool     `json:"include_mem_stats"`
-	VerboseMemStats bool     `json:"verbose_mem_stats"`
-	MemStatInterval Duration `json:"mem_stats_interval"`
 
+	StatsConfig
 	NetConfig
 }
 
@@ -95,10 +100,14 @@ var DefaultConfig = Config{
 	MinAnnounce:     Duration{15 * time.Minute},
 	RequestTimeout:  Duration{10 * time.Second},
 	NumWantFallback: 50,
-	StatsBufferSize: 0,
-	IncludeMemStats: true,
-	VerboseMemStats: false,
-	MemStatInterval: Duration{15 * time.Second},
+
+	StatsConfig: StatsConfig{
+		BufferSize: 0,
+		IncludeMem: true,
+		VerboseMem: false,
+
+		MemUpdateInterval: Duration{5 * time.Second},
+	},
 
 	NetConfig: NetConfig{
 		AllowIPSpoofing:  true,

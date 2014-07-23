@@ -6,7 +6,11 @@
 // BitTorrent tracker.
 package stats
 
-import "time"
+import (
+	"time"
+
+	"github.com/chihaya/chihaya/config"
+)
 
 const (
 	Announce = iota
@@ -36,12 +40,7 @@ const (
 // DefaultStats is a default instance of stats tracking that uses an unbuffered
 // channel for broadcasting events unless specified otherwise via a command
 // line flag.
-var (
-	DefaultStats           *Stats
-	DefaultBufferSize      int
-	DefaultIncludeMemStats bool
-	DefaultVerboseMemStats bool
-)
+var DefaultStats *Stats
 
 type PeerStats struct {
 	// Stats for all peers.
@@ -94,14 +93,14 @@ type Stats struct {
 	recordMemStats     <-chan time.Time
 }
 
-func New(chanSize int, mem bool, verboseMem bool) *Stats {
+func New(cfg config.StatsConfig) *Stats {
 	s := &Stats{
 		Start:  time.Now(),
-		events: make(chan int, chanSize),
+		events: make(chan int, cfg.BufferSize),
 
-		ipv4PeerEvents:     make(chan int, chanSize),
-		ipv6PeerEvents:     make(chan int, chanSize),
-		responseTimeEvents: make(chan time.Duration, chanSize),
+		ipv4PeerEvents:     make(chan int, cfg.BufferSize),
+		ipv6PeerEvents:     make(chan int, cfg.BufferSize),
+		responseTimeEvents: make(chan time.Duration, cfg.BufferSize),
 
 		ResponseTime: PercentileTimes{
 			P50: NewPercentile(0.5),
@@ -110,9 +109,9 @@ func New(chanSize int, mem bool, verboseMem bool) *Stats {
 		},
 	}
 
-	if mem {
-		s.MemStats = NewMemStatsWrapper(verboseMem)
-		s.recordMemStats = time.NewTicker(time.Second * 10).C
+	if cfg.IncludeMem {
+		s.MemStats = NewMemStatsWrapper(cfg.VerboseMem)
+		s.recordMemStats = time.NewTicker(cfg.MemUpdateInterval.Duration).C
 	}
 
 	go s.handleEvents()
@@ -250,27 +249,15 @@ func (s *Stats) handlePeerEvent(ps *PeerStats, event int) {
 
 // RecordEvent broadcasts an event to the default stats queue.
 func RecordEvent(event int) {
-	if DefaultStats == nil {
-		DefaultStats = New(DefaultBufferSize, DefaultIncludeMemStats, DefaultVerboseMemStats)
-	}
-
 	DefaultStats.RecordEvent(event)
 }
 
 // RecordPeerEvent broadcasts a peer event to the default stats queue.
 func RecordPeerEvent(event int, ipv6 bool) {
-	if DefaultStats == nil {
-		DefaultStats = New(DefaultBufferSize, DefaultIncludeMemStats, DefaultVerboseMemStats)
-	}
-
 	DefaultStats.RecordPeerEvent(event, ipv6)
 }
 
 // RecordTiming broadcasts a timing event to the default stats queue.
 func RecordTiming(event int, duration time.Duration) {
-	if DefaultStats == nil {
-		DefaultStats = New(DefaultBufferSize, DefaultIncludeMemStats, DefaultVerboseMemStats)
-	}
-
 	DefaultStats.RecordTiming(event, duration)
 }

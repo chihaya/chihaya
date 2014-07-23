@@ -32,6 +32,9 @@ type BasicMemStats struct {
 	PauseTotalNs uint64
 }
 
+// MemStatsWrapper wraps runtime.MemStats with an optionally less verbose JSON
+// representation. The JSON field names correspond exactly to the runtime field
+// names to avoid reimplementing the entire struct.
 type MemStatsWrapper struct {
 	basic   *BasicMemStats
 	full    *runtime.MemStats
@@ -57,6 +60,7 @@ func (s *MemStatsWrapper) MarshalJSON() ([]byte, error) {
 	}
 }
 
+// Update fetches the current memstats from runtime and resets the cache.
 func (s *MemStatsWrapper) Update() {
 	runtime.ReadMemStats(s.full)
 
