@@ -43,17 +43,17 @@ func init() {
 
 type PeerStats struct {
 	// Stats for all peers.
-	Completed uint64 `json:"completed"` // Number of transitions from leech to seed.
+	Current   uint64 `json:"current"`   // Current total peer count.
 	Joined    uint64 `json:"joined"`    // Total peers that announced.
 	Left      uint64 `json:"left"`      // Total peers that paused or stopped.
 	Reaped    uint64 `json:"reaped"`    // Total peers cleaned up after inactivity.
-	Current   uint64 `json:"current"`   // Current total peer count.
+	Completed uint64 `json:"completed"` // Number of transitions from leech to seed.
 
 	// Stats for seeds only (subset of total).
+	SeedsCurrent uint64 `json:"seeds_current"` // Current seed count.
 	SeedsJoined  uint64 `json:"seeds_joined"`  // Seeds that announced (does not included leechers that completed).
 	SeedsLeft    uint64 `json:"seeds_left"`    // Seeds that paused or stopped.
 	SeedsReaped  uint64 `json:"seeds_reaped"`  // Seeds cleaned up after inactivity.
-	SeedsCurrent uint64 `json:"seeds_current"` // Current seed count.
 }
 
 type PercentileTimes struct {

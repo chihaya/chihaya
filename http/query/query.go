@@ -2,7 +2,7 @@
 // Use of this source code is governed by the BSD 2-Clause license,
 // which can be found in the LICENSE file.
 
-// Package query implements a fast, simple URL Query parser.
+// Package query implements a faster single-purpose URL Query parser.
 package query
 
 import (
