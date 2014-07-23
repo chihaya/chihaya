@@ -42,19 +42,23 @@ func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request, p httprou
 	ann, err := NewAnnounce(s.config, r, p)
 	writer := &Writer{w}
 
-	if err == models.ErrMalformedRequest || err == models.ErrBadRequest {
+	if err == models.ErrMalformedRequest {
 		writer.WriteError(err)
 		return http.StatusOK, nil
 	} else if err != nil {
 		return http.StatusInternalServerError, err
 	}
 
-	if err = s.tracker.HandleAnnounce(ann, writer); err != nil {
+	err = s.tracker.HandleAnnounce(ann, writer)
+
+	if err == models.ErrBadRequest {
+		writer.WriteError(err)
+		return http.StatusOK, nil
+	} else if err != nil {
 		return http.StatusInternalServerError, err
 	}
 
 	stats.RecordEvent(stats.Announce)
-
 	return http.StatusOK, nil
 }
 
