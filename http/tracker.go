@@ -143,7 +143,7 @@ func requestedIP(q *query.Query, r *http.Request, cfg *config.NetConfig) (v4, v6
 	}
 
 	if cfg.RealIPHeader != "" {
-		if xRealIPs, ok := q.Params[cfg.RealIPHeader]; ok {
+		if xRealIPs, ok := r.Header[cfg.RealIPHeader]; ok {
 			if v4, v6, done = getIPs(string(xRealIPs[0]), v4, v6, cfg); done {
 				return
 			}
