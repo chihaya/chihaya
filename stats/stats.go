@@ -12,21 +12,13 @@ const (
 	Announce = iota
 	Scrape
 
-	CompletedIPv4
-	NewLeechIPv4
-	DeletedLeechIPv4
-	ReapedLeechIPv4
-	NewSeedIPv4
-	DeletedSeedIPv4
-	ReapedSeedIPv4
-
-	CompletedIPv6
-	NewLeechIPv6
-	DeletedLeechIPv6
-	ReapedLeechIPv6
-	NewSeedIPv6
-	DeletedSeedIPv6
-	ReapedSeedIPv6
+	Completed
+	NewLeech
+	DeletedLeech
+	ReapedLeech
+	NewSeed
+	DeletedSeed
+	ReapedSeed
 
 	NewTorrent
 	DeletedTorrent
@@ -93,6 +85,8 @@ type Stats struct {
 	ResponseTime PercentileTimes `json:"response_time"`
 
 	events             chan int
+	ipv4PeerEvents     chan int
+	ipv6PeerEvents     chan int
 	responseTimeEvents chan time.Duration
 }
 
@@ -101,7 +95,10 @@ func New(chanSize int) *Stats {
 		Start:  time.Now(),
 		events: make(chan int, chanSize),
 
+		ipv4PeerEvents:     make(chan int, chanSize),
+		ipv6PeerEvents:     make(chan int, chanSize),
 		responseTimeEvents: make(chan time.Duration, chanSize),
+
 		ResponseTime: PercentileTimes{
 			P50: NewPercentile(0.5),
 			P90: NewPercentile(0.9),
@@ -110,6 +107,7 @@ func New(chanSize int) *Stats {
 	}
 
 	go s.handleEvents()
+	go s.handlePeerEvents()
 	go s.handleTimings()
 
 	return s
@@ -127,6 +125,14 @@ func (s *Stats) RecordEvent(event int) {
 	s.events <- event
 }
 
+func (s *Stats) RecordPeerEvent(event int, ipv6 bool) {
+	if ipv6 {
+		s.ipv6PeerEvents <- event
+	} else {
+		s.ipv4PeerEvents <- event
+	}
+}
+
 func (s *Stats) RecordTiming(event int, duration time.Duration) {
 	switch event {
 	case ResponseTime:
@@ -141,71 +147,16 @@ func (s *Stats) handleEvents() {
 		switch event {
 		case Announce:
 			s.Announces++
+
 		case Scrape:
 			s.Scrapes++
 
-		case CompletedIPv4:
-			s.IPv4Peers.Completed++
-			s.IPv4Peers.SeedsCurrent++
-		case NewLeechIPv4:
-			s.IPv4Peers.Joined++
-			s.IPv4Peers.Current++
-		case DeletedLeechIPv4:
-			s.IPv4Peers.Left++
-			s.IPv4Peers.Current--
-		case ReapedLeechIPv4:
-			s.IPv4Peers.Reaped++
-			s.IPv4Peers.Current--
-
-		case NewSeedIPv4:
-			s.IPv4Peers.SeedsJoined++
-			s.IPv4Peers.SeedsCurrent++
-			s.IPv4Peers.Joined++
-			s.IPv4Peers.Current++
-		case DeletedSeedIPv4:
-			s.IPv4Peers.SeedsLeft++
-			s.IPv4Peers.SeedsCurrent--
-			s.IPv4Peers.Left++
-			s.IPv4Peers.Current--
-		case ReapedSeedIPv4:
-			s.IPv4Peers.SeedsReaped++
-			s.IPv4Peers.SeedsCurrent--
-			s.IPv4Peers.Reaped++
-			s.IPv4Peers.Current--
-
-		case CompletedIPv6:
-			s.IPv6Peers.Completed++
-			s.IPv6Peers.SeedsCurrent++
-		case NewLeechIPv6:
-			s.IPv6Peers.Joined++
-			s.IPv6Peers.Current++
-		case DeletedLeechIPv6:
-			s.IPv6Peers.Left++
-			s.IPv6Peers.Current--
-		case ReapedLeechIPv6:
-			s.IPv6Peers.Reaped++
-			s.IPv6Peers.Current--
-
-		case NewSeedIPv6:
-			s.IPv6Peers.SeedsJoined++
-			s.IPv6Peers.SeedsCurrent++
-			s.IPv6Peers.Joined++
-			s.IPv6Peers.Current++
-		case DeletedSeedIPv6:
-			s.IPv6Peers.SeedsLeft++
-			s.IPv6Peers.SeedsCurrent--
-			s.IPv6Peers.Left++
-			s.IPv6Peers.Current--
-		case ReapedSeedIPv6:
-			s.IPv6Peers.SeedsReaped++
-			s.IPv6Peers.SeedsCurrent--
-			s.IPv6Peers.Reaped++
-			s.IPv6Peers.Current--
-
 		case NewTorrent:
 			s.TorrentsAdded++
+
 		case DeletedTorrent:
 			s.TorrentsRemoved++
+
 		case ReapedTorrent:
 			s.TorrentsReaped++
 
@@ -228,6 +179,56 @@ func (s *Stats) handleEvents() {
 	}
 }
 
+func (s *Stats) handlePeerEvents() {
+	for {
+		select {
+		case event := <-s.ipv4PeerEvents:
+			s.handlePeerEvent(&s.IPv4Peers, event)
+
+		case event := <-s.ipv6PeerEvents:
+			s.handlePeerEvent(&s.IPv6Peers, event)
+		}
+	}
+}
+
+func (s *Stats) handlePeerEvent(ps *PeerStats, event int) {
+	switch event {
+	case Completed:
+		ps.Completed++
+		ps.SeedsCurrent++
+
+	case NewLeech:
+		ps.Joined++
+		ps.Current++
+
+	case DeletedLeech:
+		ps.Left++
+		ps.Current--
+
+	case ReapedLeech:
+		ps.Reaped++
+		ps.Current--
+
+	case NewSeed:
+		ps.SeedsJoined++
+		ps.SeedsCurrent++
+		ps.Joined++
+		ps.Current++
+
+	case DeletedSeed:
+		ps.SeedsLeft++
+		ps.SeedsCurrent--
+		ps.Left++
+		ps.Current--
+
+	case ReapedSeed:
+		ps.SeedsReaped++
+		ps.SeedsCurrent--
+		ps.Reaped++
+		ps.Current--
+	}
+}
+
 func (s *Stats) handleTimings() {
 	for {
 		select {
@@ -243,6 +244,11 @@ func (s *Stats) handleTimings() {
 // RecordEvent broadcasts an event to the default stats queue.
 func RecordEvent(event int) {
 	DefaultStats.RecordEvent(event)
+}
+
+// RecordPeerEvent broadcasts a peer event to the default stats queue.
+func RecordPeerEvent(event int, ipv6 bool) {
+	DefaultStats.RecordPeerEvent(event, ipv6)
 }
 
 // RecordTiming broadcasts a timing event to the default stats queue.

@@ -120,11 +120,7 @@ func updateSwarm(c Conn, ann *models.Announce, p *models.Peer, t *models.Torrent
 				return
 			}
 			t.Seeders[p.ID] = *p
-			if p.IPv4() {
-				stats.RecordEvent(stats.NewSeedIPv4)
-			} else {
-				stats.RecordEvent(stats.NewSeedIPv6)
-			}
+			stats.RecordPeerEvent(stats.NewSeed, p.IPv6())
 
 		} else {
 			err = c.PutLeecher(t.Infohash, p)
@@ -132,11 +128,7 @@ func updateSwarm(c Conn, ann *models.Announce, p *models.Peer, t *models.Torrent
 				return
 			}
 			t.Leechers[p.ID] = *p
-			if p.IPv4() {
-				stats.RecordEvent(stats.NewLeechIPv4)
-			} else {
-				stats.RecordEvent(stats.NewLeechIPv6)
-			}
+			stats.RecordPeerEvent(stats.NewLeech, p.IPv6())
 		}
 		created = true
 	}
@@ -155,11 +147,7 @@ func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t
 				return
 			}
 			delete(t.Seeders, p.ID)
-			if p.IPv4() {
-				stats.RecordEvent(stats.DeletedSeedIPv4)
-			} else {
-				stats.RecordEvent(stats.DeletedSeedIPv6)
-			}
+			stats.RecordPeerEvent(stats.DeletedSeed, p.IPv6())
 
 		} else if t.InLeecherPool(p) {
 			err = c.DeleteLeecher(t.Infohash, p.ID)
@@ -167,11 +155,7 @@ func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t
 				return
 			}
 			delete(t.Leechers, p.ID)
-			if p.IPv4() {
-				stats.RecordEvent(stats.DeletedLeechIPv4)
-			} else {
-				stats.RecordEvent(stats.DeletedLeechIPv6)
-			}
+			stats.RecordPeerEvent(stats.DeletedLeech, p.IPv6())
 		}
 
 	case ann.Event == "completed":
@@ -212,12 +196,7 @@ func leecherFinished(c Conn, infohash string, p *models.Peer) error {
 		return err
 	}
 
-	if p.IPv4() {
-		stats.RecordEvent(stats.CompletedIPv4)
-	} else {
-		stats.RecordEvent(stats.CompletedIPv6)
-	}
-
+	stats.RecordPeerEvent(stats.Completed, p.IPv6())
 	return nil
 }
 
