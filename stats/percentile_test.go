@@ -1,7 +1,9 @@
 package stats
 
 import (
+	"math"
 	"math/rand"
+	"sort"
 	"testing"
 	"time"
 )
@@ -9,54 +11,81 @@ import (
 func TestPercentiles(t *testing.T) {
 	rand.Seed(time.Now().Unix())
 
-	testUniformRandom(t, 1, 0.5)
-	testUniformRandom(t, 1, 0.9)
-	testUniformRandom(t, 1, 0.95)
-	testUniformRandom(t, 10000, 0.5)
-	testUniformRandom(t, 10000, 0.9)
-	testUniformRandom(t, 10000, 0.95)
+	testSlice(t, uniform(10000, 1), 0.5)
+	testSlice(t, uniform(10000, 1), 0.9)
+	testSlice(t, uniform(10000, 10000), 0.5)
+	testSlice(t, uniform(10000, 10000), 0.9)
 }
 
-func testUniformRandom(t *testing.T, max, percentile float64) {
-	p := NewPercentile(percentile, 256)
+func TestLogNormPercentiles(t *testing.T) {
+	rand.Seed(time.Now().Unix())
 
-	for i := 0; i < 100000; i++ {
-		p.AddSample(rand.Float64() * max)
+	testSlice(t, logNorm(10000, 1), 0.5)
+	testSlice(t, logNorm(10000, 1), 0.9)
+}
+
+func uniform(n int, scale float64) sort.Float64Slice {
+	numbers := make(sort.Float64Slice, n)
+
+	for i := 0; i < n; i++ {
+		numbers[i] = rand.Float64() * scale
 	}
 
-	got := p.Value()
-	expected := percentile * max
-	maxError := 0.01
+	return numbers
+}
 
-	if got < expected*(1-maxError) || got > expected*(1+maxError) {
-		t.Errorf("Percentile out of range\n  actual: %f\nexpected: %f\n   error: %f%%\n", got, expected, (got-expected)/expected*100)
+func logNorm(n int, scale float64) sort.Float64Slice {
+	numbers := make(sort.Float64Slice, n)
+
+	for i := 0; i < n; i++ {
+		numbers[i] = math.Exp(rand.NormFloat64()) * scale
+	}
+
+	return numbers
+}
+
+func testSlice(t *testing.T, numbers sort.Float64Slice, percentile float64) {
+	p := NewPercentile(percentile, 256)
+
+	for i := 0; i < len(numbers); i++ {
+		p.AddSample(numbers[i])
+	}
+
+	sort.Sort(numbers)
+	got := p.Value()
+	expected := numbers[round(float64(len(numbers))*percentile)]
+
+	if got != expected {
+		t.Errorf("Percentile incorrect\n  actual: %f\nexpected: %f\n   error: %f%%\n", got, expected, (got-expected)/expected*100)
 	}
 }
 
 func BenchmarkPercentiles64(b *testing.B) {
-	benchmarkUniformRandom(b, 64, 0.5)
+	benchmarkSlice(b, uniform(b.N, 1), 64, 0.5)
 }
 
 func BenchmarkPercentiles128(b *testing.B) {
-	benchmarkUniformRandom(b, 128, 0.5)
+	benchmarkSlice(b, uniform(b.N, 1), 128, 0.5)
 }
 
 func BenchmarkPercentiles256(b *testing.B) {
-	benchmarkUniformRandom(b, 256, 0.5)
+	benchmarkSlice(b, uniform(b.N, 1), 256, 0.5)
 }
 
 func BenchmarkPercentiles512(b *testing.B) {
-	benchmarkUniformRandom(b, 512, 0.5)
+	benchmarkSlice(b, uniform(b.N, 1), 512, 0.5)
 }
 
-func benchmarkUniformRandom(b *testing.B, window int, percentile float64) {
+func BenchmarkLNPercentiles128(b *testing.B) {
+	benchmarkSlice(b, logNorm(b.N, 1), 128, 0.5)
+}
+
+func BenchmarkLNPercentiles256(b *testing.B) {
+	benchmarkSlice(b, logNorm(b.N, 1), 258, 0.5)
+}
+
+func benchmarkSlice(b *testing.B, numbers sort.Float64Slice, window int, percentile float64) {
 	p := NewPercentile(percentile, window)
-
-	numbers := make([]float64, b.N)
-
-	for i := 0; i < b.N; i++ {
-		numbers[i] = rand.Float64()
-	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

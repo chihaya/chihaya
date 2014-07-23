@@ -40,7 +40,7 @@ func (p *Percentile) Value() float64 {
 func (p *Percentile) AddSample(sample float64) {
 	p.samples++
 
-	if p.samples > int64(cap(p.values)) {
+	if len(p.values) == cap(p.values) {
 		target := float64(p.samples)*p.percentile - float64(cap(p.values))/2
 		offset := round(math.Max(target, 0))
 
