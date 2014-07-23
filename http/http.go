@@ -45,11 +45,16 @@ func makeHandler(handler ResponseHandler) httprouter.Handle {
 				duration,
 			)
 		} else if glog.V(2) {
+			reqString := r.URL.Path
+			if glog.V(3) {
+				reqString = r.URL.RequestURI() + " for " + r.RemoteAddr
+			}
+
 			glog.Infof(
 				"Completed (%v:%s) %s in %v",
 				httpCode,
 				http.StatusText(httpCode),
-				r.URL.Path,
+				reqString,
 				duration,
 			)
 		}
