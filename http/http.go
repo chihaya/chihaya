@@ -30,21 +30,27 @@ type Server struct {
 func makeHandler(handler ResponseHandler) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 		start := time.Now()
-
 		httpCode, err := handler(w, r, p)
 		stats.RecordEvent(stats.HandledRequest)
+		duration := time.Since(start)
+		stats.RecordTiming(stats.ResponseTime, duration)
 
 		if err != nil && err != models.ErrBadRequest {
 			stats.RecordEvent(stats.ErroredRequest)
 			http.Error(w, err.Error(), httpCode)
-		}
-
-		duration := time.Since(start)
-		stats.RecordTiming(stats.ResponseTime, duration)
-
-		if glog.V(2) {
+			if glog.V(2) {
+				glog.Infof(
+					"Failed (%v:%s) %s with %s in %s",
+					httpCode,
+					http.StatusText(httpCode),
+					r.URL.Path,
+					err.Error(),
+					duration,
+				)
+			}
+		} else if glog.V(2) {
 			glog.Infof(
-				"Completed %v %s %s in %v",
+				"Completed (%v:%s) %s in %v",
 				httpCode,
 				http.StatusText(httpCode),
 				r.URL.Path,
