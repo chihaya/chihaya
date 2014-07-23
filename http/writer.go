@@ -40,7 +40,12 @@ func (w *Writer) WriteAnnounce(res *models.AnnounceResponse) error {
 			dict["peers"] = compactPeers(false, res.IPv4Peers)
 		}
 		if res.IPv6Peers != nil {
-			dict["peers6"] = compactPeers(true, res.IPv6Peers)
+			compact := compactPeers(true, res.IPv6Peers)
+
+			// Don't bother writing the IPv6 field if there is no value.
+			if len(compact) > 0 {
+				dict["peers6"] = compact
+			}
 		}
 	} else if res.IPv4Peers != nil || res.IPv6Peers != nil {
 		dict["peers"] = peersList(res.IPv6Peers, res.IPv4Peers)
