@@ -19,9 +19,19 @@ type Percentile struct {
 	value  uint64 // These bits are really a float64.
 }
 
-// NewPercentile returns a Percentile with a given threshold
+// NewPercentile returns a Percentile with a given threshold.
+func NewPercentile(percentile float64) *Percentile {
+	return &Percentile{
+		percentile: percentile,
+
+		// 256 samples is fast, and accurate for most distributions.
+		values: make([]float64, 0, 256),
+	}
+}
+
+// NewPercentileWithWindow returns a Percentile with a given threshold
 // and window size (accuracy).
-func NewPercentile(percentile float64, sampleWindow int) *Percentile {
+func NewPercentileWithWindow(percentile float64, sampleWindow int) *Percentile {
 	return &Percentile{
 		percentile: percentile,
 		values:     make([]float64, 0, sampleWindow),

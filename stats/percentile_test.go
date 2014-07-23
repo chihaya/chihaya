@@ -45,7 +45,7 @@ func logNorm(n int, scale float64) sort.Float64Slice {
 }
 
 func testSlice(t *testing.T, numbers sort.Float64Slice, percentile float64) {
-	p := NewPercentile(percentile, 256)
+	p := NewPercentile(percentile)
 
 	for i := 0; i < len(numbers); i++ {
 		p.AddSample(numbers[i])
@@ -53,10 +53,10 @@ func testSlice(t *testing.T, numbers sort.Float64Slice, percentile float64) {
 
 	sort.Sort(numbers)
 	got := p.Value()
-	expected := numbers[round(float64(len(numbers))*percentile)]
+	index := round(float64(len(numbers)) * percentile)
 
-	if got != expected {
-		t.Errorf("Percentile incorrect\n  actual: %f\nexpected: %f\n   error: %f%%\n", got, expected, (got-expected)/expected*100)
+	if got != numbers[index] && got != numbers[index-1] && got != numbers[index+1] {
+		t.Errorf("Percentile incorrect\n  actual: %f\nexpected: %f, %f, %f\n", got, numbers[index-1], numbers[index], numbers[index+1])
 	}
 }
 
@@ -85,7 +85,7 @@ func BenchmarkLNPercentiles256(b *testing.B) {
 }
 
 func benchmarkSlice(b *testing.B, numbers sort.Float64Slice, window int, percentile float64) {
-	p := NewPercentile(percentile, window)
+	p := NewPercentileWithWindow(percentile, window)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

@@ -101,9 +101,9 @@ func New(chanSize int) *Stats {
 
 		responseTimeEvents: make(chan time.Duration, chanSize),
 		ResponseTime: PercentileTimes{
-			P50: NewPercentile(0.5, 128),
-			P90: NewPercentile(0.9, 128),
-			P95: NewPercentile(0.95, 128),
+			P50: NewPercentile(0.5),
+			P90: NewPercentile(0.9),
+			P95: NewPercentile(0.95),
 		},
 	}
 
