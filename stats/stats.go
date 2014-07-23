@@ -6,7 +6,10 @@
 // BitTorrent tracker.
 package stats
 
-import "time"
+import (
+	"flag"
+	"time"
+)
 
 const (
 	Announce = iota
@@ -34,11 +37,15 @@ const (
 )
 
 // DefaultStats is a default instance of stats tracking that uses an unbuffered
-// channel for broadcasting events.
-var DefaultStats *Stats
+// channel for broadcasting events unless specified otherwise via a command
+// line flag.
+var (
+	DefaultStats     *Stats
+	DefaultChanSizes int
+)
 
 func init() {
-	DefaultStats = New(0)
+	flag.IntVar(&DefaultChanSizes, "stats_chan_sizes", 0, "specifies the size of chans used to collect stats")
 }
 
 type PeerStats struct {
@@ -238,15 +245,27 @@ func (s *Stats) handlePeerEvent(ps *PeerStats, event int) {
 
 // RecordEvent broadcasts an event to the default stats queue.
 func RecordEvent(event int) {
+	if DefaultStats == nil {
+		DefaultStats = New(DefaultChanSizes)
+	}
+
 	DefaultStats.RecordEvent(event)
 }
 
 // RecordPeerEvent broadcasts a peer event to the default stats queue.
 func RecordPeerEvent(event int, ipv6 bool) {
+	if DefaultStats == nil {
+		DefaultStats = New(DefaultChanSizes)
+	}
+
 	DefaultStats.RecordPeerEvent(event, ipv6)
 }
 
 // RecordTiming broadcasts a timing event to the default stats queue.
 func RecordTiming(event int, duration time.Duration) {
+	if DefaultStats == nil {
+		DefaultStats = New(DefaultChanSizes)
+	}
+
 	DefaultStats.RecordTiming(event, duration)
 }
