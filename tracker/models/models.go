@@ -16,6 +16,11 @@ var (
 	// ErrMalformedRequest is returned when a request does not contain the
 	// required parameters needed to create a model.
 	ErrMalformedRequest = errors.New("malformed request")
+
+	// ErrBadRequest is returned when a request is invalid in the peer's
+	// current state. For example, announcing a "completed" event while
+	// not a leecher or a "stopped" event while not active.
+	ErrBadRequest = errors.New("bad request")
 )
 
 // Peer is a participant in a swarm.

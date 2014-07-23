@@ -68,12 +68,12 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 
 	peer := models.NewPeer(ann, user, torrent)
 
-	created, err := updateSwarm(conn, ann, peer, torrent)
+	created, err := updateSwarm(conn, w, ann, peer, torrent)
 	if err != nil {
 		return err
 	}
 
-	snatched, err := handleEvent(conn, ann, peer, user, torrent)
+	snatched, err := handleEvent(conn, w, ann, peer, user, torrent)
 	if err != nil {
 		return err
 	}
@@ -95,7 +95,7 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 }
 
 // updateSwarm handles the changes to a torrent's swarm given an announce.
-func updateSwarm(c Conn, ann *models.Announce, p *models.Peer, t *models.Torrent) (created bool, err error) {
+func updateSwarm(c Conn, w Writer, ann *models.Announce, p *models.Peer, t *models.Torrent) (created bool, err error) {
 	c.TouchTorrent(t.Infohash)
 
 	switch {
@@ -114,6 +114,12 @@ func updateSwarm(c Conn, ann *models.Announce, p *models.Peer, t *models.Torrent
 		t.Leechers[p.ID] = *p
 
 	default:
+		if ann.Event != "" {
+			err = models.ErrBadRequest
+			w.WriteError(err)
+			return
+		}
+
 		if ann.Left == 0 {
 			err = c.PutSeeder(t.Infohash, p)
 			if err != nil {
@@ -138,7 +144,7 @@ func updateSwarm(c Conn, ann *models.Announce, p *models.Peer, t *models.Torrent
 
 // handleEvent checks to see whether an announce has an event and if it does,
 // properly handles that event.
-func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t *models.Torrent) (snatched bool, err error) {
+func handleEvent(c Conn, w Writer, ann *models.Announce, p *models.Peer, u *models.User, t *models.Torrent) (snatched bool, err error) {
 	switch {
 	case ann.Event == "stopped" || ann.Event == "paused":
 		if t.InSeederPool(p) {
@@ -156,6 +162,9 @@ func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t
 			}
 			delete(t.Leechers, p.ID)
 			stats.RecordPeerEvent(stats.DeletedLeech, p.IPv6())
+		} else {
+			err = models.ErrBadRequest
+			w.WriteError(err)
 		}
 
 	case ann.Event == "completed":
@@ -175,6 +184,9 @@ func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t
 
 		if t.InLeecherPool(p) {
 			err = leecherFinished(c, t.Infohash, p)
+		} else {
+			err = models.ErrBadRequest
+			w.WriteError(err)
 		}
 		snatched = true
 
