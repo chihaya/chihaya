@@ -121,7 +121,9 @@ func (q Query) RequestedPeerCount(fallback int) int {
 	return fallback
 }
 
-func getIPs(ipstr string, ipv4, ipv6 net.IP) (net.IP, net.IP, bool) {
+func getIPs(ipstr string, ipv4, ipv6 net.IP, dualStacked bool) (net.IP, net.IP, bool) {
+	var done bool
+
 	if ip := net.ParseIP(ipstr); ip != nil {
 		newIPv4 := ip.To4()
 
@@ -132,40 +134,49 @@ func getIPs(ipstr string, ipv4, ipv6 net.IP) (net.IP, net.IP, bool) {
 		}
 	}
 
-	return ipv4, ipv6, ipv4 != nil && ipv6 != nil
+	if dualStacked {
+		done = ipv4 != nil && ipv6 != nil
+	} else {
+		done = ipv4 != nil || ipv6 != nil
+	}
+
+	return ipv4, ipv6, done
 }
 
 // RequestedIP returns the requested IP address from a Query.
-func (q Query) RequestedIP(r *http.Request, allowSpoofing bool) (ipv4, ipv6 net.IP, err error) {
+func (q Query) RequestedIP(r *http.Request, allowSpoofing, dualStacked bool) (v4, v6 net.IP, err error) {
 	var done bool
+	var ds = dualStacked
 
 	if allowSpoofing {
-		if ipstr, ok := q.Params["ip"]; ok {
-			ipv4, ipv6, done = getIPs(ipstr, ipv4, ipv6)
-		}
-
-		if ipstr, ok := q.Params["ipv4"]; ok {
-			if ipv4, ipv6, done = getIPs(ipstr, ipv4, ipv6); done {
+		if str, ok := q.Params["ip"]; ok {
+			if v4, v6, done = getIPs(str, v4, v6, ds); done {
 				return
 			}
 		}
 
-		if ipstr, ok := q.Params["ipv6"]; ok {
-			if ipv4, ipv6, done = getIPs(ipstr, ipv4, ipv6); done {
+		if str, ok := q.Params["ipv4"]; ok {
+			if v4, v6, done = getIPs(str, v4, v6, ds); done {
+				return
+			}
+		}
+
+		if str, ok := q.Params["ipv6"]; ok {
+			if v4, v6, done = getIPs(str, v4, v6, ds); done {
 				return
 			}
 		}
 	}
 
 	if xRealIPs, ok := q.Params["x-real-ip"]; ok {
-		if ipv4, ipv6, done = getIPs(string(xRealIPs[0]), ipv4, ipv6); done {
+		if v4, v6, done = getIPs(string(xRealIPs[0]), v4, v6, ds); done {
 			return
 		}
 	}
 
 	if r.RemoteAddr == "" {
-		if ipv4 == nil {
-			ipv4 = net.ParseIP("127.0.0.1")
+		if v4 == nil {
+			v4 = net.ParseIP("127.0.0.1")
 		}
 		return
 	}
@@ -178,13 +189,13 @@ func (q Query) RequestedIP(r *http.Request, allowSpoofing bool) (ipv4, ipv6 net.
 	}
 
 	if portIndex != -1 {
-		ipstr := r.RemoteAddr[0:portIndex]
-		if ipv4, ipv6, done = getIPs(ipstr, ipv4, ipv6); done {
+		str := r.RemoteAddr[0:portIndex]
+		if v4, v6, done = getIPs(str, v4, v6, ds); done {
 			return
 		}
 	}
 
-	if ipv4 == nil && ipv6 == nil {
+	if v4 == nil && v6 == nil {
 		err = errors.New("failed to parse IP address")
 	}
 	return

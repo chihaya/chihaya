@@ -170,6 +170,7 @@ func TestPreferredSubnet(t *testing.T) {
 	cfg.PreferredSubnet = true
 	cfg.PreferredIPv4Subnet = 8
 	cfg.PreferredIPv6Subnet = 16
+	cfg.DualStackedPeers = false
 
 	srv, err := setupTracker(&cfg)
 	if err != nil {

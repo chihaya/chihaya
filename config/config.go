@@ -51,6 +51,7 @@ type Config struct {
 	Whitelist             bool `json:"whitelist"`
 	PurgeInactiveTorrents bool `json:"purge_inactive_torrents"`
 	AllowIPSpoofing       bool `json:"allow_ip_spoofing"`
+	DualStackedPeers      bool `json:"dual_stacked_peers"`
 
 	Announce        Duration `json:"announce"`
 	MinAnnounce     Duration `json:"min_announce"`
@@ -79,6 +80,7 @@ var DefaultConfig = Config{
 	Whitelist:             false,
 	PurgeInactiveTorrents: true,
 	AllowIPSpoofing:       true,
+	DualStackedPeers:      true,
 
 	Announce:        Duration{30 * time.Minute},
 	MinAnnounce:     Duration{15 * time.Minute},

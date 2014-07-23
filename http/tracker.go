@@ -35,7 +35,7 @@ func NewAnnounce(cfg *config.Config, r *http.Request, p httprouter.Params) (*mod
 		return nil, models.ErrMalformedRequest
 	}
 
-	ipv4, ipv6, err := q.RequestedIP(r, cfg.AllowIPSpoofing)
+	ipv4, ipv6, err := q.RequestedIP(r, cfg.AllowIPSpoofing, cfg.DualStackedPeers)
 	if err != nil {
 		return nil, models.ErrMalformedRequest
 	}
