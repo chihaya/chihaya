@@ -12,6 +12,8 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/chihaya/chihaya/config"
 )
 
 // Query represents a parsed URL.Query.
@@ -121,7 +123,7 @@ func (q Query) RequestedPeerCount(fallback int) int {
 	return fallback
 }
 
-func getIPs(ipstr string, ipv4, ipv6 net.IP, dualStacked bool) (net.IP, net.IP, bool) {
+func getIPs(ipstr string, ipv4, ipv6 net.IP, cfg *config.NetConfig) (net.IP, net.IP, bool) {
 	var done bool
 
 	if ip := net.ParseIP(ipstr); ip != nil {
@@ -134,7 +136,7 @@ func getIPs(ipstr string, ipv4, ipv6 net.IP, dualStacked bool) (net.IP, net.IP, 
 		}
 	}
 
-	if dualStacked {
+	if cfg.DualStackedPeers {
 		done = ipv4 != nil && ipv6 != nil
 	} else {
 		done = ipv4 != nil || ipv6 != nil
@@ -144,54 +146,47 @@ func getIPs(ipstr string, ipv4, ipv6 net.IP, dualStacked bool) (net.IP, net.IP, 
 }
 
 // RequestedIP returns the requested IP address from a Query.
-func (q Query) RequestedIP(r *http.Request, allowSpoofing, dualStacked bool) (v4, v6 net.IP, err error) {
+func (q Query) RequestedIP(r *http.Request, cfg *config.NetConfig) (v4, v6 net.IP, err error) {
 	var done bool
-	var ds = dualStacked
 
-	if allowSpoofing {
+	if cfg.AllowIPSpoofing {
 		if str, ok := q.Params["ip"]; ok {
-			if v4, v6, done = getIPs(str, v4, v6, ds); done {
+			if v4, v6, done = getIPs(str, v4, v6, cfg); done {
 				return
 			}
 		}
 
 		if str, ok := q.Params["ipv4"]; ok {
-			if v4, v6, done = getIPs(str, v4, v6, ds); done {
+			if v4, v6, done = getIPs(str, v4, v6, cfg); done {
 				return
 			}
 		}
 
 		if str, ok := q.Params["ipv6"]; ok {
-			if v4, v6, done = getIPs(str, v4, v6, ds); done {
+			if v4, v6, done = getIPs(str, v4, v6, cfg); done {
 				return
 			}
 		}
 	}
 
-	if xRealIPs, ok := q.Params["x-real-ip"]; ok {
-		if v4, v6, done = getIPs(string(xRealIPs[0]), v4, v6, ds); done {
+	if cfg.RealIPHeader != "" {
+		if xRealIPs, ok := q.Params[cfg.RealIPHeader]; ok {
+			if v4, v6, done = getIPs(string(xRealIPs[0]), v4, v6, cfg); done {
+				return
+			}
+		}
+	} else {
+		if r.RemoteAddr == "" {
+			if v4 == nil {
+				v4 = net.ParseIP("127.0.0.1")
+			}
 			return
 		}
-	}
 
-	if r.RemoteAddr == "" {
-		if v4 == nil {
-			v4 = net.ParseIP("127.0.0.1")
-		}
-		return
-	}
-
-	portIndex := len(r.RemoteAddr) - 1
-	for ; portIndex >= 0; portIndex-- {
-		if r.RemoteAddr[portIndex] == ':' {
-			break
-		}
-	}
-
-	if portIndex != -1 {
-		str := r.RemoteAddr[0:portIndex]
-		if v4, v6, done = getIPs(str, v4, v6, ds); done {
-			return
+		if idx := strings.LastIndex(r.RemoteAddr, ":"); idx != -1 {
+			if v4, v6, done = getIPs(r.RemoteAddr[0:idx], v4, v6, cfg); done {
+				return
+			}
 		}
 	}
 

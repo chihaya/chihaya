@@ -15,6 +15,7 @@
   "whitelist": false,
   "purge_inactive_torrents": true,
   "allow_ip_spoofing": true,
+  "dual_stacked_peers": true,
 
   "announce": "30m",
   "min_announce": "15m",

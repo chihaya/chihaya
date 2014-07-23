@@ -40,6 +40,17 @@ type DriverConfig struct {
 	Params map[string]string `json:"params,omitempty"`
 }
 
+// NetConfig is the configuration used to tune networking behaviour.
+type NetConfig struct {
+	AllowIPSpoofing  bool   `json:"allow_ip_spoofing"`
+	DualStackedPeers bool   `json:"dual_stacked_peers"`
+	RealIPHeader     string `json:"real_ip_header"`
+
+	PreferredSubnet     bool `json:"preferred_subnet,omitempty"`
+	PreferredIPv4Subnet int  `json:"preferred_ipv4_subnet,omitempty"`
+	PreferredIPv6Subnet int  `json:"preferred_ipv6_subnet,omitempty"`
+}
+
 // Config is a configuration for a Server.
 type Config struct {
 	Addr    string       `json:"addr"`
@@ -50,17 +61,13 @@ type Config struct {
 	Freeleech             bool `json:"freeleech"`
 	Whitelist             bool `json:"whitelist"`
 	PurgeInactiveTorrents bool `json:"purge_inactive_torrents"`
-	AllowIPSpoofing       bool `json:"allow_ip_spoofing"`
-	DualStackedPeers      bool `json:"dual_stacked_peers"`
 
 	Announce        Duration `json:"announce"`
 	MinAnnounce     Duration `json:"min_announce"`
 	RequestTimeout  Duration `json:"request_timeout"`
 	NumWantFallback int      `json:"default_num_want"`
 
-	PreferredSubnet     bool `json:"preferred_subnet,omitempty"`
-	PreferredIPv4Subnet int  `json:"preferred_ipv4_subnet,omitempty"`
-	PreferredIPv6Subnet int  `json:"preferred_ipv6_subnet,omitempty"`
+	NetConfig
 }
 
 // DefaultConfig is a configuration that can be used as a fallback value.
@@ -79,13 +86,16 @@ var DefaultConfig = Config{
 	Freeleech:             false,
 	Whitelist:             false,
 	PurgeInactiveTorrents: true,
-	AllowIPSpoofing:       true,
-	DualStackedPeers:      true,
 
 	Announce:        Duration{30 * time.Minute},
 	MinAnnounce:     Duration{15 * time.Minute},
 	RequestTimeout:  Duration{10 * time.Second},
 	NumWantFallback: 50,
+
+	NetConfig: NetConfig{
+		AllowIPSpoofing:  true,
+		DualStackedPeers: true,
+	},
 }
 
 // Open is a shortcut to open a file, read it, and generate a Config.
