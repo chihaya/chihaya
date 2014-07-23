@@ -17,7 +17,6 @@ import (
 	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/stats"
 	"github.com/chihaya/chihaya/tracker"
-	"github.com/chihaya/chihaya/tracker/models"
 )
 
 type ResponseHandler func(http.ResponseWriter, *http.Request, httprouter.Params) (int, error)
@@ -31,23 +30,20 @@ func makeHandler(handler ResponseHandler) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 		start := time.Now()
 		httpCode, err := handler(w, r, p)
-		stats.RecordEvent(stats.HandledRequest)
 		duration := time.Since(start)
-		stats.RecordTiming(stats.ResponseTime, duration)
 
 		if err != nil {
 			stats.RecordEvent(stats.ErroredRequest)
 			http.Error(w, err.Error(), httpCode)
-			if glog.V(2) {
-				glog.Infof(
-					"Failed (%v:%s) %s with %s in %s",
-					httpCode,
-					http.StatusText(httpCode),
-					r.URL.Path,
-					err.Error(),
-					duration,
-				)
-			}
+
+			glog.Errorf(
+				"Failed (%v:%s) %s with %s in %s",
+				httpCode,
+				http.StatusText(httpCode),
+				r.URL.Path,
+				err.Error(),
+				duration,
+			)
 		} else if glog.V(2) {
 			glog.Infof(
 				"Completed (%v:%s) %s in %v",
@@ -57,6 +53,9 @@ func makeHandler(handler ResponseHandler) httprouter.Handle {
 				duration,
 			)
 		}
+
+		stats.RecordEvent(stats.HandledRequest)
+		stats.RecordTiming(stats.ResponseTime, duration)
 	}
 }
 
