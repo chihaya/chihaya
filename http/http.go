@@ -17,6 +17,7 @@ import (
 	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/stats"
 	"github.com/chihaya/chihaya/tracker"
+	"github.com/chihaya/chihaya/tracker/models"
 )
 
 type ResponseHandler func(http.ResponseWriter, *http.Request, httprouter.Params) (int, error)
@@ -33,7 +34,7 @@ func makeHandler(handler ResponseHandler) httprouter.Handle {
 		httpCode, err := handler(w, r, p)
 		stats.RecordEvent(stats.HandledRequest)
 
-		if err != nil {
+		if err != nil && err != models.ErrBadRequest {
 			stats.RecordEvent(stats.ErroredRequest)
 			http.Error(w, err.Error(), httpCode)
 		}

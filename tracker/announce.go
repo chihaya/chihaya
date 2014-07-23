@@ -147,6 +147,8 @@ func updateSwarm(c Conn, w Writer, ann *models.Announce, p *models.Peer, t *mode
 func handleEvent(c Conn, w Writer, ann *models.Announce, p *models.Peer, u *models.User, t *models.Torrent) (snatched bool, err error) {
 	switch {
 	case ann.Event == "stopped" || ann.Event == "paused":
+		// updateSwarm checks if the peer is active on the torrent,
+		// so one of these branches must be followed.
 		if t.InSeederPool(p) {
 			err = c.DeleteSeeder(t.Infohash, p.ID)
 			if err != nil {
@@ -162,9 +164,6 @@ func handleEvent(c Conn, w Writer, ann *models.Announce, p *models.Peer, u *mode
 			}
 			delete(t.Leechers, p.ID)
 			stats.RecordPeerEvent(stats.DeletedLeech, p.IPv6())
-		} else {
-			err = models.ErrBadRequest
-			w.WriteError(err)
 		}
 
 	case ann.Event == "completed":
