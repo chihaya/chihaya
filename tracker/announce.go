@@ -125,7 +125,7 @@ func updateSwarm(c Conn, ann *models.Announce, p *models.Peer, t *models.Torrent
 				return
 			}
 			t.Seeders[p.ID] = *p
-			stats.RecordPeerEvent(stats.NewSeed, p.IPv6())
+			stats.RecordPeerEvent(stats.NewSeed, p.HasIPv6())
 
 		} else {
 			err = c.PutLeecher(t.Infohash, p)
@@ -133,7 +133,7 @@ func updateSwarm(c Conn, ann *models.Announce, p *models.Peer, t *models.Torrent
 				return
 			}
 			t.Leechers[p.ID] = *p
-			stats.RecordPeerEvent(stats.NewLeech, p.IPv6())
+			stats.RecordPeerEvent(stats.NewLeech, p.HasIPv6())
 		}
 		created = true
 	}
@@ -154,7 +154,7 @@ func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t
 				return
 			}
 			delete(t.Seeders, p.ID)
-			stats.RecordPeerEvent(stats.DeletedSeed, p.IPv6())
+			stats.RecordPeerEvent(stats.DeletedSeed, p.HasIPv6())
 
 		} else if t.InLeecherPool(p) {
 			err = c.DeleteLeecher(t.Infohash, p.ID)
@@ -162,7 +162,7 @@ func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t
 				return
 			}
 			delete(t.Leechers, p.ID)
-			stats.RecordPeerEvent(stats.DeletedLeech, p.IPv6())
+			stats.RecordPeerEvent(stats.DeletedLeech, p.HasIPv6())
 		}
 
 	case ann.Event == "completed":
@@ -205,7 +205,7 @@ func leecherFinished(c Conn, infohash string, p *models.Peer) error {
 		return err
 	}
 
-	stats.RecordPeerEvent(stats.Completed, p.IPv6())
+	stats.RecordPeerEvent(stats.Completed, p.HasIPv6())
 	return nil
 }
 
@@ -258,13 +258,13 @@ func appendPeers(ipv4s, ipv6s models.PeerList, ann *models.Announce, announcer *
 			continue
 		}
 
-		if peer.IP.To4() != nil {
-			ipv4s = append(ipv4s, peer)
-		} else if peer.IP.To16() != nil {
+		if announcer.HasIPv6() && peer.HasIPv6() {
 			ipv6s = append(ipv6s, peer)
+			count++
+		} else if peer.HasIPv4() {
+			ipv4s = append(ipv4s, peer)
+			count++
 		}
-
-		count++
 	}
 
 	return ipv4s, ipv6s
@@ -273,14 +273,15 @@ func appendPeers(ipv4s, ipv6s models.PeerList, ann *models.Announce, announcer *
 // appendSubnetPeers is an alternative version of appendPeers used when the
 // config variable PreferredSubnet is enabled.
 func appendSubnetPeers(ipv4s, ipv6s models.PeerList, ann *models.Announce, announcer *models.Peer, peers models.PeerMap, wanted int) (models.PeerList, models.PeerList) {
-	var subnet net.IPNet
+	var subnetIPv4 net.IPNet
+	var subnetIPv6 net.IPNet
 
-	if aip := announcer.IP.To4(); aip != nil {
-		subnet = net.IPNet{aip, net.CIDRMask(ann.Config.PreferredIPv4Subnet, 32)}
-	} else if aip := announcer.IP.To16(); aip != nil {
-		subnet = net.IPNet{aip, net.CIDRMask(ann.Config.PreferredIPv6Subnet, 128)}
-	} else {
-		panic("impossible: missing IP")
+	if announcer.HasIPv4() {
+		subnetIPv4 = net.IPNet{announcer.IPv4, net.CIDRMask(ann.Config.PreferredIPv4Subnet, 32)}
+	}
+
+	if announcer.HasIPv6() {
+		subnetIPv6 = net.IPNet{announcer.IPv6, net.CIDRMask(ann.Config.PreferredIPv6Subnet, 128)}
 	}
 
 	// Iterate over the peers twice: first add only peers in the same subnet and
@@ -292,16 +293,20 @@ func appendSubnetPeers(ipv4s, ipv6s models.PeerList, ann *models.Announce, annou
 				break
 			}
 
-			if peersEquivalent(&peer, announcer) || checkInSubnet != subnet.Contains(peer.IP) {
+			inSubnet4 := peer.HasIPv4() && subnetIPv4.Contains(peer.IPv4)
+			inSubnet6 := peer.HasIPv6() && subnetIPv6.Contains(peer.IPv6)
+
+			if peersEquivalent(&peer, announcer) || checkInSubnet != (inSubnet4 || inSubnet6) {
 				continue
 			}
 
-			if peer.IP.To4() != nil {
-				ipv4s = append(ipv4s, peer)
-			} else if peer.IP.To16() != nil {
+			if announcer.HasIPv6() && peer.HasIPv6() {
 				ipv6s = append(ipv6s, peer)
+				count++
+			} else if peer.HasIPv4() {
+				ipv4s = append(ipv4s, peer)
+				count++
 			}
-			count++
 		}
 	}
 

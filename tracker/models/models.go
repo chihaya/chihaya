@@ -41,7 +41,8 @@ type Peer struct {
 	UserID    uint64 `json:"user_id"`
 	TorrentID uint64 `json:"torrent_id"`
 
-	IP   net.IP `json:"ip"`
+	IPv4 net.IP `json:"ipv4,omitempty"`
+	IPv6 net.IP `json:"ipv6,omitempty"`
 	Port uint64 `json:"port"`
 
 	Uploaded     uint64 `json:"uploaded"`
@@ -78,7 +79,8 @@ func NewPeer(a *Announce, u *User, t *Torrent) *Peer {
 		ID:           a.PeerID,
 		UserID:       userID,
 		TorrentID:    torrentID,
-		IP:           a.IP,
+		IPv4:         a.IPv4,
+		IPv6:         a.IPv6,
 		Port:         a.Port,
 		Uploaded:     a.Uploaded,
 		Downloaded:   a.Downloaded,
@@ -87,12 +89,12 @@ func NewPeer(a *Announce, u *User, t *Torrent) *Peer {
 	}
 }
 
-func (p *Peer) IPv4() bool {
-	return p.IP.To4() != nil
+func (p *Peer) HasIPv4() bool {
+	return p.IPv4 != nil
 }
 
-func (p *Peer) IPv6() bool {
-	return !p.IPv4()
+func (p *Peer) HasIPv6() bool {
+	return p.IPv6 != nil
 }
 
 // Torrent is a swarm for a given torrent file.
@@ -143,7 +145,8 @@ type Announce struct {
 	Compact    bool   `json:"compact"`
 	Downloaded uint64 `json:"downloaded"`
 	Event      string `json:"event"`
-	IP         net.IP `json:"ip"`
+	IPv4       net.IP `json:"ipv4"`
+	IPv6       net.IP `json:"ipv6"`
 	Infohash   string `json:"infohash"`
 	Left       uint64 `json:"left"`
 	NumWant    int    `json:"numwant"`

@@ -121,38 +121,53 @@ func (q Query) RequestedPeerCount(fallback int) int {
 	return fallback
 }
 
+func getIPs(ipstr string, ipv4, ipv6 net.IP) (net.IP, net.IP, bool) {
+	if ip := net.ParseIP(ipstr); ip != nil {
+		newIPv4 := ip.To4()
+
+		if ipv4 == nil && newIPv4 != nil {
+			ipv4 = newIPv4
+		} else if ipv6 == nil && newIPv4 == nil {
+			ipv6 = ip
+		}
+	}
+
+	return ipv4, ipv6, ipv4 != nil && ipv6 != nil
+}
+
 // RequestedIP returns the requested IP address from a Query.
-func (q Query) RequestedIP(r *http.Request, allowSpoofing bool) (net.IP, error) {
+func (q Query) RequestedIP(r *http.Request, allowSpoofing bool) (ipv4, ipv6 net.IP, err error) {
+	var done bool
+
 	if allowSpoofing {
 		if ipstr, ok := q.Params["ip"]; ok {
-			if ip := net.ParseIP(ipstr); ip != nil {
-				return ip, nil
-			}
+			ipv4, ipv6, done = getIPs(ipstr, ipv4, ipv6)
 		}
 
 		if ipstr, ok := q.Params["ipv4"]; ok {
-			if ip := net.ParseIP(ipstr); ip != nil {
-				return ip, nil
+			if ipv4, ipv6, done = getIPs(ipstr, ipv4, ipv6); done {
+				return
 			}
 		}
 
 		if ipstr, ok := q.Params["ipv6"]; ok {
-			if ip := net.ParseIP(ipstr); ip != nil {
-				return ip, nil
+			if ipv4, ipv6, done = getIPs(ipstr, ipv4, ipv6); done {
+				return
 			}
 		}
 	}
 
 	if xRealIPs, ok := q.Params["x-real-ip"]; ok {
-		if ip := net.ParseIP(string(xRealIPs[0])); ip != nil {
-			return ip, nil
+		if ipv4, ipv6, done = getIPs(string(xRealIPs[0]), ipv4, ipv6); done {
+			return
 		}
 	}
 
 	if r.RemoteAddr == "" {
-		if ip := net.ParseIP("127.0.0.1"); ip != nil {
-			return ip, nil
+		if ipv4 == nil {
+			ipv4 = net.ParseIP("127.0.0.1")
 		}
+		return
 	}
 
 	portIndex := len(r.RemoteAddr) - 1
@@ -164,10 +179,13 @@ func (q Query) RequestedIP(r *http.Request, allowSpoofing bool) (net.IP, error) 
 
 	if portIndex != -1 {
 		ipstr := r.RemoteAddr[0:portIndex]
-		if ip := net.ParseIP(ipstr); ip != nil {
-			return ip, nil
+		if ipv4, ipv6, done = getIPs(ipstr, ipv4, ipv6); done {
+			return
 		}
 	}
 
-	return nil, errors.New("failed to parse IP address")
+	if ipv4 == nil && ipv6 == nil {
+		err = errors.New("failed to parse IP address")
+	}
+	return
 }
