@@ -48,7 +48,7 @@ func (w *Writer) WriteAnnounce(res *models.AnnounceResponse) error {
 			}
 		}
 	} else if res.IPv4Peers != nil || res.IPv6Peers != nil {
-		dict["peers"] = peersList(res.IPv6Peers, res.IPv4Peers)
+		dict["peers"] = peersList(res.IPv4Peers, res.IPv6Peers)
 	}
 
 	bencoder := bencode.NewEncoder(w)

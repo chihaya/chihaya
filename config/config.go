@@ -50,6 +50,7 @@ type Config struct {
 	Freeleech             bool `json:"freeleech"`
 	Whitelist             bool `json:"whitelist"`
 	PurgeInactiveTorrents bool `json:"purge_inactive_torrents"`
+	AllowIPSpoofing       bool `json:"allow_ip_spoofing"`
 
 	Announce        Duration `json:"announce"`
 	MinAnnounce     Duration `json:"min_announce"`
@@ -77,6 +78,7 @@ var DefaultConfig = Config{
 	Freeleech:             false,
 	Whitelist:             false,
 	PurgeInactiveTorrents: true,
+	AllowIPSpoofing:       true,
 
 	Announce:        Duration{30 * time.Minute},
 	MinAnnounce:     Duration{15 * time.Minute},

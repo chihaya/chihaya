@@ -122,22 +122,24 @@ func (q Query) RequestedPeerCount(fallback int) int {
 }
 
 // RequestedIP returns the requested IP address from a Query.
-func (q Query) RequestedIP(r *http.Request) (net.IP, error) {
-	if ipstr, ok := q.Params["ip"]; ok {
-		if ip := net.ParseIP(ipstr); ip != nil {
-			return ip, nil
+func (q Query) RequestedIP(r *http.Request, allowSpoofing bool) (net.IP, error) {
+	if allowSpoofing {
+		if ipstr, ok := q.Params["ip"]; ok {
+			if ip := net.ParseIP(ipstr); ip != nil {
+				return ip, nil
+			}
 		}
-	}
 
-	if ipstr, ok := q.Params["ipv4"]; ok {
-		if ip := net.ParseIP(ipstr); ip != nil {
-			return ip, nil
+		if ipstr, ok := q.Params["ipv4"]; ok {
+			if ip := net.ParseIP(ipstr); ip != nil {
+				return ip, nil
+			}
 		}
-	}
 
-	if ipstr, ok := q.Params["ipv6"]; ok {
-		if ip := net.ParseIP(ipstr); ip != nil {
-			return ip, nil
+		if ipstr, ok := q.Params["ipv6"]; ok {
+			if ip := net.ParseIP(ipstr); ip != nil {
+				return ip, nil
+			}
 		}
 	}
 
