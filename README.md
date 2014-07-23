@@ -1,17 +1,15 @@
 # Chihaya [![Build Status](https://api.travis-ci.org/chihaya/chihaya.svg?branch=master)](https://travis-ci.org/chihaya/chihaya)
 
-Chihaya is a high-performance [BitTorrent tracker](http://en.wikipedia.org/wiki/BitTorrent_tracker) written in the Go programming language. It is still heavily under development and the current `master` branch should not be used in production.
+Chihaya is a high-performance [BitTorrent tracker](http://en.wikipedia.org/wiki/BitTorrent_tracker) written in the Go programming language. It is still heavily under development and the current `master` branch should probably not be used in production.
 
 Features include:
 
-- Light resource consumption, and fast, asynchronous request processing
-- Full compatibility with what exists of the BitTorrent spec
-- Correct IPv6 support
+- Low resource consumption, and fast, asynchronous request processing
+- Full IPv6 support, including handling for dual-stacked peers
 - Generic storage interfaces that are easily adapted to work with any database
-
-### Technical Details
-
-See [the wiki](https://github.com/chihaya/chihaya/wiki) for a discussion of the design behind Chihaya.
+- Full compatibility with what exists of the BitTorrent spec
+- Extensive metrics for visibility into the tracker and swarm's performance
+- Ability to group peers in local subnets to reduce backbone contention
 
 ## Using Chihaya
 
@@ -43,6 +41,10 @@ flag. An example configuration file can be found
 $ cd $GOPATH/src/github.com/chihaya/chihaya
 $ go test -v ./...
 ```
+
+### Technical Details
+
+See [the wiki](https://github.com/chihaya/chihaya/wiki) for a discussion of the design behind Chihaya.
 
 ## Drivers
 
