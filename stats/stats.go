@@ -6,10 +6,7 @@
 // BitTorrent tracker.
 package stats
 
-import (
-	"flag"
-	"time"
-)
+import "time"
 
 const (
 	Announce = iota
@@ -40,13 +37,9 @@ const (
 // channel for broadcasting events unless specified otherwise via a command
 // line flag.
 var (
-	DefaultStats     *Stats
-	DefaultChanSizes int
+	DefaultStats      *Stats
+	DefaultBufferSize int
 )
-
-func init() {
-	flag.IntVar(&DefaultChanSizes, "stats_chan_sizes", 0, "specifies the size of chans used to collect stats")
-}
 
 type PeerStats struct {
 	// Stats for all peers.
@@ -246,7 +239,7 @@ func (s *Stats) handlePeerEvent(ps *PeerStats, event int) {
 // RecordEvent broadcasts an event to the default stats queue.
 func RecordEvent(event int) {
 	if DefaultStats == nil {
-		DefaultStats = New(DefaultChanSizes)
+		DefaultStats = New(DefaultBufferSize)
 	}
 
 	DefaultStats.RecordEvent(event)
@@ -255,7 +248,7 @@ func RecordEvent(event int) {
 // RecordPeerEvent broadcasts a peer event to the default stats queue.
 func RecordPeerEvent(event int, ipv6 bool) {
 	if DefaultStats == nil {
-		DefaultStats = New(DefaultChanSizes)
+		DefaultStats = New(DefaultBufferSize)
 	}
 
 	DefaultStats.RecordPeerEvent(event, ipv6)
@@ -264,7 +257,7 @@ func RecordPeerEvent(event int, ipv6 bool) {
 // RecordTiming broadcasts a timing event to the default stats queue.
 func RecordTiming(event int, duration time.Duration) {
 	if DefaultStats == nil {
-		DefaultStats = New(DefaultChanSizes)
+		DefaultStats = New(DefaultBufferSize)
 	}
 
 	DefaultStats.RecordTiming(event, duration)

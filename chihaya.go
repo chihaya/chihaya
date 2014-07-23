@@ -14,6 +14,7 @@ import (
 
 	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/http"
+	"github.com/chihaya/chihaya/stats"
 	"github.com/chihaya/chihaya/tracker"
 
 	// See the README for how to import custom drivers.
@@ -69,6 +70,8 @@ func Boot() {
 	} else {
 		glog.V(1).Infof("Loaded config file: %s", configPath)
 	}
+
+	stats.DefaultBufferSize = cfg.StatsBufferSize
 
 	tkr, err := tracker.New(cfg)
 	if err != nil {

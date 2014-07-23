@@ -66,6 +66,7 @@ type Config struct {
 	MinAnnounce     Duration `json:"min_announce"`
 	RequestTimeout  Duration `json:"request_timeout"`
 	NumWantFallback int      `json:"default_num_want"`
+	StatsBufferSize int      `json:"stats_buffer_size"`
 
 	NetConfig
 }
@@ -91,6 +92,7 @@ var DefaultConfig = Config{
 	MinAnnounce:     Duration{15 * time.Minute},
 	RequestTimeout:  Duration{10 * time.Second},
 	NumWantFallback: 50,
+	StatsBufferSize: 0,
 
 	NetConfig: NetConfig{
 		AllowIPSpoofing:  true,
@@ -120,10 +122,7 @@ func Open(path string) (*Config, error) {
 
 // Decode casts an io.Reader into a JSONDecoder and decodes it into a *Config.
 func Decode(r io.Reader) (*Config, error) {
-	conf := &Config{}
-	err := json.NewDecoder(r).Decode(conf)
-	if err != nil {
-		return nil, err
-	}
-	return conf, nil
+	conf := DefaultConfig
+	err := json.NewDecoder(r).Decode(&conf)
+	return &conf, err
 }
