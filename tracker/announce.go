@@ -196,11 +196,6 @@ func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t
 			}
 		}
 		snatched = true
-		if p.IPv4() {
-			stats.RecordEvent(stats.CompletedIPv4)
-		} else {
-			stats.RecordEvent(stats.CompletedIPv6)
-		}
 
 	case t.InLeecherPool(p) && ann.Left == 0:
 		// A leecher completed but the event was never received.
@@ -208,7 +203,6 @@ func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t
 		if err != nil {
 			return
 		}
-		// TODO Should this return snatched=true and stats for completed?
 	}
 
 	return

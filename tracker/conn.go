@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/chihaya/chihaya/config"
+	"github.com/chihaya/chihaya/stats"
 	"github.com/chihaya/chihaya/tracker/models"
 )
 
@@ -99,10 +100,19 @@ type Conn interface {
 
 // leecherFinished moves a peer from the leeching pool to the seeder pool.
 func leecherFinished(c Conn, infohash string, p *models.Peer) error {
-	err := c.DeleteLeecher(infohash, p.ID)
-	if err != nil {
+	if err := c.DeleteLeecher(infohash, p.ID); err != nil {
 		return err
 	}
-	err = c.PutSeeder(infohash, p)
-	return err
+
+	if err := c.PutSeeder(infohash, p); err != nil {
+		return err
+	}
+
+	if p.IPv4() {
+		stats.RecordEvent(stats.CompletedIPv4)
+	} else {
+		stats.RecordEvent(stats.CompletedIPv6)
+	}
+
+	return nil
 }

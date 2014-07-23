@@ -51,15 +51,17 @@ func init() {
 
 type PeerStats struct {
 	// Stats for all peers.
-	Completed uint64 `json:"completed"`
-	Joined    uint64 `json:"joined"`
-	Left      uint64 `json:"left"`
-	Reaped    uint64 `json:"reaped"`
+	Completed uint64 `json:"completed"` // Number of transitions from leech to seed.
+	Joined    uint64 `json:"joined"`    // Total peers that announced.
+	Left      uint64 `json:"left"`      // Total peers that paused or stopped.
+	Reaped    uint64 `json:"reaped"`    // Total peers cleaned up after inactivity.
+	Current   uint64 `json:"current"`   // Current total peer count.
 
 	// Stats for seeds only (subset of total).
-	SeedsJoined uint64 `json:"seeds_joined"`
-	SeedsLeft   uint64 `json:"seeds_left"`
-	SeedsReaped uint64 `json:"seeds_reaped"`
+	SeedsJoined  uint64 `json:"seeds_joined"`  // Seeds that announced (does not included leechers that completed).
+	SeedsLeft    uint64 `json:"seeds_left"`    // Seeds that paused or stopped.
+	SeedsReaped  uint64 `json:"seeds_reaped"`  // Seeds cleaned up after inactivity.
+	SeedsCurrent uint64 `json:"seeds_current"` // Current seed count.
 }
 
 type PercentileTimes struct {
@@ -69,10 +71,10 @@ type PercentileTimes struct {
 }
 
 type Stats struct {
-	Start time.Time `json:"start_time"`
+	Start time.Time `json:"start_time"` // Time at which Chihaya was booted.
 
-	Announces uint64 `json:"announces"`
-	Scrapes   uint64 `json:"scrapes"`
+	Announces uint64 `json:"announces"` // Total number of announces.
+	Scrapes   uint64 `json:"scrapes"`   // Total number of scrapes.
 
 	IPv4Peers PeerStats `json:"ipv4_peers"`
 	IPv6Peers PeerStats `json:"ipv6_peers"`
@@ -144,41 +146,61 @@ func (s *Stats) handleEvents() {
 
 		case CompletedIPv4:
 			s.IPv4Peers.Completed++
+			s.IPv4Peers.SeedsCurrent++
 		case NewLeechIPv4:
 			s.IPv4Peers.Joined++
+			s.IPv4Peers.Current++
 		case DeletedLeechIPv4:
 			s.IPv4Peers.Left++
+			s.IPv4Peers.Current--
 		case ReapedLeechIPv4:
 			s.IPv4Peers.Reaped++
+			s.IPv4Peers.Current--
 
 		case NewSeedIPv4:
 			s.IPv4Peers.SeedsJoined++
+			s.IPv4Peers.SeedsCurrent++
 			s.IPv4Peers.Joined++
+			s.IPv4Peers.Current++
 		case DeletedSeedIPv4:
 			s.IPv4Peers.SeedsLeft++
+			s.IPv4Peers.SeedsCurrent--
 			s.IPv4Peers.Left++
+			s.IPv4Peers.Current--
 		case ReapedSeedIPv4:
 			s.IPv4Peers.SeedsReaped++
+			s.IPv4Peers.SeedsCurrent--
 			s.IPv4Peers.Reaped++
+			s.IPv4Peers.Current--
 
 		case CompletedIPv6:
 			s.IPv6Peers.Completed++
+			s.IPv6Peers.SeedsCurrent++
 		case NewLeechIPv6:
 			s.IPv6Peers.Joined++
+			s.IPv6Peers.Current++
 		case DeletedLeechIPv6:
 			s.IPv6Peers.Left++
+			s.IPv6Peers.Current--
 		case ReapedLeechIPv6:
 			s.IPv6Peers.Reaped++
+			s.IPv6Peers.Current--
 
 		case NewSeedIPv6:
 			s.IPv6Peers.SeedsJoined++
+			s.IPv6Peers.SeedsCurrent++
 			s.IPv6Peers.Joined++
+			s.IPv6Peers.Current++
 		case DeletedSeedIPv6:
 			s.IPv6Peers.SeedsLeft++
+			s.IPv6Peers.SeedsCurrent--
 			s.IPv6Peers.Left++
+			s.IPv6Peers.Current--
 		case ReapedSeedIPv6:
 			s.IPv6Peers.SeedsReaped++
+			s.IPv6Peers.SeedsCurrent--
 			s.IPv6Peers.Reaped++
+			s.IPv6Peers.Current--
 
 		case NewTorrent:
 			s.TorrentsAdded++
