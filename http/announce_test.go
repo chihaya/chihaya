@@ -30,6 +30,7 @@ func TestPublicAnnounce(t *testing.T) {
 	peer2 := makePeerParams("peer2", true)
 	peer3 := makePeerParams("peer3", false)
 
+	peer1["event"] = "started"
 	expected := makeResponse(1, 0)
 	checkAnnounce(peer1, expected, srv, t)
 
@@ -242,14 +243,15 @@ func TestCompactAnnounce(t *testing.T) {
 	defer srv.Close()
 
 	compact := "\xff\x09\x7f\x05\x04\xd2"
+	ip := "255.9.127.5" // Use the same IP for all of them so we don't have to worry about order.
 
-	peer1 := makePeerParams("peer1", false, "255.9.127.5")
+	peer1 := makePeerParams("peer1", false, ip)
 	peer1["compact"] = "1"
 
-	peer2 := makePeerParams("peer2", false, "255.9.127.5")
+	peer2 := makePeerParams("peer2", false, ip)
 	peer2["compact"] = "1"
 
-	peer3 := makePeerParams("peer3", false, "255.9.127.5")
+	peer3 := makePeerParams("peer3", false, ip)
 	peer3["compact"] = "1"
 
 	expected := makeResponse(0, 1)
