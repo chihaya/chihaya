@@ -23,7 +23,7 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 
 	if tkr.cfg.Whitelist {
 		err = conn.FindClient(ann.ClientID())
-		if err == ErrClientUnapproved {
+		if err == models.ErrClientUnapproved {
 			w.WriteError(err)
 			return nil
 		} else if err != nil {
@@ -34,7 +34,7 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 	var user *models.User
 	if tkr.cfg.Private {
 		user, err = conn.FindUser(ann.Passkey)
-		if err == ErrUserDNE {
+		if err == models.ErrUserDNE {
 			w.WriteError(err)
 			return nil
 		} else if err != nil {
@@ -45,7 +45,7 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 	var torrent *models.Torrent
 	torrent, err = conn.FindTorrent(ann.Infohash)
 	switch {
-	case !tkr.cfg.Private && err == ErrTorrentDNE:
+	case !tkr.cfg.Private && err == models.ErrTorrentDNE:
 		torrent = &models.Torrent{
 			Infohash: ann.Infohash,
 			Seeders:  models.PeerMap{},
@@ -58,7 +58,7 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 		}
 		stats.RecordEvent(stats.NewTorrent)
 
-	case tkr.cfg.Private && err == ErrTorrentDNE:
+	case tkr.cfg.Private && err == models.ErrTorrentDNE:
 		w.WriteError(err)
 		return nil
 

@@ -13,7 +13,6 @@ import (
 	"github.com/julienschmidt/httprouter"
 
 	"github.com/chihaya/chihaya/stats"
-	"github.com/chihaya/chihaya/tracker"
 	"github.com/chihaya/chihaya/tracker/models"
 )
 
@@ -91,7 +90,7 @@ func (s *Server) getTorrent(w http.ResponseWriter, r *http.Request, p httprouter
 	}
 
 	torrent, err := conn.FindTorrent(infohash)
-	if err == tracker.ErrTorrentDNE {
+	if err == models.ErrTorrentDNE {
 		return http.StatusNotFound, err
 	} else if err != nil {
 		return http.StatusInternalServerError, err
@@ -144,7 +143,7 @@ func (s *Server) delTorrent(w http.ResponseWriter, r *http.Request, p httprouter
 	}
 
 	err = conn.DeleteTorrent(infohash)
-	if err == tracker.ErrTorrentDNE {
+	if err == models.ErrTorrentDNE {
 		return http.StatusNotFound, err
 	} else if err != nil {
 		return http.StatusInternalServerError, err
@@ -160,7 +159,7 @@ func (s *Server) getUser(w http.ResponseWriter, r *http.Request, p httprouter.Pa
 	}
 
 	user, err := conn.FindUser(p.ByName("passkey"))
-	if err == tracker.ErrUserDNE {
+	if err == models.ErrUserDNE {
 		return http.StatusNotFound, err
 	} else if err != nil {
 		return http.StatusInternalServerError, err
@@ -208,7 +207,7 @@ func (s *Server) delUser(w http.ResponseWriter, r *http.Request, p httprouter.Pa
 	}
 
 	err = conn.DeleteUser(p.ByName("passkey"))
-	if err == tracker.ErrUserDNE {
+	if err == models.ErrUserDNE {
 		return http.StatusNotFound, err
 	} else if err != nil {
 		return http.StatusInternalServerError, err

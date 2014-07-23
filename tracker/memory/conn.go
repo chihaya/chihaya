@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/chihaya/chihaya/stats"
-	"github.com/chihaya/chihaya/tracker"
 	"github.com/chihaya/chihaya/tracker/models"
 )
 
@@ -28,7 +27,7 @@ func (c *Conn) FindUser(passkey string) (*models.User, error) {
 
 	user, exists := c.users[passkey]
 	if !exists {
-		return nil, tracker.ErrUserDNE
+		return nil, models.ErrUserDNE
 	}
 	return &*user, nil
 }
@@ -39,7 +38,7 @@ func (c *Conn) FindTorrent(infohash string) (*models.Torrent, error) {
 
 	torrent, exists := c.torrents[infohash]
 	if !exists {
-		return nil, tracker.ErrTorrentDNE
+		return nil, models.ErrTorrentDNE
 	}
 	return &*torrent, nil
 }
@@ -50,7 +49,7 @@ func (c *Conn) FindClient(peerID string) error {
 
 	_, ok := c.whitelist[peerID]
 	if !ok {
-		return tracker.ErrClientUnapproved
+		return models.ErrClientUnapproved
 	}
 	return nil
 }
@@ -61,7 +60,7 @@ func (c *Conn) IncrementTorrentSnatches(infohash string) error {
 
 	t, exists := c.torrents[infohash]
 	if !exists {
-		return tracker.ErrTorrentDNE
+		return models.ErrTorrentDNE
 	}
 	t.Snatches++
 
@@ -74,7 +73,7 @@ func (c *Conn) IncrementUserSnatches(userID string) error {
 
 	u, exists := c.users[userID]
 	if !exists {
-		return tracker.ErrUserDNE
+		return models.ErrUserDNE
 	}
 	u.Snatches++
 
@@ -87,7 +86,7 @@ func (c *Conn) TouchTorrent(infohash string) error {
 
 	t, ok := c.torrents[infohash]
 	if !ok {
-		return tracker.ErrTorrentDNE
+		return models.ErrTorrentDNE
 	}
 	t.LastAction = time.Now().Unix()
 
@@ -100,7 +99,7 @@ func (c *Conn) AddLeecher(infohash string, p *models.Peer) error {
 
 	t, ok := c.torrents[infohash]
 	if !ok {
-		return tracker.ErrTorrentDNE
+		return models.ErrTorrentDNE
 	}
 	t.Leechers[p.ID] = *p
 
@@ -113,7 +112,7 @@ func (c *Conn) AddSeeder(infohash string, p *models.Peer) error {
 
 	t, ok := c.torrents[infohash]
 	if !ok {
-		return tracker.ErrTorrentDNE
+		return models.ErrTorrentDNE
 	}
 	t.Seeders[p.ID] = *p
 
@@ -126,7 +125,7 @@ func (c *Conn) DeleteLeecher(infohash, peerkey string) error {
 
 	t, ok := c.torrents[infohash]
 	if !ok {
-		return tracker.ErrTorrentDNE
+		return models.ErrTorrentDNE
 	}
 	delete(t.Leechers, peerkey)
 
@@ -139,7 +138,7 @@ func (c *Conn) DeleteSeeder(infohash, peerkey string) error {
 
 	t, ok := c.torrents[infohash]
 	if !ok {
-		return tracker.ErrTorrentDNE
+		return models.ErrTorrentDNE
 	}
 	delete(t.Seeders, peerkey)
 
@@ -152,7 +151,7 @@ func (c *Conn) PutLeecher(infohash string, p *models.Peer) error {
 
 	t, ok := c.torrents[infohash]
 	if !ok {
-		return tracker.ErrTorrentDNE
+		return models.ErrTorrentDNE
 	}
 	t.Leechers[p.ID] = *p
 
@@ -165,7 +164,7 @@ func (c *Conn) PutSeeder(infohash string, p *models.Peer) error {
 
 	t, ok := c.torrents[infohash]
 	if !ok {
-		return tracker.ErrTorrentDNE
+		return models.ErrTorrentDNE
 	}
 	t.Seeders[p.ID] = *p
 
@@ -196,7 +195,7 @@ func (c *Conn) PurgeInactiveTorrent(infohash string) error {
 
 	torrent, exists := c.torrents[infohash]
 	if !exists {
-		return tracker.ErrTorrentDNE
+		return models.ErrTorrentDNE
 	}
 
 	if torrent.PeerCount() == 0 {

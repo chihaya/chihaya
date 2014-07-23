@@ -21,6 +21,18 @@ var (
 	// current state. For example, announcing a "completed" event while
 	// not a leecher or a "stopped" event while not active.
 	ErrBadRequest = errors.New("bad request")
+
+	// ErrUserDNE is returned when a user does not exist.
+	ErrUserDNE = errors.New("user does not exist")
+
+	// ErrTorrentDNE is returned when a torrent does not exist.
+	ErrTorrentDNE = errors.New("torrent does not exist")
+
+	// ErrClientUnapproved is returned when a clientID is not in the whitelist.
+	ErrClientUnapproved = errors.New("client is not approved")
+
+	// ErrInvalidPasskey is returned when a passkey is not properly formatted.
+	ErrInvalidPasskey = errors.New("passkey is invalid")
 )
 
 // Peer is a participant in a swarm.
