@@ -65,7 +65,7 @@ type Config struct {
 	Tracker DriverConfig `json:"tracker"`
 	Backend DriverConfig `json:"backend"`
 
-	Private               bool `json:"private"`
+	Private               bool `json:"private_tracker"`
 	Freeleech             bool `json:"freeleech"`
 	Whitelist             bool `json:"whitelist"`
 	PurgeInactiveTorrents bool `json:"purge_inactive_torrents"`

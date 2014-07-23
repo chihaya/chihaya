@@ -10,7 +10,7 @@
     "driver": "noop"
   },
 
-  "private": false,
+  "private_tracker": false,
   "freeleech": false,
   "whitelist": false,
   "purge_inactive_torrents": true,
