@@ -285,7 +285,7 @@ func appendSubnetPeers(ipv4s, ipv6s models.PeerList, ann *models.Announce, annou
 	}
 
 	// Iterate over the peers twice: first add only peers in the same subnet and
-	// if we still need more peers grab any that haven't already been added.
+	// if we still need more peers grab ones that haven't already been added.
 	count := 0
 	for _, checkInSubnet := range [2]bool{true, false} {
 		for _, peer := range peers {
@@ -313,7 +313,7 @@ func appendSubnetPeers(ipv4s, ipv6s models.PeerList, ann *models.Announce, annou
 	return ipv4s, ipv6s
 }
 
-// peersEquivalent checks if two peers are one in the same.
+// peersEquivalent checks if two peers represent the same entity.
 func peersEquivalent(a, b *models.Peer) bool {
 	return a.ID == b.ID || a.UserID != 0 && a.UserID == b.UserID
 }

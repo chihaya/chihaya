@@ -7,13 +7,9 @@ package query
 
 import (
 	"errors"
-	"net"
-	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
-
-	"github.com/chihaya/chihaya/config"
 )
 
 // Query represents a parsed URL.Query.
@@ -94,8 +90,8 @@ func New(query string) (*Query, error) {
 	return q, nil
 }
 
-// Uint64 is a helper to obtain a uints of any base from a Query. After being
-// called, you can safely cast the uint64 to your desired base.
+// Uint64 is a helper to obtain a uint of any length from a Query. After being
+// called, you can safely cast the uint64 to your desired length.
 func (q *Query) Uint64(key string) (uint64, error) {
 	str, exists := q.Params[key]
 	if !exists {
@@ -108,90 +104,4 @@ func (q *Query) Uint64(key string) (uint64, error) {
 	}
 
 	return val, nil
-}
-
-// RequestedPeerCount returns the request peer count or the provided fallback.
-func (q Query) RequestedPeerCount(fallback int) int {
-	if numWantStr, exists := q.Params["numwant"]; exists {
-		numWant, err := strconv.Atoi(numWantStr)
-		if err != nil {
-			return fallback
-		}
-		return numWant
-	}
-
-	return fallback
-}
-
-func getIPs(ipstr string, ipv4, ipv6 net.IP, cfg *config.NetConfig) (net.IP, net.IP, bool) {
-	var done bool
-
-	if ip := net.ParseIP(ipstr); ip != nil {
-		newIPv4 := ip.To4()
-
-		if ipv4 == nil && newIPv4 != nil {
-			ipv4 = newIPv4
-		} else if ipv6 == nil && newIPv4 == nil {
-			ipv6 = ip
-		}
-	}
-
-	if cfg.DualStackedPeers {
-		done = ipv4 != nil && ipv6 != nil
-	} else {
-		done = ipv4 != nil || ipv6 != nil
-	}
-
-	return ipv4, ipv6, done
-}
-
-// RequestedIP returns the requested IP address from a Query.
-func (q Query) RequestedIP(r *http.Request, cfg *config.NetConfig) (v4, v6 net.IP, err error) {
-	var done bool
-
-	if cfg.AllowIPSpoofing {
-		if str, ok := q.Params["ip"]; ok {
-			if v4, v6, done = getIPs(str, v4, v6, cfg); done {
-				return
-			}
-		}
-
-		if str, ok := q.Params["ipv4"]; ok {
-			if v4, v6, done = getIPs(str, v4, v6, cfg); done {
-				return
-			}
-		}
-
-		if str, ok := q.Params["ipv6"]; ok {
-			if v4, v6, done = getIPs(str, v4, v6, cfg); done {
-				return
-			}
-		}
-	}
-
-	if cfg.RealIPHeader != "" {
-		if xRealIPs, ok := q.Params[cfg.RealIPHeader]; ok {
-			if v4, v6, done = getIPs(string(xRealIPs[0]), v4, v6, cfg); done {
-				return
-			}
-		}
-	} else {
-		if r.RemoteAddr == "" {
-			if v4 == nil {
-				v4 = net.ParseIP("127.0.0.1")
-			}
-			return
-		}
-
-		if idx := strings.LastIndex(r.RemoteAddr, ":"); idx != -1 {
-			if v4, v6, done = getIPs(r.RemoteAddr[0:idx], v4, v6, cfg); done {
-				return
-			}
-		}
-	}
-
-	if v4 == nil && v6 == nil {
-		err = errors.New("failed to parse IP address")
-	}
-	return
 }
