@@ -35,7 +35,7 @@ func makeHandler(handler ResponseHandler) httprouter.Handle {
 		duration := time.Since(start)
 		stats.RecordTiming(stats.ResponseTime, duration)
 
-		if err != nil && err != models.ErrBadRequest {
+		if err != nil {
 			stats.RecordEvent(stats.ErroredRequest)
 			http.Error(w, err.Error(), httpCode)
 			if glog.V(2) {

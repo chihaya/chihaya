@@ -42,7 +42,7 @@ func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request, p httprou
 	ann, err := NewAnnounce(s.config, r, p)
 	writer := &Writer{w}
 
-	if err == models.ErrMalformedRequest {
+	if err == models.ErrMalformedRequest || err == models.ErrBadRequest {
 		writer.WriteError(err)
 		return http.StatusOK, nil
 	} else if err != nil {

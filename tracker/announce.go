@@ -68,12 +68,12 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 
 	peer := models.NewPeer(ann, user, torrent)
 
-	created, err := updateSwarm(conn, w, ann, peer, torrent)
+	created, err := updateSwarm(conn, ann, peer, torrent)
 	if err != nil {
 		return err
 	}
 
-	snatched, err := handleEvent(conn, w, ann, peer, user, torrent)
+	snatched, err := handleEvent(conn, ann, peer, user, torrent)
 	if err != nil {
 		return err
 	}
@@ -95,7 +95,7 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 }
 
 // updateSwarm handles the changes to a torrent's swarm given an announce.
-func updateSwarm(c Conn, w Writer, ann *models.Announce, p *models.Peer, t *models.Torrent) (created bool, err error) {
+func updateSwarm(c Conn, ann *models.Announce, p *models.Peer, t *models.Torrent) (created bool, err error) {
 	c.TouchTorrent(t.Infohash)
 
 	switch {
@@ -116,7 +116,6 @@ func updateSwarm(c Conn, w Writer, ann *models.Announce, p *models.Peer, t *mode
 	default:
 		if ann.Event != "" && ann.Event != "started" {
 			err = models.ErrBadRequest
-			w.WriteError(err)
 			return
 		}
 
@@ -144,7 +143,7 @@ func updateSwarm(c Conn, w Writer, ann *models.Announce, p *models.Peer, t *mode
 
 // handleEvent checks to see whether an announce has an event and if it does,
 // properly handles that event.
-func handleEvent(c Conn, w Writer, ann *models.Announce, p *models.Peer, u *models.User, t *models.Torrent) (snatched bool, err error) {
+func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t *models.Torrent) (snatched bool, err error) {
 	switch {
 	case ann.Event == "stopped" || ann.Event == "paused":
 		// updateSwarm checks if the peer is active on the torrent,
@@ -185,7 +184,6 @@ func handleEvent(c Conn, w Writer, ann *models.Announce, p *models.Peer, u *mode
 			err = leecherFinished(c, t.Infohash, p)
 		} else {
 			err = models.ErrBadRequest
-			w.WriteError(err)
 		}
 		snatched = true
 
