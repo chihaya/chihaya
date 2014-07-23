@@ -191,21 +191,34 @@ func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t
 
 		if t.InLeecherPool(p) {
 			err = leecherFinished(c, t.Infohash, p)
-			if err != nil {
-				return
-			}
 		}
 		snatched = true
 
 	case t.InLeecherPool(p) && ann.Left == 0:
 		// A leecher completed but the event was never received.
 		err = leecherFinished(c, t.Infohash, p)
-		if err != nil {
-			return
-		}
 	}
 
 	return
+}
+
+// leecherFinished moves a peer from the leeching pool to the seeder pool.
+func leecherFinished(c Conn, infohash string, p *models.Peer) error {
+	if err := c.DeleteLeecher(infohash, p.ID); err != nil {
+		return err
+	}
+
+	if err := c.PutSeeder(infohash, p); err != nil {
+		return err
+	}
+
+	if p.IPv4() {
+		stats.RecordEvent(stats.CompletedIPv4)
+	} else {
+		stats.RecordEvent(stats.CompletedIPv6)
+	}
+
+	return nil
 }
 
 func newAnnounceResponse(ann *models.Announce, announcer *models.Peer, t *models.Torrent) *models.AnnounceResponse {
