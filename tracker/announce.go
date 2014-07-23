@@ -114,7 +114,7 @@ func updateSwarm(c Conn, w Writer, ann *models.Announce, p *models.Peer, t *mode
 		t.Leechers[p.ID] = *p
 
 	default:
-		if ann.Event != "" {
+		if ann.Event != "" && ann.Event != "started" {
 			err = models.ErrBadRequest
 			w.WriteError(err)
 			return
