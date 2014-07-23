@@ -15,7 +15,7 @@ type BasicMemStats struct {
 	// General statistics.
 	Alloc      uint64 // bytes allocated and still in use
 	TotalAlloc uint64 // bytes allocated (even if freed)
-	Sys        uint64 // bytes obtained from system (sum of XxxSys below)
+	Sys        uint64 // bytes obtained from system (sum of XxxSys in runtime)
 	Lookups    uint64 // number of pointer lookups
 	Mallocs    uint64 // number of mallocs
 	Frees      uint64 // number of frees

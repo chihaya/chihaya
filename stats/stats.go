@@ -84,7 +84,7 @@ type Stats struct {
 	RequestsErrored uint64 `json:"requests_errored"`
 
 	ResponseTime PercentileTimes  `json:"response_time"`
-	MemStats     *MemStatsWrapper `json:"mem_stats,omitempty"`
+	MemStats     *MemStatsWrapper `json:"mem,omitempty"`
 
 	events             chan int
 	ipv4PeerEvents     chan int
