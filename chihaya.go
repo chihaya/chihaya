@@ -72,6 +72,8 @@ func Boot() {
 	}
 
 	stats.DefaultBufferSize = cfg.StatsBufferSize
+	stats.DefaultIncludeMemStats = cfg.IncludeMemStats
+	stats.DefaultVerboseMemStats = cfg.VerboseMemStats
 
 	tkr, err := tracker.New(cfg)
 	if err != nil {

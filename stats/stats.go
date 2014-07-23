@@ -37,8 +37,10 @@ const (
 // channel for broadcasting events unless specified otherwise via a command
 // line flag.
 var (
-	DefaultStats      *Stats
-	DefaultBufferSize int
+	DefaultStats           *Stats
+	DefaultBufferSize      int
+	DefaultIncludeMemStats bool
+	DefaultVerboseMemStats bool
 )
 
 type PeerStats struct {
@@ -82,15 +84,17 @@ type Stats struct {
 	RequestsHandled uint64 `json:"requests_handled"`
 	RequestsErrored uint64 `json:"requests_errored"`
 
-	ResponseTime PercentileTimes `json:"response_time"`
+	ResponseTime PercentileTimes  `json:"response_time"`
+	MemStats     *MemStatsWrapper `json:"mem_stats,omitempty"`
 
 	events             chan int
 	ipv4PeerEvents     chan int
 	ipv6PeerEvents     chan int
 	responseTimeEvents chan time.Duration
+	recordMemStats     <-chan time.Time
 }
 
-func New(chanSize int) *Stats {
+func New(chanSize int, mem bool, verboseMem bool) *Stats {
 	s := &Stats{
 		Start:  time.Now(),
 		events: make(chan int, chanSize),
@@ -104,6 +108,11 @@ func New(chanSize int) *Stats {
 			P90: NewPercentile(0.9),
 			P95: NewPercentile(0.95),
 		},
+	}
+
+	if mem {
+		s.MemStats = NewMemStatsWrapper(verboseMem)
+		s.recordMemStats = time.NewTicker(time.Second * 10).C
 	}
 
 	go s.handleEvents()
@@ -156,6 +165,9 @@ func (s *Stats) handleEvents() {
 			s.ResponseTime.P50.AddSample(f)
 			s.ResponseTime.P90.AddSample(f)
 			s.ResponseTime.P95.AddSample(f)
+
+		case <-s.recordMemStats:
+			s.MemStats.Update()
 		}
 	}
 }
@@ -239,7 +251,7 @@ func (s *Stats) handlePeerEvent(ps *PeerStats, event int) {
 // RecordEvent broadcasts an event to the default stats queue.
 func RecordEvent(event int) {
 	if DefaultStats == nil {
-		DefaultStats = New(DefaultBufferSize)
+		DefaultStats = New(DefaultBufferSize, DefaultIncludeMemStats, DefaultVerboseMemStats)
 	}
 
 	DefaultStats.RecordEvent(event)
@@ -248,7 +260,7 @@ func RecordEvent(event int) {
 // RecordPeerEvent broadcasts a peer event to the default stats queue.
 func RecordPeerEvent(event int, ipv6 bool) {
 	if DefaultStats == nil {
-		DefaultStats = New(DefaultBufferSize)
+		DefaultStats = New(DefaultBufferSize, DefaultIncludeMemStats, DefaultVerboseMemStats)
 	}
 
 	DefaultStats.RecordPeerEvent(event, ipv6)
@@ -257,7 +269,7 @@ func RecordPeerEvent(event int, ipv6 bool) {
 // RecordTiming broadcasts a timing event to the default stats queue.
 func RecordTiming(event int, duration time.Duration) {
 	if DefaultStats == nil {
-		DefaultStats = New(DefaultBufferSize)
+		DefaultStats = New(DefaultBufferSize, DefaultIncludeMemStats, DefaultVerboseMemStats)
 	}
 
 	DefaultStats.RecordTiming(event, duration)

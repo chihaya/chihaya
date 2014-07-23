@@ -67,6 +67,9 @@ type Config struct {
 	RequestTimeout  Duration `json:"request_timeout"`
 	NumWantFallback int      `json:"default_num_want"`
 	StatsBufferSize int      `json:"stats_buffer_size"`
+	IncludeMemStats bool     `json:"include_mem_stats"`
+	VerboseMemStats bool     `json:"verbose_mem_stats"`
+	MemStatInterval Duration `json:"mem_stats_interval"`
 
 	NetConfig
 }
@@ -93,6 +96,9 @@ var DefaultConfig = Config{
 	RequestTimeout:  Duration{10 * time.Second},
 	NumWantFallback: 50,
 	StatsBufferSize: 0,
+	IncludeMemStats: true,
+	VerboseMemStats: false,
+	MemStatInterval: Duration{15 * time.Second},
 
 	NetConfig: NetConfig{
 		AllowIPSpoofing:  true,
