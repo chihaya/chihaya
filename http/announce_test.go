@@ -234,6 +234,37 @@ func TestPreferredSubnet(t *testing.T) {
 	checkAnnounce(peerD2, expected, srv, t)
 }
 
+func TestCompactAnnounce(t *testing.T) {
+	srv, err := setupTracker(&config.DefaultConfig)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srv.Close()
+
+	compact := "\xff\x09\x7f\x05\x04\xd2"
+
+	peer1 := makePeerParams("peer1", false, "255.9.127.5")
+	peer1["compact"] = "1"
+
+	peer2 := makePeerParams("peer2", false, "255.9.127.5")
+	peer2["compact"] = "1"
+
+	peer3 := makePeerParams("peer3", false, "255.9.127.5")
+	peer3["compact"] = "1"
+
+	expected := makeResponse(0, 1)
+	expected["peers"] = ""
+	checkAnnounce(peer1, expected, srv, t)
+
+	expected = makeResponse(0, 2)
+	expected["peers"] = compact
+	checkAnnounce(peer2, expected, srv, t)
+
+	expected = makeResponse(0, 3)
+	expected["peers"] = compact + compact
+	checkAnnounce(peer3, expected, srv, t)
+}
+
 func makePeerParams(id string, seed bool, extra ...string) params {
 	left := "1"
 	if seed {
