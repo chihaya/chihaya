@@ -81,7 +81,7 @@ type Config struct {
 
 // DefaultConfig is a configuration that can be used as a fallback value.
 var DefaultConfig = Config{
-	Addr: "127.0.0.1:6881",
+	Addr: ":6881",
 
 	Tracker: DriverConfig{
 		Name: "memory",

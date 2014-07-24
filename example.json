@@ -1,6 +1,6 @@
 {
   "network": "tcp",
-  "addr": "127.0.0.1:6881",
+  "addr": ":6881",
 
   "tracker": {
     "driver": "memory"
