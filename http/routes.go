@@ -29,8 +29,15 @@ func (s *Server) check(w http.ResponseWriter, r *http.Request, p httprouter.Para
 func (s *Server) stats(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
 	w.Header().Set("Content-Type", jsonContentType)
 
+	var err error
 	e := json.NewEncoder(w)
-	err := e.Encode(stats.DefaultStats)
+
+	if _, flatten := r.URL.Query()["flatten"]; flatten {
+		err = e.Encode(stats.DefaultStats.Flattened())
+	} else {
+		err = e.Encode(stats.DefaultStats)
+	}
+
 	if err != nil {
 		return http.StatusInternalServerError, err
 	}

@@ -43,19 +43,18 @@ const (
 // line flag.
 var DefaultStats *Stats
 
-type PeerStats struct {
-	// Stats for all peers.
-	Current   uint64 `json:"current"`   // Current total peer count.
-	Joined    uint64 `json:"joined"`    // Total peers that announced.
-	Left      uint64 `json:"left"`      // Total peers that paused or stopped.
-	Reaped    uint64 `json:"reaped"`    // Total peers cleaned up after inactivity.
-	Completed uint64 `json:"completed"` // Number of transitions from leech to seed.
+type PeerClassStats struct {
+	Current uint64 // Current peer count.
+	Joined  uint64 // Peers that announced.
+	Left    uint64 // Peers that paused or stopped.
+	Reaped  uint64 // Peers cleaned up after inactivity.
+}
 
-	// Stats for seeds only (subset of total).
-	SeedsCurrent uint64 `json:"seeds_current"` // Current seed count.
-	SeedsJoined  uint64 `json:"seeds_joined"`  // Seeds that announced (does not included leechers that completed).
-	SeedsLeft    uint64 `json:"seeds_left"`    // Seeds that paused or stopped.
-	SeedsReaped  uint64 `json:"seeds_reaped"`  // Seeds cleaned up after inactivity.
+type PeerStats struct {
+	PeerClassStats `json:"Peers"`
+	Seeds          PeerClassStats `json:"Seeds"`
+
+	Completed uint64 // Number of transitions from leech to seed.
 }
 
 type PercentileTimes struct {
@@ -65,40 +64,42 @@ type PercentileTimes struct {
 }
 
 type Stats struct {
-	Start time.Time `json:"start_time"` // Time at which Chihaya was booted.
+	Started time.Time // Time at which Chihaya was booted.
 
-	Announces uint64 `json:"announces"` // Total number of announces.
-	Scrapes   uint64 `json:"scrapes"`   // Total number of scrapes.
+	Announces uint64 `json:"Tracker.Announces"` // Total number of announces.
+	Scrapes   uint64 `json:"Tracker.Scrapes"`   // Total number of scrapes.
 
-	IPv4Peers PeerStats `json:"ipv4_peers"`
-	IPv6Peers PeerStats `json:"ipv6_peers"`
+	IPv4Peers PeerStats `json:"Peers.IPv4"`
+	IPv6Peers PeerStats `json:"Peers.IPv6"`
 
-	TorrentsAdded   uint64 `json:"torrents_added"`
-	TorrentsRemoved uint64 `json:"torrents_removed"`
-	TorrentsReaped  uint64 `json:"torrents_reaped"`
+	TorrentsAdded   uint64 `json:"Torrents.Added"`
+	TorrentsRemoved uint64 `json:"Torrents.Removed"`
+	TorrentsReaped  uint64 `json:"Torrents.Reaped"`
 
-	OpenConnections     uint64 `json:"open_connections"`
-	ConnectionsAccepted uint64 `json:"connections_accepted"`
-	BytesTransmitted    uint64 `json:"bytes_transmitted"`
+	OpenConnections     uint64 `json:"Connections.Open"`
+	ConnectionsAccepted uint64 `json:"Connections.Accepted"`
+	BytesTransmitted    uint64 `json:"BytesTransmitted"`
 
-	RequestsHandled uint64 `json:"requests_handled"`
-	RequestsErrored uint64 `json:"requests_errored"`
-	ClientErrors    uint64 `json:"client_errors"`
+	RequestsHandled uint64 `json:"Requests.Handled"`
+	RequestsErrored uint64 `json:"Requests.Errored"`
+	ClientErrors    uint64 `json:"Requests.Bad"`
 
-	ResponseTime PercentileTimes  `json:"response_time"`
-	MemStats     *MemStatsWrapper `json:"mem,omitempty"`
+	ResponseTime PercentileTimes
+	MemStats     *MemStatsWrapper `json:"Memory,omitempty"`
 
 	events             chan int
 	ipv4PeerEvents     chan int
 	ipv6PeerEvents     chan int
 	responseTimeEvents chan time.Duration
 	recordMemStats     <-chan time.Time
+
+	flattened FlatMap
 }
 
 func New(cfg config.StatsConfig) *Stats {
 	s := &Stats{
-		Start:  time.Now(),
-		events: make(chan int, cfg.BufferSize),
+		Started: time.Now(),
+		events:  make(chan int, cfg.BufferSize),
 
 		ipv4PeerEvents:     make(chan int, cfg.BufferSize),
 		ipv6PeerEvents:     make(chan int, cfg.BufferSize),
@@ -116,8 +117,13 @@ func New(cfg config.StatsConfig) *Stats {
 		s.recordMemStats = time.NewTicker(cfg.MemUpdateInterval.Duration).C
 	}
 
+	s.flattened = Flatten(s)
 	go s.handleEvents()
 	return s
+}
+
+func (s *Stats) Flattened() FlatMap {
+	return s.flattened
 }
 
 func (s *Stats) Close() {
@@ -125,7 +131,7 @@ func (s *Stats) Close() {
 }
 
 func (s *Stats) Uptime() time.Duration {
-	return time.Since(s.Start)
+	return time.Since(s.Started)
 }
 
 func (s *Stats) RecordEvent(event int) {
@@ -215,7 +221,7 @@ func (s *Stats) handlePeerEvent(ps *PeerStats, event int) {
 	switch event {
 	case Completed:
 		ps.Completed++
-		ps.SeedsCurrent++
+		ps.Seeds.Current++
 
 	case NewLeech:
 		ps.Joined++
@@ -230,20 +236,20 @@ func (s *Stats) handlePeerEvent(ps *PeerStats, event int) {
 		ps.Current--
 
 	case NewSeed:
-		ps.SeedsJoined++
-		ps.SeedsCurrent++
+		ps.Seeds.Joined++
+		ps.Seeds.Current++
 		ps.Joined++
 		ps.Current++
 
 	case DeletedSeed:
-		ps.SeedsLeft++
-		ps.SeedsCurrent--
+		ps.Seeds.Left++
+		ps.Seeds.Current--
 		ps.Left++
 		ps.Current--
 
 	case ReapedSeed:
-		ps.SeedsReaped++
-		ps.SeedsCurrent--
+		ps.Seeds.Reaped++
+		ps.Seeds.Current--
 		ps.Reaped++
 		ps.Current--
 
