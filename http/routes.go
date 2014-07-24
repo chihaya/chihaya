@@ -44,6 +44,7 @@ func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request, p httprou
 
 	if err == models.ErrMalformedRequest {
 		writer.WriteError(err)
+		stats.RecordEvent(stats.BlockedRequest)
 		return http.StatusOK, nil
 	} else if err != nil {
 		return http.StatusInternalServerError, err
@@ -53,6 +54,7 @@ func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request, p httprou
 
 	if err == models.ErrBadRequest {
 		writer.WriteError(err)
+		stats.RecordEvent(stats.BlockedRequest)
 		return http.StatusOK, nil
 	} else if err != nil {
 		return http.StatusInternalServerError, err
@@ -68,6 +70,7 @@ func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request, p httproute
 
 	if err == models.ErrMalformedRequest {
 		writer.WriteError(err)
+		stats.RecordEvent(stats.BlockedRequest)
 		return http.StatusOK, nil
 	} else if err != nil {
 		return http.StatusInternalServerError, err
