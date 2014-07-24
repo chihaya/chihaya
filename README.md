@@ -43,9 +43,18 @@ Chihaya is designed to remain agnostic about the choice of data storage. Out of 
 
 ### Testing
 
+Chihaya has end-to-end test coverage for announces in addition to unit tests for isolated components. To run the tests, use:
+
 ```sh
 $ cd $GOPATH/src/github.com/chihaya/chihaya
 $ go test -v ./...
+```
+
+There is also a set of benchmarks for performance-critical sections of Chihaya. These can be run similarly:
+
+```sh
+$ cd $GOPATH/src/github.com/chihaya/chihaya
+$ go test -v ./... -bench .
 ```
 
 ### Customizing Chihaya
