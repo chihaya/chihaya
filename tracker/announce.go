@@ -22,22 +22,14 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 	defer conn.Close()
 
 	if tkr.cfg.Whitelist {
-		err = conn.FindClient(ann.ClientID())
-		if err == models.ErrClientUnapproved {
-			w.WriteError(err)
-			return nil
-		} else if err != nil {
+		if err = conn.FindClient(ann.ClientID()); err != nil {
 			return err
 		}
 	}
 
 	var user *models.User
 	if tkr.cfg.Private {
-		user, err = conn.FindUser(ann.Passkey)
-		if err == models.ErrUserDNE {
-			w.WriteError(err)
-			return nil
-		} else if err != nil {
+		if user, err = conn.FindUser(ann.Passkey); err != nil {
 			return err
 		}
 	}
@@ -57,10 +49,6 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 			return err
 		}
 		stats.RecordEvent(stats.NewTorrent)
-
-	case tkr.cfg.Private && err == models.ErrTorrentDNE:
-		w.WriteError(err)
-		return nil
 
 	case err != nil:
 		return err

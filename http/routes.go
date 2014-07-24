@@ -41,7 +41,7 @@ func (s *Server) stats(w http.ResponseWriter, r *http.Request, p httprouter.Para
 func handleError(err error, w *Writer) (int, error) {
 	if _, ok := err.(*models.ClientError); ok {
 		w.WriteError(err)
-		stats.RecordEvent(stats.BlockedRequest)
+		stats.RecordEvent(stats.ClientError)
 		return http.StatusOK, nil
 	}
 

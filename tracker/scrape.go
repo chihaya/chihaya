@@ -17,11 +17,7 @@ func (tkr *Tracker) HandleScrape(scrape *models.Scrape, w Writer) (err error) {
 	defer conn.Close()
 
 	if tkr.cfg.Private {
-		_, err = conn.FindUser(scrape.Passkey)
-		if err == models.ErrUserDNE {
-			w.WriteError(err)
-			return nil
-		} else if err != nil {
+		if _, err = conn.FindUser(scrape.Passkey); err != nil {
 			return err
 		}
 	}
@@ -29,10 +25,7 @@ func (tkr *Tracker) HandleScrape(scrape *models.Scrape, w Writer) (err error) {
 	var torrents []*models.Torrent
 	for _, infohash := range scrape.Infohashes {
 		torrent, err := conn.FindTorrent(infohash)
-		if err == models.ErrTorrentDNE {
-			w.WriteError(err)
-			return nil
-		} else if err != nil {
+		if err != nil {
 			return err
 		}
 		torrents = append(torrents, torrent)

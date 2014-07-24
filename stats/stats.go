@@ -32,8 +32,8 @@ const (
 	ClosedConnection
 
 	HandledRequest
-	BlockedRequest
 	ErroredRequest
+	ClientError
 
 	ResponseTime
 )
@@ -83,7 +83,7 @@ type Stats struct {
 
 	RequestsHandled uint64 `json:"requests_handled"`
 	RequestsErrored uint64 `json:"requests_errored"`
-	RequestsBlocked uint64 `json:"requests_blocked"`
+	ClientErrors    uint64 `json:"client_errors"`
 
 	ResponseTime PercentileTimes  `json:"response_time"`
 	MemStats     *MemStatsWrapper `json:"mem,omitempty"`
@@ -200,8 +200,8 @@ func (s *Stats) handleEvent(event int) {
 	case HandledRequest:
 		s.RequestsHandled++
 
-	case BlockedRequest:
-		s.RequestsBlocked++
+	case ClientError:
+		s.ClientErrors++
 
 	case ErroredRequest:
 		s.RequestsErrored++
