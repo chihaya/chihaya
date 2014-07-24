@@ -158,7 +158,7 @@ func requestedIP(q *query.Query, r *http.Request, cfg *config.NetConfig) (v4, v6
 		var host string
 		host, _, err = net.SplitHostPort(r.RemoteAddr)
 
-		if err != nil && host != "" {
+		if err == nil && host != "" {
 			if v4, v6, done = getIPs(host, v4, v6, cfg); done {
 				return
 			}
