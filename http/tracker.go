@@ -9,7 +9,6 @@ import (
 	"net"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/julienschmidt/httprouter"
 
@@ -156,8 +155,11 @@ func requestedIP(q *query.Query, r *http.Request, cfg *config.NetConfig) (v4, v6
 			return
 		}
 
-		if idx := strings.LastIndex(r.RemoteAddr, ":"); idx != -1 {
-			if v4, v6, done = getIPs(r.RemoteAddr[0:idx], v4, v6, cfg); done {
+		var host string
+		host, _, err = net.SplitHostPort(r.RemoteAddr)
+
+		if err != nil && host != "" {
+			if v4, v6, done = getIPs(host, v4, v6, cfg); done {
 				return
 			}
 		}

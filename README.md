@@ -34,9 +34,9 @@ Configuration is done in a JSON formatted file specified with the `-config` flag
 
 #### Drivers
 
-Chihaya is designed to remain agnostic about the choice of data storage. Out of the box, we provide only the necessary drivers to run Chihaya in public mode ("memory" for tracker and "noop" for backend). If you're interested in creating a new driver, check out the section on [customizing chihaya].
+Chihaya is designed to remain agnostic about the choice of data storage. Out of the box, we provide only the necessary drivers to run Chihaya in public mode ("memory" for tracker and "noop" for backend). If you're interested in creating a new driver, check out the section on [customizing Chihaya].
 
-[customizing chihaya]: https://github.com/chihaya/chihaya#customizing-chihaya
+[customizing Chihaya]: #customizing-chihaya
 
 
 ## Developing Chihaya
