@@ -66,16 +66,6 @@ type PercentileTimes struct {
 type Stats struct {
 	Started time.Time // Time at which Chihaya was booted.
 
-	Announces uint64 `json:"Tracker.Announces"` // Total number of announces.
-	Scrapes   uint64 `json:"Tracker.Scrapes"`   // Total number of scrapes.
-
-	IPv4Peers PeerStats `json:"Peers.IPv4"`
-	IPv6Peers PeerStats `json:"Peers.IPv6"`
-
-	TorrentsAdded   uint64 `json:"Torrents.Added"`
-	TorrentsRemoved uint64 `json:"Torrents.Removed"`
-	TorrentsReaped  uint64 `json:"Torrents.Reaped"`
-
 	OpenConnections     uint64 `json:"Connections.Open"`
 	ConnectionsAccepted uint64 `json:"Connections.Accepted"`
 	BytesTransmitted    uint64 `json:"BytesTransmitted"`
@@ -83,9 +73,19 @@ type Stats struct {
 	RequestsHandled uint64 `json:"Requests.Handled"`
 	RequestsErrored uint64 `json:"Requests.Errored"`
 	ClientErrors    uint64 `json:"Requests.Bad"`
+	ResponseTime    PercentileTimes
 
-	ResponseTime PercentileTimes
-	MemStats     *MemStatsWrapper `json:"Memory,omitempty"`
+	Announces uint64 `json:"Tracker.Announces"`
+	Scrapes   uint64 `json:"Tracker.Scrapes"`
+
+	TorrentsAdded   uint64 `json:"Torrents.Added"`
+	TorrentsRemoved uint64 `json:"Torrents.Removed"`
+	TorrentsReaped  uint64 `json:"Torrents.Reaped"`
+
+	IPv4Peers PeerStats `json:"Peers.IPv4"`
+	IPv6Peers PeerStats `json:"Peers.IPv6"`
+
+	MemStats *MemStatsWrapper `json:"Memory,omitempty"`
 
 	events             chan int
 	ipv4PeerEvents     chan int
