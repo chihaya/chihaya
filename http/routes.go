@@ -38,26 +38,25 @@ func (s *Server) stats(w http.ResponseWriter, r *http.Request, p httprouter.Para
 	return http.StatusOK, nil
 }
 
-func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	ann, err := NewAnnounce(s.config, r, p)
-	writer := &Writer{w}
-
-	if err == models.ErrMalformedRequest {
-		writer.WriteError(err)
+func handleError(err error, w *Writer) (int, error) {
+	if _, ok := err.(*models.ClientError); ok {
+		w.WriteError(err)
 		stats.RecordEvent(stats.BlockedRequest)
 		return http.StatusOK, nil
-	} else if err != nil {
-		return http.StatusInternalServerError, err
 	}
 
-	err = s.tracker.HandleAnnounce(ann, writer)
+	return http.StatusInternalServerError, err
+}
 
-	if err == models.ErrBadRequest {
-		writer.WriteError(err)
-		stats.RecordEvent(stats.BlockedRequest)
-		return http.StatusOK, nil
-	} else if err != nil {
-		return http.StatusInternalServerError, err
+func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
+	writer := &Writer{w}
+	ann, err := NewAnnounce(s.config, r, p)
+	if err != nil {
+		return handleError(err, writer)
+	}
+
+	if err = s.tracker.HandleAnnounce(ann, writer); err != nil {
+		return handleError(err, writer)
 	}
 
 	stats.RecordEvent(stats.Announce)
@@ -65,23 +64,17 @@ func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request, p httprou
 }
 
 func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	scrape, err := NewScrape(s.config, r, p)
 	writer := &Writer{w}
-
-	if err == models.ErrMalformedRequest {
-		writer.WriteError(err)
-		stats.RecordEvent(stats.BlockedRequest)
-		return http.StatusOK, nil
-	} else if err != nil {
-		return http.StatusInternalServerError, err
+	scrape, err := NewScrape(s.config, r, p)
+	if err != nil {
+		return handleError(err, writer)
 	}
 
 	if err = s.tracker.HandleScrape(scrape, writer); err != nil {
-		return http.StatusInternalServerError, err
+		return handleError(err, writer)
 	}
 
 	stats.RecordEvent(stats.Scrape)
-
 	return http.StatusOK, nil
 }
 
