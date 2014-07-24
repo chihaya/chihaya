@@ -11,36 +11,32 @@ import (
 	"github.com/chihaya/chihaya/config"
 )
 
-type ClientError struct {
-	message string
-}
-
 var (
 	// ErrMalformedRequest is returned when a request does not contain the
 	// required parameters needed to create a model.
-	ErrMalformedRequest = &ClientError{"malformed request"}
+	ErrMalformedRequest = ClientError("malformed request")
 
 	// ErrBadRequest is returned when a request is invalid in the peer's
 	// current state. For example, announcing a "completed" event while
 	// not a leecher or a "stopped" event while not active.
-	ErrBadRequest = &ClientError{"bad request"}
+	ErrBadRequest = ClientError("bad request")
 
 	// ErrUserDNE is returned when a user does not exist.
-	ErrUserDNE = &ClientError{"user does not exist"}
+	ErrUserDNE = ClientError("user does not exist")
 
 	// ErrTorrentDNE is returned when a torrent does not exist.
-	ErrTorrentDNE = &ClientError{"torrent does not exist"}
+	ErrTorrentDNE = ClientError("torrent does not exist")
 
 	// ErrClientUnapproved is returned when a clientID is not in the whitelist.
-	ErrClientUnapproved = &ClientError{"client is not approved"}
+	ErrClientUnapproved = ClientError("client is not approved")
 
 	// ErrInvalidPasskey is returned when a passkey is not properly formatted.
-	ErrInvalidPasskey = &ClientError{"passkey is invalid"}
+	ErrInvalidPasskey = ClientError("passkey is invalid")
 )
 
-func (e *ClientError) Error() string {
-	return e.message
-}
+type ClientError string
+
+func (c ClientError) Error() string { return string(c) }
 
 // Peer is a participant in a swarm.
 type Peer struct {
