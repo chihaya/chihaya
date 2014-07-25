@@ -11,7 +11,7 @@ func isEmptyValue(v reflect.Value) bool {
 	return v.Interface() == reflect.Zero(v.Type()).Interface()
 }
 
-func keyForField(field reflect.StructField, v reflect.Value) string {
+func keyForField(field reflect.StructField, v reflect.Value) (string, bool) {
 	if tag := field.Tag.Get("json"); tag != "" {
 		tokens := strings.SplitN(tag, ",", 2)
 		name := tokens[0]
@@ -22,13 +22,29 @@ func keyForField(field reflect.StructField, v reflect.Value) string {
 		}
 
 		if name == "-" || strings.Contains(opts, "omitempty") && isEmptyValue(v) {
-			return ""
+			return "", false
 		} else if name != "" {
-			return name
+			return name, false
 		}
 	}
 
-	return field.Name
+	if field.Anonymous {
+		return "", true
+	}
+	return field.Name, false
+}
+
+func extractValue(val, fallback reflect.Value) reflect.Value {
+	switch val.Kind() {
+	case reflect.Struct:
+		return val
+	case reflect.Ptr:
+		return extractValue(val.Elem(), fallback)
+	case reflect.Interface:
+		return extractValue(val.Elem(), fallback)
+	default:
+		return fallback
+	}
 }
 
 func recursiveFlatten(val reflect.Value, prefix string, output FlatMap) int {
@@ -38,17 +54,28 @@ func recursiveFlatten(val reflect.Value, prefix string, output FlatMap) int {
 	for i := 0; i < val.NumField(); i++ {
 		child := val.Field(i)
 		childType := valType.Field(i)
-		key := prefix + keyForField(childType, child)
+		childPrefix := ""
 
-		if childType.PkgPath != "" || key == "" {
+		key, anonymous := keyForField(childType, child)
+
+		if childType.PkgPath != "" || (key == "" && !anonymous) {
 			continue
-		} else if child.Kind() == reflect.Struct {
-			if recursiveFlatten(child, key+".", output) != 0 {
+		}
+
+		child = extractValue(child, child)
+		if !anonymous {
+			childPrefix = prefix + key + "."
+		}
+
+		if child.Kind() == reflect.Struct {
+			childAdded := recursiveFlatten(child, childPrefix, output)
+			if childAdded != 0 {
+				added += childAdded
 				continue
 			}
 		}
 
-		output[key] = child.Addr().Interface()
+		output[prefix+key] = child.Addr().Interface()
 		added++
 	}
 

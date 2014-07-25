@@ -4,10 +4,7 @@
 
 package stats
 
-import (
-	"encoding/json"
-	"runtime"
-)
+import "runtime"
 
 // BasicMemStats includes a few of the fields from runtime.MemStats suitable for
 // general logging.
@@ -32,52 +29,48 @@ type BasicMemStats struct {
 	PauseTotalNs uint64
 }
 
+type MemStatsPlaceholder interface{}
+
 // MemStatsWrapper wraps runtime.MemStats with an optionally less verbose JSON
 // representation. The JSON field names correspond exactly to the runtime field
 // names to avoid reimplementing the entire struct.
 type MemStatsWrapper struct {
-	basic   *BasicMemStats
-	full    *runtime.MemStats
-	verbose bool
+	MemStatsPlaceholder `json:"Memory"`
+
+	basic *BasicMemStats
+	cache *runtime.MemStats
 }
 
 func NewMemStatsWrapper(verbose bool) *MemStatsWrapper {
-	stats := &MemStatsWrapper{
-		verbose: verbose,
-		full:    &runtime.MemStats{},
-	}
-	if !verbose {
+	stats := &MemStatsWrapper{cache: &runtime.MemStats{}}
+
+	if verbose {
+		stats.MemStatsPlaceholder = stats.cache
+	} else {
 		stats.basic = &BasicMemStats{}
+		stats.MemStatsPlaceholder = stats.basic
 	}
 	return stats
 }
 
-func (s *MemStatsWrapper) MarshalJSON() ([]byte, error) {
-	if s.verbose {
-		return json.Marshal(s.full)
-	} else {
-		return json.Marshal(s.basic)
-	}
-}
-
 // Update fetches the current memstats from runtime and resets the cache.
 func (s *MemStatsWrapper) Update() {
-	runtime.ReadMemStats(s.full)
+	runtime.ReadMemStats(s.cache)
 
-	if !s.verbose {
+	if s.basic != nil {
 		// Gross, but any decent editor can generate this in a couple commands.
-		s.basic.Alloc = s.full.Alloc
-		s.basic.TotalAlloc = s.full.TotalAlloc
-		s.basic.Sys = s.full.Sys
-		s.basic.Lookups = s.full.Lookups
-		s.basic.Mallocs = s.full.Mallocs
-		s.basic.Frees = s.full.Frees
-		s.basic.HeapAlloc = s.full.HeapAlloc
-		s.basic.HeapSys = s.full.HeapSys
-		s.basic.HeapIdle = s.full.HeapIdle
-		s.basic.HeapInuse = s.full.HeapInuse
-		s.basic.HeapReleased = s.full.HeapReleased
-		s.basic.HeapObjects = s.full.HeapObjects
-		s.basic.PauseTotalNs = s.full.PauseTotalNs
+		s.basic.Alloc = s.cache.Alloc
+		s.basic.TotalAlloc = s.cache.TotalAlloc
+		s.basic.Sys = s.cache.Sys
+		s.basic.Lookups = s.cache.Lookups
+		s.basic.Mallocs = s.cache.Mallocs
+		s.basic.Frees = s.cache.Frees
+		s.basic.HeapAlloc = s.cache.HeapAlloc
+		s.basic.HeapSys = s.cache.HeapSys
+		s.basic.HeapIdle = s.cache.HeapIdle
+		s.basic.HeapInuse = s.cache.HeapInuse
+		s.basic.HeapReleased = s.cache.HeapReleased
+		s.basic.HeapObjects = s.cache.HeapObjects
+		s.basic.PauseTotalNs = s.cache.PauseTotalNs
 	}
 }

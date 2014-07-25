@@ -85,7 +85,7 @@ type Stats struct {
 	IPv4Peers PeerStats `json:"Peers.IPv4"`
 	IPv6Peers PeerStats `json:"Peers.IPv6"`
 
-	MemStats *MemStatsWrapper `json:"Memory,omitempty"`
+	*MemStatsWrapper `json:",omitempty"`
 
 	events             chan int
 	ipv4PeerEvents     chan int
@@ -113,7 +113,7 @@ func New(cfg config.StatsConfig) *Stats {
 	}
 
 	if cfg.IncludeMem {
-		s.MemStats = NewMemStatsWrapper(cfg.VerboseMem)
+		s.MemStatsWrapper = NewMemStatsWrapper(cfg.VerboseMem)
 		s.recordMemStats = time.NewTicker(cfg.MemUpdateInterval.Duration).C
 	}
 
@@ -174,7 +174,7 @@ func (s *Stats) handleEvents() {
 			s.ResponseTime.P95.AddSample(f)
 
 		case <-s.recordMemStats:
-			s.MemStats.Update()
+			s.MemStatsWrapper.Update()
 		}
 	}
 }
