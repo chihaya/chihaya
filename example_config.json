@@ -11,7 +11,7 @@
 
   "private_tracker": false,
   "freeleech": false,
-  "whitelist": true,
+  "whitelist": false,
   "purge_inactive_torrents": true,
 
   "announce": "30m",
