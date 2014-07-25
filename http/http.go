@@ -46,15 +46,15 @@ func makeHandler(handler ResponseHandler) httprouter.Handle {
 		}
 
 		if len(msg) > 0 || glog.V(2) {
-			reqString := r.URL.Path
+			reqString := r.URL.Path + " " + r.RemoteAddr
 			if glog.V(3) {
 				reqString = r.URL.RequestURI() + " " + r.RemoteAddr
 			}
 
 			if len(msg) > 0 {
-				glog.Errorf("[%d: %9s] %s (%s)", httpCode, duration, reqString, msg)
+				glog.Errorf("[%d - %9s] %s (%s)", httpCode, duration, reqString, msg)
 			} else {
-				glog.Infof("[%d: %9s] %s", httpCode, duration, reqString)
+				glog.Infof("[%d - %9s] %s", httpCode, duration, reqString)
 			}
 		}
 
@@ -127,10 +127,11 @@ func Serve(cfg *config.Config, tkr *tracker.Tracker) {
 		},
 	}
 
-	grace.ListenAndServe()
+	if err := grace.ListenAndServe(); err != nil {
+		glog.Errorf("Failed to start server: %s", err.Error())
+	}
 
-	err := srv.tracker.Close()
-	if err != nil {
+	if err := srv.tracker.Close(); err != nil {
 		glog.Errorf("Failed to shutdown tracker cleanly: %s", err.Error())
 	}
 }
