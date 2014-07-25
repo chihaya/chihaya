@@ -23,15 +23,17 @@ import (
 )
 
 var (
-	maxProcs   int
-	profile    string
-	configPath string
+	maxProcs      int
+	profile       string
+	configPath    string
+	whitelistPath string
 )
 
 func init() {
 	flag.IntVar(&maxProcs, "maxprocs", runtime.NumCPU(), "maximum parallel threads")
 	flag.StringVar(&profile, "profile", "", "if non-empty, path to write profiling data")
 	flag.StringVar(&configPath, "config", "", "path to the configuration file")
+	flag.StringVar(&whitelistPath, "whitelist", "", "path to a client whitelist")
 }
 
 // Boot starts Chihaya. By exporting this function, anyone can import their own
@@ -76,6 +78,13 @@ func Boot() {
 	tkr, err := tracker.New(cfg)
 	if err != nil {
 		glog.Fatal("New: ", err)
+	}
+
+	if whitelistPath != "" {
+		err = tkr.LoadApprovedClients(whitelistPath)
+		if err != nil {
+			glog.Fatal("Failed to load whitelist: ", err.Error())
+		}
 	}
 
 	http.Serve(cfg, tkr)

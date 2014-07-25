@@ -1,5 +1,4 @@
 {
-  "network": "tcp",
   "addr": ":6881",
 
   "tracker": {
@@ -11,14 +10,25 @@
   },
 
   "private_tracker": false,
-  "freeleech": false,
-  "whitelist": false,
+  "freelech": false,
+  "whitelist": true,
   "purge_inactive_torrents": true,
-  "allow_ip_spoofing": true,
-  "dual_stacked_peers": true,
 
   "announce": "30m",
   "min_announce": "15m",
   "request_timeout": "10s",
-  "default_num_want": 50
+  "default_num_want": 50,
+
+  "allow_ip_spoofing": true,
+  "dual_stacked_peers": true,
+  "real_ip_header": "",
+  "preferred_subnet": false,
+  "preferred_ipv4_subnet": 0,
+  "preferred_ipv6_subnet": 0,
+
+  "stats_buffer_size": 0,
+  "include_mem_stats": true,
+  "verbose_mem_stats": true,
+  "mem_stats_interval": "30s"
+
 }

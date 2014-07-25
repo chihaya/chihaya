@@ -7,6 +7,8 @@
 package tracker
 
 import (
+	"encoding/json"
+	"os"
 	"time"
 
 	"github.com/golang/glog"
@@ -64,6 +66,40 @@ func (tkr *Tracker) Close() (err error) {
 	}
 
 	return
+}
+
+// LoadApprovedClients takes a path to a JSON file containing a list of clients
+// and inserts them into the tracker's data store.
+func (tkr *Tracker) LoadApprovedClients(path string) error {
+	if path == "" {
+		return nil
+	}
+
+	f, err := os.Open(os.ExpandEnv(path))
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	var clients []string
+	err = json.NewDecoder(f).Decode(&clients)
+	if err != nil {
+		return err
+	}
+
+	conn, err := tkr.Pool.Get()
+	if err != nil {
+		return err
+	}
+
+	for _, client := range clients {
+		err = conn.PutClient(client)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // Writer serializes a tracker's responses, and is implemented for each
