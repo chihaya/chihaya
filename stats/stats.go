@@ -94,7 +94,7 @@ type Stats struct {
 	responseTimeEvents chan time.Duration
 	recordMemStats     <-chan time.Time
 
-	flattened flatjson.FlatMap
+	flattened flatjson.Map
 }
 
 func New(cfg config.StatsConfig) *Stats {
@@ -123,7 +123,7 @@ func New(cfg config.StatsConfig) *Stats {
 	return s
 }
 
-func (s *Stats) Flattened() flatjson.FlatMap {
+func (s *Stats) Flattened() flatjson.Map {
 	return s.flattened
 }
 
