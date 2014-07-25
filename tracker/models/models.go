@@ -22,10 +22,10 @@ var (
 	ErrBadRequest = ClientError("bad request")
 
 	// ErrUserDNE is returned when a user does not exist.
-	ErrUserDNE = ClientError("user does not exist")
+	ErrUserDNE = NotFoundError("user does not exist")
 
 	// ErrTorrentDNE is returned when a torrent does not exist.
-	ErrTorrentDNE = ClientError("torrent does not exist")
+	ErrTorrentDNE = NotFoundError("torrent does not exist")
 
 	// ErrClientUnapproved is returned when a clientID is not in the whitelist.
 	ErrClientUnapproved = ClientError("client is not approved")
@@ -35,8 +35,10 @@ var (
 )
 
 type ClientError string
+type NotFoundError ClientError
 
-func (c ClientError) Error() string { return string(c) }
+func (e ClientError) Error() string   { return string(e) }
+func (e NotFoundError) Error() string { return string(e) }
 
 // Peer is a participant in a swarm.
 type Peer struct {

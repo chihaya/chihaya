@@ -23,6 +23,10 @@ func handleError(err error) (int, error) {
 		return http.StatusOK, nil
 	} else if _, ok := err.(models.ClientError); ok {
 		stats.RecordEvent(stats.ClientError)
+
+		if _, ok := err.(models.NotFoundError); ok {
+			return http.StatusNotFound, nil
+		}
 		return http.StatusBadRequest, nil
 	}
 	return http.StatusInternalServerError, err
@@ -107,10 +111,8 @@ func (s *Server) getTorrent(w http.ResponseWriter, r *http.Request, p httprouter
 	}
 
 	torrent, err := conn.FindTorrent(infohash)
-	if err == models.ErrTorrentDNE {
-		return http.StatusNotFound, err
-	} else if err != nil {
-		return http.StatusInternalServerError, err
+	if err != nil {
+		return handleError(err)
 	}
 
 	w.Header().Set("Content-Type", jsonContentType)
@@ -149,12 +151,7 @@ func (s *Server) delTorrent(w http.ResponseWriter, r *http.Request, p httprouter
 		return http.StatusNotFound, err
 	}
 
-	err = conn.DeleteTorrent(infohash)
-	if err == models.ErrTorrentDNE {
-		return http.StatusNotFound, err
-	}
-
-	return handleError(err)
+	return handleError(conn.DeleteTorrent(infohash))
 }
 
 func (s *Server) getUser(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
@@ -201,12 +198,7 @@ func (s *Server) delUser(w http.ResponseWriter, r *http.Request, p httprouter.Pa
 		return http.StatusInternalServerError, err
 	}
 
-	err = conn.DeleteUser(p.ByName("passkey"))
-	if err == models.ErrUserDNE {
-		return http.StatusNotFound, err
-	}
-
-	return handleError(err)
+	return handleError(conn.DeleteUser(p.ByName("passkey")))
 }
 
 func (s *Server) putClient(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
