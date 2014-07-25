@@ -10,7 +10,7 @@
   },
 
   "private_tracker": false,
-  "freelech": false,
+  "freeleech": false,
   "whitelist": true,
   "purge_inactive_torrents": true,
 
@@ -29,6 +29,6 @@
   "stats_buffer_size": 0,
   "include_mem_stats": true,
   "verbose_mem_stats": true,
-  "mem_stats_interval": "30s"
+  "mem_stats_interval": "5s"
 
 }
