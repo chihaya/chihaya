@@ -97,5 +97,5 @@ func flattenValue(val reflect.Value) FlatMap {
 }
 
 func Flatten(val interface{}) FlatMap {
-	return flattenPointer(reflect.ValueOf(val))
+	return flattenValue(reflect.ValueOf(val))
 }
