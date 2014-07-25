@@ -4,9 +4,7 @@
 
 package models
 
-import (
-	"testing"
-)
+import "testing"
 
 type PeerClientPair struct {
 	announce Announce
