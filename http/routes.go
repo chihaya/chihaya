@@ -18,71 +18,81 @@ import (
 
 const jsonContentType = "application/json; charset=UTF-8"
 
-func (s *Server) check(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	if _, err := w.Write([]byte("STILL-ALIVE")); err != nil {
-		return http.StatusInternalServerError, err
+func handleError(err error) (int, error) {
+	if err == nil {
+		return http.StatusOK, nil
+	} else if _, ok := err.(models.ClientError); ok {
+		stats.RecordEvent(stats.ClientError)
+		return http.StatusBadRequest, nil
 	}
+	return http.StatusInternalServerError, err
+}
 
-	return http.StatusOK, nil
+func (s *Server) check(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
+	_, err := w.Write([]byte("STILL-ALIVE"))
+	return handleError(err)
 }
 
 func (s *Server) stats(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
 	w.Header().Set("Content-Type", jsonContentType)
 
 	var err error
-	e := json.NewEncoder(w)
+	var val interface{}
+	query := r.URL.Query()
 
-	if _, flatten := r.URL.Query()["flatten"]; flatten {
-		err = e.Encode(stats.DefaultStats.Flattened())
+	if _, flatten := query["flatten"]; flatten {
+		val = stats.DefaultStats.Flattened()
 	} else {
-		err = e.Encode(stats.DefaultStats)
+		val = stats.DefaultStats
 	}
 
-	if err != nil {
-		return http.StatusInternalServerError, err
+	if _, pretty := query["pretty"]; pretty {
+		var buf []byte
+		buf, err = json.MarshalIndent(val, "", "  ")
+
+		if err == nil {
+			_, err = w.Write(buf)
+		}
+	} else {
+		err = json.NewEncoder(w).Encode(val)
 	}
 
-	return http.StatusOK, nil
+	return handleError(err)
 }
 
-func handleError(err error, w *Writer) (int, error) {
-	if _, ok := err.(models.ClientError); ok {
+func handleTorrentError(err error, w *Writer) (int, error) {
+	if err == nil {
+		return http.StatusOK, nil
+	} else if _, ok := err.(models.ClientError); ok {
 		w.WriteError(err)
 		stats.RecordEvent(stats.ClientError)
 		return http.StatusOK, nil
 	}
-
 	return http.StatusInternalServerError, err
 }
 
 func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
+	stats.RecordEvent(stats.Announce)
+
 	writer := &Writer{w}
 	ann, err := NewAnnounce(s.config, r, p)
 	if err != nil {
-		return handleError(err, writer)
+		return handleTorrentError(err, writer)
 	}
 
-	if err = s.tracker.HandleAnnounce(ann, writer); err != nil {
-		return handleError(err, writer)
-	}
-
-	stats.RecordEvent(stats.Announce)
-	return http.StatusOK, nil
+	return handleTorrentError(s.tracker.HandleAnnounce(ann, writer), writer)
 }
 
 func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
+	stats.RecordEvent(stats.Scrape)
+
 	writer := &Writer{w}
 	scrape, err := NewScrape(s.config, r, p)
 	if err != nil {
-		return handleError(err, writer)
+		return handleTorrentError(err, writer)
 	}
 
-	if err = s.tracker.HandleScrape(scrape, writer); err != nil {
-		return handleError(err, writer)
-	}
-
-	stats.RecordEvent(stats.Scrape)
-	return http.StatusOK, nil
+	return handleTorrentError(s.tracker.HandleScrape(scrape, writer), writer)
 }
 
 func (s *Server) getTorrent(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
@@ -105,12 +115,7 @@ func (s *Server) getTorrent(w http.ResponseWriter, r *http.Request, p httprouter
 
 	w.Header().Set("Content-Type", jsonContentType)
 	e := json.NewEncoder(w)
-	err = e.Encode(torrent)
-	if err != nil {
-		return http.StatusInternalServerError, err
-	}
-
-	return http.StatusOK, nil
+	return handleError(e.Encode(torrent))
 }
 
 func (s *Server) putTorrent(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
@@ -130,12 +135,7 @@ func (s *Server) putTorrent(w http.ResponseWriter, r *http.Request, p httprouter
 		return http.StatusInternalServerError, err
 	}
 
-	err = conn.PutTorrent(&torrent)
-	if err != nil {
-		return http.StatusInternalServerError, err
-	}
-
-	return http.StatusOK, nil
+	return handleError(conn.PutTorrent(&torrent))
 }
 
 func (s *Server) delTorrent(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
@@ -152,11 +152,9 @@ func (s *Server) delTorrent(w http.ResponseWriter, r *http.Request, p httprouter
 	err = conn.DeleteTorrent(infohash)
 	if err == models.ErrTorrentDNE {
 		return http.StatusNotFound, err
-	} else if err != nil {
-		return http.StatusInternalServerError, err
 	}
 
-	return http.StatusOK, nil
+	return handleError(err)
 }
 
 func (s *Server) getUser(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
@@ -174,12 +172,7 @@ func (s *Server) getUser(w http.ResponseWriter, r *http.Request, p httprouter.Pa
 
 	w.Header().Set("Content-Type", jsonContentType)
 	e := json.NewEncoder(w)
-	err = e.Encode(user)
-	if err != nil {
-		return http.StatusInternalServerError, err
-	}
-
-	return http.StatusOK, nil
+	return handleError(e.Encode(user))
 }
 
 func (s *Server) putUser(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
@@ -199,12 +192,7 @@ func (s *Server) putUser(w http.ResponseWriter, r *http.Request, p httprouter.Pa
 		return http.StatusInternalServerError, err
 	}
 
-	err = conn.PutUser(&user)
-	if err != nil {
-		return http.StatusInternalServerError, err
-	}
-
-	return http.StatusOK, nil
+	return handleError(conn.PutUser(&user))
 }
 
 func (s *Server) delUser(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
@@ -216,11 +204,9 @@ func (s *Server) delUser(w http.ResponseWriter, r *http.Request, p httprouter.Pa
 	err = conn.DeleteUser(p.ByName("passkey"))
 	if err == models.ErrUserDNE {
 		return http.StatusNotFound, err
-	} else if err != nil {
-		return http.StatusInternalServerError, err
 	}
 
-	return http.StatusOK, nil
+	return handleError(err)
 }
 
 func (s *Server) putClient(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
@@ -229,12 +215,7 @@ func (s *Server) putClient(w http.ResponseWriter, r *http.Request, p httprouter.
 		return http.StatusInternalServerError, err
 	}
 
-	err = conn.PutClient(p.ByName("clientID"))
-	if err != nil {
-		return http.StatusInternalServerError, err
-	}
-
-	return http.StatusOK, nil
+	return handleError(conn.PutClient(p.ByName("clientID")))
 }
 
 func (s *Server) delClient(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
@@ -243,10 +224,5 @@ func (s *Server) delClient(w http.ResponseWriter, r *http.Request, p httprouter.
 		return http.StatusInternalServerError, err
 	}
 
-	err = conn.DeleteClient(p.ByName("clientID"))
-	if err != nil {
-		return http.StatusInternalServerError, err
-	}
-
-	return http.StatusOK, nil
+	return handleError(conn.DeleteClient(p.ByName("clientID")))
 }
