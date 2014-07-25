@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/chihaya/chihaya/config"
+	"github.com/pushrax/flatjson"
 )
 
 const (
@@ -93,7 +94,7 @@ type Stats struct {
 	responseTimeEvents chan time.Duration
 	recordMemStats     <-chan time.Time
 
-	flattened FlatMap
+	flattened flatjson.FlatMap
 }
 
 func New(cfg config.StatsConfig) *Stats {
@@ -117,12 +118,12 @@ func New(cfg config.StatsConfig) *Stats {
 		s.recordMemStats = time.NewTicker(cfg.MemUpdateInterval.Duration).C
 	}
 
-	s.flattened = Flatten(s)
+	s.flattened = flatjson.Flatten(s)
 	go s.handleEvents()
 	return s
 }
 
-func (s *Stats) Flattened() FlatMap {
+func (s *Stats) Flattened() flatjson.FlatMap {
 	return s.flattened
 }
 
