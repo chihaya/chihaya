@@ -51,10 +51,10 @@ type PeerClassStats struct {
 }
 
 type PeerStats struct {
-	PeerClassStats `json:"Peers"`
-	Seeds          PeerClassStats `json:"Seeds"`
+	PeerClassStats `json:"Peers"` // Stats for all peers.
 
-	Completed uint64 // Number of transitions from leech to seed.
+	Seeds     PeerClassStats // Stats for seeds only.
+	Completed uint64         // Number of transitions from leech to seed.
 }
 
 type PercentileTimes struct {

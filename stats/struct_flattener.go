@@ -82,9 +82,9 @@ func recursiveFlatten(val reflect.Value, prefix string, output FlatMap) int {
 	return added
 }
 
-func flattenPointer(val reflect.Value) FlatMap {
+func flattenValue(val reflect.Value) FlatMap {
 	if val.Kind() == reflect.Ptr {
-		return flattenPointer(val.Elem())
+		return flattenValue(val.Elem())
 	}
 
 	if val.Kind() != reflect.Struct {
