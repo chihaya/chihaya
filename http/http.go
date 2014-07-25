@@ -28,35 +28,34 @@ type Server struct {
 
 func makeHandler(handler ResponseHandler) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+		var msg string
+
 		start := time.Now()
 		httpCode, err := handler(w, r, p)
 		duration := time.Since(start)
 
 		if err != nil {
-			stats.RecordEvent(stats.ErroredRequest)
-			http.Error(w, err.Error(), httpCode)
+			msg = err.Error()
+		} else if httpCode != http.StatusOK {
+			msg = http.StatusText(httpCode)
+		}
 
-			glog.Errorf(
-				"Failed (%v:%s) %s with %s in %s",
-				httpCode,
-				http.StatusText(httpCode),
-				r.URL.Path,
-				err.Error(),
-				duration,
-			)
-		} else if glog.V(2) {
+		if len(msg) > 0 {
+			http.Error(w, msg, httpCode)
+			stats.RecordEvent(stats.ErroredRequest)
+		}
+
+		if len(msg) > 0 || glog.V(2) {
 			reqString := r.URL.Path
 			if glog.V(3) {
-				reqString = r.URL.RequestURI() + " for " + r.RemoteAddr
+				reqString = r.URL.RequestURI() + " " + r.RemoteAddr
 			}
 
-			glog.Infof(
-				"Completed (%v:%s) %s in %v",
-				httpCode,
-				http.StatusText(httpCode),
-				reqString,
-				duration,
-			)
+			if len(msg) > 0 {
+				glog.Errorf("[%d: %9s] %s (%s)", httpCode, duration, reqString, msg)
+			} else {
+				glog.Infof("[%d: %9s] %s", httpCode, duration, reqString)
+			}
 		}
 
 		stats.RecordEvent(stats.HandledRequest)

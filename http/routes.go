@@ -21,12 +21,11 @@ const jsonContentType = "application/json; charset=UTF-8"
 func handleError(err error) (int, error) {
 	if err == nil {
 		return http.StatusOK, nil
+	} else if _, ok := err.(models.NotFoundError); ok {
+		stats.RecordEvent(stats.ClientError)
+		return http.StatusNotFound, nil
 	} else if _, ok := err.(models.ClientError); ok {
 		stats.RecordEvent(stats.ClientError)
-
-		if _, ok := err.(models.NotFoundError); ok {
-			return http.StatusNotFound, nil
-		}
 		return http.StatusBadRequest, nil
 	}
 	return http.StatusInternalServerError, err
