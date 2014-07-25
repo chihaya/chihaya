@@ -9,9 +9,8 @@
     "driver": "noop"
   },
 
-  "private_tracker": false,
-  "freeleech": false,
-  "whitelist": false,
+  "private_enabled": false,
+  "freeleech_enabled": false,
   "purge_inactive_torrents": true,
 
   "announce": "30m",
@@ -29,6 +28,21 @@
   "stats_buffer_size": 0,
   "include_mem_stats": true,
   "verbose_mem_stats": false,
-  "mem_stats_interval": "5s"
+  "mem_stats_interval": "5s",
 
+  "client_whitelist_enabled": false,
+  "client_whitelist": [
+      "UT340-",
+      "AZ2500",
+      "exbc0J",
+      "FUTB0L",
+      "XBT054",
+      "OP1011",
+      "ML2.7.",
+      "BOWA0C",
+      "Q1-0-0",
+      "Q1-10-",
+      "346---",
+      "QVOD00"
+  ]
 }

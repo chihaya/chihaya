@@ -16,7 +16,7 @@ func (tkr *Tracker) HandleScrape(scrape *models.Scrape, w Writer) (err error) {
 
 	defer conn.Close()
 
-	if tkr.cfg.Private {
+	if tkr.cfg.PrivateEnabled {
 		if _, err = conn.FindUser(scrape.Passkey); err != nil {
 			return err
 		}

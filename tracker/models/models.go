@@ -214,7 +214,7 @@ func NewAnnounceDelta(a *Announce, p *Peer, u *User, t *Torrent, created, snatch
 		rawDeltaDown uint64
 	)
 
-	if !a.Config.Freeleech {
+	if !a.Config.FreeleechEnabled {
 		rawDeltaDown = p.Downloaded - a.Downloaded
 	}
 

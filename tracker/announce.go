@@ -21,14 +21,14 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 
 	defer conn.Close()
 
-	if tkr.cfg.Whitelist {
+	if tkr.cfg.ClientWhitelistEnabled {
 		if err = conn.FindClient(ann.ClientID()); err != nil {
 			return err
 		}
 	}
 
 	var user *models.User
-	if tkr.cfg.Private {
+	if tkr.cfg.PrivateEnabled {
 		if user, err = conn.FindUser(ann.Passkey); err != nil {
 			return err
 		}
@@ -37,7 +37,7 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 	var torrent *models.Torrent
 	torrent, err = conn.FindTorrent(ann.Infohash)
 	switch {
-	case !tkr.cfg.Private && err == models.ErrTorrentDNE:
+	case !tkr.cfg.PrivateEnabled && err == models.ErrTorrentDNE:
 		torrent = &models.Torrent{
 			Infohash: ann.Infohash,
 			Seeders:  models.PeerMap{},
@@ -66,7 +66,7 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 		return err
 	}
 
-	if tkr.cfg.Private {
+	if tkr.cfg.PrivateEnabled {
 		delta := models.NewAnnounceDelta(ann, peer, user, torrent, created, snatched)
 		err = tkr.backend.RecordAnnounce(delta)
 		if err != nil {
@@ -160,7 +160,7 @@ func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t
 		}
 		t.Snatches++
 
-		if ann.Config.Private {
+		if ann.Config.PrivateEnabled {
 			err = c.IncrementUserSnatches(u.Passkey)
 			if err != nil {
 				return

@@ -124,7 +124,7 @@ func TestStalePeerPurging(t *testing.T) {
 
 func TestPrivateAnnounce(t *testing.T) {
 	cfg := config.DefaultConfig
-	cfg.Private = true
+	cfg.PrivateEnabled = true
 
 	tkr, err := tracker.New(&cfg)
 	if err != nil {

@@ -65,15 +65,17 @@ type Config struct {
 	Tracker DriverConfig `json:"tracker"`
 	Backend DriverConfig `json:"backend"`
 
-	Private               bool `json:"private_tracker"`
-	Freeleech             bool `json:"freeleech"`
-	Whitelist             bool `json:"whitelist"`
+	PrivateEnabled        bool `json:"private_enabled"`
+	FreeleechEnabled      bool `json:"freeleech_enabled"`
 	PurgeInactiveTorrents bool `json:"purge_inactive_torrents"`
 
 	Announce        Duration `json:"announce"`
 	MinAnnounce     Duration `json:"min_announce"`
 	RequestTimeout  Duration `json:"request_timeout"`
 	NumWantFallback int      `json:"default_num_want"`
+
+	ClientWhitelistEnabled bool     `json:"client_whitelist_enabled"`
+	ClientWhitelist        []string `json:"client_whitelist,omitempty"`
 
 	StatsConfig
 	NetConfig
@@ -91,9 +93,8 @@ var DefaultConfig = Config{
 		Name: "noop",
 	},
 
-	Private:               false,
-	Freeleech:             false,
-	Whitelist:             false,
+	PrivateEnabled:        false,
+	FreeleechEnabled:      false,
 	PurgeInactiveTorrents: true,
 
 	Announce:        Duration{30 * time.Minute},
@@ -113,6 +114,8 @@ var DefaultConfig = Config{
 		AllowIPSpoofing:  true,
 		DualStackedPeers: true,
 	},
+
+	ClientWhitelistEnabled: false,
 }
 
 // Open is a shortcut to open a file, read it, and generate a Config.

@@ -7,8 +7,6 @@
 package tracker
 
 import (
-	"encoding/json"
-	"os"
 	"time"
 
 	"github.com/golang/glog"
@@ -46,11 +44,17 @@ func New(cfg *config.Config) (*Tracker, error) {
 		cfg.Announce.Duration,
 	)
 
-	return &Tracker{
+	tkr := &Tracker{
 		cfg:     cfg,
 		Pool:    pool,
 		backend: bc,
-	}, nil
+	}
+
+	if cfg.ClientWhitelistEnabled {
+		tkr.LoadApprovedClients(cfg.ClientWhitelist)
+	}
+
+	return tkr, nil
 }
 
 // Close gracefully shutdowns a Tracker by closing any database connections.
@@ -68,25 +72,8 @@ func (tkr *Tracker) Close() (err error) {
 	return
 }
 
-// LoadApprovedClients takes a path to a JSON file containing a list of clients
-// and inserts them into the tracker's data store.
-func (tkr *Tracker) LoadApprovedClients(path string) error {
-	if path == "" {
-		return nil
-	}
-
-	f, err := os.Open(os.ExpandEnv(path))
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	var clients []string
-	err = json.NewDecoder(f).Decode(&clients)
-	if err != nil {
-		return err
-	}
-
+// LoadApprovedClients loads a list of client IDs into the tracker's storage.
+func (tkr *Tracker) LoadApprovedClients(clients []string) error {
 	conn, err := tkr.Pool.Get()
 	if err != nil {
 		return err

@@ -66,7 +66,7 @@ func makeHandler(handler ResponseHandler) httprouter.Handle {
 func newRouter(s *Server) *httprouter.Router {
 	r := httprouter.New()
 
-	if s.config.Private {
+	if s.config.PrivateEnabled {
 		r.GET("/users/:passkey/announce", makeHandler(s.serveAnnounce))
 		r.GET("/users/:passkey/scrape", makeHandler(s.serveScrape))
 
@@ -77,7 +77,7 @@ func newRouter(s *Server) *httprouter.Router {
 		r.GET("/scrape", makeHandler(s.serveScrape))
 	}
 
-	if s.config.Whitelist {
+	if s.config.ClientWhitelistEnabled {
 		r.PUT("/clients/:clientID", makeHandler(s.putClient))
 		r.DELETE("/clients/:clientID", makeHandler(s.delClient))
 	}
