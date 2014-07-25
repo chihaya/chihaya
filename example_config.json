@@ -28,7 +28,7 @@
 
   "stats_buffer_size": 0,
   "include_mem_stats": true,
-  "verbose_mem_stats": true,
+  "verbose_mem_stats": false,
   "mem_stats_interval": "5s"
 
 }
