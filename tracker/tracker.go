@@ -51,7 +51,10 @@ func New(cfg *config.Config) (*Tracker, error) {
 	}
 
 	if cfg.ClientWhitelistEnabled {
-		tkr.LoadApprovedClients(cfg.ClientWhitelist)
+		err = tkr.LoadApprovedClients(cfg.ClientWhitelist)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return tkr, nil
