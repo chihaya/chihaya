@@ -9,8 +9,10 @@ package stats
 import (
 	"time"
 
-	"github.com/chihaya/chihaya/config"
+	"github.com/pushrax/faststats"
 	"github.com/pushrax/flatjson"
+
+	"github.com/chihaya/chihaya/config"
 )
 
 const (
@@ -59,9 +61,9 @@ type PeerStats struct {
 }
 
 type PercentileTimes struct {
-	P50 *Percentile
-	P90 *Percentile
-	P95 *Percentile
+	P50 *faststats.Percentile
+	P90 *faststats.Percentile
+	P95 *faststats.Percentile
 }
 
 type Stats struct {
@@ -107,9 +109,9 @@ func New(cfg config.StatsConfig) *Stats {
 		responseTimeEvents: make(chan time.Duration, cfg.BufferSize),
 
 		ResponseTime: PercentileTimes{
-			P50: NewPercentile(0.5),
-			P90: NewPercentile(0.9),
-			P95: NewPercentile(0.95),
+			P50: faststats.NewPercentile(0.5),
+			P90: faststats.NewPercentile(0.9),
+			P95: faststats.NewPercentile(0.95),
 		},
 	}
 
