@@ -54,40 +54,20 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 		return err
 	}
 
-	var createdv4, createdv6, snatchedv4, snatchedv6 bool
-	peer, peerv4, peerv6 := models.NewPeer(ann, user, torrent)
+	ann.BuildPeer(user, torrent)
 
-	if peerv4 != nil {
-		createdv4, err = updateSwarm(conn, ann, peerv4, torrent)
-		if err != nil {
-			return err
-		}
-	}
-	if peerv6 != nil {
-		createdv6, err = updateSwarm(conn, ann, peerv6, torrent)
-		if err != nil {
-			return err
-		}
+	created, err := updateSwarm(conn, ann)
+	if err != nil {
+		return err
 	}
 
-	if peerv4 != nil {
-		snatchedv4, err = handleEvent(conn, ann, peerv4, user, torrent)
-		if err != nil {
-			return err
-		}
+	snatched, err := handleEvent(conn, ann)
+	if err != nil {
+		return err
 	}
-	if peerv6 != nil {
-		snatchedv6, err = handleEvent(conn, ann, peerv6, user, torrent)
-		if err != nil {
-			return err
-		}
-	}
-
-	created := createdv4 || createdv6
-	snatched := snatchedv4 || snatchedv6
 
 	if tkr.cfg.PrivateEnabled {
-		delta := models.NewAnnounceDelta(ann, peer, user, torrent, created, snatched)
+		delta := models.NewAnnounceDelta(ann, created, snatched)
 		err = tkr.backend.RecordAnnounce(delta)
 		if err != nil {
 			return err
@@ -99,12 +79,28 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 		stats.RecordEvent(stats.DeletedTorrent)
 	}
 
-	return w.WriteAnnounce(newAnnounceResponse(ann, peer, torrent))
+	return w.WriteAnnounce(newAnnounceResponse(ann))
 }
 
 // updateSwarm handles the changes to a torrent's swarm given an announce.
-func updateSwarm(c Conn, ann *models.Announce, p *models.Peer, t *models.Torrent) (created bool, err error) {
-	c.TouchTorrent(t.Infohash)
+func updateSwarm(c Conn, ann *models.Announce) (created bool, err error) {
+	var createdv4, createdv6 bool
+	c.TouchTorrent(ann.Torrent.Infohash)
+
+	if ann.HasIPv4() {
+		createdv4, err = updatePeer(c, ann, ann.PeerV4)
+		if err != nil {
+			return
+		}
+	}
+	if ann.HasIPv6() {
+		createdv6, err = updatePeer(c, ann, ann.PeerV6)
+	}
+	return createdv4 || createdv6, err
+}
+
+func updatePeer(c Conn, ann *models.Announce, peer *models.Peer) (created bool, err error) {
+	p, t := ann.Peer, ann.Torrent
 
 	switch {
 	case t.InSeederPool(p):
@@ -145,13 +141,50 @@ func updateSwarm(c Conn, ann *models.Announce, p *models.Peer, t *models.Torrent
 		}
 		created = true
 	}
-
 	return
 }
 
 // handleEvent checks to see whether an announce has an event and if it does,
 // properly handles that event.
-func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t *models.Torrent) (snatched bool, err error) {
+func handleEvent(c Conn, ann *models.Announce) (snatched bool, err error) {
+	var snatchedv4, snatchedv6 bool
+
+	if ann.HasIPv4() {
+		snatchedv4, err = handlePeerEvent(c, ann, ann.PeerV4)
+		if err != nil {
+			return
+		}
+	}
+	if ann.HasIPv6() {
+		snatchedv6, err = handlePeerEvent(c, ann, ann.PeerV6)
+		if err != nil {
+			return
+		}
+	}
+
+	snatched = snatchedv4 || snatchedv6
+
+	if snatched {
+		err = c.IncrementTorrentSnatches(ann.Torrent.Infohash)
+		if err != nil {
+			return
+		}
+		ann.Torrent.Snatches++
+	}
+
+	if snatched && ann.Config.PrivateEnabled {
+		err = c.IncrementUserSnatches(ann.User.Passkey)
+		if err != nil {
+			return
+		}
+		ann.User.Snatches++
+	}
+	return
+}
+
+func handlePeerEvent(c Conn, ann *models.Announce, p *models.Peer) (snatched bool, err error) {
+	p, t := ann.Peer, ann.Torrent
+
 	switch {
 	case ann.Event == "stopped" || ann.Event == "paused":
 		// updateSwarm checks if the peer is active on the torrent,
@@ -174,20 +207,6 @@ func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t
 		}
 
 	case ann.Event == "completed":
-		err = c.IncrementTorrentSnatches(t.Infohash)
-		if err != nil {
-			return
-		}
-		t.Snatches++
-
-		if ann.Config.PrivateEnabled {
-			err = c.IncrementUserSnatches(u.Passkey)
-			if err != nil {
-				return
-			}
-			u.Snatches++
-		}
-
 		if t.InLeecherPool(p) {
 			err = leecherFinished(c, t, p)
 		} else {
@@ -227,9 +246,9 @@ func leecherFinished(c Conn, t *models.Torrent, p *models.Peer) error {
 	return nil
 }
 
-func newAnnounceResponse(ann *models.Announce, announcer *models.Peer, t *models.Torrent) *models.AnnounceResponse {
-	seedCount := len(t.Seeders)
-	leechCount := len(t.Leechers)
+func newAnnounceResponse(ann *models.Announce) *models.AnnounceResponse {
+	seedCount := len(ann.Torrent.Seeders)
+	leechCount := len(ann.Torrent.Leechers)
 
 	res := &models.AnnounceResponse{
 		Complete:    seedCount,
@@ -240,7 +259,7 @@ func newAnnounceResponse(ann *models.Announce, announcer *models.Peer, t *models
 	}
 
 	if ann.NumWant > 0 && ann.Event != "stopped" && ann.Event != "paused" {
-		res.IPv4Peers, res.IPv6Peers = getPeers(ann, announcer, t, ann.NumWant)
+		res.IPv4Peers, res.IPv6Peers = getPeers(ann)
 	}
 
 	return res
@@ -248,23 +267,23 @@ func newAnnounceResponse(ann *models.Announce, announcer *models.Peer, t *models
 
 // getPeers returns lists IPv4 and IPv6 peers on a given torrent sized according
 // to the wanted parameter.
-func getPeers(ann *models.Announce, announcer *models.Peer, t *models.Torrent, wanted int) (ipv4s, ipv6s models.PeerList) {
+func getPeers(ann *models.Announce) (ipv4s, ipv6s models.PeerList) {
 	ipv4s, ipv6s = models.PeerList{}, models.PeerList{}
 
 	if ann.Left == 0 {
 		// If they're seeding, give them only leechers.
-		return appendPeers(ipv4s, ipv6s, ann, announcer, t.Leechers, wanted)
+		return appendPeers(ipv4s, ipv6s, ann, ann.Torrent.Leechers, ann.NumWant)
 	}
 
 	// If they're leeching, prioritize giving them seeders.
-	ipv4s, ipv6s = appendPeers(ipv4s, ipv6s, ann, announcer, t.Seeders, wanted)
-	return appendPeers(ipv4s, ipv6s, ann, announcer, t.Leechers, wanted-len(ipv4s)-len(ipv6s))
+	ipv4s, ipv6s = appendPeers(ipv4s, ipv6s, ann, ann.Torrent.Seeders, ann.NumWant)
+	return appendPeers(ipv4s, ipv6s, ann, ann.Torrent.Leechers, ann.NumWant-len(ipv4s)-len(ipv6s))
 }
 
 // appendPeers implements the logic of adding peers to the IPv4 or IPv6 lists.
-func appendPeers(ipv4s, ipv6s models.PeerList, ann *models.Announce, announcer *models.Peer, peers models.PeerMap, wanted int) (models.PeerList, models.PeerList) {
+func appendPeers(ipv4s, ipv6s models.PeerList, ann *models.Announce, peers models.PeerMap, wanted int) (models.PeerList, models.PeerList) {
 	if ann.Config.PreferredSubnet {
-		return appendSubnetPeers(ipv4s, ipv6s, ann, announcer, peers, wanted)
+		return appendSubnetPeers(ipv4s, ipv6s, ann, peers, wanted)
 	}
 
 	count := 0
@@ -272,7 +291,7 @@ func appendPeers(ipv4s, ipv6s models.PeerList, ann *models.Announce, announcer *
 	for _, peer := range peers {
 		if count >= wanted {
 			break
-		} else if peersEquivalent(&peer, announcer) {
+		} else if peersEquivalent(&peer, ann.Peer) {
 			continue
 		}
 
@@ -290,7 +309,7 @@ func appendPeers(ipv4s, ipv6s models.PeerList, ann *models.Announce, announcer *
 
 // appendSubnetPeers is an alternative version of appendPeers used when the
 // config variable PreferredSubnet is enabled.
-func appendSubnetPeers(ipv4s, ipv6s models.PeerList, ann *models.Announce, announcer *models.Peer, peers models.PeerMap, wanted int) (models.PeerList, models.PeerList) {
+func appendSubnetPeers(ipv4s, ipv6s models.PeerList, ann *models.Announce, peers models.PeerMap, wanted int) (models.PeerList, models.PeerList) {
 	var subnetIPv4 net.IPNet
 	var subnetIPv6 net.IPNet
 
@@ -314,7 +333,7 @@ func appendSubnetPeers(ipv4s, ipv6s models.PeerList, ann *models.Announce, annou
 			inSubnet4 := peer.HasIPv4() && subnetIPv4.Contains(peer.IP)
 			inSubnet6 := peer.HasIPv6() && subnetIPv6.Contains(peer.IP)
 
-			if peersEquivalent(&peer, announcer) || checkInSubnet != (inSubnet4 || inSubnet6) {
+			if peersEquivalent(&peer, ann.Peer) || checkInSubnet != (inSubnet4 || inSubnet6) {
 				continue
 			}
 

@@ -73,10 +73,13 @@ type PeerMap map[PeerKey]Peer
 // for the announce parameter, it panics. When provided nil for the user or
 // torrent parameter, it returns a Peer{UserID: 0} or Peer{TorrentID: 0}
 // respectively.
-func NewPeer(a *Announce, u *User, t *Torrent) (peer *Peer, v4 *Peer, v6 *Peer) {
+func (a *Announce) BuildPeer(u *User, t *Torrent) {
 	if a == nil {
 		panic("models: announce cannot equal nil")
 	}
+
+	a.User = u
+	a.Torrent = t
 
 	var userID uint64
 	if u != nil {
@@ -88,7 +91,7 @@ func NewPeer(a *Announce, u *User, t *Torrent) (peer *Peer, v4 *Peer, v6 *Peer) 
 		torrentID = t.ID
 	}
 
-	peer = &Peer{
+	a.Peer = &Peer{
 		ID:           a.PeerID,
 		UserID:       userID,
 		TorrentID:    torrentID,
@@ -99,17 +102,17 @@ func NewPeer(a *Announce, u *User, t *Torrent) (peer *Peer, v4 *Peer, v6 *Peer) 
 		LastAnnounce: time.Now().Unix(),
 	}
 
-	if a.IPv4 != nil && a.IPv6 != nil {
-		v4 = peer
-		v4.IP = a.IPv4
-		v6 = &*peer
-		v6.IP = a.IPv6
-	} else if a.IPv4 != nil {
-		v4 = peer
-		v4.IP = a.IPv4
-	} else if a.IPv6 != nil {
-		v6 = peer
-		v6.IP = a.IPv6
+	if a.HasIPv4() && a.HasIPv6() {
+		a.PeerV4 = a.Peer
+		a.PeerV4.IP = a.IPv4
+		a.PeerV6 = &*a.Peer
+		a.PeerV6.IP = a.IPv6
+	} else if a.HasIPv4() {
+		a.PeerV4 = a.Peer
+		a.PeerV4.IP = a.IPv4
+	} else if a.HasIPv6() {
+		a.PeerV6 = a.Peer
+		a.PeerV6.IP = a.IPv6
 	} else {
 		panic("models: announce must have an IP")
 	}
@@ -166,7 +169,7 @@ type User struct {
 
 	UpMultiplier   float64 `json:"up_multiplier"`
 	DownMultiplier float64 `json:"down_multiplier"`
-	Snatches       uint64  `json:"snatches"`
+	Snatches       uint64  `json:"snatches"` // TODO deleteme
 }
 
 // Announce is an Announce by a Peer.
@@ -185,11 +188,17 @@ type Announce struct {
 	PeerID     string `json:"peer_id"`
 	Port       uint64 `json:"port"`
 	Uploaded   uint64 `json:"uploaded"`
+
+	Torrent *Torrent `json:"-"`
+	User    *User    `json:"-"`
+	Peer    *Peer    `json:"-"`
+	PeerV4  *Peer    `json:"-"`
+	PeerV6  *Peer    `json:"-"`
 }
 
 // ClientID returns the part of a PeerID that identifies a Peer's client
 // software.
-func (a Announce) ClientID() (clientID string) {
+func (a *Announce) ClientID() (clientID string) {
 	length := len(a.PeerID)
 	if length >= 6 {
 		if a.PeerID[0] == '-' {
@@ -204,11 +213,11 @@ func (a Announce) ClientID() (clientID string) {
 	return
 }
 
-func (a Announce) HasIPv4() bool {
+func (a *Announce) HasIPv4() bool {
 	return a.IPv4 != nil
 }
 
-func (a Announce) HasIPv6() bool {
+func (a *Announce) HasIPv6() bool {
 	return a.IPv6 != nil
 }
 
@@ -242,14 +251,14 @@ type AnnounceResponse struct {
 
 // NewAnnounceDelta calculates a Peer's download and upload deltas between
 // Announces and generates an AnnounceDelta.
-func NewAnnounceDelta(a *Announce, p *Peer, u *User, t *Torrent, created, snatched bool) *AnnounceDelta {
+func NewAnnounceDelta(a *Announce, created, snatched bool) *AnnounceDelta {
 	var (
-		rawDeltaUp   = p.Uploaded - a.Uploaded
+		rawDeltaUp   = a.Peer.Uploaded - a.Uploaded
 		rawDeltaDown uint64
 	)
 
 	if !a.Config.FreeleechEnabled {
-		rawDeltaDown = p.Downloaded - a.Downloaded
+		rawDeltaDown = a.Peer.Downloaded - a.Downloaded
 	}
 
 	// Restarting a torrent may cause a delta to be negative.
@@ -262,15 +271,15 @@ func NewAnnounceDelta(a *Announce, p *Peer, u *User, t *Torrent, created, snatch
 	}
 
 	return &AnnounceDelta{
-		Peer:    p,
-		Torrent: t,
-		User:    u,
+		Peer:    a.Peer,
+		Torrent: a.Torrent,
+		User:    a.User,
 
 		Created:  created,
 		Snatched: snatched,
 
-		Uploaded:   uint64(float64(rawDeltaUp) * u.UpMultiplier * t.UpMultiplier),
-		Downloaded: uint64(float64(rawDeltaDown) * u.DownMultiplier * t.DownMultiplier),
+		Uploaded:   uint64(float64(rawDeltaUp) * a.User.UpMultiplier * a.Torrent.UpMultiplier),
+		Downloaded: uint64(float64(rawDeltaDown) * a.User.DownMultiplier * a.Torrent.DownMultiplier),
 	}
 }
 
