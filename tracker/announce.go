@@ -34,10 +34,9 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 		}
 	}
 
-	var torrent *models.Torrent
-	torrent, err = conn.FindTorrent(ann.Infohash)
-	switch {
-	case !tkr.cfg.PrivateEnabled && err == models.ErrTorrentDNE:
+	torrent, err := conn.FindTorrent(ann.Infohash)
+
+	if err == models.ErrTorrentDNE && !tkr.cfg.PrivateEnabled {
 		torrent = &models.Torrent{
 			Infohash: ann.Infohash,
 			Seeders:  models.PeerMap{},
@@ -49,8 +48,7 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 			return err
 		}
 		stats.RecordEvent(stats.NewTorrent)
-
-	case err != nil:
+	} else if err != nil {
 		return err
 	}
 
@@ -95,8 +93,12 @@ func updateSwarm(c Conn, ann *models.Announce) (created bool, err error) {
 	}
 	if ann.HasIPv6() {
 		createdv6, err = updatePeer(c, ann, ann.PeerV6)
+		if err != nil {
+			return
+		}
 	}
-	return createdv4 || createdv6, err
+
+	return createdv4 || createdv6, nil
 }
 
 func updatePeer(c Conn, ann *models.Announce, peer *models.Peer) (created bool, err error) {
@@ -207,8 +209,8 @@ func handlePeerEvent(c Conn, ann *models.Announce, p *models.Peer) (snatched boo
 			err = models.ErrBadRequest
 		}
 
-		// If one of the dual-stacked peers is already a seeder, they have already
-		// snatched.
+		// If one of the dual-stacked peers is already a seeder, they have
+		// already snatched.
 		if !(v4seed || v6seed) {
 			snatched = true
 		}
