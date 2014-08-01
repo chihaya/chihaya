@@ -110,14 +110,12 @@ func updatePeer(c Conn, ann *models.Announce, peer *models.Peer) (created bool, 
 		if err != nil {
 			return
 		}
-		t.Seeders[p.Key()] = *p
 
 	case t.InLeecherPool(p):
 		err = c.PutLeecher(t.Infohash, p)
 		if err != nil {
 			return
 		}
-		t.Leechers[p.Key()] = *p
 
 	default:
 		if ann.Event != "" && ann.Event != "started" {
@@ -130,7 +128,6 @@ func updatePeer(c Conn, ann *models.Announce, peer *models.Peer) (created bool, 
 			if err != nil {
 				return
 			}
-			t.Seeders[p.Key()] = *p
 			stats.RecordPeerEvent(stats.NewSeed, p.HasIPv6())
 
 		} else {
@@ -138,7 +135,6 @@ func updatePeer(c Conn, ann *models.Announce, peer *models.Peer) (created bool, 
 			if err != nil {
 				return
 			}
-			t.Leechers[p.Key()] = *p
 			stats.RecordPeerEvent(stats.NewLeech, p.HasIPv6())
 		}
 		created = true
@@ -187,7 +183,6 @@ func handlePeerEvent(c Conn, ann *models.Announce, p *models.Peer) (snatched boo
 			if err != nil {
 				return
 			}
-			delete(t.Seeders, p.Key())
 			stats.RecordPeerEvent(stats.DeletedSeed, p.HasIPv6())
 
 		} else if t.InLeecherPool(p) {
@@ -195,7 +190,6 @@ func handlePeerEvent(c Conn, ann *models.Announce, p *models.Peer) (snatched boo
 			if err != nil {
 				return
 			}
-			delete(t.Leechers, p.Key())
 			stats.RecordPeerEvent(stats.DeletedLeech, p.HasIPv6())
 		}
 
@@ -228,13 +222,9 @@ func leecherFinished(c Conn, t *models.Torrent, p *models.Peer) error {
 	if err := c.DeleteLeecher(t.Infohash, p); err != nil {
 		return err
 	}
-	delete(t.Leechers, p.Key())
-
 	if err := c.PutSeeder(t.Infohash, p); err != nil {
 		return err
 	}
-	t.Seeders[p.Key()] = *p
-
 	stats.RecordPeerEvent(stats.Completed, p.HasIPv6())
 	return nil
 }
