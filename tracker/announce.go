@@ -54,7 +54,10 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 
 	ann.BuildPeer(user, torrent)
 
-	uploaded, downloaded := delta(ann)
+	var uploaded, downloaded uint64
+	if tkr.cfg.PrivateEnabled {
+		uploaded, downloaded = delta(ann)
+	}
 
 	created, err := updateSwarm(conn, ann)
 	if err != nil {
