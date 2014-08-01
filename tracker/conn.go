@@ -77,7 +77,6 @@ type Conn interface {
 	FindUser(passkey string) (*models.User, error)
 	PutUser(u *models.User) error
 	DeleteUser(passkey string) error
-	IncrementUserSnatches(passkey string) error
 
 	// Whitelist interactions
 	FindClient(clientID string) error

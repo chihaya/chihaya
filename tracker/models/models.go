@@ -169,7 +169,6 @@ type User struct {
 
 	UpMultiplier   float64 `json:"up_multiplier"`
 	DownMultiplier float64 `json:"down_multiplier"`
-	Snatches       uint64  `json:"snatches"` // TODO deleteme
 }
 
 // Announce is an Announce by a Peer.

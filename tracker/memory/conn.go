@@ -67,19 +67,6 @@ func (c *Conn) IncrementTorrentSnatches(infohash string) error {
 	return nil
 }
 
-func (c *Conn) IncrementUserSnatches(userID string) error {
-	c.usersM.Lock()
-	defer c.usersM.Unlock()
-
-	u, exists := c.users[userID]
-	if !exists {
-		return models.ErrUserDNE
-	}
-	u.Snatches++
-
-	return nil
-}
-
 func (c *Conn) TouchTorrent(infohash string) error {
 	c.torrentsM.Lock()
 	defer c.torrentsM.Unlock()

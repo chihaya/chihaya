@@ -171,14 +171,6 @@ func handleEvent(c Conn, ann *models.Announce) (snatched bool, err error) {
 		}
 		ann.Torrent.Snatches++
 	}
-
-	if snatched && ann.Config.PrivateEnabled {
-		err = c.IncrementUserSnatches(ann.User.Passkey)
-		if err != nil {
-			return
-		}
-		ann.User.Snatches++
-	}
 	return
 }
 
