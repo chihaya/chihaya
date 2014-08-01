@@ -224,10 +224,13 @@ type AnnounceDelta struct {
 	// Snatched is true if this announce completed the download
 	Snatched bool
 
-	// Uploaded contains the raw upload delta for this announce, in bytes
-	Uploaded uint64
-	// Downloaded contains the raw download delta for this announce, in bytes
-	Downloaded uint64
+	// Uploaded contains the upload delta for this announce, in bytes
+	Uploaded    uint64
+	RawUploaded uint64
+
+	// Downloaded contains the download delta for this announce, in bytes
+	Downloaded    uint64
+	RawDownloaded uint64
 }
 
 // AnnounceResponse contains the information needed to fulfill an announce.
