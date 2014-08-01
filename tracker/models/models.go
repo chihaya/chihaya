@@ -46,7 +46,7 @@ type Peer struct {
 	UserID    uint64 `json:"user_id"`
 	TorrentID uint64 `json:"torrent_id"`
 
-	IP   net.IP `json:"ip,omitempty"`
+	IP   net.IP `json:"ip,omitempty"` // Always has length net.IPv4len if IPv4, and net.IPv6len if IPv6
 	Port uint64 `json:"port"`
 
 	Uploaded     uint64 `json:"uploaded"`

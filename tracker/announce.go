@@ -54,37 +54,37 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 		return err
 	}
 
-	var createdIPv4, createdIPv6, snatchedIPv4, snatchedIPv6 bool
+	var createdv4, createdv6, snatchedv4, snatchedv6 bool
 	peer, peerv4, peerv6 := models.NewPeer(ann, user, torrent)
 
 	if peerv4 != nil {
-		createdIPv4, err = updateSwarm(conn, ann, peerv4, torrent)
+		createdv4, err = updateSwarm(conn, ann, peerv4, torrent)
 		if err != nil {
 			return err
 		}
 	}
 	if peerv6 != nil {
-		createdIPv6, err = updateSwarm(conn, ann, peerv6, torrent)
+		createdv6, err = updateSwarm(conn, ann, peerv6, torrent)
 		if err != nil {
 			return err
 		}
 	}
 
 	if peerv4 != nil {
-		snatchedIPv4, err = handleEvent(conn, ann, peerv4, user, torrent)
+		snatchedv4, err = handleEvent(conn, ann, peerv4, user, torrent)
 		if err != nil {
 			return err
 		}
 	}
 	if peerv6 != nil {
-		snatchedIPv6, err = handleEvent(conn, ann, peerv6, user, torrent)
+		snatchedv6, err = handleEvent(conn, ann, peerv6, user, torrent)
 		if err != nil {
 			return err
 		}
 	}
 
-	created := createdIPv4 || createdIPv6
-	snatched := snatchedIPv4 || snatchedIPv6
+	created := createdv4 || createdv6
+	snatched := snatchedv4 || snatchedv6
 
 	if tkr.cfg.PrivateEnabled {
 		delta := models.NewAnnounceDelta(ann, peer, user, torrent, created, snatched)
@@ -198,6 +198,7 @@ func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t
 		// snatched.
 		_, v4seed := t.Seeders[models.NewPeerKey(p.ID, false)]
 		_, v6seed := t.Seeders[models.NewPeerKey(p.ID, true)]
+
 		if !(v4seed || v6seed) {
 			snatched = true
 		}
