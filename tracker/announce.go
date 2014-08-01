@@ -162,16 +162,15 @@ func handleEvent(c Conn, ann *models.Announce) (snatched bool, err error) {
 		}
 	}
 
-	snatched = snatchedv4 || snatchedv6
-
-	if snatched {
+	if snatchedv4 || snatchedv6 {
 		err = c.IncrementTorrentSnatches(ann.Torrent.Infohash)
 		if err != nil {
 			return
 		}
 		ann.Torrent.Snatches++
+		return true, nil
 	}
-	return
+	return false, nil
 }
 
 func handlePeerEvent(c Conn, ann *models.Announce, p *models.Peer) (snatched bool, err error) {
@@ -199,6 +198,9 @@ func handlePeerEvent(c Conn, ann *models.Announce, p *models.Peer) (snatched boo
 		}
 
 	case ann.Event == "completed":
+		_, v4seed := t.Seeders[models.NewPeerKey(p.ID, false)]
+		_, v6seed := t.Seeders[models.NewPeerKey(p.ID, true)]
+
 		if t.InLeecherPool(p) {
 			err = leecherFinished(c, t, p)
 		} else {
@@ -207,9 +209,6 @@ func handlePeerEvent(c Conn, ann *models.Announce, p *models.Peer) (snatched boo
 
 		// If one of the dual-stacked peers is already a seeder, they have already
 		// snatched.
-		_, v4seed := t.Seeders[models.NewPeerKey(p.ID, false)]
-		_, v6seed := t.Seeders[models.NewPeerKey(p.ID, true)]
-
 		if !(v4seed || v6seed) {
 			snatched = true
 		}

@@ -69,56 +69,6 @@ func NewPeerKey(peerID string, ipv6 bool) PeerKey {
 // PeerMap is a map from PeerKeys to Peers.
 type PeerMap map[PeerKey]Peer
 
-// NewPeer returns the Peer representation of an Announce. When provided nil
-// for the announce parameter, it panics. When provided nil for the user or
-// torrent parameter, it returns a Peer{UserID: 0} or Peer{TorrentID: 0}
-// respectively.
-func (a *Announce) BuildPeer(u *User, t *Torrent) {
-	if a == nil {
-		panic("models: announce cannot equal nil")
-	}
-
-	a.User = u
-	a.Torrent = t
-
-	var userID uint64
-	if u != nil {
-		userID = u.ID
-	}
-
-	var torrentID uint64
-	if t != nil {
-		torrentID = t.ID
-	}
-
-	a.Peer = &Peer{
-		ID:           a.PeerID,
-		UserID:       userID,
-		TorrentID:    torrentID,
-		Port:         a.Port,
-		Uploaded:     a.Uploaded,
-		Downloaded:   a.Downloaded,
-		Left:         a.Left,
-		LastAnnounce: time.Now().Unix(),
-	}
-
-	if a.HasIPv4() && a.HasIPv6() {
-		a.PeerV4 = a.Peer
-		a.PeerV4.IP = a.IPv4
-		a.PeerV6 = &*a.Peer
-		a.PeerV6.IP = a.IPv6
-	} else if a.HasIPv4() {
-		a.PeerV4 = a.Peer
-		a.PeerV4.IP = a.IPv4
-	} else if a.HasIPv6() {
-		a.PeerV6 = a.Peer
-		a.PeerV6.IP = a.IPv6
-	} else {
-		panic("models: announce must have an IP")
-	}
-	return
-}
-
 func (p *Peer) HasIPv4() bool {
 	return !p.HasIPv6()
 }
@@ -191,8 +141,8 @@ type Announce struct {
 	Torrent *Torrent `json:"-"`
 	User    *User    `json:"-"`
 	Peer    *Peer    `json:"-"`
-	PeerV4  *Peer    `json:"-"`
-	PeerV6  *Peer    `json:"-"`
+	PeerV4  *Peer    `json:"-"` // Only valid if HasIPv4() is true.
+	PeerV6  *Peer    `json:"-"` // Only valid if HasIPv6() is true.
 }
 
 // ClientID returns the part of a PeerID that identifies a Peer's client
@@ -218,6 +168,47 @@ func (a *Announce) HasIPv4() bool {
 
 func (a *Announce) HasIPv6() bool {
 	return a.IPv6 != nil
+}
+
+// BuildPeer creates the Peer representation of an Announce. When provided nil
+// for the user or torrent parameter, it creates a Peer{UserID: 0} or
+// Peer{TorrentID: 0}, respectively. BuildPeer creates one peer for each IP
+// in the announce, and panics if there are none.
+func (a *Announce) BuildPeer(u *User, t *Torrent) {
+	a.Peer = &Peer{
+		ID:           a.PeerID,
+		Port:         a.Port,
+		Uploaded:     a.Uploaded,
+		Downloaded:   a.Downloaded,
+		Left:         a.Left,
+		LastAnnounce: time.Now().Unix(),
+	}
+
+	if t != nil {
+		a.Peer.TorrentID = t.ID
+		a.Torrent = t
+	}
+
+	if u != nil {
+		a.Peer.UserID = u.ID
+		a.User = u
+	}
+
+	if a.HasIPv4() && a.HasIPv6() {
+		a.PeerV4 = a.Peer
+		a.PeerV4.IP = a.IPv4
+		a.PeerV6 = &*a.Peer
+		a.PeerV6.IP = a.IPv6
+	} else if a.HasIPv4() {
+		a.PeerV4 = a.Peer
+		a.PeerV4.IP = a.IPv4
+	} else if a.HasIPv6() {
+		a.PeerV6 = a.Peer
+		a.PeerV6.IP = a.IPv6
+	} else {
+		panic("models: announce must have an IP")
+	}
+	return
 }
 
 // AnnounceDelta contains the changes to a Peer's state. These changes are
