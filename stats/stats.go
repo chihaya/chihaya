@@ -47,7 +47,7 @@ const (
 var DefaultStats *Stats
 
 type PeerClassStats struct {
-	Current uint64 // Current peer count.
+	Current int64  // Current peer count.
 	Joined  uint64 // Peers that announced.
 	Left    uint64 // Peers that paused or stopped.
 	Reaped  uint64 // Peers cleaned up after inactivity.
@@ -69,7 +69,7 @@ type PercentileTimes struct {
 type Stats struct {
 	Started time.Time // Time at which Chihaya was booted.
 
-	OpenConnections     uint64 `json:"Connections.Open"`
+	OpenConnections     int64  `json:"Connections.Open"`
 	ConnectionsAccepted uint64 `json:"Connections.Accepted"`
 	BytesTransmitted    uint64 `json:"BytesTransmitted"`
 
