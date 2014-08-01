@@ -87,43 +87,39 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 
 // Builds a partially populated AnnounceDelta, without the Snatched and Created
 // fields set.
-func newAnnounceDelta(a *models.Announce, t *models.Torrent) *models.AnnounceDelta {
-	var oldUp, oldDown uint64
+func newAnnounceDelta(ann *models.Announce, t *models.Torrent) *models.AnnounceDelta {
+	var oldUp, oldDown, rawDeltaUp, rawDeltaDown uint64
 
 	switch {
-	case t.InSeederPool(a.Peer):
-		oldPeer := t.Seeders[a.Peer.Key()]
+	case t.InSeederPool(ann.Peer):
+		oldPeer := t.Seeders[ann.Peer.Key()]
 		oldUp = oldPeer.Uploaded
 		oldDown = oldPeer.Downloaded
-	case t.InLeecherPool(a.Peer):
-		oldPeer := t.Leechers[a.Peer.Key()]
+	case t.InLeecherPool(ann.Peer):
+		oldPeer := t.Leechers[ann.Peer.Key()]
 		oldUp = oldPeer.Uploaded
 		oldDown = oldPeer.Downloaded
 	}
-
-	rawDeltaUp := a.Peer.Uploaded - oldUp
-	rawDeltaDown := a.Peer.Downloaded - oldDown
 
 	// Restarting a torrent may cause a delta to be negative.
-	if rawDeltaUp < 0 {
-		rawDeltaUp = 0
+	if ann.Peer.Uploaded > oldUp {
+		rawDeltaUp = ann.Peer.Uploaded - oldUp
+	}
+	if ann.Peer.Downloaded > oldDown {
+		rawDeltaDown = ann.Peer.Downloaded - oldDown
 	}
 
-	if rawDeltaDown < 0 {
-		rawDeltaDown = 0
-	}
+	uploaded := uint64(float64(rawDeltaUp) * ann.User.UpMultiplier * ann.Torrent.UpMultiplier)
+	downloaded := uint64(float64(rawDeltaDown) * ann.User.DownMultiplier * ann.Torrent.DownMultiplier)
 
-	uploaded := uint64(float64(rawDeltaUp) * a.User.UpMultiplier * a.Torrent.UpMultiplier)
-	downloaded := uint64(float64(rawDeltaDown) * a.User.DownMultiplier * a.Torrent.DownMultiplier)
-
-	if a.Config.FreeleechEnabled {
+	if ann.Config.FreeleechEnabled {
 		downloaded = 0
 	}
 
 	return &models.AnnounceDelta{
-		Peer:    a.Peer,
-		Torrent: a.Torrent,
-		User:    a.User,
+		Peer:    ann.Peer,
+		Torrent: ann.Torrent,
+		User:    ann.User,
 
 		Uploaded:      uploaded,
 		RawUploaded:   rawDeltaUp,
