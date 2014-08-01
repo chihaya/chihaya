@@ -6,6 +6,7 @@ package models
 
 import (
 	"net"
+	"strings"
 	"time"
 
 	"github.com/chihaya/chihaya/config"
@@ -57,9 +58,21 @@ type Peer struct {
 }
 
 type PeerList []Peer
+type PeerKey string
 
-// PeerMap is a map from PeerIDs to Peers.
-type PeerMap map[string]Peer
+func NewPeerKey(peerID, ipv string) (pk PeerKey) {
+	switch strings.ToLower(ipv) {
+	case "ipv4":
+		pk = PeerKey("IPv4" + peerID)
+	case "ipv6":
+		pk = PeerKey("IPv6" + peerID)
+	}
+
+	return pk
+}
+
+// PeerMap is a map from PeerKeys to Peers.
+type PeerMap map[PeerKey]Peer
 
 // NewPeer returns the Peer representation of an Announce. When provided nil
 // for the announce parameter, it panics. When provided nil for the user or
@@ -117,14 +130,14 @@ type Torrent struct {
 }
 
 // InSeederPool returns true if a peer is within a Torrent's map of seeders.
-func (t *Torrent) InSeederPool(p *Peer) (exists bool) {
-	_, exists = t.Seeders[p.ID]
+func (t *Torrent) InSeederPool(peerID, ipv string) (exists bool) {
+	_, exists = t.Seeders[NewPeerKey(peerID, ipv)]
 	return
 }
 
 // InLeecherPool returns true if a peer is within a Torrent's map of leechers.
-func (t *Torrent) InLeecherPool(p *Peer) (exists bool) {
-	_, exists = t.Leechers[p.ID]
+func (t *Torrent) InLeecherPool(peerID, ipv string) (exists bool) {
+	_, exists = t.Leechers[NewPeerKey(peerID, ipv)]
 	return
 }
 

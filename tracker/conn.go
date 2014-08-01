@@ -64,11 +64,11 @@ type Conn interface {
 	DeleteTorrent(infohash string) error
 	IncrementTorrentSnatches(infohash string) error
 
-	PutLeecher(infohash string, p *models.Peer) error
-	DeleteLeecher(infohash, peerID string) error
+	PutLeecher(infohash, ipv string, p *models.Peer) error
+	DeleteLeecher(infohash string, pk models.PeerKey) error
 
-	PutSeeder(infohash string, p *models.Peer) error
-	DeleteSeeder(infohash, peerID string) error
+	PutSeeder(infohash, ipv string, p *models.Peer) error
+	DeleteSeeder(infohash string, pk models.PeerKey) error
 
 	PurgeInactiveTorrent(infohash string) error
 	PurgeInactivePeers(purgeEmptyTorrents bool, before time.Time) error
