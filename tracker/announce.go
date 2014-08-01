@@ -54,6 +54,8 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 
 	ann.BuildPeer(user, torrent)
 
+	uploaded, downloaded := delta(ann)
+
 	created, err := updateSwarm(conn, ann)
 	if err != nil {
 		return err
@@ -65,8 +67,15 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 	}
 
 	if tkr.cfg.PrivateEnabled {
-		delta := models.NewAnnounceDelta(ann, created, snatched)
-		err = tkr.backend.RecordAnnounce(delta)
+		err = tkr.backend.RecordAnnounce(&models.AnnounceDelta{
+			Peer:       ann.Peer,
+			Torrent:    ann.Torrent,
+			User:       ann.User,
+			Created:    created,
+			Snatched:   snatched,
+			Uploaded:   uploaded,
+			Downloaded: downloaded,
+		})
 		if err != nil {
 			return err
 		}
@@ -78,6 +87,31 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 	}
 
 	return w.WriteAnnounce(newAnnounceResponse(ann))
+}
+
+func delta(a *models.Announce) (uploaded, downloaded uint64) {
+	var (
+		rawDeltaUp   = a.Peer.Uploaded - a.Uploaded
+		rawDeltaDown uint64
+	)
+
+	if !a.Config.FreeleechEnabled {
+		rawDeltaDown = a.Peer.Downloaded - a.Downloaded
+	}
+
+	// Restarting a torrent may cause a delta to be negative.
+	if rawDeltaUp < 0 {
+		rawDeltaUp = 0
+	}
+
+	if rawDeltaDown < 0 {
+		rawDeltaDown = 0
+	}
+
+	uploaded = uint64(float64(rawDeltaUp) * a.User.UpMultiplier * a.Torrent.UpMultiplier)
+	downloaded = uint64(float64(rawDeltaDown) * a.User.DownMultiplier * a.Torrent.DownMultiplier)
+
+	return
 }
 
 // updateSwarm handles the changes to a torrent's swarm given an announce.

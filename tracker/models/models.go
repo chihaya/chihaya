@@ -239,40 +239,6 @@ type AnnounceResponse struct {
 	Compact bool
 }
 
-// NewAnnounceDelta calculates a Peer's download and upload deltas between
-// Announces and generates an AnnounceDelta.
-func NewAnnounceDelta(a *Announce, created, snatched bool) *AnnounceDelta {
-	var (
-		rawDeltaUp   = a.Peer.Uploaded - a.Uploaded
-		rawDeltaDown uint64
-	)
-
-	if !a.Config.FreeleechEnabled {
-		rawDeltaDown = a.Peer.Downloaded - a.Downloaded
-	}
-
-	// Restarting a torrent may cause a delta to be negative.
-	if rawDeltaUp < 0 {
-		rawDeltaUp = 0
-	}
-
-	if rawDeltaDown < 0 {
-		rawDeltaDown = 0
-	}
-
-	return &AnnounceDelta{
-		Peer:    a.Peer,
-		Torrent: a.Torrent,
-		User:    a.User,
-
-		Created:  created,
-		Snatched: snatched,
-
-		Uploaded:   uint64(float64(rawDeltaUp) * a.User.UpMultiplier * a.Torrent.UpMultiplier),
-		Downloaded: uint64(float64(rawDeltaDown) * a.User.DownMultiplier * a.Torrent.DownMultiplier),
-	}
-}
-
 // Scrape is a Scrape by a Peer.
 type Scrape struct {
 	Config *config.Config `json:"config"`
