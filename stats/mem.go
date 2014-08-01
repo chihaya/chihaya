@@ -29,13 +29,13 @@ type BasicMemStats struct {
 	PauseTotalNs uint64
 }
 
-type MemStatsPlaceholder interface{}
+type memStatsPlaceholder interface{}
 
 // MemStatsWrapper wraps runtime.MemStats with an optionally less verbose JSON
 // representation. The JSON field names correspond exactly to the runtime field
 // names to avoid reimplementing the entire struct.
 type MemStatsWrapper struct {
-	MemStatsPlaceholder `json:"Memory"`
+	memStatsPlaceholder `json:"Memory"`
 
 	basic *BasicMemStats
 	cache *runtime.MemStats
@@ -45,10 +45,10 @@ func NewMemStatsWrapper(verbose bool) *MemStatsWrapper {
 	stats := &MemStatsWrapper{cache: &runtime.MemStats{}}
 
 	if verbose {
-		stats.MemStatsPlaceholder = stats.cache
+		stats.memStatsPlaceholder = stats.cache
 	} else {
 		stats.basic = &BasicMemStats{}
-		stats.MemStatsPlaceholder = stats.basic
+		stats.memStatsPlaceholder = stats.basic
 	}
 	return stats
 }

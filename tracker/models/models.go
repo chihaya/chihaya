@@ -61,9 +61,9 @@ type PeerKey string
 func NewPeerKey(peerID string, ipv6 bool) PeerKey {
 	if ipv6 {
 		return PeerKey("6:" + peerID)
-	} else {
-		return PeerKey("4:" + peerID)
 	}
+
+	return PeerKey("4:" + peerID)
 }
 
 // PeerMap is a map from PeerKeys to Peers.

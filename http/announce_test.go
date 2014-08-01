@@ -56,13 +56,13 @@ func TestTorrentPurging(t *testing.T) {
 	}
 	defer srv.Close()
 
-	torrentApiPath := srv.URL + "/torrents/" + url.QueryEscape(infoHash)
+	torrentAPIPath := srv.URL + "/torrents/" + url.QueryEscape(infoHash)
 
 	// Add one seeder.
 	peer := makePeerParams("peer1", true)
 	announce(peer, srv)
 
-	_, status, err := fetchPath(torrentApiPath)
+	_, status, err := fetchPath(torrentAPIPath)
 	if err != nil {
 		t.Fatal(err)
 	} else if status != http.StatusOK {
@@ -74,7 +74,7 @@ func TestTorrentPurging(t *testing.T) {
 	peer["event"] = "stopped"
 	announce(peer, srv)
 
-	_, status, err = fetchPath(torrentApiPath)
+	_, status, err = fetchPath(torrentAPIPath)
 	if err != nil {
 		t.Fatal(err)
 	} else if status != http.StatusNotFound {
@@ -92,13 +92,13 @@ func TestStalePeerPurging(t *testing.T) {
 	}
 	defer srv.Close()
 
-	torrentApiPath := srv.URL + "/torrents/" + url.QueryEscape(infoHash)
+	torrentAPIPath := srv.URL + "/torrents/" + url.QueryEscape(infoHash)
 
 	// Add one seeder.
 	peer1 := makePeerParams("peer1", true)
 	announce(peer1, srv)
 
-	_, status, err := fetchPath(torrentApiPath)
+	_, status, err := fetchPath(torrentAPIPath)
 	if err != nil {
 		t.Fatal(err)
 	} else if status != http.StatusOK {
@@ -114,7 +114,7 @@ func TestStalePeerPurging(t *testing.T) {
 	// Let them both expire.
 	time.Sleep(30 * time.Millisecond)
 
-	_, status, err = fetchPath(torrentApiPath)
+	_, status, err = fetchPath(torrentAPIPath)
 	if err != nil {
 		t.Fatal(err)
 	} else if status != http.StatusNotFound {

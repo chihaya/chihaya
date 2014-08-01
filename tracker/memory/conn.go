@@ -210,7 +210,7 @@ func (c *Conn) PurgeInactivePeers(purgeEmptyTorrents bool, before time.Time) err
 	index := 0
 	keys := make([]string, len(c.torrents))
 
-	for infohash, _ := range c.torrents {
+	for infohash := range c.torrents {
 		keys[index] = infohash
 		index++
 	}
