@@ -56,7 +56,7 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 
 	var uploaded, downloaded uint64
 	if tkr.cfg.PrivateEnabled {
-		uploaded, downloaded = delta(ann)
+		uploaded, downloaded = delta(ann, torrent)
 	}
 
 	created, err := updateSwarm(conn, ann)
@@ -92,14 +92,26 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 	return w.WriteAnnounce(newAnnounceResponse(ann))
 }
 
-func delta(a *models.Announce) (uploaded, downloaded uint64) {
+func delta(a *models.Announce, t *models.Torrent) (uploaded, downloaded uint64) {
+	var oldUp, oldDown uint64
+	switch {
+	case t.InSeederPool(a.Peer):
+		oldPeer := t.Seeders[a.Peer.Key()]
+		oldUp = oldPeer.Uploaded
+		oldDown = oldPeer.Downloaded
+	case t.InLeecherPool(a.Peer):
+		oldPeer := t.Leechers[a.Peer.Key()]
+		oldUp = oldPeer.Uploaded
+		oldDown = oldPeer.Downloaded
+	}
+
 	var (
-		rawDeltaUp   = a.Peer.Uploaded - a.Uploaded
+		rawDeltaUp   = a.Peer.Uploaded - oldUp
 		rawDeltaDown uint64
 	)
 
 	if !a.Config.FreeleechEnabled {
-		rawDeltaDown = a.Peer.Downloaded - a.Downloaded
+		rawDeltaDown = a.Peer.Downloaded - oldDown
 	}
 
 	// Restarting a torrent may cause a delta to be negative.
