@@ -54,36 +54,36 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 		return err
 	}
 
-	peer := models.NewPeer(ann, user, torrent)
+	var createdIPv4, createdIPv6, snatchedIPv4, snatchedIPv6 bool
+	peer, peerv4, peerv6 := models.NewPeer(ann, user, torrent)
 
-	var createdIPv4, createdIPv6 bool
-	if peer.HasIPv4() {
-		createdIPv4, err = updateSwarm(conn, ann, peer, torrent, "ipv4")
+	if peerv4 != nil {
+		createdIPv4, err = updateSwarm(conn, ann, peerv4, torrent)
 		if err != nil {
 			return err
 		}
 	}
-	if peer.HasIPv6() {
-		createdIPv6, err = updateSwarm(conn, ann, peer, torrent, "ipv6")
+	if peerv6 != nil {
+		createdIPv6, err = updateSwarm(conn, ann, peerv6, torrent)
 		if err != nil {
 			return err
 		}
 	}
+
+	if peerv4 != nil {
+		snatchedIPv4, err = handleEvent(conn, ann, peerv4, user, torrent)
+		if err != nil {
+			return err
+		}
+	}
+	if peerv6 != nil {
+		snatchedIPv6, err = handleEvent(conn, ann, peerv6, user, torrent)
+		if err != nil {
+			return err
+		}
+	}
+
 	created := createdIPv4 || createdIPv6
-
-	var snatchedIPv4, snatchedIPv6 bool
-	if peer.HasIPv4() {
-		snatchedIPv4, err = handleEvent(conn, ann, peer, user, torrent, "ipv4")
-		if err != nil {
-			return err
-		}
-	}
-	if peer.HasIPv6() {
-		snatchedIPv6, err = handleEvent(conn, ann, peer, user, torrent, "ipv6")
-		if err != nil {
-			return err
-		}
-	}
 	snatched := snatchedIPv4 || snatchedIPv6
 
 	if tkr.cfg.PrivateEnabled {
@@ -103,23 +103,23 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 }
 
 // updateSwarm handles the changes to a torrent's swarm given an announce.
-func updateSwarm(c Conn, ann *models.Announce, p *models.Peer, t *models.Torrent, ipv string) (created bool, err error) {
+func updateSwarm(c Conn, ann *models.Announce, p *models.Peer, t *models.Torrent) (created bool, err error) {
 	c.TouchTorrent(t.Infohash)
 
 	switch {
-	case t.InSeederPool(p.ID, ipv):
-		err = c.PutSeeder(t.Infohash, ipv, p)
+	case t.InSeederPool(p):
+		err = c.PutSeeder(t.Infohash, p)
 		if err != nil {
 			return
 		}
-		t.Seeders[models.NewPeerKey(p.ID, ipv)] = *p
+		t.Seeders[p.Key()] = *p
 
-	case t.InLeecherPool(p.ID, ipv):
-		err = c.PutLeecher(t.Infohash, ipv, p)
+	case t.InLeecherPool(p):
+		err = c.PutLeecher(t.Infohash, p)
 		if err != nil {
 			return
 		}
-		t.Leechers[models.NewPeerKey(p.ID, ipv)] = *p
+		t.Leechers[p.Key()] = *p
 
 	default:
 		if ann.Event != "" && ann.Event != "started" {
@@ -128,20 +128,20 @@ func updateSwarm(c Conn, ann *models.Announce, p *models.Peer, t *models.Torrent
 		}
 
 		if ann.Left == 0 {
-			err = c.PutSeeder(t.Infohash, ipv, p)
+			err = c.PutSeeder(t.Infohash, p)
 			if err != nil {
 				return
 			}
-			t.Seeders[models.NewPeerKey(p.ID, ipv)] = *p
-			stats.RecordPeerEvent(stats.NewSeed, ipv)
+			t.Seeders[p.Key()] = *p
+			stats.RecordPeerEvent(stats.NewSeed, p.HasIPv6())
 
 		} else {
-			err = c.PutLeecher(t.Infohash, ipv, p)
+			err = c.PutLeecher(t.Infohash, p)
 			if err != nil {
 				return
 			}
-			t.Leechers[models.NewPeerKey(p.ID, ipv)] = *p
-			stats.RecordPeerEvent(stats.NewLeech, ipv)
+			t.Leechers[p.Key()] = *p
+			stats.RecordPeerEvent(stats.NewLeech, p.HasIPv6())
 		}
 		created = true
 	}
@@ -151,28 +151,26 @@ func updateSwarm(c Conn, ann *models.Announce, p *models.Peer, t *models.Torrent
 
 // handleEvent checks to see whether an announce has an event and if it does,
 // properly handles that event.
-func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t *models.Torrent, ipv string) (snatched bool, err error) {
-	peerkey := models.NewPeerKey(p.ID, ipv)
-
+func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t *models.Torrent) (snatched bool, err error) {
 	switch {
 	case ann.Event == "stopped" || ann.Event == "paused":
 		// updateSwarm checks if the peer is active on the torrent,
 		// so one of these branches must be followed.
-		if t.InSeederPool(p.ID, ipv) {
-			err = c.DeleteSeeder(t.Infohash, peerkey)
+		if t.InSeederPool(p) {
+			err = c.DeleteSeeder(t.Infohash, p)
 			if err != nil {
 				return
 			}
-			delete(t.Seeders, models.NewPeerKey(p.ID, ipv))
-			stats.RecordPeerEvent(stats.DeletedSeed, ipv)
+			delete(t.Seeders, p.Key())
+			stats.RecordPeerEvent(stats.DeletedSeed, p.HasIPv6())
 
-		} else if t.InLeecherPool(p.ID, ipv) {
-			err = c.DeleteLeecher(t.Infohash, peerkey)
+		} else if t.InLeecherPool(p) {
+			err = c.DeleteLeecher(t.Infohash, p)
 			if err != nil {
 				return
 			}
-			delete(t.Leechers, models.NewPeerKey(p.ID, ipv))
-			stats.RecordPeerEvent(stats.DeletedLeech, ipv)
+			delete(t.Leechers, p.Key())
+			stats.RecordPeerEvent(stats.DeletedLeech, p.HasIPv6())
 		}
 
 	case ann.Event == "completed":
@@ -190,40 +188,41 @@ func handleEvent(c Conn, ann *models.Announce, p *models.Peer, u *models.User, t
 			u.Snatches++
 		}
 
-		if t.InLeecherPool(p.ID, ipv) {
-			err = leecherFinished(c, t, p, ipv)
+		if t.InLeecherPool(p) {
+			err = leecherFinished(c, t, p)
 		} else {
 			err = models.ErrBadRequest
 		}
 
 		// If one of the dual-stacked peers is already a seeder, they have already
 		// snatched.
-		if !(t.InSeederPool(p.ID, "ipv4") || t.InSeederPool(p.ID, "ipv6")) {
+		_, v4seed := t.Seeders[models.NewPeerKey(p.ID, false)]
+		_, v6seed := t.Seeders[models.NewPeerKey(p.ID, true)]
+		if !(v4seed || v6seed) {
 			snatched = true
 		}
 
-	case t.InLeecherPool(p.ID, ipv) && ann.Left == 0:
+	case t.InLeecherPool(p) && ann.Left == 0:
 		// A leecher completed but the event was never received.
-		err = leecherFinished(c, t, p, ipv)
+		err = leecherFinished(c, t, p)
 	}
 
 	return
 }
 
 // leecherFinished moves a peer from the leeching pool to the seeder pool.
-func leecherFinished(c Conn, t *models.Torrent, p *models.Peer, ipv string) error {
-	peerkey := models.NewPeerKey(p.ID, ipv)
-	if err := c.DeleteLeecher(t.Infohash, peerkey); err != nil {
+func leecherFinished(c Conn, t *models.Torrent, p *models.Peer) error {
+	if err := c.DeleteLeecher(t.Infohash, p); err != nil {
 		return err
 	}
-	delete(t.Leechers, peerkey)
+	delete(t.Leechers, p.Key())
 
-	if err := c.PutSeeder(t.Infohash, ipv, p); err != nil {
+	if err := c.PutSeeder(t.Infohash, p); err != nil {
 		return err
 	}
-	t.Seeders[peerkey] = *p
+	t.Seeders[p.Key()] = *p
 
-	stats.RecordPeerEvent(stats.Completed, ipv)
+	stats.RecordPeerEvent(stats.Completed, p.HasIPv6())
 	return nil
 }
 
@@ -276,7 +275,7 @@ func appendPeers(ipv4s, ipv6s models.PeerList, ann *models.Announce, announcer *
 			continue
 		}
 
-		if announcer.HasIPv6() && peer.HasIPv6() {
+		if ann.HasIPv6() && peer.HasIPv6() {
 			ipv6s = append(ipv6s, peer)
 			count++
 		} else if peer.HasIPv4() {
@@ -294,12 +293,12 @@ func appendSubnetPeers(ipv4s, ipv6s models.PeerList, ann *models.Announce, annou
 	var subnetIPv4 net.IPNet
 	var subnetIPv6 net.IPNet
 
-	if announcer.HasIPv4() {
-		subnetIPv4 = net.IPNet{announcer.IPv4, net.CIDRMask(ann.Config.PreferredIPv4Subnet, 32)}
+	if ann.HasIPv4() {
+		subnetIPv4 = net.IPNet{ann.IPv4, net.CIDRMask(ann.Config.PreferredIPv4Subnet, 32)}
 	}
 
-	if announcer.HasIPv6() {
-		subnetIPv6 = net.IPNet{announcer.IPv6, net.CIDRMask(ann.Config.PreferredIPv6Subnet, 128)}
+	if ann.HasIPv6() {
+		subnetIPv6 = net.IPNet{ann.IPv6, net.CIDRMask(ann.Config.PreferredIPv6Subnet, 128)}
 	}
 
 	// Iterate over the peers twice: first add only peers in the same subnet and
@@ -311,14 +310,14 @@ func appendSubnetPeers(ipv4s, ipv6s models.PeerList, ann *models.Announce, annou
 				break
 			}
 
-			inSubnet4 := peer.HasIPv4() && subnetIPv4.Contains(peer.IPv4)
-			inSubnet6 := peer.HasIPv6() && subnetIPv6.Contains(peer.IPv6)
+			inSubnet4 := peer.HasIPv4() && subnetIPv4.Contains(peer.IP)
+			inSubnet6 := peer.HasIPv6() && subnetIPv6.Contains(peer.IP)
 
 			if peersEquivalent(&peer, announcer) || checkInSubnet != (inSubnet4 || inSubnet6) {
 				continue
 			}
 
-			if announcer.HasIPv6() && peer.HasIPv6() {
+			if ann.HasIPv6() && peer.HasIPv6() {
 				ipv6s = append(ipv6s, peer)
 				count++
 			} else if peer.HasIPv4() {

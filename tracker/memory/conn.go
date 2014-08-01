@@ -93,7 +93,7 @@ func (c *Conn) TouchTorrent(infohash string) error {
 	return nil
 }
 
-func (c *Conn) DeleteLeecher(infohash string, pk models.PeerKey) error {
+func (c *Conn) DeleteLeecher(infohash string, p *models.Peer) error {
 	c.torrentsM.Lock()
 	defer c.torrentsM.Unlock()
 
@@ -101,12 +101,12 @@ func (c *Conn) DeleteLeecher(infohash string, pk models.PeerKey) error {
 	if !ok {
 		return models.ErrTorrentDNE
 	}
-	delete(t.Leechers, pk)
+	delete(t.Leechers, p.Key())
 
 	return nil
 }
 
-func (c *Conn) DeleteSeeder(infohash string, pk models.PeerKey) error {
+func (c *Conn) DeleteSeeder(infohash string, p *models.Peer) error {
 	c.torrentsM.Lock()
 	defer c.torrentsM.Unlock()
 
@@ -114,12 +114,12 @@ func (c *Conn) DeleteSeeder(infohash string, pk models.PeerKey) error {
 	if !ok {
 		return models.ErrTorrentDNE
 	}
-	delete(t.Seeders, pk)
+	delete(t.Seeders, p.Key())
 
 	return nil
 }
 
-func (c *Conn) PutLeecher(infohash, ipv string, p *models.Peer) error {
+func (c *Conn) PutLeecher(infohash string, p *models.Peer) error {
 	c.torrentsM.Lock()
 	defer c.torrentsM.Unlock()
 
@@ -127,12 +127,12 @@ func (c *Conn) PutLeecher(infohash, ipv string, p *models.Peer) error {
 	if !ok {
 		return models.ErrTorrentDNE
 	}
-	t.Leechers[models.NewPeerKey(p.ID, ipv)] = *p
+	t.Leechers[p.Key()] = *p
 
 	return nil
 }
 
-func (c *Conn) PutSeeder(infohash, ipv string, p *models.Peer) error {
+func (c *Conn) PutSeeder(infohash string, p *models.Peer) error {
 	c.torrentsM.Lock()
 	defer c.torrentsM.Unlock()
 
@@ -140,7 +140,7 @@ func (c *Conn) PutSeeder(infohash, ipv string, p *models.Peer) error {
 	if !ok {
 		return models.ErrTorrentDNE
 	}
-	t.Seeders[models.NewPeerKey(p.ID, ipv)] = *p
+	t.Seeders[p.Key()] = *p
 
 	return nil
 }
@@ -244,14 +244,14 @@ func (c *Conn) PurgeInactivePeers(purgeEmptyTorrents bool, before time.Time) err
 		for key, peer := range torrent.Seeders {
 			if peer.LastAnnounce <= unixtime {
 				delete(torrent.Seeders, key)
-				stats.RecordPeerEvent(stats.ReapedSeed, string(key[:4]))
+				stats.RecordPeerEvent(stats.ReapedSeed, peer.HasIPv6())
 			}
 		}
 
 		for key, peer := range torrent.Leechers {
 			if peer.LastAnnounce <= unixtime {
 				delete(torrent.Leechers, key)
-				stats.RecordPeerEvent(stats.ReapedLeech, string(key[:4]))
+				stats.RecordPeerEvent(stats.ReapedLeech, peer.HasIPv6())
 			}
 		}
 

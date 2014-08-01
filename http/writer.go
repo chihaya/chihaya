@@ -70,12 +70,12 @@ func compactPeers(ipv6 bool, peers models.PeerList) []byte {
 
 	if ipv6 {
 		for _, peer := range peers {
-			compactPeers.Write(peer.IPv6)
+			compactPeers.Write(peer.IP)
 			compactPeers.Write([]byte{byte(peer.Port >> 8), byte(peer.Port & 0xff)})
 		}
 	} else {
 		for _, peer := range peers {
-			compactPeers.Write(peer.IPv4)
+			compactPeers.Write(peer.IP)
 			compactPeers.Write([]byte{byte(peer.Port >> 8), byte(peer.Port & 0xff)})
 		}
 	}
@@ -94,16 +94,8 @@ func peersList(ipv4s, ipv6s models.PeerList) (peers []bencode.Dict) {
 }
 
 func peerDict(peer *models.Peer, ipv6 bool) bencode.Dict {
-	var ip string
-
-	if ipv6 {
-		ip = peer.IPv6.String()
-	} else {
-		ip = peer.IPv4.String()
-	}
-
 	return bencode.Dict{
-		"ip":      ip,
+		"ip":      peer.IP.String(),
 		"peer id": peer.ID,
 		"port":    peer.Port,
 	}

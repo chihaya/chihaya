@@ -141,12 +141,11 @@ func (s *Stats) RecordEvent(event int) {
 	s.events <- event
 }
 
-func (s *Stats) RecordPeerEvent(event int, ipv string) {
-	switch ipv {
-	case "ipv4":
-		s.ipv4PeerEvents <- event
-	case "ipv6":
+func (s *Stats) RecordPeerEvent(event int, ipv6 bool) {
+	if ipv6 {
 		s.ipv6PeerEvents <- event
+	} else {
+		s.ipv4PeerEvents <- event
 	}
 }
 
@@ -268,8 +267,8 @@ func RecordEvent(event int) {
 }
 
 // RecordPeerEvent broadcasts a peer event to the default stats queue.
-func RecordPeerEvent(event int, ipv string) {
-	DefaultStats.RecordPeerEvent(event, ipv)
+func RecordPeerEvent(event int, ipv6 bool) {
+	DefaultStats.RecordPeerEvent(event, ipv6)
 }
 
 // RecordTiming broadcasts a timing event to the default stats queue.

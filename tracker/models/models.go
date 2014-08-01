@@ -6,7 +6,6 @@ package models
 
 import (
 	"net"
-	"strings"
 	"time"
 
 	"github.com/chihaya/chihaya/config"
@@ -47,8 +46,7 @@ type Peer struct {
 	UserID    uint64 `json:"user_id"`
 	TorrentID uint64 `json:"torrent_id"`
 
-	IPv4 net.IP `json:"ipv4,omitempty"`
-	IPv6 net.IP `json:"ipv6,omitempty"`
+	IP   net.IP `json:"ip,omitempty"`
 	Port uint64 `json:"port"`
 
 	Uploaded     uint64 `json:"uploaded"`
@@ -60,15 +58,12 @@ type Peer struct {
 type PeerList []Peer
 type PeerKey string
 
-func NewPeerKey(peerID, ipv string) (pk PeerKey) {
-	switch strings.ToLower(ipv) {
-	case "ipv4":
-		pk = PeerKey("IPv4" + peerID)
-	case "ipv6":
-		pk = PeerKey("IPv6" + peerID)
+func NewPeerKey(peerID string, ipv6 bool) PeerKey {
+	if ipv6 {
+		return PeerKey("6:" + peerID)
+	} else {
+		return PeerKey("4:" + peerID)
 	}
-
-	return pk
 }
 
 // PeerMap is a map from PeerKeys to Peers.
@@ -78,9 +73,9 @@ type PeerMap map[PeerKey]Peer
 // for the announce parameter, it panics. When provided nil for the user or
 // torrent parameter, it returns a Peer{UserID: 0} or Peer{TorrentID: 0}
 // respectively.
-func NewPeer(a *Announce, u *User, t *Torrent) *Peer {
+func NewPeer(a *Announce, u *User, t *Torrent) (peer *Peer, v4 *Peer, v6 *Peer) {
 	if a == nil {
-		panic("tracker: announce cannot equal nil")
+		panic("models: announce cannot equal nil")
 	}
 
 	var userID uint64
@@ -93,26 +88,44 @@ func NewPeer(a *Announce, u *User, t *Torrent) *Peer {
 		torrentID = t.ID
 	}
 
-	return &Peer{
+	peer = &Peer{
 		ID:           a.PeerID,
 		UserID:       userID,
 		TorrentID:    torrentID,
-		IPv4:         a.IPv4,
-		IPv6:         a.IPv6,
 		Port:         a.Port,
 		Uploaded:     a.Uploaded,
 		Downloaded:   a.Downloaded,
 		Left:         a.Left,
 		LastAnnounce: time.Now().Unix(),
 	}
+
+	if a.IPv4 != nil && a.IPv6 != nil {
+		v4 = peer
+		v4.IP = a.IPv4
+		v6 = &*peer
+		v6.IP = a.IPv6
+	} else if a.IPv4 != nil {
+		v4 = peer
+		v4.IP = a.IPv4
+	} else if a.IPv6 != nil {
+		v6 = peer
+		v6.IP = a.IPv6
+	} else {
+		panic("models: announce must have an IP")
+	}
+	return
 }
 
 func (p *Peer) HasIPv4() bool {
-	return p.IPv4 != nil
+	return !p.HasIPv6()
 }
 
 func (p *Peer) HasIPv6() bool {
-	return p.IPv6 != nil
+	return len(p.IP) == net.IPv6len
+}
+
+func (p *Peer) Key() PeerKey {
+	return NewPeerKey(p.ID, p.HasIPv6())
 }
 
 // Torrent is a swarm for a given torrent file.
@@ -130,14 +143,14 @@ type Torrent struct {
 }
 
 // InSeederPool returns true if a peer is within a Torrent's map of seeders.
-func (t *Torrent) InSeederPool(peerID, ipv string) (exists bool) {
-	_, exists = t.Seeders[NewPeerKey(peerID, ipv)]
+func (t *Torrent) InSeederPool(p *Peer) (exists bool) {
+	_, exists = t.Seeders[p.Key()]
 	return
 }
 
 // InLeecherPool returns true if a peer is within a Torrent's map of leechers.
-func (t *Torrent) InLeecherPool(peerID, ipv string) (exists bool) {
-	_, exists = t.Leechers[NewPeerKey(peerID, ipv)]
+func (t *Torrent) InLeecherPool(p *Peer) (exists bool) {
+	_, exists = t.Leechers[p.Key()]
 	return
 }
 
@@ -189,6 +202,14 @@ func (a Announce) ClientID() (clientID string) {
 	}
 
 	return
+}
+
+func (a Announce) HasIPv4() bool {
+	return a.IPv4 != nil
+}
+
+func (a Announce) HasIPv6() bool {
+	return a.IPv6 != nil
 }
 
 // AnnounceDelta contains the changes to a Peer's state. These changes are
