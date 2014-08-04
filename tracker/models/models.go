@@ -2,15 +2,15 @@
 // Use of this source code is governed by the BSD 2-Clause license,
 // which can be found in the LICENSE file.
 
+// Package models implements the common data types used throughout a BitTorrent
+// tracker.
 package models
 
 import (
 	"net"
-	"sync"
 	"time"
 
 	"github.com/chihaya/chihaya/config"
-	"github.com/chihaya/chihaya/stats"
 )
 
 var (
@@ -42,13 +42,26 @@ type NotFoundError ClientError
 func (e ClientError) Error() string   { return string(e) }
 func (e NotFoundError) Error() string { return string(e) }
 
+type PeerList []Peer
+type PeerKey string
+
+func NewPeerKey(peerID string, ipv6 bool) PeerKey {
+	if ipv6 {
+		return PeerKey("6:" + peerID)
+	}
+
+	return PeerKey("4:" + peerID)
+}
+
 // Peer is a participant in a swarm.
 type Peer struct {
 	ID        string `json:"id"`
 	UserID    uint64 `json:"user_id"`
 	TorrentID uint64 `json:"torrent_id"`
 
-	IP   net.IP `json:"ip,omitempty"` // Always has length net.IPv4len if IPv4, and net.IPv6len if IPv6
+	// Always has length net.IPv4len if IPv4, and net.IPv6len if IPv6
+	IP net.IP `json:"ip,omitempty"`
+
 	Port uint64 `json:"port"`
 
 	Uploaded     uint64 `json:"uploaded"`
@@ -67,160 +80,6 @@ func (p *Peer) HasIPv6() bool {
 
 func (p *Peer) Key() PeerKey {
 	return NewPeerKey(p.ID, p.HasIPv6())
-}
-
-type PeerList []Peer
-type PeerKey string
-
-func NewPeerKey(peerID string, ipv6 bool) PeerKey {
-	if ipv6 {
-		return PeerKey("6:" + peerID)
-	}
-
-	return PeerKey("4:" + peerID)
-}
-
-// PeerMap is a map from PeerKeys to Peers.
-type PeerMap struct {
-	peers map[PeerKey]Peer
-	sync.RWMutex
-}
-
-func NewPeerMap() PeerMap {
-	return PeerMap{
-		peers: make(map[PeerKey]Peer),
-	}
-}
-
-func (pm *PeerMap) Contains(pk PeerKey) (exists bool) {
-	pm.RLock()
-	defer pm.RUnlock()
-
-	_, exists = pm.peers[pk]
-
-	return
-}
-
-func (pm *PeerMap) LookUp(pk PeerKey) (peer Peer, exists bool) {
-	pm.RLock()
-	defer pm.RUnlock()
-
-	peer, exists = pm.peers[pk]
-
-	return
-}
-
-func (pm *PeerMap) Put(p Peer) {
-	pm.Lock()
-	defer pm.Unlock()
-
-	pm.peers[p.Key()] = p
-}
-
-func (pm *PeerMap) Delete(pk PeerKey) {
-	pm.Lock()
-	defer pm.Unlock()
-
-	delete(pm.peers, pk)
-}
-
-func (pm *PeerMap) Len() int {
-	pm.RLock()
-	defer pm.RUnlock()
-
-	return len(pm.peers)
-}
-
-func (pm *PeerMap) Purge(unixtime int64) {
-	pm.Lock()
-	defer pm.Unlock()
-
-	for key, peer := range pm.peers {
-		if peer.LastAnnounce <= unixtime {
-			delete(pm.peers, key)
-			stats.RecordPeerEvent(stats.ReapedSeed, peer.HasIPv6())
-		}
-	}
-}
-
-// AppendPeers implements the logic of adding peers to given IPv4 or IPv6 lists.
-func (pm *PeerMap) AppendPeers(ipv4s, ipv6s PeerList, ann *Announce, wanted int) (PeerList, PeerList) {
-	if ann.Config.PreferredSubnet {
-		return pm.AppendSubnetPeers(ipv4s, ipv6s, ann, wanted)
-	}
-
-	pm.Lock()
-	defer pm.Unlock()
-
-	count := 0
-	for _, peer := range pm.peers {
-		if count >= wanted {
-			break
-		} else if peersEquivalent(&peer, ann.Peer) {
-			continue
-		}
-
-		if ann.HasIPv6() && peer.HasIPv6() {
-			ipv6s = append(ipv6s, peer)
-			count++
-		} else if peer.HasIPv4() {
-			ipv4s = append(ipv4s, peer)
-			count++
-		}
-	}
-
-	return ipv4s, ipv6s
-}
-
-// peersEquivalent checks if two peers represent the same entity.
-func peersEquivalent(a, b *Peer) bool {
-	return a.ID == b.ID || a.UserID != 0 && a.UserID == b.UserID
-}
-
-// AppendSubnetPeers is an alternative version of appendPeers used when the
-// config variable PreferredSubnet is enabled.
-func (pm *PeerMap) AppendSubnetPeers(ipv4s, ipv6s PeerList, ann *Announce, wanted int) (PeerList, PeerList) {
-	var subnetIPv4 net.IPNet
-	var subnetIPv6 net.IPNet
-
-	if ann.HasIPv4() {
-		subnetIPv4 = net.IPNet{ann.IPv4, net.CIDRMask(ann.Config.PreferredIPv4Subnet, 32)}
-	}
-
-	if ann.HasIPv6() {
-		subnetIPv6 = net.IPNet{ann.IPv6, net.CIDRMask(ann.Config.PreferredIPv6Subnet, 128)}
-	}
-
-	pm.Lock()
-	defer pm.Unlock()
-
-	// Iterate over the peers twice: first add only peers in the same subnet and
-	// if we still need more peers grab ones that haven't already been added.
-	count := 0
-	for _, checkInSubnet := range [2]bool{true, false} {
-		for _, peer := range pm.peers {
-			if count >= wanted {
-				break
-			}
-
-			inSubnet4 := peer.HasIPv4() && subnetIPv4.Contains(peer.IP)
-			inSubnet6 := peer.HasIPv6() && subnetIPv6.Contains(peer.IP)
-
-			if peersEquivalent(&peer, ann.Peer) || checkInSubnet != (inSubnet4 || inSubnet6) {
-				continue
-			}
-
-			if ann.HasIPv6() && peer.HasIPv6() {
-				ipv6s = append(ipv6s, peer)
-				count++
-			} else if peer.HasIPv4() {
-				ipv4s = append(ipv4s, peer)
-				count++
-			}
-		}
-	}
-
-	return ipv4s, ipv6s
 }
 
 // Torrent is a swarm for a given torrent file.
