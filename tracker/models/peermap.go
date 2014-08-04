@@ -5,6 +5,7 @@
 package models
 
 import (
+	"encoding/json"
 	"net"
 	"sync"
 
@@ -66,6 +67,26 @@ func (pm *PeerMap) Len() int {
 	defer pm.RUnlock()
 
 	return len(pm.peers)
+}
+
+func (pm *PeerMap) MarshalJSON() ([]byte, error) {
+	pm.RLock()
+	defer pm.RUnlock()
+	return json.Marshal(pm.peers)
+}
+
+func (pm *PeerMap) UnmarshalJSON(b []byte) error {
+	pm.Lock()
+	defer pm.Unlock()
+
+	peers := make(map[PeerKey]Peer)
+	err := json.Unmarshal(b, &peers)
+	if err != nil {
+		return err
+	}
+
+	pm.peers = peers
+	return nil
 }
 
 // Purge iterates over all of the peers within a PeerMap and deletes them if
