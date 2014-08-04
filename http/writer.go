@@ -111,8 +111,8 @@ func filesDict(torrents []*models.Torrent) bencode.Dict {
 
 func torrentDict(torrent *models.Torrent) bencode.Dict {
 	return bencode.Dict{
-		"complete":   len(torrent.Seeders),
-		"incomplete": len(torrent.Leechers),
+		"complete":   torrent.Seeders.Len(),
+		"incomplete": torrent.Leechers.Len(),
 		"downloaded": torrent.Snatches,
 	}
 }

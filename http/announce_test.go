@@ -374,8 +374,8 @@ func loadPrivateTestData(tkr *tracker.Tracker) error {
 	torrent := &models.Torrent{
 		ID:       1,
 		Infohash: infoHash,
-		Seeders:  models.PeerMap{},
-		Leechers: models.PeerMap{},
+		Seeders:  models.NewPeerMap(),
+		Leechers: models.NewPeerMap(),
 	}
 
 	return conn.PutTorrent(torrent)

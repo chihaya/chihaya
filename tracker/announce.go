@@ -5,8 +5,6 @@
 package tracker
 
 import (
-	"net"
-
 	"github.com/chihaya/chihaya/stats"
 	"github.com/chihaya/chihaya/tracker/models"
 )
@@ -39,8 +37,8 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 	if err == models.ErrTorrentDNE && !tkr.cfg.PrivateEnabled {
 		torrent = &models.Torrent{
 			Infohash: ann.Infohash,
-			Seeders:  models.PeerMap{},
-			Leechers: models.PeerMap{},
+			Seeders:  models.NewPeerMap(),
+			Leechers: models.NewPeerMap(),
 		}
 
 		err = conn.PutTorrent(torrent)
@@ -91,12 +89,12 @@ func newAnnounceDelta(ann *models.Announce, t *models.Torrent) *models.AnnounceD
 	var oldUp, oldDown, rawDeltaUp, rawDeltaDown uint64
 
 	switch {
-	case t.InSeederPool(ann.Peer):
-		oldPeer := t.Seeders[ann.Peer.Key()]
+	case t.Seeders.Contains(ann.Peer.Key()):
+		oldPeer, _ := t.Seeders.LookUp(ann.Peer.Key())
 		oldUp = oldPeer.Uploaded
 		oldDown = oldPeer.Downloaded
-	case t.InLeecherPool(ann.Peer):
-		oldPeer := t.Leechers[ann.Peer.Key()]
+	case t.Leechers.Contains(ann.Peer.Key()):
+		oldPeer, _ := t.Leechers.LookUp(ann.Peer.Key())
 		oldUp = oldPeer.Uploaded
 		oldDown = oldPeer.Downloaded
 	}
@@ -153,13 +151,13 @@ func updatePeer(c Conn, ann *models.Announce, peer *models.Peer) (created bool, 
 	p, t := ann.Peer, ann.Torrent
 
 	switch {
-	case t.InSeederPool(p):
+	case t.Seeders.Contains(p.Key()):
 		err = c.PutSeeder(t.Infohash, p)
 		if err != nil {
 			return
 		}
 
-	case t.InLeecherPool(p):
+	case t.Leechers.Contains(p.Key()):
 		err = c.PutLeecher(t.Infohash, p)
 		if err != nil {
 			return
@@ -226,14 +224,14 @@ func handlePeerEvent(c Conn, ann *models.Announce, p *models.Peer) (snatched boo
 	case ann.Event == "stopped" || ann.Event == "paused":
 		// updateSwarm checks if the peer is active on the torrent,
 		// so one of these branches must be followed.
-		if t.InSeederPool(p) {
+		if t.Seeders.Contains(p.Key()) {
 			err = c.DeleteSeeder(t.Infohash, p)
 			if err != nil {
 				return
 			}
 			stats.RecordPeerEvent(stats.DeletedSeed, p.HasIPv6())
 
-		} else if t.InLeecherPool(p) {
+		} else if t.Leechers.Contains(p.Key()) {
 			err = c.DeleteLeecher(t.Infohash, p)
 			if err != nil {
 				return
@@ -242,10 +240,10 @@ func handlePeerEvent(c Conn, ann *models.Announce, p *models.Peer) (snatched boo
 		}
 
 	case ann.Event == "completed":
-		_, v4seed := t.Seeders[models.NewPeerKey(p.ID, false)]
-		_, v6seed := t.Seeders[models.NewPeerKey(p.ID, true)]
+		v4seed := t.Seeders.Contains(models.NewPeerKey(p.ID, false))
+		v6seed := t.Seeders.Contains(models.NewPeerKey(p.ID, true))
 
-		if t.InLeecherPool(p) {
+		if t.Leechers.Contains(p.Key()) {
 			err = leecherFinished(c, t, p)
 		} else {
 			err = models.ErrBadRequest
@@ -257,7 +255,7 @@ func handlePeerEvent(c Conn, ann *models.Announce, p *models.Peer) (snatched boo
 			snatched = true
 		}
 
-	case t.InLeecherPool(p) && ann.Left == 0:
+	case t.Leechers.Contains(p.Key()) && ann.Left == 0:
 		// A leecher completed but the event was never received.
 		err = leecherFinished(c, t, p)
 	}
@@ -278,8 +276,8 @@ func leecherFinished(c Conn, t *models.Torrent, p *models.Peer) error {
 }
 
 func newAnnounceResponse(ann *models.Announce) *models.AnnounceResponse {
-	seedCount := len(ann.Torrent.Seeders)
-	leechCount := len(ann.Torrent.Leechers)
+	seedCount := ann.Torrent.Seeders.Len()
+	leechCount := ann.Torrent.Leechers.Len()
 
 	res := &models.AnnounceResponse{
 		Complete:    seedCount,
@@ -303,85 +301,10 @@ func getPeers(ann *models.Announce) (ipv4s, ipv6s models.PeerList) {
 
 	if ann.Left == 0 {
 		// If they're seeding, give them only leechers.
-		return appendPeers(ipv4s, ipv6s, ann, ann.Torrent.Leechers, ann.NumWant)
+		return ann.Torrent.Leechers.AppendPeers(ipv4s, ipv6s, ann, ann.NumWant)
 	}
 
 	// If they're leeching, prioritize giving them seeders.
-	ipv4s, ipv6s = appendPeers(ipv4s, ipv6s, ann, ann.Torrent.Seeders, ann.NumWant)
-	return appendPeers(ipv4s, ipv6s, ann, ann.Torrent.Leechers, ann.NumWant-len(ipv4s)-len(ipv6s))
-}
-
-// appendPeers implements the logic of adding peers to the IPv4 or IPv6 lists.
-func appendPeers(ipv4s, ipv6s models.PeerList, ann *models.Announce, peers models.PeerMap, wanted int) (models.PeerList, models.PeerList) {
-	if ann.Config.PreferredSubnet {
-		return appendSubnetPeers(ipv4s, ipv6s, ann, peers, wanted)
-	}
-
-	count := 0
-
-	for _, peer := range peers {
-		if count >= wanted {
-			break
-		} else if peersEquivalent(&peer, ann.Peer) {
-			continue
-		}
-
-		if ann.HasIPv6() && peer.HasIPv6() {
-			ipv6s = append(ipv6s, peer)
-			count++
-		} else if peer.HasIPv4() {
-			ipv4s = append(ipv4s, peer)
-			count++
-		}
-	}
-
-	return ipv4s, ipv6s
-}
-
-// appendSubnetPeers is an alternative version of appendPeers used when the
-// config variable PreferredSubnet is enabled.
-func appendSubnetPeers(ipv4s, ipv6s models.PeerList, ann *models.Announce, peers models.PeerMap, wanted int) (models.PeerList, models.PeerList) {
-	var subnetIPv4 net.IPNet
-	var subnetIPv6 net.IPNet
-
-	if ann.HasIPv4() {
-		subnetIPv4 = net.IPNet{ann.IPv4, net.CIDRMask(ann.Config.PreferredIPv4Subnet, 32)}
-	}
-
-	if ann.HasIPv6() {
-		subnetIPv6 = net.IPNet{ann.IPv6, net.CIDRMask(ann.Config.PreferredIPv6Subnet, 128)}
-	}
-
-	// Iterate over the peers twice: first add only peers in the same subnet and
-	// if we still need more peers grab ones that haven't already been added.
-	count := 0
-	for _, checkInSubnet := range [2]bool{true, false} {
-		for _, peer := range peers {
-			if count >= wanted {
-				break
-			}
-
-			inSubnet4 := peer.HasIPv4() && subnetIPv4.Contains(peer.IP)
-			inSubnet6 := peer.HasIPv6() && subnetIPv6.Contains(peer.IP)
-
-			if peersEquivalent(&peer, ann.Peer) || checkInSubnet != (inSubnet4 || inSubnet6) {
-				continue
-			}
-
-			if ann.HasIPv6() && peer.HasIPv6() {
-				ipv6s = append(ipv6s, peer)
-				count++
-			} else if peer.HasIPv4() {
-				ipv4s = append(ipv4s, peer)
-				count++
-			}
-		}
-	}
-
-	return ipv4s, ipv6s
-}
-
-// peersEquivalent checks if two peers represent the same entity.
-func peersEquivalent(a, b *models.Peer) bool {
-	return a.ID == b.ID || a.UserID != 0 && a.UserID == b.UserID
+	ipv4s, ipv6s = ann.Torrent.Seeders.AppendPeers(ipv4s, ipv6s, ann, ann.NumWant)
+	return ann.Torrent.Leechers.AppendPeers(ipv4s, ipv6s, ann, ann.NumWant-len(ipv4s)-len(ipv6s))
 }

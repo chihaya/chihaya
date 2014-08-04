@@ -88,7 +88,7 @@ func (c *Conn) DeleteLeecher(infohash string, p *models.Peer) error {
 	if !ok {
 		return models.ErrTorrentDNE
 	}
-	delete(t.Leechers, p.Key())
+	t.Leechers.Delete(p.Key())
 
 	return nil
 }
@@ -101,7 +101,7 @@ func (c *Conn) DeleteSeeder(infohash string, p *models.Peer) error {
 	if !ok {
 		return models.ErrTorrentDNE
 	}
-	delete(t.Seeders, p.Key())
+	t.Seeders.Delete(p.Key())
 
 	return nil
 }
@@ -114,7 +114,7 @@ func (c *Conn) PutLeecher(infohash string, p *models.Peer) error {
 	if !ok {
 		return models.ErrTorrentDNE
 	}
-	t.Leechers[p.Key()] = *p
+	t.Leechers.Put(*p)
 
 	return nil
 }
@@ -127,7 +127,7 @@ func (c *Conn) PutSeeder(infohash string, p *models.Peer) error {
 	if !ok {
 		return models.ErrTorrentDNE
 	}
-	t.Seeders[p.Key()] = *p
+	t.Seeders.Put(*p)
 
 	return nil
 }
@@ -228,19 +228,8 @@ func (c *Conn) PurgeInactivePeers(purgeEmptyTorrents bool, before time.Time) err
 			continue // Torrent deleted since keys were computed.
 		}
 
-		for key, peer := range torrent.Seeders {
-			if peer.LastAnnounce <= unixtime {
-				delete(torrent.Seeders, key)
-				stats.RecordPeerEvent(stats.ReapedSeed, peer.HasIPv6())
-			}
-		}
-
-		for key, peer := range torrent.Leechers {
-			if peer.LastAnnounce <= unixtime {
-				delete(torrent.Leechers, key)
-				stats.RecordPeerEvent(stats.ReapedLeech, peer.HasIPv6())
-			}
-		}
+		torrent.Seeders.Purge(unixtime)
+		torrent.Leechers.Purge(unixtime)
 
 		peers := torrent.PeerCount()
 		c.torrentsM.Unlock()

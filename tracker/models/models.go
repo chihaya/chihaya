@@ -6,9 +6,11 @@ package models
 
 import (
 	"net"
+	"sync"
 	"time"
 
 	"github.com/chihaya/chihaya/config"
+	"github.com/chihaya/chihaya/stats"
 )
 
 var (
@@ -55,6 +57,18 @@ type Peer struct {
 	LastAnnounce int64  `json:"last_announce"`
 }
 
+func (p *Peer) HasIPv4() bool {
+	return !p.HasIPv6()
+}
+
+func (p *Peer) HasIPv6() bool {
+	return len(p.IP) == net.IPv6len
+}
+
+func (p *Peer) Key() PeerKey {
+	return NewPeerKey(p.ID, p.HasIPv6())
+}
+
 type PeerList []Peer
 type PeerKey string
 
@@ -67,18 +81,146 @@ func NewPeerKey(peerID string, ipv6 bool) PeerKey {
 }
 
 // PeerMap is a map from PeerKeys to Peers.
-type PeerMap map[PeerKey]Peer
-
-func (p *Peer) HasIPv4() bool {
-	return !p.HasIPv6()
+type PeerMap struct {
+	peers map[PeerKey]Peer
+	sync.RWMutex
 }
 
-func (p *Peer) HasIPv6() bool {
-	return len(p.IP) == net.IPv6len
+func NewPeerMap() PeerMap {
+	return PeerMap{
+		peers: make(map[PeerKey]Peer),
+	}
 }
 
-func (p *Peer) Key() PeerKey {
-	return NewPeerKey(p.ID, p.HasIPv6())
+func (pm *PeerMap) Contains(pk PeerKey) (exists bool) {
+	pm.RLock()
+	defer pm.RUnlock()
+
+	_, exists = pm.peers[pk]
+
+	return
+}
+
+func (pm *PeerMap) LookUp(pk PeerKey) (peer Peer, exists bool) {
+	pm.RLock()
+	defer pm.RUnlock()
+
+	peer, exists = pm.peers[pk]
+
+	return
+}
+
+func (pm *PeerMap) Put(p Peer) {
+	pm.Lock()
+	defer pm.Unlock()
+
+	pm.peers[p.Key()] = p
+}
+
+func (pm *PeerMap) Delete(pk PeerKey) {
+	pm.Lock()
+	defer pm.Unlock()
+
+	delete(pm.peers, pk)
+}
+
+func (pm *PeerMap) Len() int {
+	pm.RLock()
+	defer pm.RUnlock()
+
+	return len(pm.peers)
+}
+
+func (pm *PeerMap) Purge(unixtime int64) {
+	pm.Lock()
+	defer pm.Unlock()
+
+	for key, peer := range pm.peers {
+		if peer.LastAnnounce <= unixtime {
+			delete(pm.peers, key)
+			stats.RecordPeerEvent(stats.ReapedSeed, peer.HasIPv6())
+		}
+	}
+}
+
+// AppendPeers implements the logic of adding peers to given IPv4 or IPv6 lists.
+func (pm *PeerMap) AppendPeers(ipv4s, ipv6s PeerList, ann *Announce, wanted int) (PeerList, PeerList) {
+	if ann.Config.PreferredSubnet {
+		return pm.AppendSubnetPeers(ipv4s, ipv6s, ann, wanted)
+	}
+
+	pm.Lock()
+	defer pm.Unlock()
+
+	count := 0
+	for _, peer := range pm.peers {
+		if count >= wanted {
+			break
+		} else if peersEquivalent(&peer, ann.Peer) {
+			continue
+		}
+
+		if ann.HasIPv6() && peer.HasIPv6() {
+			ipv6s = append(ipv6s, peer)
+			count++
+		} else if peer.HasIPv4() {
+			ipv4s = append(ipv4s, peer)
+			count++
+		}
+	}
+
+	return ipv4s, ipv6s
+}
+
+// peersEquivalent checks if two peers represent the same entity.
+func peersEquivalent(a, b *Peer) bool {
+	return a.ID == b.ID || a.UserID != 0 && a.UserID == b.UserID
+}
+
+// AppendSubnetPeers is an alternative version of appendPeers used when the
+// config variable PreferredSubnet is enabled.
+func (pm *PeerMap) AppendSubnetPeers(ipv4s, ipv6s PeerList, ann *Announce, wanted int) (PeerList, PeerList) {
+	var subnetIPv4 net.IPNet
+	var subnetIPv6 net.IPNet
+
+	if ann.HasIPv4() {
+		subnetIPv4 = net.IPNet{ann.IPv4, net.CIDRMask(ann.Config.PreferredIPv4Subnet, 32)}
+	}
+
+	if ann.HasIPv6() {
+		subnetIPv6 = net.IPNet{ann.IPv6, net.CIDRMask(ann.Config.PreferredIPv6Subnet, 128)}
+	}
+
+	pm.Lock()
+	defer pm.Unlock()
+
+	// Iterate over the peers twice: first add only peers in the same subnet and
+	// if we still need more peers grab ones that haven't already been added.
+	count := 0
+	for _, checkInSubnet := range [2]bool{true, false} {
+		for _, peer := range pm.peers {
+			if count >= wanted {
+				break
+			}
+
+			inSubnet4 := peer.HasIPv4() && subnetIPv4.Contains(peer.IP)
+			inSubnet6 := peer.HasIPv6() && subnetIPv6.Contains(peer.IP)
+
+			if peersEquivalent(&peer, ann.Peer) || checkInSubnet != (inSubnet4 || inSubnet6) {
+				continue
+			}
+
+			if ann.HasIPv6() && peer.HasIPv6() {
+				ipv6s = append(ipv6s, peer)
+				count++
+			} else if peer.HasIPv4() {
+				ipv4s = append(ipv4s, peer)
+				count++
+			}
+		}
+	}
+
+	return ipv4s, ipv6s
 }
 
 // Torrent is a swarm for a given torrent file.
@@ -95,21 +237,9 @@ type Torrent struct {
 	LastAction     int64   `json:"last_action"`
 }
 
-// InSeederPool returns true if a peer is within a Torrent's map of seeders.
-func (t *Torrent) InSeederPool(p *Peer) (exists bool) {
-	_, exists = t.Seeders[p.Key()]
-	return
-}
-
-// InLeecherPool returns true if a peer is within a Torrent's map of leechers.
-func (t *Torrent) InLeecherPool(p *Peer) (exists bool) {
-	_, exists = t.Leechers[p.Key()]
-	return
-}
-
 // PeerCount returns the total number of peers connected on this Torrent.
 func (t *Torrent) PeerCount() int {
-	return len(t.Seeders) + len(t.Leechers)
+	return t.Seeders.Len() + t.Leechers.Len()
 }
 
 // User is a registered user for private trackers.
