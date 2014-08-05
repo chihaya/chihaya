@@ -14,14 +14,16 @@ import (
 
 // PeerMap is a thread-safe map from PeerKeys to Peers.
 type PeerMap struct {
-	peers map[PeerKey]Peer
+	seeders bool
+	peers   map[PeerKey]Peer
 	sync.RWMutex
 }
 
 // NewPeerMap initializes the map for a new PeerMap.
-func NewPeerMap() PeerMap {
+func NewPeerMap(seeders bool) PeerMap {
 	return PeerMap{
-		peers: make(map[PeerKey]Peer),
+		peers:   make(map[PeerKey]Peer),
+		seeders: seeders,
 	}
 }
 
@@ -92,15 +94,22 @@ func (pm *PeerMap) UnmarshalJSON(b []byte) error {
 // Purge iterates over all of the peers within a PeerMap and deletes them if
 // they are older than the provided time.
 func (pm *PeerMap) Purge(unixtime int64) {
+
 	pm.Lock()
 	defer pm.Unlock()
 
 	for key, peer := range pm.peers {
 		if peer.LastAnnounce <= unixtime {
 			delete(pm.peers, key)
-			stats.RecordPeerEvent(stats.ReapedSeed, peer.HasIPv6())
+			if pm.seeders {
+				stats.RecordPeerEvent(stats.ReapedSeed, peer.HasIPv6())
+			} else {
+				stats.RecordPeerEvent(stats.ReapedLeech, peer.HasIPv6())
+			}
 		}
 	}
+
+	return
 }
 
 // AppendPeers adds peers to given IPv4 or IPv6 lists.

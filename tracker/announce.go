@@ -37,8 +37,8 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) error {
 	if err == models.ErrTorrentDNE && !tkr.cfg.PrivateEnabled {
 		torrent = &models.Torrent{
 			Infohash: ann.Infohash,
-			Seeders:  models.NewPeerMap(),
-			Leechers: models.NewPeerMap(),
+			Seeders:  models.NewPeerMap(true),
+			Leechers: models.NewPeerMap(false),
 		}
 
 		err = conn.PutTorrent(torrent)
