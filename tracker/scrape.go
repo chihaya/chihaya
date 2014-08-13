@@ -9,22 +9,15 @@ import "github.com/chihaya/chihaya/tracker/models"
 // HandleScrape encapsulates all the logic of handling a BitTorrent client's
 // scrape without being coupled to any transport protocol.
 func (tkr *Tracker) HandleScrape(scrape *models.Scrape, w Writer) (err error) {
-	conn, err := tkr.Pool.Get()
-	if err != nil {
-		return err
-	}
-
-	defer conn.Close()
-
 	if tkr.cfg.PrivateEnabled {
-		if _, err = conn.FindUser(scrape.Passkey); err != nil {
+		if _, err = tkr.FindUser(scrape.Passkey); err != nil {
 			return err
 		}
 	}
 
 	var torrents []*models.Torrent
 	for _, infohash := range scrape.Infohashes {
-		torrent, err := conn.FindTorrent(infohash)
+		torrent, err := tkr.FindTorrent(infohash)
 		if err != nil {
 			return err
 		}

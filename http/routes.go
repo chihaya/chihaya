@@ -71,6 +71,7 @@ func handleTorrentError(err error, w *Writer) (int, error) {
 		stats.RecordEvent(stats.ClientError)
 		return http.StatusOK, nil
 	}
+
 	return http.StatusInternalServerError, err
 }
 
@@ -99,17 +100,12 @@ func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request, p httproute
 }
 
 func (s *Server) getTorrent(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	conn, err := s.tracker.Pool.Get()
-	if err != nil {
-		return http.StatusInternalServerError, err
-	}
-
 	infohash, err := url.QueryUnescape(p.ByName("infohash"))
 	if err != nil {
 		return http.StatusNotFound, err
 	}
 
-	torrent, err := conn.FindTorrent(infohash)
+	torrent, err := s.tracker.FindTorrent(infohash)
 	if err != nil {
 		return handleError(err)
 	}
@@ -131,35 +127,22 @@ func (s *Server) putTorrent(w http.ResponseWriter, r *http.Request, p httprouter
 		return http.StatusBadRequest, err
 	}
 
-	conn, err := s.tracker.Pool.Get()
-	if err != nil {
-		return http.StatusInternalServerError, err
-	}
-
-	return handleError(conn.PutTorrent(&torrent))
+	s.tracker.PutTorrent(&torrent)
+	return http.StatusOK, nil
 }
 
 func (s *Server) delTorrent(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	conn, err := s.tracker.Pool.Get()
-	if err != nil {
-		return http.StatusInternalServerError, err
-	}
-
 	infohash, err := url.QueryUnescape(p.ByName("infohash"))
 	if err != nil {
 		return http.StatusNotFound, err
 	}
 
-	return handleError(conn.DeleteTorrent(infohash))
+	s.tracker.DeleteTorrent(infohash)
+	return http.StatusOK, nil
 }
 
 func (s *Server) getUser(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	conn, err := s.tracker.Pool.Get()
-	if err != nil {
-		return http.StatusInternalServerError, err
-	}
-
-	user, err := conn.FindUser(p.ByName("passkey"))
+	user, err := s.tracker.FindUser(p.ByName("passkey"))
 	if err == models.ErrUserDNE {
 		return http.StatusNotFound, err
 	} else if err != nil {
@@ -183,37 +166,21 @@ func (s *Server) putUser(w http.ResponseWriter, r *http.Request, p httprouter.Pa
 		return http.StatusBadRequest, err
 	}
 
-	conn, err := s.tracker.Pool.Get()
-	if err != nil {
-		return http.StatusInternalServerError, err
-	}
-
-	return handleError(conn.PutUser(&user))
+	s.tracker.PutUser(&user)
+	return http.StatusOK, nil
 }
 
 func (s *Server) delUser(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	conn, err := s.tracker.Pool.Get()
-	if err != nil {
-		return http.StatusInternalServerError, err
-	}
-
-	return handleError(conn.DeleteUser(p.ByName("passkey")))
+	s.tracker.DeleteUser(p.ByName("passkey"))
+	return http.StatusOK, nil
 }
 
 func (s *Server) putClient(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	conn, err := s.tracker.Pool.Get()
-	if err != nil {
-		return http.StatusInternalServerError, err
-	}
-
-	return handleError(conn.PutClient(p.ByName("clientID")))
+	s.tracker.PutClient(p.ByName("clientID"))
+	return http.StatusOK, nil
 }
 
 func (s *Server) delClient(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	conn, err := s.tracker.Pool.Get()
-	if err != nil {
-		return http.StatusInternalServerError, err
-	}
-
-	return handleError(conn.DeleteClient(p.ByName("clientID")))
+	s.tracker.DeleteClient(p.ByName("clientID"))
+	return http.StatusOK, nil
 }

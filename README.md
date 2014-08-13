@@ -6,10 +6,10 @@ Features include:
 
 - Low resource consumption, and fast, asynchronous request processing
 - Full IPv6 support, including handling for dual-stacked peers
-- Generic storage interfaces that are easily adapted to work with any database
 - Full compatibility with what exists of the BitTorrent spec
 - Extensive metrics for visibility into the tracker and swarm's performance
 - Ability to group peers in local subnets to reduce backbone contention
+- Pluggable backend driver that can coordinate with an external database
 
 ## Using Chihaya
 
@@ -59,7 +59,7 @@ $ go test -v ./... -bench .
 
 ### Customizing Chihaya
 
-If you require more than the drivers provided out-of-the-box, you are free to create your own and then produce your own custom Chihaya binary. To create this binary, simply create your own main package, import your custom drivers, then call [`chihaya.Boot`] from main.
+Chihaya is designed to be extended. If you require more than the drivers provided out-of-the-box, you are free to create your own and then produce your own custom Chihaya binary. To create this binary, simply create your own main package, import your custom drivers, then call [`chihaya.Boot`] from main.
 
 [`chihaya.Boot`]: http://godoc.org/github.com/chihaya/chihaya
 
@@ -71,34 +71,27 @@ package main
 import (
 	"github.com/chihaya/chihaya"
 
-	_ "github.com/yourusername/chihaya-custom-backend" // Import any of your own drivers.
+  // Import any of your own drivers.
+	_ "github.com/yourusername/chihaya-custom-backend"
 )
 
 func main() {
-	chihaya.Boot() // Start Chihaya normally.
+  // Start Chihaya normally.
+	chihaya.Boot()
 }
 ```
 
-#### Tracker Drivers
+#### Implementing a Driver
 
-The [`tracker`] package contains 3 interfaces that are heavily inspired by the standard library's [`database/sql`] package. To write a new driver that will provide a storage mechanism for the fast moving data within the tracker, create your own new Go package that has an implementation of the [`tracker.Driver`], [`tracker.Pool`], and [`tracker.Conn`] interfaces. Within that package, you must also define an [`init()`] that calls [`tracker.Register`] registering your new driver. A great place to start is the documentation and source code of the [`memory`] driver to understand thread safety and basic driver design.
-
-#### Backend Drivers
-
-The [`backend`] package is meant to provide announce deltas to a slower and more consistent database, such as the one powering a torrent-indexing website. Implementing a backend driver is very similar to implementing a tracker driver: simply create a package that implements the [`backend.Driver`] and [`backend.Conn`] interfaces and calls [`backend.Register`] in it's [`init()`]. Please note that [`backend.Conn`] must be thread-safe.
+The [`backend`] package is meant to provide announce deltas to a slower and more consistent database, such as the one powering a torrent-indexing website. Implementing a backend driver is heavily inspired by the standard library's [`database/sql`] package: simply create a package that implements the [`backend.Driver`] and [`backend.Conn`] interfaces and calls [`backend.Register`] in it's [`init()`]. Please note that [`backend.Conn`] must be thread-safe. A great place to start is to read the [`no-op`] driver which comes out-of-the-box with Chihaya and is meant to be used for public trackers.
 
 [`init()`]: http://golang.org/ref/spec#Program_execution
 [`database/sql`]: http://godoc.org/database/sql
-[`tracker`]: http://godoc.org/github.com/chihaya/chihaya/tracker
-[`tracker.Register`]: http://godoc.org/github.com/chihaya/chihaya/tracker#Register
-[`tracker.Driver`]: http://godoc.org/github.com/chihaya/chihaya/tracker#Driver
-[`tracker.Pool`]: http://godoc.org/github.com/chihaya/chihaya/tracker#Pool
-[`tracker.Conn`]: http://godoc.org/github.com/chihaya/chihaya/tracker#Conn
-[`memory`]: http://godoc.org/github.com/chihaya/chihaya/tracker/memory
 [`backend`]: http://godoc.org/github.com/chihaya/chihaya/backend
 [`backend.Register`]: http://godoc.org/github.com/chihaya/chihaya/backend#Register
 [`backend.Driver`]: http://godoc.org/github.com/chihaya/chihaya/backend#Driver
 [`backend.Conn`]: http://godoc.org/github.com/chihaya/chihaya/backend#Conn
+[`no-op`]: http://godoc.org/github.com/chihaya/chihaya/backend/noop
 
 ### Contributing
 

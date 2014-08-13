@@ -131,10 +131,7 @@ func TestPrivateAnnounce(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = loadPrivateTestData(tkr)
-	if err != nil {
-		t.Fatal(err)
-	}
+	loadPrivateTestData(tkr)
 
 	srv, err := createServer(tkr, &cfg)
 	if err != nil {
@@ -343,12 +340,7 @@ func checkAnnounce(p params, expected interface{}, srv *httptest.Server, t *test
 	return true
 }
 
-func loadPrivateTestData(tkr *tracker.Tracker) error {
-	conn, err := tkr.Pool.Get()
-	if err != nil {
-		return err
-	}
-
+func loadPrivateTestData(tkr *tracker.Tracker) {
 	users := []string{
 		"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv1",
 		"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv2",
@@ -356,20 +348,13 @@ func loadPrivateTestData(tkr *tracker.Tracker) error {
 	}
 
 	for i, passkey := range users {
-		err = conn.PutUser(&models.User{
+		tkr.PutUser(&models.User{
 			ID:      uint64(i + 1),
 			Passkey: passkey,
 		})
-
-		if err != nil {
-			return err
-		}
 	}
 
-	err = conn.PutClient("TR2820")
-	if err != nil {
-		return err
-	}
+	tkr.PutClient("TR2820")
 
 	torrent := &models.Torrent{
 		ID:       1,
@@ -378,5 +363,5 @@ func loadPrivateTestData(tkr *tracker.Tracker) error {
 		Leechers: models.NewPeerMap(false),
 	}
 
-	return conn.PutTorrent(torrent)
+	tkr.PutTorrent(torrent)
 }

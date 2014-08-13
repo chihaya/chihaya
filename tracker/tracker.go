@@ -20,76 +20,48 @@ import (
 // independently of the underlying data transports used.
 type Tracker struct {
 	cfg     *config.Config
-	Pool    Pool
 	backend backend.Conn
+
+	*Storage
 }
 
 // New creates a new Tracker, and opens any necessary connections.
 // Maintenance routines are automatically spawned in the background.
 func New(cfg *config.Config) (*Tracker, error) {
-	pool, err := Open(&cfg.Tracker)
-	if err != nil {
-		return nil, err
-	}
-
 	bc, err := backend.Open(&cfg.Backend)
 	if err != nil {
 		return nil, err
 	}
 
-	go purgeInactivePeers(
-		pool,
+	tkr := &Tracker{
+		cfg:     cfg,
+		backend: bc,
+		Storage: NewStorage(),
+	}
+
+	go tkr.purgeInactivePeers(
 		cfg.PurgeInactiveTorrents,
 		cfg.Announce.Duration*2,
 		cfg.Announce.Duration,
 	)
 
-	tkr := &Tracker{
-		cfg:     cfg,
-		Pool:    pool,
-		backend: bc,
-	}
-
 	if cfg.ClientWhitelistEnabled {
-		err = tkr.LoadApprovedClients(cfg.ClientWhitelist)
-		if err != nil {
-			return nil, err
-		}
+		tkr.LoadApprovedClients(cfg.ClientWhitelist)
 	}
 
 	return tkr, nil
 }
 
 // Close gracefully shutdowns a Tracker by closing any database connections.
-func (tkr *Tracker) Close() (err error) {
-	err = tkr.Pool.Close()
-	if err != nil {
-		return
-	}
-
-	err = tkr.backend.Close()
-	if err != nil {
-		return
-	}
-
-	return
+func (tkr *Tracker) Close() error {
+	return tkr.backend.Close()
 }
 
 // LoadApprovedClients loads a list of client IDs into the tracker's storage.
-func (tkr *Tracker) LoadApprovedClients(clients []string) error {
-	conn, err := tkr.Pool.Get()
-	if err != nil {
-		return err
-	}
-
+func (tkr *Tracker) LoadApprovedClients(clients []string) {
 	for _, client := range clients {
-		err = conn.PutClient(client)
-		if err != nil {
-			return err
-		}
+		tkr.PutClient(client)
 	}
-
-	return nil
 }
 
 // Writer serializes a tracker's responses, and is implemented for each
@@ -112,23 +84,14 @@ type Writer interface {
 //
 // The default interval is equal to the announce interval, since this is a
 // relatively expensive operation.
-func purgeInactivePeers(p Pool, purgeEmptyTorrents bool, threshold, interval time.Duration) {
+func (tkr *Tracker) purgeInactivePeers(purgeEmptyTorrents bool, threshold, interval time.Duration) {
 	for _ = range time.NewTicker(interval).C {
 		before := time.Now().Add(-threshold)
 		glog.V(0).Infof("Purging peers with no announces since %s", before)
 
-		conn, err := p.Get()
-
-		if err != nil {
-			glog.Error("Unable to get connection for a routine")
-			continue
-		}
-
-		err = conn.PurgeInactivePeers(purgeEmptyTorrents, before)
+		err := tkr.PurgeInactivePeers(purgeEmptyTorrents, before)
 		if err != nil {
 			glog.Errorf("Error purging torrents: %s", err)
 		}
-
-		conn.Close()
 	}
 }
