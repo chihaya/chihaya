@@ -45,6 +45,7 @@ type NetConfig struct {
 	AllowIPSpoofing  bool   `json:"allow_ip_spoofing"`
 	DualStackedPeers bool   `json:"dual_stacked_peers"`
 	RealIPHeader     string `json:"real_ip_header"`
+	RespectAF        bool   `json:"respect_af"`
 
 	PreferredSubnet     bool `json:"preferred_subnet,omitempty"`
 	PreferredIPv4Subnet int  `json:"preferred_ipv4_subnet,omitempty"`
@@ -113,6 +114,7 @@ var DefaultConfig = Config{
 	NetConfig: NetConfig{
 		AllowIPSpoofing:  true,
 		DualStackedPeers: true,
+		RespectAF: false,
 	},
 
 	ClientWhitelistEnabled: false,
