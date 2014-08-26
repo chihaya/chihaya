@@ -127,6 +127,8 @@ func Serve(cfg *config.Config, tkr *tracker.Tracker) {
 		},
 	}
 
+	grace.SetKeepAlivesEnabled(false)
+
 	if err := grace.ListenAndServe(); err != nil {
 		if opErr, ok := err.(*net.OpError); !ok || (ok && opErr.Op != "accept") {
 			glog.Errorf("Failed to gracefully run HTTP server: %s", err.Error())
