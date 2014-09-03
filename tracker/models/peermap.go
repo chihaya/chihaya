@@ -179,19 +179,19 @@ func (pm *PeerMap) AppendSubnetPeers(ipv4s, ipv6s PeerList, ann *Announce, wante
 
 // Optionally Respect AF for peers returned and avoid copy-pasta
 func appendPeers(ipv4s, ipv6s *PeerList, ann *Announce, peer *Peer, count *int) {
-		// v6 to only v6 announcements
-		if ann.HasIPv6() && peer.HasIPv6() {
-			*ipv6s = append(*ipv6s, *peer)
-			*count++
+	// v6 to only v6 announcements
+	if ann.HasIPv6() && peer.HasIPv6() {
+		*ipv6s = append(*ipv6s, *peer)
+		*count++
 		// v4 to only dual stacked requests if we are respecting AF of annoucement
-		} else if ann.Config.RespectAF && ann.HasIPv4() && peer.HasIPv4() {
-			*ipv4s = append(*ipv4s, *peer)
-			*count++
+	} else if ann.Config.RespectAF && ann.HasIPv4() && peer.HasIPv4() {
+		*ipv4s = append(*ipv4s, *peer)
+		*count++
 		// Default everything else to get IPv4 if we are not respecting AF
-		} else if !ann.Config.RespectAF && peer.HasIPv4() {
-			*ipv4s = append(*ipv4s, *peer)
-			*count++
-		}
+	} else if !ann.Config.RespectAF && peer.HasIPv4() {
+		*ipv4s = append(*ipv4s, *peer)
+		*count++
+	}
 }
 
 // peersEquivalent checks if two peers represent the same entity.

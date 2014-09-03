@@ -70,12 +70,12 @@ type Config struct {
 	FreeleechEnabled      bool `json:"freeleech_enabled"`
 	PurgeInactiveTorrents bool `json:"purge_inactive_torrents"`
 
-	Announce        Duration `json:"announce"`
-	MinAnnounce     Duration `json:"min_announce"`
-	RequestTimeout  Duration `json:"request_timeout"`
-	HttpReadTimeout Duration `json:"http_read_timeout"`
+	Announce         Duration `json:"announce"`
+	MinAnnounce      Duration `json:"min_announce"`
+	RequestTimeout   Duration `json:"request_timeout"`
+	HttpReadTimeout  Duration `json:"http_read_timeout"`
 	HttpWriteTimeout Duration `json:"http_write_timeout"`
-	NumWantFallback int      `json:"default_num_want"`
+	NumWantFallback  int      `json:"default_num_want"`
 
 	ClientWhitelistEnabled bool     `json:"client_whitelist_enabled"`
 	ClientWhitelist        []string `json:"client_whitelist,omitempty"`
@@ -100,12 +100,12 @@ var DefaultConfig = Config{
 	FreeleechEnabled:      false,
 	PurgeInactiveTorrents: true,
 
-	Announce:        Duration{30 * time.Minute},
-	MinAnnounce:     Duration{15 * time.Minute},
-	RequestTimeout:  Duration{10 * time.Second},
+	Announce:         Duration{30 * time.Minute},
+	MinAnnounce:      Duration{15 * time.Minute},
+	RequestTimeout:   Duration{10 * time.Second},
 	HttpReadTimeout:  Duration{10 * time.Second},
-	HttpWriteTimeout:  Duration{10 * time.Second},
-	NumWantFallback: 50,
+	HttpWriteTimeout: Duration{10 * time.Second},
+	NumWantFallback:  50,
 
 	StatsConfig: StatsConfig{
 		BufferSize: 0,
@@ -118,7 +118,7 @@ var DefaultConfig = Config{
 	NetConfig: NetConfig{
 		AllowIPSpoofing:  true,
 		DualStackedPeers: true,
-		RespectAF: false,
+		RespectAF:        false,
 	},
 
 	ClientWhitelistEnabled: false,

@@ -122,9 +122,9 @@ func Serve(cfg *config.Config, tkr *tracker.Tracker) {
 		Timeout:   cfg.RequestTimeout.Duration,
 		ConnState: srv.connState,
 		Server: &http.Server{
-			Addr:    cfg.Addr,
-			Handler: newRouter(srv),
-			ReadTimeout: cfg.HttpReadTimeout.Duration,
+			Addr:         cfg.Addr,
+			Handler:      newRouter(srv),
+			ReadTimeout:  cfg.HttpReadTimeout.Duration,
 			WriteTimeout: cfg.HttpWriteTimeout.Duration,
 		},
 	}
