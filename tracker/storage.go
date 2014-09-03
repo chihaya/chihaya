@@ -177,6 +177,7 @@ func (s *Storage) PurgeInactivePeers(purgeEmptyTorrents bool, before time.Time) 
 
 		if torrent == nil {
 			// The torrent has already been deleted since keys were computed.
+			s.torrentsM.Unlock()
 			continue
 		}
 
