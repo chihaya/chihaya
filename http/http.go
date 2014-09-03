@@ -118,12 +118,14 @@ func Serve(cfg *config.Config, tkr *tracker.Tracker) {
 
 	glog.V(0).Info("Starting on ", cfg.Addr)
 
-	grace := graceful.Server{
+	grace := &graceful.Server{
 		Timeout:   cfg.RequestTimeout.Duration,
 		ConnState: srv.connState,
 		Server: &http.Server{
 			Addr:    cfg.Addr,
 			Handler: newRouter(srv),
+			ReadTimeout: cfg.HttpReadTimeout.Duration,
+			WriteTimeout: cfg.HttpWriteTimeout.Duration,
 		},
 	}
 
