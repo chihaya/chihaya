@@ -94,7 +94,6 @@ func (pm *PeerMap) UnmarshalJSON(b []byte) error {
 // Purge iterates over all of the peers within a PeerMap and deletes them if
 // they are older than the provided time.
 func (pm *PeerMap) Purge(unixtime int64) {
-
 	pm.Lock()
 	defer pm.Unlock()
 
@@ -108,18 +107,17 @@ func (pm *PeerMap) Purge(unixtime int64) {
 			}
 		}
 	}
-
-	return
 }
 
-// AppendPeers adds peers to given IPv4 or IPv6 lists.
+// AppendPeers adds peers to given IPv4 or IPv6 lists. If a preferred Subnet is
+// configured, this function calls AppendSubnetPeers.
 func (pm *PeerMap) AppendPeers(ipv4s, ipv6s PeerList, ann *Announce, wanted int) (PeerList, PeerList) {
 	if ann.Config.PreferredSubnet {
 		return pm.AppendSubnetPeers(ipv4s, ipv6s, ann, wanted)
 	}
 
-	pm.Lock()
-	defer pm.Unlock()
+	pm.RLock()
+	defer pm.RUnlock()
 
 	count := 0
 	for _, peer := range pm.peers {
@@ -128,9 +126,7 @@ func (pm *PeerMap) AppendPeers(ipv4s, ipv6s PeerList, ann *Announce, wanted int)
 		} else if peersEquivalent(&peer, ann.Peer) {
 			continue
 		}
-
-		// Add the peers optionally respecting AF
-		appendPeers(&ipv4s, &ipv6s, ann, &peer, &count)
+		appendPeer(&ipv4s, &ipv6s, ann, &peer, &count)
 	}
 
 	return ipv4s, ipv6s
@@ -150,8 +146,8 @@ func (pm *PeerMap) AppendSubnetPeers(ipv4s, ipv6s PeerList, ann *Announce, wante
 		subnetIPv6 = net.IPNet{ann.IPv6, net.CIDRMask(ann.Config.PreferredIPv6Subnet, 128)}
 	}
 
-	pm.Lock()
-	defer pm.Unlock()
+	pm.RLock()
+	defer pm.RUnlock()
 
 	// Iterate over the peers twice: first add only peers in the same subnet and
 	// if we still need more peers grab ones that haven't already been added.
@@ -170,24 +166,21 @@ func (pm *PeerMap) AppendSubnetPeers(ipv4s, ipv6s PeerList, ann *Announce, wante
 			}
 
 			// Add the peers optionally respecting AF
-			appendPeers(&ipv4s, &ipv6s, ann, &peer, &count)
+			appendPeer(&ipv4s, &ipv6s, ann, &peer, &count)
 		}
 	}
 
 	return ipv4s, ipv6s
 }
 
-// Optionally Respect AF for peers returned and avoid copy-pasta
-func appendPeers(ipv4s, ipv6s *PeerList, ann *Announce, peer *Peer, count *int) {
-	// v6 to only v6 announcements
+// appendPeer adds a peer to its corresponding peerlist.
+func appendPeer(ipv4s, ipv6s *PeerList, ann *Announce, peer *Peer, count *int) {
 	if ann.HasIPv6() && peer.HasIPv6() {
 		*ipv6s = append(*ipv6s, *peer)
 		*count++
-		// v4 to only dual stacked requests if we are respecting AF of annoucement
 	} else if ann.Config.RespectAF && ann.HasIPv4() && peer.HasIPv4() {
 		*ipv4s = append(*ipv4s, *peer)
 		*count++
-		// Default everything else to get IPv4 if we are not respecting AF
 	} else if !ann.Config.RespectAF && peer.HasIPv4() {
 		*ipv4s = append(*ipv4s, *peer)
 		*count++
