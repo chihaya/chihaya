@@ -7,6 +7,7 @@ package models
 import (
 	"net"
 	"sync"
+	"sync/atomic"
 
 	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/stats"
@@ -18,6 +19,7 @@ type PeerMap struct {
 	Peers   map[string]map[PeerKey]Peer `json:"peers"`
 	Seeders bool                        `json:"seeders"`
 	Config  config.SubnetConfig         `json:"config"`
+	Size    int32
 	sync.RWMutex
 }
 
@@ -96,6 +98,10 @@ func (pm *PeerMap) Put(p Peer) {
 	if !exists {
 		pm.Peers[maskedIP] = make(map[PeerKey]Peer)
 	}
+	_, exists = pm.Peers[maskedIP][p.Key()]
+	if !exists {
+		atomic.AddInt32(&(pm.Size), 1)
+	}
 	pm.Peers[maskedIP][p.Key()] = p
 }
 
@@ -105,19 +111,16 @@ func (pm *PeerMap) Delete(pk PeerKey) {
 	defer pm.Unlock()
 
 	maskedIP := pm.mask(pk.IP())
-	delete(pm.Peers[maskedIP], pk)
+	_, exists := pm.Peers[maskedIP][pk]
+	if exists {
+		atomic.AddInt32(&(pm.Size), -1)
+		delete(pm.Peers[maskedIP], pk)
+	}
 }
 
 // Len returns the number of peers within a PeerMap.
 func (pm *PeerMap) Len() int {
-	pm.RLock()
-	defer pm.RUnlock()
-
-	var count int
-	for _, subnetmap := range pm.Peers {
-		count += len(subnetmap)
-	}
-	return count
+	return int(atomic.LoadInt32(&pm.Size))
 }
 
 // Purge iterates over all of the peers within a PeerMap and deletes them if
@@ -129,6 +132,7 @@ func (pm *PeerMap) Purge(unixtime int64) {
 	for _, subnetmap := range pm.Peers {
 		for key, peer := range subnetmap {
 			if peer.LastAnnounce <= unixtime {
+				atomic.AddInt32(&(pm.Size), -1)
 				delete(subnetmap, key)
 				if pm.Seeders {
 					stats.RecordPeerEvent(stats.ReapedSeed, peer.HasIPv6())
