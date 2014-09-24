@@ -81,6 +81,7 @@ type Stats struct {
 	Announces uint64 `json:"Tracker.Announces"`
 	Scrapes   uint64 `json:"Tracker.Scrapes"`
 
+	TorrentsSize    uint64 `json:"Torrents.Size"`
 	TorrentsAdded   uint64 `json:"Torrents.Added"`
 	TorrentsRemoved uint64 `json:"Torrents.Removed"`
 	TorrentsReaped  uint64 `json:"Torrents.Reaped"`
@@ -192,12 +193,15 @@ func (s *Stats) handleEvent(event int) {
 
 	case NewTorrent:
 		s.TorrentsAdded++
+		s.TorrentsSize++
 
 	case DeletedTorrent:
 		s.TorrentsRemoved++
+		s.TorrentsSize--
 
 	case ReapedTorrent:
 		s.TorrentsReaped++
+		s.TorrentsSize--
 
 	case AcceptedConnection:
 		s.ConnectionsAccepted++
