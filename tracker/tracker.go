@@ -35,7 +35,7 @@ func New(cfg *config.Config) (*Tracker, error) {
 	tkr := &Tracker{
 		Config:  cfg,
 		Backend: bc,
-		Storage: NewStorage(),
+		Storage: NewStorage(cfg),
 	}
 
 	go tkr.purgeInactivePeers(

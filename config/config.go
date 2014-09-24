@@ -63,6 +63,10 @@ type StatsConfig struct {
 	MemUpdateInterval Duration `json:"mem_stats_interval"`
 }
 
+type ShardConfig struct {
+	TorrentMapShards int `json:"torrent_map_shards"`
+}
+
 // Config is a configuration for a Server.
 type Config struct {
 	Addr    string       `json:"addr"`
@@ -85,6 +89,7 @@ type Config struct {
 
 	StatsConfig
 	NetConfig
+	ShardConfig
 }
 
 // DefaultConfig is a configuration that can be used as a fallback value.
@@ -122,6 +127,10 @@ var DefaultConfig = Config{
 		AllowIPSpoofing:  true,
 		DualStackedPeers: true,
 		RespectAF:        false,
+	},
+
+	ShardConfig: ShardConfig{
+		TorrentMapShards: 1,
 	},
 
 	ClientWhitelistEnabled: false,
