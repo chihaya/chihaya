@@ -44,6 +44,10 @@ func NewStorage(cfg *config.Config) *Storage {
 	return s
 }
 
+func (s *Storage) Len() int {
+	return int(atomic.LoadInt32(&s.size))
+}
+
 func (s *Storage) GetShardIndex(infohash string) uint32 {
 	idx := fnv.New32()
 	idx.Write([]byte(infohash))
@@ -101,8 +105,10 @@ func (s *Storage) DeleteTorrent(infohash string) {
 	shard := s.GetTorrentShard(infohash, false)
 	defer shard.Unlock()
 
-	atomic.AddInt32(&s.size, -1)
-	delete(shard.torrents, infohash)
+	if _, exists := shard.torrents[infohash]; exists {
+		atomic.AddInt32(&s.size, -1)
+		delete(shard.torrents, infohash)
+	}
 }
 
 func (s *Storage) IncrementTorrentSnatches(infohash string) error {
@@ -196,7 +202,7 @@ func (s *Storage) PurgeInactivePeers(purgeEmptyTorrents bool, before time.Time) 
 
 	// Build a list of keys to process.
 	index := 0
-	maxkeys := int(atomic.LoadInt32(&s.size))
+	maxkeys := s.Len()
 	keys := make([]string, maxkeys)
 	for i := range s.shards {
 		shard := &s.shards[i]
