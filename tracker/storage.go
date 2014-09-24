@@ -101,8 +101,10 @@ func (s *Storage) DeleteTorrent(infohash string) {
 	shard := s.GetTorrentShard(infohash, false)
 	defer shard.Unlock()
 
-	atomic.AddInt32(&s.size, -1)
-	delete(shard.torrents, infohash)
+	if _, exists := shard.torrents[infohash]; exists {
+		atomic.AddInt32(&s.size, -1)
+		delete(shard.torrents, infohash)
+	}
 }
 
 func (s *Storage) IncrementTorrentSnatches(infohash string) error {
