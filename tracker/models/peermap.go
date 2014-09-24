@@ -5,36 +5,70 @@
 package models
 
 import (
-	"encoding/json"
 	"net"
 	"sync"
 
+	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/stats"
 )
 
-// PeerMap is a thread-safe map from PeerKeys to Peers.
+// PeerMap is a thread-safe map from PeerKeys to Peers. When PreferredSubnet is
+// enabled, it is a thread-safe map of maps from MaskedIPs to Peerkeys to Peers.
 type PeerMap struct {
-	seeders bool
-	peers   map[PeerKey]Peer
+	Peers   map[string]map[PeerKey]Peer `json:"peers"`
+	Seeders bool                        `json:"seeders"`
+	Config  config.SubnetConfig         `json:"config"`
 	sync.RWMutex
 }
 
 // NewPeerMap initializes the map for a new PeerMap.
-func NewPeerMap(seeders bool) PeerMap {
-	return PeerMap{
-		peers:   make(map[PeerKey]Peer),
-		seeders: seeders,
+func NewPeerMap(seeders bool, cfg *config.Config) PeerMap {
+	pm := PeerMap{
+		Peers:   make(map[string]map[PeerKey]Peer),
+		Seeders: seeders,
+		Config:  cfg.NetConfig.SubnetConfig,
 	}
+
+	if !pm.Config.PreferredSubnet {
+		pm.Peers[""] = make(map[PeerKey]Peer)
+	}
+
+	return pm
 }
 
 // Contains is true if a peer is contained with a PeerMap.
-func (pm *PeerMap) Contains(pk PeerKey) (exists bool) {
+func (pm *PeerMap) Contains(pk PeerKey) bool {
 	pm.RLock()
 	defer pm.RUnlock()
 
-	_, exists = pm.peers[pk]
+	if pm.Config.PreferredSubnet {
+		maskedIP := pm.mask(pk.IP())
+		peers, exists := pm.Peers[maskedIP]
+		if !exists {
+			return false
+		}
 
-	return
+		_, exists = peers[pk]
+		return exists
+	}
+
+	_, exists := pm.Peers[""][pk]
+	return exists
+}
+
+func (pm *PeerMap) mask(ip net.IP) string {
+	if !pm.Config.PreferredSubnet {
+		return ""
+	}
+
+	var maskedIP net.IP
+	if len(ip) == net.IPv6len {
+		maskedIP = ip.Mask(net.CIDRMask(pm.Config.PreferredIPv6Subnet, 128))
+	} else {
+		maskedIP = ip.Mask(net.CIDRMask(pm.Config.PreferredIPv4Subnet, 32))
+	}
+
+	return maskedIP.String()
 }
 
 // LookUp is a thread-safe read from a PeerMap.
@@ -42,7 +76,12 @@ func (pm *PeerMap) LookUp(pk PeerKey) (peer Peer, exists bool) {
 	pm.RLock()
 	defer pm.RUnlock()
 
-	peer, exists = pm.peers[pk]
+	maskedIP := pm.mask(pk.IP())
+	peers, exists := pm.Peers[maskedIP]
+	if !exists {
+		return Peer{}, false
+	}
+	peer, exists = peers[pk]
 
 	return
 }
@@ -52,7 +91,12 @@ func (pm *PeerMap) Put(p Peer) {
 	pm.Lock()
 	defer pm.Unlock()
 
-	pm.peers[p.Key()] = p
+	maskedIP := pm.mask(p.IP)
+	_, exists := pm.Peers[maskedIP]
+	if !exists {
+		pm.Peers[maskedIP] = make(map[PeerKey]Peer)
+	}
+	pm.Peers[maskedIP][p.Key()] = p
 }
 
 // Delete is a thread-safe delete from a PeerMap.
@@ -60,7 +104,8 @@ func (pm *PeerMap) Delete(pk PeerKey) {
 	pm.Lock()
 	defer pm.Unlock()
 
-	delete(pm.peers, pk)
+	maskedIP := pm.mask(pk.IP())
+	delete(pm.Peers[maskedIP], pk)
 }
 
 // Len returns the number of peers within a PeerMap.
@@ -68,27 +113,11 @@ func (pm *PeerMap) Len() int {
 	pm.RLock()
 	defer pm.RUnlock()
 
-	return len(pm.peers)
-}
-
-func (pm *PeerMap) MarshalJSON() ([]byte, error) {
-	pm.RLock()
-	defer pm.RUnlock()
-	return json.Marshal(pm.peers)
-}
-
-func (pm *PeerMap) UnmarshalJSON(b []byte) error {
-	pm.Lock()
-	defer pm.Unlock()
-
-	peers := make(map[PeerKey]Peer)
-	err := json.Unmarshal(b, &peers)
-	if err != nil {
-		return err
+	var count int
+	for _, subnetmap := range pm.Peers {
+		count += len(subnetmap)
 	}
-
-	pm.peers = peers
-	return nil
+	return count
 }
 
 // Purge iterates over all of the peers within a PeerMap and deletes them if
@@ -97,76 +126,53 @@ func (pm *PeerMap) Purge(unixtime int64) {
 	pm.Lock()
 	defer pm.Unlock()
 
-	for key, peer := range pm.peers {
-		if peer.LastAnnounce <= unixtime {
-			delete(pm.peers, key)
-			if pm.seeders {
-				stats.RecordPeerEvent(stats.ReapedSeed, peer.HasIPv6())
-			} else {
-				stats.RecordPeerEvent(stats.ReapedLeech, peer.HasIPv6())
+	for _, subnetmap := range pm.Peers {
+		for key, peer := range subnetmap {
+			if peer.LastAnnounce <= unixtime {
+				delete(subnetmap, key)
+				if pm.Seeders {
+					stats.RecordPeerEvent(stats.ReapedSeed, peer.HasIPv6())
+				} else {
+					stats.RecordPeerEvent(stats.ReapedLeech, peer.HasIPv6())
+				}
 			}
 		}
 	}
 }
 
-// AppendPeers adds peers to given IPv4 or IPv6 lists. If a preferred Subnet is
-// configured, this function calls AppendSubnetPeers.
+// AppendPeers adds peers to given IPv4 or IPv6 lists.
 func (pm *PeerMap) AppendPeers(ipv4s, ipv6s PeerList, ann *Announce, wanted int) (PeerList, PeerList) {
-	if ann.Config.PreferredSubnet {
-		return pm.AppendSubnetPeers(ipv4s, ipv6s, ann, wanted)
-	}
+	maskedIP := pm.mask(ann.Peer.IP)
 
 	pm.RLock()
 	defer pm.RUnlock()
 
 	count := 0
-	for _, peer := range pm.peers {
+	// Attempt to append all the peers in the same subnet.
+	for _, peer := range pm.Peers[maskedIP] {
 		if count >= wanted {
 			break
 		} else if peersEquivalent(&peer, ann.Peer) {
 			continue
-		}
-		appendPeer(&ipv4s, &ipv6s, ann, &peer, &count)
-	}
-
-	return ipv4s, ipv6s
-}
-
-// AppendSubnetPeers is an alternative version of AppendPeers used when the
-// config variable PreferredSubnet is enabled.
-func (pm *PeerMap) AppendSubnetPeers(ipv4s, ipv6s PeerList, ann *Announce, wanted int) (PeerList, PeerList) {
-	var subnetIPv4 net.IPNet
-	var subnetIPv6 net.IPNet
-
-	if ann.HasIPv4() {
-		subnetIPv4 = net.IPNet{ann.IPv4, net.CIDRMask(ann.Config.PreferredIPv4Subnet, 32)}
-	}
-
-	if ann.HasIPv6() {
-		subnetIPv6 = net.IPNet{ann.IPv6, net.CIDRMask(ann.Config.PreferredIPv6Subnet, 128)}
-	}
-
-	pm.RLock()
-	defer pm.RUnlock()
-
-	// Iterate over the peers twice: first add only peers in the same subnet and
-	// if we still need more peers grab ones that haven't already been added.
-	count := 0
-	for _, checkInSubnet := range [2]bool{true, false} {
-		for _, peer := range pm.peers {
-			if count >= wanted {
-				break
-			}
-
-			inSubnet4 := peer.HasIPv4() && subnetIPv4.Contains(peer.IP)
-			inSubnet6 := peer.HasIPv6() && subnetIPv6.Contains(peer.IP)
-
-			if peersEquivalent(&peer, ann.Peer) || checkInSubnet != (inSubnet4 || inSubnet6) {
-				continue
-			}
-
-			// Add the peers optionally respecting AF
+		} else {
 			appendPeer(&ipv4s, &ipv6s, ann, &peer, &count)
+		}
+	}
+
+	// Add any more peers out of the other subnets.
+	for subnet, peers := range pm.Peers {
+		if subnet == maskedIP {
+			continue
+		} else {
+			for _, peer := range peers {
+				if count >= wanted {
+					break
+				} else if peersEquivalent(&peer, ann.Peer) {
+					continue
+				} else {
+					appendPeer(&ipv4s, &ipv6s, ann, &peer, &count)
+				}
+			}
 		}
 	}
 

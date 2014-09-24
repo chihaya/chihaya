@@ -8,6 +8,7 @@ package models
 
 import (
 	"net"
+	"strings"
 	"time"
 
 	"github.com/chihaya/chihaya/config"
@@ -45,12 +46,16 @@ func (e NotFoundError) Error() string { return string(e) }
 type PeerList []Peer
 type PeerKey string
 
-func NewPeerKey(peerID string, ipv6 bool) PeerKey {
-	if ipv6 {
-		return PeerKey("6:" + peerID)
-	}
+func NewPeerKey(peerID string, ip net.IP) PeerKey {
+	return PeerKey(peerID + "//" + ip.String())
+}
 
-	return PeerKey("4:" + peerID)
+func (pk PeerKey) IP() net.IP {
+	return net.ParseIP(strings.Split(string(pk), "//")[1])
+}
+
+func (pk PeerKey) PeerID() string {
+	return strings.Split(string(pk), "//")[0]
 }
 
 // Peer is a participant in a swarm.
@@ -79,7 +84,7 @@ func (p *Peer) HasIPv6() bool {
 }
 
 func (p *Peer) Key() PeerKey {
-	return NewPeerKey(p.ID, p.HasIPv6())
+	return NewPeerKey(p.ID, p.IP)
 }
 
 // Torrent is a swarm for a given torrent file.

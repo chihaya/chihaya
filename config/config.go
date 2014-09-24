@@ -40,16 +40,19 @@ type DriverConfig struct {
 	Params map[string]string `json:"params,omitempty"`
 }
 
+type SubnetConfig struct {
+	PreferredSubnet     bool `json:"preferred_subnet,omitempty"`
+	PreferredIPv4Subnet int  `json:"preferred_ipv4_subnet,omitempty"`
+	PreferredIPv6Subnet int  `json:"preferred_ipv6_subnet,omitempty"`
+}
+
 // NetConfig is the configuration used to tune networking behaviour.
 type NetConfig struct {
 	AllowIPSpoofing  bool   `json:"allow_ip_spoofing"`
 	DualStackedPeers bool   `json:"dual_stacked_peers"`
 	RealIPHeader     string `json:"real_ip_header"`
 	RespectAF        bool   `json:"respect_af"`
-
-	PreferredSubnet     bool `json:"preferred_subnet,omitempty"`
-	PreferredIPv4Subnet int  `json:"preferred_ipv4_subnet,omitempty"`
-	PreferredIPv6Subnet int  `json:"preferred_ipv6_subnet,omitempty"`
+	SubnetConfig
 }
 
 type StatsConfig struct {

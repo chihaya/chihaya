@@ -359,8 +359,8 @@ func loadPrivateTestData(tkr *tracker.Tracker) {
 	torrent := &models.Torrent{
 		ID:       1,
 		Infohash: infoHash,
-		Seeders:  models.NewPeerMap(true),
-		Leechers: models.NewPeerMap(false),
+		Seeders:  models.NewPeerMap(true, tkr.Config),
+		Leechers: models.NewPeerMap(false, tkr.Config),
 	}
 
 	tkr.PutTorrent(torrent)

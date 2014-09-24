@@ -19,9 +19,8 @@ import (
 // Tracker represents the logic necessary to service BitTorrent announces,
 // independently of the underlying data transports used.
 type Tracker struct {
-	cfg     *config.Config
-	backend backend.Conn
-
+	Config  *config.Config
+	Backend backend.Conn
 	*Storage
 }
 
@@ -34,8 +33,8 @@ func New(cfg *config.Config) (*Tracker, error) {
 	}
 
 	tkr := &Tracker{
-		cfg:     cfg,
-		backend: bc,
+		Config:  cfg,
+		Backend: bc,
 		Storage: NewStorage(),
 	}
 
@@ -54,7 +53,7 @@ func New(cfg *config.Config) (*Tracker, error) {
 
 // Close gracefully shutdowns a Tracker by closing any database connections.
 func (tkr *Tracker) Close() error {
-	return tkr.backend.Close()
+	return tkr.Backend.Close()
 }
 
 // LoadApprovedClients loads a list of client IDs into the tracker's storage.

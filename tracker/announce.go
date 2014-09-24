@@ -12,14 +12,14 @@ import (
 // HandleAnnounce encapsulates all of the logic of handling a BitTorrent
 // client's Announce without being coupled to any transport protocol.
 func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) (err error) {
-	if tkr.cfg.ClientWhitelistEnabled {
+	if tkr.Config.ClientWhitelistEnabled {
 		if err = tkr.ClientApproved(ann.ClientID()); err != nil {
 			return err
 		}
 	}
 
 	var user *models.User
-	if tkr.cfg.PrivateEnabled {
+	if tkr.Config.PrivateEnabled {
 		if user, err = tkr.FindUser(ann.Passkey); err != nil {
 			return err
 		}
@@ -27,11 +27,11 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) (err error) {
 
 	torrent, err := tkr.FindTorrent(ann.Infohash)
 
-	if err == models.ErrTorrentDNE && !tkr.cfg.PrivateEnabled {
+	if err == models.ErrTorrentDNE && !tkr.Config.PrivateEnabled {
 		torrent = &models.Torrent{
 			Infohash: ann.Infohash,
-			Seeders:  models.NewPeerMap(true),
-			Leechers: models.NewPeerMap(false),
+			Seeders:  models.NewPeerMap(true, tkr.Config),
+			Leechers: models.NewPeerMap(false, tkr.Config),
 		}
 
 		tkr.PutTorrent(torrent)
@@ -43,7 +43,7 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) (err error) {
 	ann.BuildPeer(user, torrent)
 	var delta *models.AnnounceDelta
 
-	if tkr.cfg.PrivateEnabled {
+	if tkr.Config.PrivateEnabled {
 		delta = newAnnounceDelta(ann, torrent)
 	}
 
@@ -57,13 +57,13 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) (err error) {
 		return err
 	}
 
-	if tkr.cfg.PrivateEnabled {
+	if tkr.Config.PrivateEnabled {
 		delta.Created = created
 		delta.Snatched = snatched
-		if err = tkr.backend.RecordAnnounce(delta); err != nil {
+		if err = tkr.Backend.RecordAnnounce(delta); err != nil {
 			return err
 		}
-	} else if tkr.cfg.PurgeInactiveTorrents && torrent.PeerCount() == 0 {
+	} else if tkr.Config.PurgeInactiveTorrents && torrent.PeerCount() == 0 {
 		// Rather than deleting the torrent explicitly, let the tracker driver
 		// ensure there are no race conditions.
 		tkr.PurgeInactiveTorrent(torrent.Infohash)
@@ -230,8 +230,8 @@ func (tkr *Tracker) handlePeerEvent(ann *models.Announce, p *models.Peer) (snatc
 		}
 
 	case ann.Event == "completed":
-		v4seed := t.Seeders.Contains(models.NewPeerKey(p.ID, false))
-		v6seed := t.Seeders.Contains(models.NewPeerKey(p.ID, true))
+		v4seed := t.Seeders.Contains(p.Key())
+		v6seed := t.Seeders.Contains(p.Key())
 
 		if t.Leechers.Contains(p.Key()) {
 			err = tkr.leecherFinished(t, p)
