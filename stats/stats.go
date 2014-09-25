@@ -73,6 +73,8 @@ type Stats struct {
 	ConnectionsAccepted uint64 `json:"Connections.Accepted"`
 	BytesTransmitted    uint64 `json:"BytesTransmitted"`
 
+	GoRoutines int `json:"Runtime.GoRoutines"`
+
 	RequestsHandled uint64 `json:"Requests.Handled"`
 	RequestsErrored uint64 `json:"Requests.Errored"`
 	ClientErrors    uint64 `json:"Requests.Bad"`
@@ -104,6 +106,8 @@ func New(cfg config.StatsConfig) *Stats {
 	s := &Stats{
 		Started: time.Now(),
 		events:  make(chan int, cfg.BufferSize),
+
+		GoRoutines: 0,
 
 		ipv4PeerEvents:     make(chan int, cfg.BufferSize),
 		ipv6PeerEvents:     make(chan int, cfg.BufferSize),

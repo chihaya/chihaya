@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"runtime"
 
 	"github.com/julienschmidt/httprouter"
 
@@ -42,6 +43,8 @@ func (s *Server) stats(w http.ResponseWriter, r *http.Request, p httprouter.Para
 	var err error
 	var val interface{}
 	query := r.URL.Query()
+
+	stats.DefaultStats.GoRoutines = runtime.NumGoroutine()
 
 	if _, flatten := query["flatten"]; flatten {
 		val = stats.DefaultStats.Flattened()
