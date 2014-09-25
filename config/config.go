@@ -82,6 +82,7 @@ type Config struct {
 	RequestTimeout   Duration `json:"request_timeout"`
 	HttpReadTimeout  Duration `json:"http_read_timeout"`
 	HttpWriteTimeout Duration `json:"http_write_timeout"`
+	HttpListenLimit  int      `json:"http_listen_limit"`
 	NumWantFallback  int      `json:"default_num_want"`
 
 	ClientWhitelistEnabled bool     `json:"client_whitelist_enabled"`
