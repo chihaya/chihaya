@@ -122,8 +122,8 @@ func Serve(cfg *config.Config, tkr *tracker.Tracker) {
 	}
 
 	grace := &graceful.Server{
-		Timeout:   cfg.RequestTimeout.Duration,
-		ConnState: srv.connState,
+		Timeout:     cfg.RequestTimeout.Duration,
+		ConnState:   srv.connState,
 		ListenLimit: cfg.HttpListenLimit,
 		Server: &http.Server{
 			Addr:         cfg.Addr,
