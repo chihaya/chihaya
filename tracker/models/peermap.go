@@ -19,7 +19,7 @@ type PeerMap struct {
 	Peers   map[string]map[PeerKey]Peer `json:"peers"`
 	Seeders bool                        `json:"seeders"`
 	Config  config.SubnetConfig         `json:"config"`
-	Size    int32
+	Size    int32                       `json:"size"`
 	sync.RWMutex
 }
 
