@@ -51,7 +51,11 @@ func NewPeerKey(peerID string, ip net.IP) PeerKey {
 }
 
 func (pk PeerKey) IP() net.IP {
-	return net.ParseIP(strings.Split(string(pk), "//")[1])
+	ip := net.ParseIP(strings.Split(string(pk), "//")[1])
+	if rval := ip.To4(); rval != nil {
+		return rval
+	}
+	return ip
 }
 
 func (pk PeerKey) PeerID() string {
