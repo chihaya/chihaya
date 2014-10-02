@@ -30,7 +30,7 @@ Make sure you have your `$GOPATH` set up correctly, and have `$GOPATH/bin` in yo
 
 ### Configuring
 
-Configuration is done in a JSON formatted file specified with the `-config` flag. An example configuration file can be found [here](https://github.com/chihaya/chihaya/blob/master/example.json).
+Configuration is done in a JSON formatted file specified with the `-config` flag. An example configuration file can be found [here](https://github.com/chihaya/chihaya/blob/master/example_config.json).
 
 #### Drivers
 
