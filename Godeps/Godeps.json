@@ -1,0 +1,39 @@
+{
+	"ImportPath": "github.com/chihaya/chihaya",
+	"GoVersion": "go1.3.3",
+	"Deps": [
+		{
+			"ImportPath": "code.google.com/p/go.net/netutil",
+			"Comment": "null-164",
+			"Rev": "6122c8c304675f19800c917359e02dd68e760a5b"
+		},
+		{
+			"ImportPath": "github.com/chihaya/bencode",
+			"Rev": "1df51811f3440202aa39df93596654319ea5ff57"
+		},
+		{
+			"ImportPath": "github.com/golang/glog",
+			"Rev": "d1c4472bf2efd3826f2b5bdcc02d8416798d678c"
+		},
+		{
+			"ImportPath": "github.com/julienschmidt/httprouter",
+			"Rev": "46807412fe50aaceb73bb57061c2230fd26a1640"
+		},
+		{
+			"ImportPath": "github.com/pushrax/faststats",
+			"Rev": "4c069408629f728eb3fe856f0966508492393a90"
+		},
+		{
+			"ImportPath": "github.com/pushrax/flatjson",
+			"Rev": "cce9ff039f0bec46d67ed9ab4ce846b8355c94bb"
+		},
+		{
+			"ImportPath": "github.com/stretchr/graceful",
+			"Rev": "0b67b304c1354aa3d1b2c4353a630ee0f589c34f"
+		},
+		{
+			"ImportPath": "github.com/stretchr/pat/stop",
+			"Rev": "f7fe051f2b9bcaca162b38de4f93c9a8457160b9"
+		}
+	]
+}
