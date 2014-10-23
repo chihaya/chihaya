@@ -2,10 +2,18 @@ language: go
 
 go: 1.3
 
+before_install:
+  - go get github.com/tools/godep
+
+script:
+  - godep go test ./...
+
 notifications:
   irc:
     channels:
       - "irc.freenode.net#chihaya"
+    use_notice: true
+    skip_join: true
     on_success: always
     on_failure: always
   email: false
