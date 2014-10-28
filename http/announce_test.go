@@ -84,7 +84,9 @@ func TestTorrentPurging(t *testing.T) {
 
 func TestStalePeerPurging(t *testing.T) {
 	cfg := config.DefaultConfig
-	cfg.Announce = config.Duration{10 * time.Millisecond}
+	cfg.Announce = config.Duration{
+		Duration: 10 * time.Millisecond,
+	}
 
 	srv, err := setupTracker(&cfg)
 	if err != nil {

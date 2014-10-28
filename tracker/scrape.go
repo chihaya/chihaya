@@ -24,5 +24,7 @@ func (tkr *Tracker) HandleScrape(scrape *models.Scrape, w Writer) (err error) {
 		torrents = append(torrents, torrent)
 	}
 
-	return w.WriteScrape(&models.ScrapeResponse{torrents})
+	return w.WriteScrape(&models.ScrapeResponse{
+		Files: torrents,
+	})
 }
