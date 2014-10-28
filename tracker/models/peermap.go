@@ -24,8 +24,8 @@ type PeerMap struct {
 }
 
 // NewPeerMap initializes the map for a new PeerMap.
-func NewPeerMap(seeders bool, cfg *config.Config) PeerMap {
-	pm := PeerMap{
+func NewPeerMap(seeders bool, cfg *config.Config) *PeerMap {
+	pm := &PeerMap{
 		Peers:   make(map[string]map[PeerKey]Peer),
 		Seeders: seeders,
 		Config:  cfg.NetConfig.SubnetConfig,

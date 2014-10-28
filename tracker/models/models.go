@@ -96,8 +96,8 @@ type Torrent struct {
 	ID       uint64 `json:"id"`
 	Infohash string `json:"infohash"`
 
-	Seeders  PeerMap `json:"seeders"`
-	Leechers PeerMap `json:"leechers"`
+	Seeders  *PeerMap `json:"seeders"`
+	Leechers *PeerMap `json:"leechers"`
 
 	Snatches       uint64  `json:"snatches"`
 	UpMultiplier   float64 `json:"up_multiplier"`
