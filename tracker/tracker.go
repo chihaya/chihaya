@@ -27,7 +27,7 @@ type Tracker struct {
 // New creates a new Tracker, and opens any necessary connections.
 // Maintenance routines are automatically spawned in the background.
 func New(cfg *config.Config) (*Tracker, error) {
-	bc, err := backend.Open(&cfg.Backend)
+	bc, err := backend.Open(&cfg.DriverConfig)
 	if err != nil {
 		return nil, err
 	}

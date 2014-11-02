@@ -40,6 +40,8 @@ type DriverConfig struct {
 	Params map[string]string `json:"params,omitempty"`
 }
 
+// SubnetConfig is the configuration used to specify if local peers should be
+// given a preference when responding to an announce.
 type SubnetConfig struct {
 	PreferredSubnet     bool `json:"preferred_subnet,omitempty"`
 	PreferredIPv4Subnet int  `json:"preferred_ipv4_subnet,omitempty"`
@@ -55,6 +57,7 @@ type NetConfig struct {
 	SubnetConfig
 }
 
+// StatsConfig is the configuration used to record runtime statistics.
 type StatsConfig struct {
 	BufferSize int  `json:"stats_buffer_size"`
 	IncludeMem bool `json:"include_mem_stats"`
@@ -63,58 +66,76 @@ type StatsConfig struct {
 	MemUpdateInterval Duration `json:"mem_stats_interval"`
 }
 
-type ShardConfig struct {
-	TorrentMapShards int `json:"torrent_map_shards"`
+// WhitelistConfig is the configuration used enable and store a whitelist of
+// acceptable torrent client peer ID prefixes.
+type WhitelistConfig struct {
+	ClientWhitelistEnabled bool     `json:"client_whitelist_enabled"`
+	ClientWhitelist        []string `json:"client_whitelist,omitempty"`
 }
 
-// Config is a configuration for a Server.
-type Config struct {
-	Addr    string       `json:"addr"`
-	Tracker DriverConfig `json:"tracker"`
-	Backend DriverConfig `json:"backend"`
+// TrackerConfig is the configuration for tracker functionality.
+type TrackerConfig struct {
+	PrivateEnabled        bool     `json:"private_enabled"`
+	FreeleechEnabled      bool     `json:"freeleech_enabled"`
+	PurgeInactiveTorrents bool     `json:"purge_inactive_torrents"`
+	Announce              Duration `json:"announce"`
+	MinAnnounce           Duration `json:"min_announce"`
+	NumWantFallback       int      `json:"default_num_want"`
+	TorrentMapShards      int      `json:"torrent_map_shards"`
 
-	PrivateEnabled        bool `json:"private_enabled"`
-	FreeleechEnabled      bool `json:"freeleech_enabled"`
-	PurgeInactiveTorrents bool `json:"purge_inactive_torrents"`
+	NetConfig
+	WhitelistConfig
+}
 
-	Announce         Duration `json:"announce"`
-	MinAnnounce      Duration `json:"min_announce"`
-	RequestTimeout   Duration `json:"request_timeout"`
+// HTTPConfig is the configuration for HTTP functionality.
+type HTTPConfig struct {
+	ListenAddr       string   `json:"http_listen_addr"`
+	RequestTimeout   Duration `json:"http_request_timeout"`
 	HttpReadTimeout  Duration `json:"http_read_timeout"`
 	HttpWriteTimeout Duration `json:"http_write_timeout"`
 	HttpListenLimit  int      `json:"http_listen_limit"`
-	NumWantFallback  int      `json:"default_num_want"`
+}
 
-	ClientWhitelistEnabled bool     `json:"client_whitelist_enabled"`
-	ClientWhitelist        []string `json:"client_whitelist,omitempty"`
-
+// Config is the global configuration for an instance of Chihaya.
+type Config struct {
+	TrackerConfig
+	HTTPConfig
+	DriverConfig
 	StatsConfig
-	NetConfig
-	ShardConfig
 }
 
 // DefaultConfig is a configuration that can be used as a fallback value.
 var DefaultConfig = Config{
-	Addr: ":6881",
+	TrackerConfig: TrackerConfig{
+		PrivateEnabled:        false,
+		FreeleechEnabled:      false,
+		PurgeInactiveTorrents: true,
+		Announce:              Duration{30 * time.Minute},
+		MinAnnounce:           Duration{15 * time.Minute},
+		NumWantFallback:       50,
+		TorrentMapShards:      1,
 
-	Tracker: DriverConfig{
-		Name: "memory",
+		NetConfig: NetConfig{
+			AllowIPSpoofing:  true,
+			DualStackedPeers: true,
+			RespectAF:        false,
+		},
+
+		WhitelistConfig: WhitelistConfig{
+			ClientWhitelistEnabled: false,
+		},
 	},
 
-	Backend: DriverConfig{
+	HTTPConfig: HTTPConfig{
+		ListenAddr:       ":6881",
+		RequestTimeout:   Duration{10 * time.Second},
+		HttpReadTimeout:  Duration{10 * time.Second},
+		HttpWriteTimeout: Duration{10 * time.Second},
+	},
+
+	DriverConfig: DriverConfig{
 		Name: "noop",
 	},
-
-	PrivateEnabled:        false,
-	FreeleechEnabled:      false,
-	PurgeInactiveTorrents: true,
-
-	Announce:         Duration{30 * time.Minute},
-	MinAnnounce:      Duration{15 * time.Minute},
-	RequestTimeout:   Duration{10 * time.Second},
-	HttpReadTimeout:  Duration{10 * time.Second},
-	HttpWriteTimeout: Duration{10 * time.Second},
-	NumWantFallback:  50,
 
 	StatsConfig: StatsConfig{
 		BufferSize: 0,
@@ -123,18 +144,6 @@ var DefaultConfig = Config{
 
 		MemUpdateInterval: Duration{5 * time.Second},
 	},
-
-	NetConfig: NetConfig{
-		AllowIPSpoofing:  true,
-		DualStackedPeers: true,
-		RespectAF:        false,
-	},
-
-	ShardConfig: ShardConfig{
-		TorrentMapShards: 1,
-	},
-
-	ClientWhitelistEnabled: false,
 }
 
 // Open is a shortcut to open a file, read it, and generate a Config.

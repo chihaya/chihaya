@@ -35,7 +35,7 @@ type Storage struct {
 func NewStorage(cfg *config.Config) *Storage {
 	s := &Storage{
 		users:   make(map[string]*models.User),
-		shards:  make([]Torrents, cfg.ShardConfig.TorrentMapShards),
+		shards:  make([]Torrents, cfg.TorrentMapShards),
 		clients: make(map[string]bool),
 	}
 	for i := range s.shards {

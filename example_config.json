@@ -1,48 +1,24 @@
 {
-  "addr": ":6881",
-
-  "tracker": {
-    "driver": "memory"
-  },
-
-  "backend": {
-    "driver": "noop"
-  },
-
   "private_enabled": false,
   "freeleech_enabled": false,
   "purge_inactive_torrents": true,
-
   "announce": "30m",
   "min_announce": "15m",
-  "request_timeout": "10s",
   "default_num_want": 50,
-
+  "torrent_map_shards": 1,
   "allow_ip_spoofing": true,
   "dual_stacked_peers": true,
   "real_ip_header": "",
-  "preferred_subnet": false,
-  "preferred_ipv4_subnet": 0,
-  "preferred_ipv6_subnet": 0,
-
+  "respect_af": false,
+  "client_whitelist_enabled": false,
+  "http_listen_addr": ":6881",
+  "http_request_timeout": "10s",
+  "http_read_timeout": "10s",
+  "http_write_timeout": "10s",
+  "http_listen_limit": 0,
+  "driver": "noop",
   "stats_buffer_size": 0,
   "include_mem_stats": true,
   "verbose_mem_stats": false,
-  "mem_stats_interval": "5s",
-
-  "client_whitelist_enabled": false,
-  "client_whitelist": [
-      "UT340-",
-      "AZ2500",
-      "exbc0J",
-      "FUTB0L",
-      "XBT054",
-      "OP1011",
-      "ML2.7.",
-      "BOWA0C",
-      "Q1-0-0",
-      "Q1-10-",
-      "346---",
-      "QVOD00"
-  ]
+  "mem_stats_interval": "5s"
 }

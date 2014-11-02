@@ -116,7 +116,7 @@ func Serve(cfg *config.Config, tkr *tracker.Tracker) {
 		tracker: tkr,
 	}
 
-	glog.V(0).Info("Starting on ", cfg.Addr)
+	glog.V(0).Info("Starting on ", cfg.ListenAddr)
 	if cfg.HttpListenLimit != 0 {
 		glog.V(0).Info("Limiting connections to ", cfg.HttpListenLimit)
 	}
@@ -126,7 +126,7 @@ func Serve(cfg *config.Config, tkr *tracker.Tracker) {
 		ConnState:   srv.connState,
 		ListenLimit: cfg.HttpListenLimit,
 		Server: &http.Server{
-			Addr:         cfg.Addr,
+			Addr:         cfg.ListenAddr,
 			Handler:      newRouter(srv),
 			ReadTimeout:  cfg.HttpReadTimeout.Duration,
 			WriteTimeout: cfg.HttpWriteTimeout.Duration,
