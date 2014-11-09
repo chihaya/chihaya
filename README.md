@@ -30,7 +30,7 @@ Chihaya requires Go 1.3, [Godep], and a [Go environment] previously setup.
 
 ```sh
 $ export GOPATH=$PWD/chihaya
-$ git clone github.com/chihaya/chihaya chihaya/src/github.com/chihaya
+$ git clone github.com/chihaya/chihaya chihaya/src/github.com/chihaya/chihaya
 $ godep go install chihaya/src/github.com/chihaya/cmd/chihaya
 ```
 
