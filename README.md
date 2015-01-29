@@ -49,11 +49,3 @@ There is also a set of benchmarks for performance-critical sections of Chihaya. 
 $ cd $GOPATH/src/github.com/chihaya/chihaya
 $ godep go test -v ./... -bench .
 ```
-
-## Contributing
-
-The project follows idiomatic [Go conventions] for style. If you're interested in contributing, please contact us via IRC in **[#chihaya] on [freenode]** or post to the GitHub issue tracker. Please don't write massive patches with no prior communication, as it will most likely lead to confusion and time wasted for everyone. However, small unannounced fixes are always welcome!
-
-[#chihaya]: http://webchat.freenode.net?channels=chihaya
-[freenode]: http://freenode.net
-[Go conventions]: https://github.com/jzelinskie/conventions
