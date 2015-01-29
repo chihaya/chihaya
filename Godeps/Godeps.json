@@ -1,12 +1,7 @@
 {
 	"ImportPath": "github.com/chihaya/chihaya",
-	"GoVersion": "go1.3.3",
+	"GoVersion": "go1.4.1",
 	"Deps": [
-		{
-			"ImportPath": "code.google.com/p/go.net/netutil",
-			"Comment": "null-164",
-			"Rev": "6122c8c304675f19800c917359e02dd68e760a5b"
-		},
 		{
 			"ImportPath": "github.com/chihaya/bencode",
 			"Rev": "1df51811f3440202aa39df93596654319ea5ff57"
@@ -34,6 +29,11 @@
 		{
 			"ImportPath": "github.com/stretchr/pat/stop",
 			"Rev": "f7fe051f2b9bcaca162b38de4f93c9a8457160b9"
+		},
+		{
+			"ImportPath": "golang.org/x/net/netutil",
+			"Comment": "null-204",
+			"Rev": "8fd8d3a0313cb59e495106ac76df5da29381fa24"
 		}
 	]
 }
