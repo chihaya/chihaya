@@ -19,13 +19,17 @@ import (
 	"github.com/chihaya/chihaya/tracker"
 )
 
+// ResponseHandler is an HTTP handler that returns a status code.
 type ResponseHandler func(http.ResponseWriter, *http.Request, httprouter.Params) (int, error)
 
+// Server represents an HTTP serving torrent tracker.
 type Server struct {
 	config  *config.Config
 	tracker *tracker.Tracker
 }
 
+// makeHandler wraps our ResponseHandlers while timing requests, collecting,
+// stats, logging, and handling errors.
 func makeHandler(handler ResponseHandler) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
 		var msg string
@@ -63,6 +67,7 @@ func makeHandler(handler ResponseHandler) httprouter.Handle {
 	}
 }
 
+// newRouter returns a router with all the routes.
 func newRouter(s *Server) *httprouter.Router {
 	r := httprouter.New()
 
@@ -91,6 +96,8 @@ func newRouter(s *Server) *httprouter.Router {
 	return r
 }
 
+// connState is used by graceful in order to gracefully shutdown. It also
+// keeps track of connection stats.
 func (s *Server) connState(conn net.Conn, state http.ConnState) {
 	switch state {
 	case http.StateNew:
@@ -102,14 +109,16 @@ func (s *Server) connState(conn net.Conn, state http.ConnState) {
 	case http.StateHijacked:
 		panic("connection impossibly hijacked")
 
-	case http.StateActive: // Ignore.
-	case http.StateIdle: // Ignore.
+	// Ignore the following cases.
+	case http.StateActive, http.StateIdle:
 
 	default:
 		glog.Errorf("Connection transitioned to unknown state %s (%d)", state, state)
 	}
 }
 
+// Serve creates a new Server and proceeds to block while handling requests
+// until a graceful shutdown.
 func Serve(cfg *config.Config, tkr *tracker.Tracker) {
 	srv := &Server{
 		config:  cfg,
