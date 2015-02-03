@@ -32,7 +32,7 @@ use-cases).
 
 ## Building & Installing
 
-Chihaya requires Go 1.3, [Godep], and a [Go environment] previously setup.
+Chihaya requires Go 1.4, [Godep], and a [Go environment] previously setup.
 
 [Godep]: https://github.com/tools/godep
 [Go environment]: https://golang.org/doc/code.html
