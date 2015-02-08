@@ -48,14 +48,14 @@ func (s *Storage) Len() int {
 	return int(atomic.LoadInt32(&s.size))
 }
 
-func (s *Storage) GetShardIndex(infohash string) uint32 {
+func (s *Storage) getShardIndex(infohash string) uint32 {
 	idx := fnv.New32()
 	idx.Write([]byte(infohash))
 	return idx.Sum32() % uint32(len(s.shards))
 }
 
-func (s *Storage) GetTorrentShard(infohash string, readonly bool) *Torrents {
-	shardindex := s.GetShardIndex(infohash)
+func (s *Storage) getTorrentShard(infohash string, readonly bool) *Torrents {
+	shardindex := s.getShardIndex(infohash)
 	if readonly {
 		s.shards[shardindex].RLock()
 	} else {
@@ -65,7 +65,7 @@ func (s *Storage) GetTorrentShard(infohash string, readonly bool) *Torrents {
 }
 
 func (s *Storage) TouchTorrent(infohash string) error {
-	shard := s.GetTorrentShard(infohash, false)
+	shard := s.getTorrentShard(infohash, false)
 	defer shard.Unlock()
 
 	torrent, exists := shard.torrents[infohash]
@@ -79,7 +79,7 @@ func (s *Storage) TouchTorrent(infohash string) error {
 }
 
 func (s *Storage) FindTorrent(infohash string) (*models.Torrent, error) {
-	shard := s.GetTorrentShard(infohash, true)
+	shard := s.getTorrentShard(infohash, true)
 	defer shard.RUnlock()
 
 	torrent, exists := shard.torrents[infohash]
@@ -91,7 +91,7 @@ func (s *Storage) FindTorrent(infohash string) (*models.Torrent, error) {
 }
 
 func (s *Storage) PutTorrent(torrent *models.Torrent) {
-	shard := s.GetTorrentShard(torrent.Infohash, false)
+	shard := s.getTorrentShard(torrent.Infohash, false)
 	defer shard.Unlock()
 
 	_, exists := shard.torrents[torrent.Infohash]
@@ -102,7 +102,7 @@ func (s *Storage) PutTorrent(torrent *models.Torrent) {
 }
 
 func (s *Storage) DeleteTorrent(infohash string) {
-	shard := s.GetTorrentShard(infohash, false)
+	shard := s.getTorrentShard(infohash, false)
 	defer shard.Unlock()
 
 	if _, exists := shard.torrents[infohash]; exists {
@@ -112,7 +112,7 @@ func (s *Storage) DeleteTorrent(infohash string) {
 }
 
 func (s *Storage) IncrementTorrentSnatches(infohash string) error {
-	shard := s.GetTorrentShard(infohash, false)
+	shard := s.getTorrentShard(infohash, false)
 	defer shard.Unlock()
 
 	torrent, exists := shard.torrents[infohash]
@@ -126,7 +126,7 @@ func (s *Storage) IncrementTorrentSnatches(infohash string) error {
 }
 
 func (s *Storage) PutLeecher(infohash string, p *models.Peer) error {
-	shard := s.GetTorrentShard(infohash, false)
+	shard := s.getTorrentShard(infohash, false)
 	defer shard.Unlock()
 
 	torrent, exists := shard.torrents[infohash]
@@ -140,7 +140,7 @@ func (s *Storage) PutLeecher(infohash string, p *models.Peer) error {
 }
 
 func (s *Storage) DeleteLeecher(infohash string, p *models.Peer) error {
-	shard := s.GetTorrentShard(infohash, false)
+	shard := s.getTorrentShard(infohash, false)
 	defer shard.Unlock()
 
 	torrent, exists := shard.torrents[infohash]
@@ -154,7 +154,7 @@ func (s *Storage) DeleteLeecher(infohash string, p *models.Peer) error {
 }
 
 func (s *Storage) PutSeeder(infohash string, p *models.Peer) error {
-	shard := s.GetTorrentShard(infohash, false)
+	shard := s.getTorrentShard(infohash, false)
 	defer shard.Unlock()
 
 	torrent, exists := shard.torrents[infohash]
@@ -168,7 +168,7 @@ func (s *Storage) PutSeeder(infohash string, p *models.Peer) error {
 }
 
 func (s *Storage) DeleteSeeder(infohash string, p *models.Peer) error {
-	shard := s.GetTorrentShard(infohash, false)
+	shard := s.getTorrentShard(infohash, false)
 	defer shard.Unlock()
 
 	torrent, exists := shard.torrents[infohash]
@@ -182,7 +182,7 @@ func (s *Storage) DeleteSeeder(infohash string, p *models.Peer) error {
 }
 
 func (s *Storage) PurgeInactiveTorrent(infohash string) error {
-	shard := s.GetTorrentShard(infohash, false)
+	shard := s.getTorrentShard(infohash, false)
 	defer shard.Unlock()
 
 	torrent, exists := shard.torrents[infohash]
@@ -223,7 +223,7 @@ func (s *Storage) PurgeInactivePeers(purgeEmptyTorrents bool, before time.Time) 
 	// Process the keys while allowing other goroutines to run.
 	for _, infohash := range keys {
 		runtime.Gosched()
-		shard := s.GetTorrentShard(infohash, false)
+		shard := s.getTorrentShard(infohash, false)
 		torrent := shard.torrents[infohash]
 
 		if torrent == nil {
