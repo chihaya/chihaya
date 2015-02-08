@@ -33,10 +33,13 @@ func handleError(err error) (int, error) {
 }
 
 func (s *Server) check(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	// Ping the backend if private tracker is enabled.
-	if err := s.tracker.Backend.Ping(); s.config.PrivateEnabled && err != nil {
-		return handleError(err)
+	// Attempt to ping the backend if private tracker is enabled.
+	if s.config.PrivateEnabled {
+		if err := s.tracker.Backend.Ping(); err != nil {
+			return handleError(err)
+		}
 	}
+
 	_, err := w.Write([]byte("STILL-ALIVE"))
 	return handleError(err)
 }
