@@ -4,27 +4,27 @@
 	"Deps": [
 		{
 			"ImportPath": "github.com/chihaya/bencode",
-			"Rev": "1df51811f3440202aa39df93596654319ea5ff57"
+			"Rev": "e60878f635e1a61315c413492e133dd39769b1d1"
 		},
 		{
 			"ImportPath": "github.com/golang/glog",
-			"Rev": "d1c4472bf2efd3826f2b5bdcc02d8416798d678c"
+			"Rev": "44145f04b68cf362d9c4df2182967c2275eaefed"
 		},
 		{
 			"ImportPath": "github.com/julienschmidt/httprouter",
-			"Rev": "46807412fe50aaceb73bb57061c2230fd26a1640"
+			"Rev": "00ce1c6a267162792c367acc43b1681a884e1872"
 		},
 		{
 			"ImportPath": "github.com/pushrax/faststats",
-			"Rev": "4c069408629f728eb3fe856f0966508492393a90"
+			"Rev": "0fc2c5e41a187240ffaa09320eea7df9f8071388"
 		},
 		{
 			"ImportPath": "github.com/pushrax/flatjson",
-			"Rev": "cce9ff039f0bec46d67ed9ab4ce846b8355c94bb"
+			"Rev": "86044f1c998d49053e13293029414ddb63f3a422"
 		},
 		{
 			"ImportPath": "github.com/stretchr/graceful",
-			"Rev": "0b67b304c1354aa3d1b2c4353a630ee0f589c34f"
+			"Rev": "8e780ba3fe3d3e7ab15fc52e3d60a996587181dc"
 		},
 		{
 			"ImportPath": "github.com/stretchr/pat/stop",
@@ -32,8 +32,7 @@
 		},
 		{
 			"ImportPath": "golang.org/x/net/netutil",
-			"Comment": "null-204",
-			"Rev": "8fd8d3a0313cb59e495106ac76df5da29381fa24"
+			"Rev": "c84eff7014eba178f68bd4c05b86780efe0fbf35"
 		}
 	]
 }

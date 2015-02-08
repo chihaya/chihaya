@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/stretchr/pat/stop"
-	"code.google.com/p/go.net/netutil"
+	"golang.org/x/net/netutil"
 )
 
 // Server wraps an http.Server with graceful connection handling.
@@ -115,8 +115,13 @@ func (srv *Server) ListenAndServe() error {
 // timeout is the duration to wait until killing active requests and stopping the server.
 // If timeout is 0, the server never times out. It waits for all active requests to finish.
 func ListenAndServeTLS(server *http.Server, certFile, keyFile string, timeout time.Duration) error {
-	// Create the listener ourselves so we can control its lifetime
 	srv := &Server{Timeout: timeout, Server: server}
+	return srv.ListenAndServeTLS(certFile, keyFile)
+}
+
+// ListenAndServeTLS is equivalent to http.Server.ListenAndServeTLS with graceful shutdown enabled.
+func (srv *Server) ListenAndServeTLS(certFile, keyFile string) error {
+	// Create the listener ourselves so we can control its lifetime
 	addr := srv.Addr
 	if addr == "" {
 		addr = ":https"

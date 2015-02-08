@@ -14,14 +14,11 @@ type Child struct {
 }
 
 func TestBasicFlatten(t *testing.T) {
-	val := &struct {
-		A int
-		B string
-	}{10, "str"}
+	val := &Child{10, "str"}
 
 	expected := flatjson.Map{
-		"A": 10.0, // JSON numbers are all float64.
-		"B": "str",
+		"CC": 10.0, // JSON numbers are all float64.
+		"CD": "str",
 	}
 
 	testFlattening(t, val, expected)
