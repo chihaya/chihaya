@@ -53,6 +53,10 @@ type Conn interface {
 	// down the driver
 	Close() error
 
+	// Ping just checks to see if the database is still alive. This is typically
+	// used for health checks.
+	Ping() error
+
 	// RecordAnnounce is called once per announce, and is passed the delta in
 	// statistics for the client peer since its last announce.
 	RecordAnnounce(delta *models.AnnounceDelta) error
