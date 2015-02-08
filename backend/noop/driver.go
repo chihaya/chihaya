@@ -14,6 +14,8 @@ import (
 
 type driver struct{}
 
+// NoOp is a backend driver for Chihaya that does nothing. This is used by
+// public trackers.
 type NoOp struct{}
 
 // New returns a new Chihaya backend driver that does nothing.
@@ -23,6 +25,11 @@ func (d *driver) New(cfg *config.DriverConfig) (backend.Conn, error) {
 
 // Close returns nil.
 func (n *NoOp) Close() error {
+	return nil
+}
+
+// Ping returns nil.
+func (n *NoOp) Ping() error {
 	return nil
 }
 
