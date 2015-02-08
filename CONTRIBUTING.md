@@ -20,7 +20,7 @@ changes in.
 
 The average contribution flow is as follows:
 
-- Create a topic branch from where you want to base your work. This is usually master.
+- Create a topic branch from where you want to base your work. This is usually `develop`.
 - Make commits of logical units.
 - Make sure your commit messages are in the [proper format]
 - Push your changes to a topic branch in your fork of the repository.
