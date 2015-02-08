@@ -7,7 +7,7 @@ Example use case:
 
 ```json
 {
-  "Connections" {
+  "Connections": {
     "Open": 2,
     "Accepted": 4
   },

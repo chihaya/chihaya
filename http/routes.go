@@ -178,6 +178,13 @@ func (s *Server) delUser(w http.ResponseWriter, r *http.Request, p httprouter.Pa
 	return http.StatusOK, nil
 }
 
+func (s *Server) getClient(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
+	if err := s.tracker.ClientApproved(p.ByName("clientID")); err != nil {
+		return http.StatusNotFound, err
+	}
+	return http.StatusOK, nil
+}
+
 func (s *Server) putClient(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
 	s.tracker.PutClient(p.ByName("clientID"))
 	return http.StatusOK, nil
