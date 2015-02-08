@@ -83,6 +83,7 @@ func newRouter(s *Server) *httprouter.Router {
 	}
 
 	if s.config.ClientWhitelistEnabled {
+		r.GET("/clients/:clientID", makeHandler(s.getClient))
 		r.PUT("/clients/:clientID", makeHandler(s.putClient))
 		r.DELETE("/clients/:clientID", makeHandler(s.delClient))
 	}
