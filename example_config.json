@@ -11,6 +11,7 @@
   "real_ip_header": "",
   "respect_af": false,
   "client_whitelist_enabled": false,
+  "client_whitelist": ["OP1011"],
   "http_listen_addr": ":6881",
   "http_request_timeout": "10s",
   "http_read_timeout": "10s",
