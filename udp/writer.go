@@ -7,6 +7,7 @@ package udp
 import (
 	"bytes"
 	"encoding/binary"
+	"time"
 
 	"github.com/chihaya/chihaya/tracker/models"
 )
@@ -27,7 +28,7 @@ func (w *Writer) WriteError(err error) error {
 
 func (w *Writer) WriteAnnounce(res *models.AnnounceResponse) error {
 	w.writeHeader(1)
-	binary.Write(w.buf, binary.BigEndian, uint32(res.Interval))
+	binary.Write(w.buf, binary.BigEndian, uint32(res.Interval/time.Second))
 	binary.Write(w.buf, binary.BigEndian, uint32(res.Incomplete))
 	binary.Write(w.buf, binary.BigEndian, uint32(res.Complete))
 
