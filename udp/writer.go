@@ -12,6 +12,7 @@ import (
 	"github.com/chihaya/chihaya/tracker/models"
 )
 
+// Writer implements the tracker.Writer interface for the UDP protocol.
 type Writer struct {
 	buf *bytes.Buffer
 
@@ -19,6 +20,7 @@ type Writer struct {
 	transactionID []byte
 }
 
+// WriteError writes the failure reason as a null-terminated string.
 func (w *Writer) WriteError(err error) error {
 	w.writeHeader(3)
 	w.buf.WriteString(err.Error())
@@ -26,6 +28,7 @@ func (w *Writer) WriteError(err error) error {
 	return nil
 }
 
+// WriteAnnounce encodes an announce response according to the UDP spec.
 func (w *Writer) WriteAnnounce(res *models.AnnounceResponse) error {
 	w.writeHeader(1)
 	binary.Write(w.buf, binary.BigEndian, uint32(res.Interval/time.Second))
@@ -40,6 +43,7 @@ func (w *Writer) WriteAnnounce(res *models.AnnounceResponse) error {
 	return nil
 }
 
+// WriteAnnounce encodes a scrape response according to the UDP spec.
 func (w *Writer) WriteScrape(res *models.ScrapeResponse) error {
 	w.writeHeader(2)
 
@@ -52,6 +56,7 @@ func (w *Writer) WriteScrape(res *models.ScrapeResponse) error {
 	return nil
 }
 
+// writeHeader writes the action and transaction ID to the response.
 func (w *Writer) writeHeader(action uint32) {
 	binary.Write(w.buf, binary.BigEndian, action)
 	w.buf.Write(w.transactionID)

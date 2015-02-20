@@ -2,7 +2,7 @@
 // Use of this source code is governed by the BSD 2-Clause license,
 // which can be found in the LICENSE file.
 
-// Package udp implements a UDP BitTorrent tracker per BEP 15 and BEP 41.
+// Package udp implements a UDP BitTorrent tracker per BEP 15.
 // IPv6 is currently unsupported as there is no widely-implemented standard.
 package udp
 
@@ -55,18 +55,26 @@ func (s *Server) serve() error {
 			return err
 		}
 
+		start := time.Now()
+
 		go func() {
-			response := s.handlePacket(buffer[:n], addr)
+			response, action := s.handlePacket(buffer[:n], addr)
 			if response != nil {
 				sock.WriteToUDP(response, addr)
 			}
 			pool.GiveSlice(buffer)
+
+			if glog.V(2) {
+				duration := time.Since(start)
+				glog.Infof("[UDP - %9s] %s", duration, action)
+			}
 		}()
 	}
 
 	return nil
 }
 
+// Serve runs a UDP server, blocking until the server has shut down.
 func (s *Server) Serve() {
 	glog.V(0).Info("Starting UDP on ", s.config.UDPListenAddr)
 

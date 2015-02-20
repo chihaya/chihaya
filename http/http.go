@@ -120,8 +120,7 @@ func (s *Server) connState(conn net.Conn, state http.ConnState) {
 	}
 }
 
-// Serve creates a new Server and proceeds to block while handling requests
-// until a graceful shutdown.
+// Serve runs an HTTP server, blocking until the server has shut down.
 func (s *Server) Serve() {
 	glog.V(0).Info("Starting HTTP on ", s.config.HTTPListenAddr)
 

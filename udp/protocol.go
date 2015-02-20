@@ -7,29 +7,26 @@ package udp
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
 	"net"
 
 	"github.com/chihaya/chihaya/stats"
 	"github.com/chihaya/chihaya/tracker/models"
 )
 
+// initialConnectionID is the magic initial connection ID specified by BEP 15.
 var initialConnectionID = []byte{0, 0, 0x04, 0x17, 0x27, 0x10, 0x19, 0x80}
 
+// eventIDs maps IDs to event names.
 var eventIDs = []string{"", "completed", "started", "stopped"}
 
 var (
-	errMalformedPacket = errors.New("malformed packet")
-	errMalformedIP     = errors.New("malformed IP address")
-	errMalformedEvent  = errors.New("malformed event ID")
-	errBadConnectionID = errors.New("bad connection ID")
+	errMalformedPacket = models.ProtocolError("malformed packet")
+	errMalformedIP     = models.ProtocolError("malformed IP address")
+	errMalformedEvent  = models.ProtocolError("malformed event ID")
+	errBadConnectionID = models.ProtocolError("bad connection ID")
 )
 
-func writeHeader(response []byte, action uint32, transactionID []byte) {
-	binary.BigEndian.PutUint32(response, action)
-	copy(response[4:], transactionID)
-}
-
+// handleTorrentError writes err to w if err is a models.ClientError.
 func handleTorrentError(err error, w *Writer) {
 	if err == nil {
 		return
@@ -41,9 +38,10 @@ func handleTorrentError(err error, w *Writer) {
 	}
 }
 
-func (s *Server) handlePacket(packet []byte, addr *net.UDPAddr) (response []byte) {
+// handlePacket decodes and processes one UDP request, returning the response.
+func (s *Server) handlePacket(packet []byte, addr *net.UDPAddr) (response []byte, actionName string) {
 	if len(packet) < 16 {
-		return nil // Malformed, no client packets are less than 16 bytes.
+		return // Malformed, no client packets are less than 16 bytes.
 	}
 
 	connID := packet[0:8]
@@ -71,17 +69,16 @@ func (s *Server) handlePacket(packet []byte, addr *net.UDPAddr) (response []byte
 
 	switch action {
 	case 0:
-		// Connect request.
+		actionName = "connect"
 		if !bytes.Equal(connID, initialConnectionID) {
-			return nil // Malformed packet.
+			return // Malformed packet.
 		}
 
-		response = make([]byte, 16)
-		writeHeader(response, action, transactionID)
-		copy(response[8:], generatedConnID)
+		writer.writeHeader(0)
+		writer.buf.Write(generatedConnID)
 
 	case 1:
-		// Announce request.
+		actionName = "announce"
 		ann, err := s.newAnnounce(packet, addr.IP)
 
 		if err == nil {
@@ -91,7 +88,7 @@ func (s *Server) handlePacket(packet []byte, addr *net.UDPAddr) (response []byte
 		handleTorrentError(err, writer)
 
 	case 2:
-		// Scrape request.
+		actionName = "scrape"
 		scrape, err := s.newScrape(packet)
 
 		if err == nil {
@@ -104,6 +101,7 @@ func (s *Server) handlePacket(packet []byte, addr *net.UDPAddr) (response []byte
 	return
 }
 
+// newAnnounce decodes one announce packet, returning a models.Announce.
 func (s *Server) newAnnounce(packet []byte, ip net.IP) (*models.Announce, error) {
 	if len(packet) < 98 {
 		return nil, errMalformedPacket
@@ -151,8 +149,9 @@ func (s *Server) newAnnounce(packet []byte, ip net.IP) (*models.Announce, error)
 	}, nil
 }
 
+// newScrape decodes one announce packet, returning a models.Scrape.
 func (s *Server) newScrape(packet []byte) (*models.Scrape, error) {
-	if len(packet) < 16 {
+	if len(packet) < 36 {
 		return nil, errMalformedPacket
 	}
 

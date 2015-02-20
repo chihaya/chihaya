@@ -39,9 +39,11 @@ var (
 
 type ClientError string
 type NotFoundError ClientError
+type ProtocolError ClientError
 
 func (e ClientError) Error() string   { return string(e) }
 func (e NotFoundError) Error() string { return string(e) }
+func (e ProtocolError) Error() string { return string(e) }
 
 type PeerList []Peer
 type PeerKey string
