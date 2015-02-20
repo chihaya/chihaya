@@ -14,6 +14,7 @@ import (
 type Writer struct {
 	buf *bytes.Buffer
 
+	connectionID  []byte
 	transactionID []byte
 }
 
@@ -40,6 +41,13 @@ func (w *Writer) WriteAnnounce(res *models.AnnounceResponse) error {
 
 func (w *Writer) WriteScrape(res *models.ScrapeResponse) error {
 	w.writeHeader(2)
+
+	for _, torrent := range res.Files {
+		binary.Write(w.buf, binary.BigEndian, uint32(torrent.Seeders.Len()))
+		binary.Write(w.buf, binary.BigEndian, uint32(torrent.Snatches))
+		binary.Write(w.buf, binary.BigEndian, uint32(torrent.Leechers.Len()))
+	}
+
 	return nil
 }
 
