@@ -80,11 +80,13 @@ The available keys and their default values are as follows:
 - `respect_af: false` – if responses should only include peers of the same address family as the announcing peer
 - `client_whitelist_enabled: false` – if peer IDs should be matched against the whitelist
 - `client_whitelist: []` – list of peer ID prefixes to allow
-- `http_listen_addr: ":6881"` – listen address for the HTTP server
+- `http_listen_addr: ""` – listen address for the HTTP server
 - `http_request_timeout: "10s"`
 - `http_read_timeout: "10s"`
 - `http_write_timeout: "10s"`
 - `http_listen_limit: 0`
+- `udp_listen_addr: ""` – listen address for the UDP server
+- `udp_read_buffer_size: undefined` – size of the UDP socket's kernel read buffer
 - `driver: "noop"`
 - `stats_buffer_size: 0`
 - `include_mem_stats: true`

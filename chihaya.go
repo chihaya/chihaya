@@ -9,6 +9,7 @@ import (
 	"os"
 	"runtime"
 	"runtime/pprof"
+	"sync"
 
 	"github.com/golang/glog"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/chihaya/chihaya/http"
 	"github.com/chihaya/chihaya/stats"
 	"github.com/chihaya/chihaya/tracker"
+	"github.com/chihaya/chihaya/udp"
 
 	// See the README for how to import custom drivers.
 	_ "github.com/chihaya/chihaya/backend/noop"
@@ -77,7 +79,25 @@ func Boot() {
 		glog.Fatal("New: ", err)
 	}
 
-	http.Serve(cfg, tkr)
+	var wg sync.WaitGroup
+
+	if cfg.HTTPListenAddr != "" {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			http.Serve(cfg, tkr)
+		}()
+	}
+
+	if cfg.UDPListenAddr != "" {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			udp.Serve(cfg, tkr)
+		}()
+	}
+
+	wg.Wait()
 
 	if err := tkr.Close(); err != nil {
 		glog.Errorf("Failed to shut down tracker cleanly: %s", err.Error())

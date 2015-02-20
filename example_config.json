@@ -12,6 +12,7 @@
   "respect_af": false,
   "client_whitelist_enabled": false,
   "client_whitelist": ["OP1011"],
+  "udp_listen_addr": ":6881",
   "http_listen_addr": ":6881",
   "http_request_timeout": "10s",
   "http_read_timeout": "10s",

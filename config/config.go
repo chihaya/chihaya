@@ -134,14 +134,14 @@ var DefaultConfig = Config{
 	},
 
 	HTTPConfig: HTTPConfig{
-		HTTPListenAddr:     ":6881",
+		HTTPListenAddr:     "",
 		HTTPRequestTimeout: Duration{10 * time.Second},
 		HTTPReadTimeout:    Duration{10 * time.Second},
 		HTTPWriteTimeout:   Duration{10 * time.Second},
 	},
 
 	UDPConfig: UDPConfig{
-		UDPListenAddr: ":6881",
+		UDPListenAddr: "",
 	},
 
 	DriverConfig: DriverConfig{
