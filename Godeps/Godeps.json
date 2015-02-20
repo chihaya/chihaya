@@ -15,6 +15,10 @@
 			"Rev": "00ce1c6a267162792c367acc43b1681a884e1872"
 		},
 		{
+			"ImportPath": "github.com/pushrax/bufferpool",
+			"Rev": "c8962db3ad1e65fe9a83e7298dcd213938cf02d5"
+		},
+		{
 			"ImportPath": "github.com/pushrax/faststats",
 			"Rev": "0fc2c5e41a187240ffaa09320eea7df9f8071388"
 		},
