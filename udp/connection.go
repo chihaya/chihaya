@@ -48,3 +48,7 @@ func GenerateConnectionID(ip []byte) []byte {
 
 	return ct[:8]
 }
+
+func init() {
+	InitConnectionIDEncryption()
+}

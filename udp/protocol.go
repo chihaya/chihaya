@@ -14,9 +14,9 @@ import (
 	"github.com/chihaya/chihaya/tracker/models"
 )
 
-var initialConnectionID = []byte{0x04, 0x17, 0x27, 0x10, 0x19, 0x80}
+var initialConnectionID = []byte{0, 0, 0x04, 0x17, 0x27, 0x10, 0x19, 0x80}
 
-var eventIDs = []string{"none", "completed", "started", "stopped"}
+var eventIDs = []string{"", "completed", "started", "stopped"}
 
 var (
 	errMalformedPacket = errors.New("malformed packet")
@@ -109,6 +109,9 @@ func (s *Server) newAnnounce(packet []byte, ip net.IP) (*models.Announce, error)
 	}
 	if ip == nil {
 		return nil, errMalformedIP
+	}
+	if ipv4 := ip.To4(); ipv4 != nil {
+		ip = ipv4
 	}
 
 	// TODO(pushrax): what exactly is the key "key" used for?
