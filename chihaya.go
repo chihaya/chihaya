@@ -78,5 +78,10 @@ func Boot() {
 	}
 
 	http.Serve(cfg, tkr)
+
+	if err := tkr.Close(); err != nil {
+		glog.Errorf("Failed to shut down tracker cleanly: %s", err.Error())
+	}
+
 	glog.Info("Gracefully shut down")
 }

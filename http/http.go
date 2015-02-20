@@ -126,20 +126,20 @@ func Serve(cfg *config.Config, tkr *tracker.Tracker) {
 		tracker: tkr,
 	}
 
-	glog.V(0).Info("Starting on ", cfg.ListenAddr)
-	if cfg.HttpListenLimit != 0 {
-		glog.V(0).Info("Limiting connections to ", cfg.HttpListenLimit)
+	glog.V(0).Info("Starting HTTP on ", cfg.HTTPListenAddr)
+	if cfg.HTTPListenLimit != 0 {
+		glog.V(0).Info("Limiting connections to ", cfg.HTTPListenLimit)
 	}
 
 	grace := &graceful.Server{
-		Timeout:     cfg.RequestTimeout.Duration,
+		Timeout:     cfg.HTTPRequestTimeout.Duration,
 		ConnState:   srv.connState,
-		ListenLimit: cfg.HttpListenLimit,
+		ListenLimit: cfg.HTTPListenLimit,
 		Server: &http.Server{
-			Addr:         cfg.ListenAddr,
+			Addr:         cfg.HTTPListenAddr,
 			Handler:      newRouter(srv),
-			ReadTimeout:  cfg.HttpReadTimeout.Duration,
-			WriteTimeout: cfg.HttpWriteTimeout.Duration,
+			ReadTimeout:  cfg.HTTPReadTimeout.Duration,
+			WriteTimeout: cfg.HTTPWriteTimeout.Duration,
 		},
 	}
 
@@ -149,9 +149,5 @@ func Serve(cfg *config.Config, tkr *tracker.Tracker) {
 		if opErr, ok := err.(*net.OpError); !ok || (ok && opErr.Op != "accept") {
 			glog.Errorf("Failed to gracefully run HTTP server: %s", err.Error())
 		}
-	}
-
-	if err := srv.tracker.Close(); err != nil {
-		glog.Errorf("Failed to shutdown tracker cleanly: %s", err.Error())
 	}
 }
