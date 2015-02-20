@@ -17,8 +17,8 @@ import (
 	"github.com/chihaya/chihaya/tracker/models"
 )
 
-// NewAnnounce parses an HTTP request and generates a models.Announce.
-func NewAnnounce(cfg *config.Config, r *http.Request, p httprouter.Params) (*models.Announce, error) {
+// newAnnounce parses an HTTP request and generates a models.Announce.
+func newAnnounce(cfg *config.Config, r *http.Request, p httprouter.Params) (*models.Announce, error) {
 	q, err := query.New(r.URL.RawQuery)
 	if err != nil {
 		return nil, err
@@ -80,8 +80,8 @@ func NewAnnounce(cfg *config.Config, r *http.Request, p httprouter.Params) (*mod
 	}, nil
 }
 
-// NewScrape parses an HTTP request and generates a models.Scrape.
-func NewScrape(cfg *config.Config, r *http.Request, p httprouter.Params) (*models.Scrape, error) {
+// newScrape parses an HTTP request and generates a models.Scrape.
+func newScrape(cfg *config.Config, r *http.Request, p httprouter.Params) (*models.Scrape, error) {
 	q, err := query.New(r.URL.RawQuery)
 	if err != nil {
 		return nil, err

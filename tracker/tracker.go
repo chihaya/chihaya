@@ -64,7 +64,8 @@ func (tkr *Tracker) LoadApprovedClients(clients []string) {
 }
 
 // Writer serializes a tracker's responses, and is implemented for each
-// response transport used by the tracker.
+// response transport used by the tracker. Only one of these may be called
+// per request, and only once.
 //
 // Note, data passed into any of these functions will not contain sensitive
 // information, so it may be passed back the client freely.
