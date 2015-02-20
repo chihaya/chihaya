@@ -47,7 +47,6 @@ func (s *Server) handlePacket(packet []byte, addr *net.UDPAddr) (response []byte
 	connID := packet[0:8]
 	action := binary.BigEndian.Uint32(packet[8:12])
 	transactionID := packet[12:16]
-	generatedConnID := GenerateConnectionID(addr.IP)
 
 	writer := &Writer{
 		buf: new(bytes.Buffer),
@@ -62,7 +61,7 @@ func (s *Server) handlePacket(packet []byte, addr *net.UDPAddr) (response []byte
 		}
 	}()
 
-	if action != 0 && !bytes.Equal(connID, generatedConnID) {
+	if action != 0 && !s.connIDGen.Matches(connID, addr.IP) {
 		writer.WriteError(errBadConnectionID)
 		return
 	}
@@ -75,7 +74,7 @@ func (s *Server) handlePacket(packet []byte, addr *net.UDPAddr) (response []byte
 		}
 
 		writer.writeHeader(0)
-		writer.buf.Write(generatedConnID)
+		writer.buf.Write(s.connIDGen.Generate(addr.IP))
 
 	case 1:
 		actionName = "announce"
@@ -120,13 +119,13 @@ func (s *Server) newAnnounce(packet []byte, ip net.IP) (*models.Announce, error)
 	}
 
 	ipbuf := packet[84:88]
-	if !bytes.Equal(ipbuf, []byte{0, 0, 0, 0}) {
+	if s.config.AllowIPSpoofing && !bytes.Equal(ipbuf, []byte{0, 0, 0, 0}) {
 		ip = net.ParseIP(string(ipbuf))
 	}
+
 	if ip == nil {
 		return nil, errMalformedIP
-	}
-	if ipv4 := ip.To4(); ipv4 != nil {
+	} else if ipv4 := ip.To4(); ipv4 != nil {
 		ip = ipv4
 	}
 

@@ -11,16 +11,18 @@ import (
 )
 
 func TestInitReturnsNoError(t *testing.T) {
-	if err := InitConnectionIDEncryption(); err != nil {
-		t.Error("InitConnectionIDEncryption returned", err)
+	gen := &ConnectionIDGenerator{}
+	if err := gen.Init(); err != nil {
+		t.Error("Init returned", err)
 	}
 }
 
 func testGenerateConnectionID(t *testing.T, ip net.IP) {
-	InitConnectionIDEncryption()
+	gen := &ConnectionIDGenerator{}
+	gen.Init()
 
-	id1 := GenerateConnectionID(ip)
-	id2 := GenerateConnectionID(ip)
+	id1 := gen.Generate(ip)
+	id2 := gen.Generate(ip)
 
 	if !bytes.Equal(id1, id2) {
 		t.Errorf("Connection ID mismatch: %x != %x", id1, id2)
@@ -41,4 +43,31 @@ func TestGenerateConnectionIDIPv4(t *testing.T) {
 
 func TestGenerateConnectionIDIPv6(t *testing.T) {
 	testGenerateConnectionID(t, net.ParseIP("1:2:3:4::5:6"))
+}
+
+func TestMatchesWorksWithPreviousIV(t *testing.T) {
+	gen := &ConnectionIDGenerator{}
+	gen.Init()
+	ip := net.ParseIP("192.168.1.123").To4()
+
+	id1 := gen.Generate(ip)
+	if !gen.Matches(id1, ip) {
+		t.Errorf("Connection ID mismatch for current IV")
+	}
+
+	gen.NewIV()
+	if !gen.Matches(id1, ip) {
+		t.Errorf("Connection ID mismatch for previous IV")
+	}
+
+	id2 := gen.Generate(ip)
+	gen.NewIV()
+
+	if gen.Matches(id1, ip) {
+		t.Errorf("Connection ID matched for discarded IV")
+	}
+
+	if !gen.Matches(id2, ip) {
+		t.Errorf("Connection ID mismatch for previous IV")
+	}
 }

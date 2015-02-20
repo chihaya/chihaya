@@ -19,10 +19,10 @@ import (
 
 // Server represents a UDP torrent tracker.
 type Server struct {
-	config  *config.Config
-	tracker *tracker.Tracker
-
-	done bool
+	config    *config.Config
+	tracker   *tracker.Tracker
+	connIDGen *ConnectionIDGenerator
+	done      bool
 }
 
 func (s *Server) serve() error {
@@ -66,7 +66,7 @@ func (s *Server) serve() error {
 
 			if glog.V(2) {
 				duration := time.Since(start)
-				glog.Infof("[UDP - %9s] %s", duration, action)
+				glog.Infof("[UDP - %9s] %s %s", duration, action, addr)
 			}
 		}()
 	}
@@ -77,6 +77,13 @@ func (s *Server) serve() error {
 // Serve runs a UDP server, blocking until the server has shut down.
 func (s *Server) Serve() {
 	glog.V(0).Info("Starting UDP on ", s.config.UDPListenAddr)
+
+	go func() {
+		// Generate a new IV every hour.
+		for range time.Tick(time.Hour) {
+			s.connIDGen.NewIV()
+		}
+	}()
 
 	if err := s.serve(); err != nil {
 		glog.Errorf("Failed to run UDP server: %s", err.Error())
@@ -92,8 +99,14 @@ func (s *Server) Stop() {
 
 // NewServer returns a new UDP server for a given configuration and tracker.
 func NewServer(cfg *config.Config, tkr *tracker.Tracker) *Server {
+	gen := &ConnectionIDGenerator{}
+	if err := gen.Init(); err != nil {
+		panic(err)
+	}
+
 	return &Server{
-		config:  cfg,
-		tracker: tkr,
+		config:    cfg,
+		tracker:   tkr,
+		connIDGen: gen,
 	}
 }
