@@ -68,7 +68,7 @@ to your choice of location, and update the values as required.
 The available keys and their default values are as follows:
 
 - `private_enabled: false` – if this is a private tracker
-- `freeleech_enabled: false` – for private trackers, whether download stats should be counted
+- `freeleech_enabled: false` – for private trackers, whether download stats should be counted for users
 - `purge_inactive_torrents: true` – if torrents should be forgotten after some time
 - `announce: "30m"` – the announce "interval" value sent to clients
 - `min_announce: "15m"` – the announce "min_interval" value sent to clients
