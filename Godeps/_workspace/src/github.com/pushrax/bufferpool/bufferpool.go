@@ -29,7 +29,7 @@ func New(poolSize, bufferSize int) *BufferPool {
 // Take is used to obtain a new zeroed buffer. This will allocate a new buffer
 // if the pool was empty.
 func (pool *BufferPool) Take() *bytes.Buffer {
-	return bytes.NewBuffer(pool.TakeSlice())
+	return bytes.NewBuffer(pool.TakeSlice()[:0])
 }
 
 // TakeSlice is used to obtain a new slice. This will allocate a new slice
@@ -38,7 +38,7 @@ func (pool *BufferPool) TakeSlice() (slice []byte) {
 	select {
 	case slice = <-pool.pool:
 	default:
-		slice = make([]byte, 0, pool.bufferSize)
+		slice = make([]byte, pool.bufferSize)
 	}
 	return
 }
@@ -46,12 +46,13 @@ func (pool *BufferPool) TakeSlice() (slice []byte) {
 // Give is used to attempt to return a buffer to the pool. It may not
 // be added to the pool if it was already full.
 func (pool *BufferPool) Give(buf *bytes.Buffer) error {
-	if buf.Len() != pool.bufferSize {
+	buf.Reset()
+	slice := buf.Bytes()
+
+	if cap(slice) < pool.bufferSize {
 		return errors.New("Gave an incorrectly sized buffer to the pool.")
 	}
 
-	buf.Reset()
-	slice := buf.Bytes()
 	return pool.GiveSlice(slice[:buf.Len()])
 }
 

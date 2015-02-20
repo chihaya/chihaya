@@ -4,7 +4,7 @@
 	"Deps": [
 		{
 			"ImportPath": "github.com/chihaya/bencode",
-			"Rev": "e60878f635e1a61315c413492e133dd39769b1d1"
+			"Rev": "3c485a8d166ff6a79baba90c2c2da01c8348e930"
 		},
 		{
 			"ImportPath": "github.com/golang/glog",
@@ -16,7 +16,7 @@
 		},
 		{
 			"ImportPath": "github.com/pushrax/bufferpool",
-			"Rev": "c8962db3ad1e65fe9a83e7298dcd213938cf02d5"
+			"Rev": "7d6e1653dee10a165d1f357f3a57bc8031e9621b"
 		},
 		{
 			"ImportPath": "github.com/pushrax/faststats",

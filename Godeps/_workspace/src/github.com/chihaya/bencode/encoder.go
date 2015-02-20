@@ -62,6 +62,12 @@ func marshal(w io.Writer, data interface{}) error {
 	case uint:
 		marshalUint(w, uint64(v))
 
+	case int16:
+		marshalInt(w, int64(v))
+
+	case uint16:
+		marshalUint(w, uint64(v))
+
 	case int64:
 		marshalInt(w, v)
 

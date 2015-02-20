@@ -12,6 +12,21 @@ import (
 	"github.com/pushrax/bufferpool"
 )
 
+func ExampleNew() {
+	bp := bufferpool.New(10, 255)
+
+	dogBuffer := bp.Take()
+	dogBuffer.WriteString("Dog!")
+	bp.Give(dogBuffer)
+
+	catBuffer := bp.Take() // dogBuffer is reused and reset.
+	catBuffer.WriteString("Cat!")
+
+	fmt.Println(catBuffer)
+	// Output:
+	// Cat!
+}
+
 func TestTakeFromEmpty(t *testing.T) {
 	bp := bufferpool.New(1, 1)
 	poolBuf := bp.Take()
@@ -37,17 +52,16 @@ func TestTakeFromFilled(t *testing.T) {
 	}
 }
 
-func ExampleNew() {
-	bp := bufferpool.New(10, 255)
+func TestSliceSemantics(t *testing.T) {
+	bp := bufferpool.New(1, 8)
 
-	dogBuffer := bp.Take()
-	dogBuffer.WriteString("Dog!")
-	bp.Give(dogBuffer)
+	buf := bp.Take()
+	buf.WriteString("abc")
+	bp.Give(buf)
 
-	catBuffer := bp.Take() // dogBuffer is reused and reset.
-	catBuffer.WriteString("Cat!")
+	buf2 := bp.TakeSlice()
 
-	fmt.Println(catBuffer)
-	// Output:
-	// Cat!
+	if !bytes.Equal(buf2[:3], []byte("abc")) {
+		t.Fatalf("Buffer from filled bufferpool was recycled incorrectly.")
+	}
 }

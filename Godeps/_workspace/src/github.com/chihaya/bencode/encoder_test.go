@@ -19,6 +19,8 @@ var marshalTests = []struct {
 	{uint(43), "i43e"},
 	{int64(44), "i44e"},
 	{uint64(45), "i45e"},
+	{int16(44), "i44e"},
+	{uint16(45), "i45e"},
 
 	{"example", "7:example"},
 	{[]byte("example"), "7:example"},
