@@ -18,7 +18,7 @@ import (
 )
 
 // newAnnounce parses an HTTP request and generates a models.Announce.
-func newAnnounce(cfg *config.Config, r *http.Request, p httprouter.Params) (*models.Announce, error) {
+func (s *Server) newAnnounce(r *http.Request, p httprouter.Params) (*models.Announce, error) {
 	q, err := query.New(r.URL.RawQuery)
 	if err != nil {
 		return nil, err
@@ -26,7 +26,7 @@ func newAnnounce(cfg *config.Config, r *http.Request, p httprouter.Params) (*mod
 
 	compact := q.Params["compact"] != "0"
 	event, _ := q.Params["event"]
-	numWant := requestedPeerCount(q, cfg.NumWantFallback)
+	numWant := requestedPeerCount(q, s.config.NumWantFallback)
 
 	infohash, exists := q.Params["info_hash"]
 	if !exists {
@@ -38,7 +38,7 @@ func newAnnounce(cfg *config.Config, r *http.Request, p httprouter.Params) (*mod
 		return nil, models.ErrMalformedRequest
 	}
 
-	ipv4, ipv6, err := requestedIP(q, r, &cfg.NetConfig)
+	ipv4, ipv6, err := requestedIP(q, r, &s.config.NetConfig)
 	if err != nil {
 		return nil, models.ErrMalformedRequest
 	}
@@ -64,7 +64,7 @@ func newAnnounce(cfg *config.Config, r *http.Request, p httprouter.Params) (*mod
 	}
 
 	return &models.Announce{
-		Config:     cfg,
+		Config:     s.config,
 		Compact:    compact,
 		Downloaded: downloaded,
 		Event:      event,
@@ -75,13 +75,13 @@ func newAnnounce(cfg *config.Config, r *http.Request, p httprouter.Params) (*mod
 		NumWant:    numWant,
 		Passkey:    p.ByName("passkey"),
 		PeerID:     peerID,
-		Port:       port,
+		Port:       uint16(port),
 		Uploaded:   uploaded,
 	}, nil
 }
 
 // newScrape parses an HTTP request and generates a models.Scrape.
-func newScrape(cfg *config.Config, r *http.Request, p httprouter.Params) (*models.Scrape, error) {
+func (s *Server) newScrape(r *http.Request, p httprouter.Params) (*models.Scrape, error) {
 	q, err := query.New(r.URL.RawQuery)
 	if err != nil {
 		return nil, err
@@ -96,7 +96,7 @@ func newScrape(cfg *config.Config, r *http.Request, p httprouter.Params) (*model
 	}
 
 	return &models.Scrape{
-		Config: cfg,
+		Config: s.config,
 
 		Passkey:    p.ByName("passkey"),
 		Infohashes: q.Infohashes,

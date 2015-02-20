@@ -71,7 +71,7 @@ type Peer struct {
 	// Always has length net.IPv4len if IPv4, and net.IPv6len if IPv6
 	IP net.IP `json:"ip,omitempty"`
 
-	Port uint64 `json:"port"`
+	Port uint16 `json:"port"`
 
 	Uploaded     uint64 `json:"uploaded"`
 	Downloaded   uint64 `json:"downloaded"`
@@ -133,7 +133,7 @@ type Announce struct {
 	NumWant    int    `json:"numwant"`
 	Passkey    string `json:"passkey"`
 	PeerID     string `json:"peer_id"`
-	Port       uint64 `json:"port"`
+	Port       uint16 `json:"port"`
 	Uploaded   uint64 `json:"uploaded"`
 
 	Torrent *Torrent `json:"-"`
