@@ -8,6 +8,7 @@ package udp
 
 import (
 	"net"
+	"time"
 
 	"github.com/golang/glog"
 	"github.com/pushrax/bufferpool"
@@ -20,10 +21,12 @@ import (
 type Server struct {
 	config  *config.Config
 	tracker *tracker.Tracker
+
+	done bool
 }
 
-func (srv *Server) ListenAndServe() error {
-	listenAddr, err := net.ResolveUDPAddr("udp", srv.config.UDPListenAddr)
+func (s *Server) serve() error {
+	listenAddr, err := net.ResolveUDPAddr("udp", s.config.UDPListenAddr)
 	if err != nil {
 		return err
 	}
@@ -34,37 +37,55 @@ func (srv *Server) ListenAndServe() error {
 		return err
 	}
 
-	if srv.config.UDPReadBufferSize > 0 {
-		sock.SetReadBuffer(srv.config.UDPReadBufferSize)
+	if s.config.UDPReadBufferSize > 0 {
+		sock.SetReadBuffer(s.config.UDPReadBufferSize)
 	}
 
 	pool := bufferpool.New(1000, 2048)
 
-	for {
+	for !s.done {
 		buffer := pool.TakeSlice()
+		sock.SetReadDeadline(time.Now().Add(time.Second))
 		n, addr, err := sock.ReadFromUDP(buffer)
+
 		if err != nil {
+			if netErr, ok := err.(net.Error); ok && netErr.Temporary() {
+				continue
+			}
 			return err
 		}
 
 		go func() {
-			response := srv.handlePacket(buffer[:n], addr)
+			response := s.handlePacket(buffer[:n], addr)
 			if response != nil {
 				sock.WriteToUDP(response, addr)
 			}
 			pool.GiveSlice(buffer)
 		}()
 	}
+
+	return nil
 }
 
-func Serve(cfg *config.Config, tkr *tracker.Tracker) {
-	srv := &Server{
+func (s *Server) Serve() {
+	glog.V(0).Info("Starting UDP on ", s.config.UDPListenAddr)
+
+	if err := s.serve(); err != nil {
+		glog.Errorf("Failed to run UDP server: %s", err.Error())
+	} else {
+		glog.Info("UDP server shut down cleanly")
+	}
+}
+
+// Stop cleanly shuts down the server.
+func (s *Server) Stop() {
+	s.done = true
+}
+
+// NewServer returns a new UDP server for a given configuration and tracker.
+func NewServer(cfg *config.Config, tkr *tracker.Tracker) *Server {
+	return &Server{
 		config:  cfg,
 		tracker: tkr,
-	}
-
-	glog.V(0).Info("Starting UDP on ", cfg.UDPListenAddr)
-	if err := srv.ListenAndServe(); err != nil {
-		glog.Errorf("Failed to run UDP server: %s", err.Error())
 	}
 }

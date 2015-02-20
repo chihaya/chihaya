@@ -7,9 +7,11 @@ package chihaya
 import (
 	"flag"
 	"os"
+	"os/signal"
 	"runtime"
 	"runtime/pprof"
 	"sync"
+	"syscall"
 
 	"github.com/golang/glog"
 
@@ -80,28 +82,49 @@ func Boot() {
 	}
 
 	var wg sync.WaitGroup
+	var servers []tracker.Server
 
 	if cfg.HTTPListenAddr != "" {
 		wg.Add(1)
+		srv := http.NewServer(cfg, tkr)
+		servers = append(servers, srv)
+
 		go func() {
 			defer wg.Done()
-			http.Serve(cfg, tkr)
+			srv.Serve()
 		}()
 	}
 
 	if cfg.UDPListenAddr != "" {
 		wg.Add(1)
+		srv := udp.NewServer(cfg, tkr)
+		servers = append(servers, srv)
+
 		go func() {
 			defer wg.Done()
-			udp.Serve(cfg, tkr)
+			srv.Serve()
 		}()
 	}
 
-	wg.Wait()
+	shutdown := make(chan os.Signal)
+	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		wg.Wait()
+		signal.Stop(shutdown)
+		close(shutdown)
+	}()
+
+	<-shutdown
+	glog.Info("Shutting down...")
+
+	for _, srv := range servers {
+		srv.Stop()
+	}
+
+	<-shutdown
 
 	if err := tkr.Close(); err != nil {
 		glog.Errorf("Failed to shut down tracker cleanly: %s", err.Error())
 	}
-
-	glog.Info("Gracefully shut down")
 }
