@@ -32,7 +32,7 @@ func handleTorrentError(err error, w *Writer) {
 		return
 	}
 
-	if _, ok := err.(models.ClientError); ok {
+	if models.IsPublicError(err) {
 		w.WriteError(err)
 		stats.RecordEvent(stats.ClientError)
 	}

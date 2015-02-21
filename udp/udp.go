@@ -71,10 +71,11 @@ func (s *Server) serve(listenAddr string) error {
 
 		go func() {
 			response, action := s.handlePacket(buffer[:n], addr)
+			pool.GiveSlice(buffer)
+
 			if response != nil {
 				sock.WriteToUDP(response, addr)
 			}
-			pool.GiveSlice(buffer)
 
 			if glog.V(2) {
 				duration := time.Since(start)

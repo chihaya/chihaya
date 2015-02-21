@@ -76,7 +76,7 @@ func (s *Server) stats(w http.ResponseWriter, r *http.Request, p httprouter.Para
 func handleTorrentError(err error, w *Writer) (int, error) {
 	if err == nil {
 		return http.StatusOK, nil
-	} else if _, ok := err.(models.ClientError); ok {
+	} else if models.IsPublicError(err) {
 		w.WriteError(err)
 		stats.RecordEvent(stats.ClientError)
 		return http.StatusOK, nil

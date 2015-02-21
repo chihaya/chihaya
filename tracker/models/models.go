@@ -45,6 +45,13 @@ func (e ClientError) Error() string   { return string(e) }
 func (e NotFoundError) Error() string { return string(e) }
 func (e ProtocolError) Error() string { return string(e) }
 
+func IsPublicError(err error) bool {
+	_, cl := err.(ClientError)
+	_, nf := err.(NotFoundError)
+	_, pc := err.(ProtocolError)
+	return cl || nf || pc
+}
+
 type PeerList []Peer
 type PeerKey string
 
