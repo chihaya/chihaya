@@ -25,13 +25,13 @@ type Server struct {
 	done      bool
 }
 
-func (s *Server) serve() error {
-	listenAddr, err := net.ResolveUDPAddr("udp", s.config.UDPListenAddr)
+func (s *Server) serve(listenAddr string) error {
+	udpAddr, err := net.ResolveUDPAddr("udp", listenAddr)
 	if err != nil {
 		return err
 	}
 
-	sock, err := net.ListenUDP("udp", listenAddr)
+	sock, err := net.ListenUDP("udp", udpAddr)
 	defer sock.Close()
 	if err != nil {
 		return err
@@ -75,8 +75,8 @@ func (s *Server) serve() error {
 }
 
 // Serve runs a UDP server, blocking until the server has shut down.
-func (s *Server) Serve() {
-	glog.V(0).Info("Starting UDP on ", s.config.UDPListenAddr)
+func (s *Server) Serve(addr string) {
+	glog.V(0).Info("Starting UDP on ", addr)
 
 	go func() {
 		// Generate a new IV every hour.
@@ -85,7 +85,7 @@ func (s *Server) Serve() {
 		}
 	}()
 
-	if err := s.serve(); err != nil {
+	if err := s.serve(addr); err != nil {
 		glog.Errorf("Failed to run UDP server: %s", err.Error())
 	} else {
 		glog.Info("UDP server shut down cleanly")

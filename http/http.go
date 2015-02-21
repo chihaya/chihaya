@@ -121,8 +121,8 @@ func (s *Server) connState(conn net.Conn, state http.ConnState) {
 }
 
 // Serve runs an HTTP server, blocking until the server has shut down.
-func (s *Server) Serve() {
-	glog.V(0).Info("Starting HTTP on ", s.config.HTTPListenAddr)
+func (s *Server) Serve(addr string) {
+	glog.V(0).Info("Starting HTTP on ", addr)
 
 	if s.config.HTTPListenLimit != 0 {
 		glog.V(0).Info("Limiting connections to ", s.config.HTTPListenLimit)
@@ -133,7 +133,7 @@ func (s *Server) Serve() {
 		ConnState:   s.connState,
 		ListenLimit: s.config.HTTPListenLimit,
 		Server: &http.Server{
-			Addr:         s.config.HTTPListenAddr,
+			Addr:         addr,
 			Handler:      newRouter(s),
 			ReadTimeout:  s.config.HTTPReadTimeout.Duration,
 			WriteTimeout: s.config.HTTPWriteTimeout.Duration,

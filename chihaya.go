@@ -91,7 +91,7 @@ func Boot() {
 
 		go func() {
 			defer wg.Done()
-			srv.Serve()
+			srv.Serve(cfg.HTTPListenAddr)
 		}()
 	}
 
@@ -102,7 +102,7 @@ func Boot() {
 
 		go func() {
 			defer wg.Done()
-			srv.Serve()
+			srv.Serve(cfg.UDPListenAddr)
 		}()
 	}
 

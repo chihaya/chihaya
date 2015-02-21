@@ -27,7 +27,7 @@ type Tracker struct {
 // Server represents a server for a given BitTorrent tracker protocol.
 type Server interface {
 	// Serve runs the server and blocks until the server has shut down.
-	Serve()
+	Serve(addr string)
 
 	// Stop cleanly shuts down the server in a non-blocking manner.
 	Stop()
