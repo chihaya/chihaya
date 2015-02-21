@@ -7,6 +7,7 @@
 package udp
 
 import (
+	"errors"
 	"net"
 	"time"
 
@@ -19,21 +20,30 @@ import (
 
 // Server represents a UDP torrent tracker.
 type Server struct {
-	config    *config.Config
-	tracker   *tracker.Tracker
+	config  *config.Config
+	tracker *tracker.Tracker
+	done    bool
+	booting chan struct{}
+	sock    *net.UDPConn
+
 	connIDGen *ConnectionIDGenerator
-	done      bool
 }
 
 func (s *Server) serve(listenAddr string) error {
+	if s.sock != nil {
+		return errors.New("server already booted")
+	}
+
 	udpAddr, err := net.ResolveUDPAddr("udp", listenAddr)
 	if err != nil {
+		close(s.booting)
 		return err
 	}
 
 	sock, err := net.ListenUDP("udp", udpAddr)
 	defer sock.Close()
 	if err != nil {
+		close(s.booting)
 		return err
 	}
 
@@ -42,6 +52,8 @@ func (s *Server) serve(listenAddr string) error {
 	}
 
 	pool := bufferpool.New(1000, 2048)
+	s.sock = sock
+	close(s.booting)
 
 	for !s.done {
 		buffer := pool.TakeSlice()
@@ -95,6 +107,7 @@ func (s *Server) Serve(addr string) {
 // Stop cleanly shuts down the server.
 func (s *Server) Stop() {
 	s.done = true
+	s.sock.SetReadDeadline(time.Now())
 }
 
 // NewServer returns a new UDP server for a given configuration and tracker.
@@ -108,5 +121,6 @@ func NewServer(cfg *config.Config, tkr *tracker.Tracker) *Server {
 		config:    cfg,
 		tracker:   tkr,
 		connIDGen: gen,
+		booting:   make(chan struct{}),
 	}
 }
