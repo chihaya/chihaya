@@ -43,7 +43,7 @@ func (w *Writer) WriteAnnounce(res *models.AnnounceResponse) error {
 	return nil
 }
 
-// WriteAnnounce encodes a scrape response according to the UDP spec.
+// WriteScrape encodes a scrape response according to the UDP spec.
 func (w *Writer) WriteScrape(res *models.ScrapeResponse) error {
 	w.writeHeader(2)
 

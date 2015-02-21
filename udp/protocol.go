@@ -129,8 +129,6 @@ func (s *Server) newAnnounce(packet []byte, ip net.IP) (*models.Announce, error)
 		ip = ipv4
 	}
 
-	// TODO(pushrax): what exactly is the key "key" used for?
-
 	numWant := binary.BigEndian.Uint32(packet[92:96])
 	port := binary.BigEndian.Uint16(packet[96:98])
 

@@ -11,11 +11,14 @@ import (
 	"crypto/rand"
 )
 
+// ConnectionIDGenerator represents the logic to generate 64-bit UDP
+// connection IDs from peer IP addresses.
 type ConnectionIDGenerator struct {
 	iv, iv2 []byte
 	block   cipher.Block
 }
 
+// Init generates the AES key and sets up the first initialization vector.
 func (g *ConnectionIDGenerator) Init() error {
 	key := make([]byte, 16)
 	_, err := rand.Read(key)
@@ -31,6 +34,7 @@ func (g *ConnectionIDGenerator) Init() error {
 	return g.NewIV()
 }
 
+// Generate returns the 64-bit connection ID for an IP
 func (g *ConnectionIDGenerator) Generate(ip []byte) []byte {
 	return g.generate(ip, g.iv)
 }
@@ -55,6 +59,8 @@ func (g *ConnectionIDGenerator) generate(ip []byte, iv []byte) []byte {
 	return ct[:8]
 }
 
+// Matches checks if the given connection ID matches an IP with the current or
+// previous initialization vectors.
 func (g *ConnectionIDGenerator) Matches(id []byte, ip []byte) bool {
 	if expected := g.generate(ip, g.iv); bytes.Equal(id, expected) {
 		return true
@@ -69,6 +75,7 @@ func (g *ConnectionIDGenerator) Matches(id []byte, ip []byte) bool {
 	return false
 }
 
+// NewIV generates a new initialization vector and rotates the current one.
 func (g *ConnectionIDGenerator) NewIV() error {
 	newiv := make([]byte, 16)
 	if _, err := rand.Read(newiv); err != nil {
