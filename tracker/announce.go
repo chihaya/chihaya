@@ -230,20 +230,13 @@ func (tkr *Tracker) handlePeerEvent(ann *models.Announce, p *models.Peer) (snatc
 		}
 
 	case ann.Event == "completed":
-		v4seed := t.Seeders.Contains(p.Key())
-		v6seed := t.Seeders.Contains(p.Key())
-
 		if t.Leechers.Contains(p.Key()) {
 			err = tkr.leecherFinished(t, p)
 		} else {
 			err = models.ErrBadRequest
 		}
 
-		// If one of the dual-stacked peers is already a seeder, they have
-		// already snatched.
-		if !(v4seed || v6seed) {
-			snatched = true
-		}
+		snatched = true
 
 	case t.Leechers.Contains(p.Key()) && ann.Left == 0:
 		// A leecher completed but the event was never received.
