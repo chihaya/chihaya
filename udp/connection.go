@@ -18,20 +18,24 @@ type ConnectionIDGenerator struct {
 	block   cipher.Block
 }
 
-// Init generates the AES key and sets up the first initialization vector.
-func (g *ConnectionIDGenerator) Init() error {
+// NewConnectionIDGenerator creates a ConnectionIDGenerator and generates its
+// AES key and first initialization vector.
+func NewConnectionIDGenerator() (gen *ConnectionIDGenerator, err error) {
+	gen = &ConnectionIDGenerator{}
 	key := make([]byte, 16)
-	_, err := rand.Read(key)
+
+	_, err = rand.Read(key)
 	if err != nil {
-		return err
+		return
 	}
 
-	g.block, err = aes.NewCipher(key)
+	gen.block, err = aes.NewCipher(key)
 	if err != nil {
-		return err
+		return
 	}
 
-	return g.NewIV()
+	err = gen.NewIV()
+	return
 }
 
 // Generate returns the 64-bit connection ID for an IP

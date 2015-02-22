@@ -62,6 +62,7 @@ func (s *Server) serve(listenAddr string) error {
 
 		if err != nil {
 			if netErr, ok := err.(net.Error); ok && netErr.Temporary() {
+				pool.GiveSlice(buffer)
 				continue
 			}
 			return err
@@ -113,8 +114,8 @@ func (s *Server) Stop() {
 
 // NewServer returns a new UDP server for a given configuration and tracker.
 func NewServer(cfg *config.Config, tkr *tracker.Tracker) *Server {
-	gen := &ConnectionIDGenerator{}
-	if err := gen.Init(); err != nil {
+	gen, err := NewConnectionIDGenerator()
+	if err != nil {
 		panic(err)
 	}
 

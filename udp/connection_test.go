@@ -11,15 +11,13 @@ import (
 )
 
 func TestInitReturnsNoError(t *testing.T) {
-	gen := &ConnectionIDGenerator{}
-	if err := gen.Init(); err != nil {
+	if _, err := NewConnectionIDGenerator(); err != nil {
 		t.Error("Init returned", err)
 	}
 }
 
 func testGenerateConnectionID(t *testing.T, ip net.IP) {
-	gen := &ConnectionIDGenerator{}
-	gen.Init()
+	gen, _ := NewConnectionIDGenerator()
 
 	id1 := gen.Generate(ip)
 	id2 := gen.Generate(ip)
@@ -46,8 +44,7 @@ func TestGenerateConnectionIDIPv6(t *testing.T) {
 }
 
 func TestMatchesWorksWithPreviousIV(t *testing.T) {
-	gen := &ConnectionIDGenerator{}
-	gen.Init()
+	gen, _ := NewConnectionIDGenerator()
 	ip := net.ParseIP("192.168.1.123").To4()
 
 	id1 := gen.Generate(ip)
