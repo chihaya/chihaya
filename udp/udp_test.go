@@ -20,10 +20,10 @@ import (
 )
 
 var testPort = "34137"
-var connectAction = []byte{0, 0, 0, 0}
-var announceAction = []byte{0, 0, 0, 1}
-var scrapeAction = []byte{0, 0, 0, 2}
-var errorAction = []byte{0, 0, 0, 3}
+var connectAction = []byte{0, 0, 0, byte(connectActionID)}
+var announceAction = []byte{0, 0, 0, byte(announceActionID)}
+var scrapeAction = []byte{0, 0, 0, byte(scrapeActionID)}
+var errorAction = []byte{0, 0, 0, byte(errorActionID)}
 
 func init() {
 	stats.DefaultStats = stats.New(config.StatsConfig{})

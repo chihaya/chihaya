@@ -26,6 +26,13 @@ var (
 	errBadConnectionID = models.ProtocolError("bad connection ID")
 )
 
+const (
+	connectActionID uint32 = iota
+	announceActionID
+	scrapeActionID
+	errorActionID
+)
+
 // handleTorrentError writes err to w if err is a models.ClientError.
 func handleTorrentError(err error, w *Writer) {
 	if err == nil {
@@ -55,11 +62,7 @@ func (s *Server) handlePacket(packet []byte, addr *net.UDPAddr) (response []byte
 		transactionID: transactionID,
 	}
 
-	defer func() {
-		if writer.buf.Len() > 0 {
-			response = writer.buf.Bytes()
-		}
-	}()
+	defer func() { response = writer.buf.Bytes() }()
 
 	if action != 0 && !s.connIDGen.Matches(connID, addr.IP) {
 		writer.WriteError(errBadConnectionID)
@@ -67,7 +70,7 @@ func (s *Server) handlePacket(packet []byte, addr *net.UDPAddr) (response []byte
 	}
 
 	switch action {
-	case 0:
+	case connectActionID:
 		actionName = "connect"
 		if !bytes.Equal(connID, initialConnectionID) {
 			return // Malformed packet.
@@ -76,7 +79,7 @@ func (s *Server) handlePacket(packet []byte, addr *net.UDPAddr) (response []byte
 		writer.writeHeader(0)
 		writer.buf.Write(s.connIDGen.Generate(addr.IP))
 
-	case 1:
+	case announceActionID:
 		actionName = "announce"
 		ann, err := s.newAnnounce(packet, addr.IP)
 
@@ -86,7 +89,7 @@ func (s *Server) handlePacket(packet []byte, addr *net.UDPAddr) (response []byte
 
 		handleTorrentError(err, writer)
 
-	case 2:
+	case scrapeActionID:
 		actionName = "scrape"
 		scrape, err := s.newScrape(packet)
 

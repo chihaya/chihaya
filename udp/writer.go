@@ -22,7 +22,7 @@ type Writer struct {
 
 // WriteError writes the failure reason as a null-terminated string.
 func (w *Writer) WriteError(err error) error {
-	w.writeHeader(3)
+	w.writeHeader(errorActionID)
 	w.buf.WriteString(err.Error())
 	w.buf.WriteRune('\000')
 	return nil
@@ -30,7 +30,7 @@ func (w *Writer) WriteError(err error) error {
 
 // WriteAnnounce encodes an announce response according to the UDP spec.
 func (w *Writer) WriteAnnounce(res *models.AnnounceResponse) error {
-	w.writeHeader(1)
+	w.writeHeader(announceActionID)
 	binary.Write(w.buf, binary.BigEndian, uint32(res.Interval/time.Second))
 	binary.Write(w.buf, binary.BigEndian, uint32(res.Incomplete))
 	binary.Write(w.buf, binary.BigEndian, uint32(res.Complete))
@@ -45,7 +45,7 @@ func (w *Writer) WriteAnnounce(res *models.AnnounceResponse) error {
 
 // WriteScrape encodes a scrape response according to the UDP spec.
 func (w *Writer) WriteScrape(res *models.ScrapeResponse) error {
-	w.writeHeader(2)
+	w.writeHeader(scrapeActionID)
 
 	for _, torrent := range res.Files {
 		binary.Write(w.buf, binary.BigEndian, uint32(torrent.Seeders.Len()))

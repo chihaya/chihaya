@@ -9,6 +9,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"net"
 )
 
 // ConnectionIDGenerator represents the logic to generate 64-bit UDP
@@ -39,15 +40,11 @@ func NewConnectionIDGenerator() (gen *ConnectionIDGenerator, err error) {
 }
 
 // Generate returns the 64-bit connection ID for an IP
-func (g *ConnectionIDGenerator) Generate(ip []byte) []byte {
+func (g *ConnectionIDGenerator) Generate(ip net.IP) []byte {
 	return g.generate(ip, g.iv)
 }
 
-func (g *ConnectionIDGenerator) generate(ip []byte, iv []byte) []byte {
-	if len(ip) > 16 {
-		panic("IP larger than 16 bytes")
-	}
-
+func (g *ConnectionIDGenerator) generate(ip net.IP, iv []byte) []byte {
 	for len(ip) < 8 {
 		ip = append(ip, ip...) // Not enough bits in output.
 	}
@@ -65,7 +62,7 @@ func (g *ConnectionIDGenerator) generate(ip []byte, iv []byte) []byte {
 
 // Matches checks if the given connection ID matches an IP with the current or
 // previous initialization vectors.
-func (g *ConnectionIDGenerator) Matches(id []byte, ip []byte) bool {
+func (g *ConnectionIDGenerator) Matches(id []byte, ip net.IP) bool {
 	if expected := g.generate(ip, g.iv); bytes.Equal(id, expected) {
 		return true
 	}

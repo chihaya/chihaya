@@ -74,7 +74,7 @@ func (s *Server) serve(listenAddr string) error {
 			response, action := s.handlePacket(buffer[:n], addr)
 			pool.GiveSlice(buffer)
 
-			if response != nil {
+			if len(response) > 0 {
 				sock.WriteToUDP(response, addr)
 			}
 
