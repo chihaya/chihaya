@@ -13,24 +13,29 @@ import (
 	"github.com/chihaya/chihaya/tracker/models"
 )
 
-// initialConnectionID is the magic initial connection ID specified by BEP 15.
-var initialConnectionID = []byte{0, 0, 0x04, 0x17, 0x27, 0x10, 0x19, 0x80}
-
-// eventIDs maps IDs to event names.
-var eventIDs = []string{"", "completed", "started", "stopped"}
-
-var (
-	errMalformedPacket = models.ProtocolError("malformed packet")
-	errMalformedIP     = models.ProtocolError("malformed IP address")
-	errMalformedEvent  = models.ProtocolError("malformed event ID")
-	errBadConnectionID = models.ProtocolError("bad connection ID")
-)
-
 const (
 	connectActionID uint32 = iota
 	announceActionID
 	scrapeActionID
 	errorActionID
+)
+
+var (
+	// initialConnectionID is the magic initial connection ID specified by BEP 15.
+	initialConnectionID = []byte{0, 0, 0x04, 0x17, 0x27, 0x10, 0x19, 0x80}
+
+	// eventIDs maps IDs to event names.
+	eventIDs = []string{
+		"",
+		"completed",
+		"started",
+		"stopped",
+	}
+
+	errMalformedPacket = models.ProtocolError("malformed packet")
+	errMalformedIP     = models.ProtocolError("malformed IP address")
+	errMalformedEvent  = models.ProtocolError("malformed event ID")
+	errBadConnectionID = models.ProtocolError("bad connection ID")
 )
 
 // handleTorrentError writes err to w if err is a models.ClientError.
@@ -61,7 +66,6 @@ func (s *Server) handlePacket(packet []byte, addr *net.UDPAddr) (response []byte
 		connectionID:  connID,
 		transactionID: transactionID,
 	}
-
 	defer func() { response = writer.buf.Bytes() }()
 
 	if action != 0 && !s.connIDGen.Matches(connID, addr.IP) {
@@ -121,9 +125,9 @@ func (s *Server) newAnnounce(packet []byte, ip net.IP) (*models.Announce, error)
 		return nil, errMalformedEvent
 	}
 
-	ipbuf := packet[84:88]
+	ipbytes := packet[84:88]
 	if s.config.AllowIPSpoofing && !bytes.Equal(ipbuf, []byte{0, 0, 0, 0}) {
-		ip = net.ParseIP(string(ipbuf))
+		ip = net.ParseIP(string(ipbytes))
 	}
 
 	if ip == nil {
