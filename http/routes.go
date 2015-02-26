@@ -86,8 +86,6 @@ func handleTorrentError(err error, w *Writer) (int, error) {
 }
 
 func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	stats.RecordEvent(stats.Announce)
-
 	writer := &Writer{w}
 	ann, err := s.newAnnounce(r, p)
 	if err != nil {
@@ -98,8 +96,6 @@ func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request, p httprou
 }
 
 func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	stats.RecordEvent(stats.Scrape)
-
 	writer := &Writer{w}
 	scrape, err := s.newScrape(r, p)
 	if err != nil {

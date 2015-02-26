@@ -70,6 +70,7 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) (err error) {
 		stats.RecordEvent(stats.DeletedTorrent)
 	}
 
+	stats.RecordEvent(stats.Announce)
 	return w.WriteAnnounce(newAnnounceResponse(ann))
 }
 
