@@ -126,7 +126,7 @@ func (s *Server) newAnnounce(packet []byte, ip net.IP) (*models.Announce, error)
 	}
 
 	ipbytes := packet[84:88]
-	if s.config.AllowIPSpoofing && !bytes.Equal(ipbuf, []byte{0, 0, 0, 0}) {
+	if s.config.AllowIPSpoofing && !bytes.Equal(ipbytes, []byte{0, 0, 0, 0}) {
 		ip = net.ParseIP(string(ipbytes))
 	}
 
