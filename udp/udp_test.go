@@ -13,21 +13,18 @@ import (
 	"time"
 
 	"github.com/chihaya/chihaya/config"
-	"github.com/chihaya/chihaya/stats"
 	"github.com/chihaya/chihaya/tracker"
 
 	_ "github.com/chihaya/chihaya/backend/noop"
 )
 
-var testPort = "34137"
-var connectAction = []byte{0, 0, 0, byte(connectActionID)}
-var announceAction = []byte{0, 0, 0, byte(announceActionID)}
-var scrapeAction = []byte{0, 0, 0, byte(scrapeActionID)}
-var errorAction = []byte{0, 0, 0, byte(errorActionID)}
-
-func init() {
-	stats.DefaultStats = stats.New(config.StatsConfig{})
-}
+var (
+	testPort       = "34137"
+	connectAction  = []byte{0, 0, 0, byte(connectActionID)}
+	announceAction = []byte{0, 0, 0, byte(announceActionID)}
+	scrapeAction   = []byte{0, 0, 0, byte(scrapeActionID)}
+	errorAction    = []byte{0, 0, 0, byte(errorActionID)}
+)
 
 func setupTracker(cfg *config.Config) (*Server, chan struct{}, error) {
 	tkr, err := tracker.New(cfg)
