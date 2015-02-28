@@ -280,6 +280,10 @@ func newAnnounceResponse(ann *models.Announce) *models.AnnounceResponse {
 
 	if ann.NumWant > 0 && ann.Event != "stopped" && ann.Event != "paused" {
 		res.IPv4Peers, res.IPv6Peers = getPeers(ann)
+
+		if len(res.IPv4Peers)+len(res.IPv6Peers) == 0 {
+			models.AppendPeer(&res.IPv4Peers, &res.IPv6Peers, ann, ann.Peer)
+		}
 	}
 
 	return res

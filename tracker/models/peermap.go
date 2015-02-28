@@ -159,7 +159,7 @@ func (pm *PeerMap) AppendPeers(ipv4s, ipv6s PeerList, ann *Announce, wanted int)
 		} else if peersEquivalent(&peer, ann.Peer) {
 			continue
 		} else {
-			appendPeer(&ipv4s, &ipv6s, ann, &peer, &count)
+			count += AppendPeer(&ipv4s, &ipv6s, ann, &peer)
 		}
 	}
 
@@ -174,7 +174,7 @@ func (pm *PeerMap) AppendPeers(ipv4s, ipv6s PeerList, ann *Announce, wanted int)
 				} else if peersEquivalent(&peer, ann.Peer) {
 					continue
 				} else {
-					appendPeer(&ipv4s, &ipv6s, ann, &peer, &count)
+					count += AppendPeer(&ipv4s, &ipv6s, ann, &peer)
 				}
 			}
 		}
@@ -183,18 +183,20 @@ func (pm *PeerMap) AppendPeers(ipv4s, ipv6s PeerList, ann *Announce, wanted int)
 	return ipv4s, ipv6s
 }
 
-// appendPeer adds a peer to its corresponding peerlist.
-func appendPeer(ipv4s, ipv6s *PeerList, ann *Announce, peer *Peer, count *int) {
+// AppendPeer adds a peer to its corresponding peerlist.
+func AppendPeer(ipv4s, ipv6s *PeerList, ann *Announce, peer *Peer) int {
 	if ann.HasIPv6() && peer.HasIPv6() {
 		*ipv6s = append(*ipv6s, *peer)
-		*count++
+		return 1
 	} else if ann.Config.RespectAF && ann.HasIPv4() && peer.HasIPv4() {
 		*ipv4s = append(*ipv4s, *peer)
-		*count++
+		return 1
 	} else if !ann.Config.RespectAF && peer.HasIPv4() {
 		*ipv4s = append(*ipv4s, *peer)
-		*count++
+		return 1
 	}
+
+	return 0
 }
 
 // peersEquivalent checks if two peers represent the same entity.

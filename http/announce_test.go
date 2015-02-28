@@ -31,10 +31,10 @@ func TestPublicAnnounce(t *testing.T) {
 	peer3 := makePeerParams("peer3", false)
 
 	peer1["event"] = "started"
-	expected := makeResponse(1, 0)
+	expected := makeResponse(1, 0, peer1)
 	checkAnnounce(peer1, expected, srv, t)
 
-	expected = makeResponse(2, 0)
+	expected = makeResponse(2, 0, peer2)
 	checkAnnounce(peer2, expected, srv, t)
 
 	expected = makeResponse(2, 1, peer1, peer2)
@@ -147,7 +147,7 @@ func TestPrivateAnnounce(t *testing.T) {
 	peer2 := makePeerParams("-TR2820-peer2", false)
 	peer3 := makePeerParams("-TR2820-peer3", true)
 
-	expected := makeResponse(0, 1)
+	expected := makeResponse(0, 1, peer1)
 	srv.URL = baseURL + "/users/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv1"
 	checkAnnounce(peer1, expected, srv, t)
 
@@ -189,7 +189,7 @@ func TestPreferredSubnet(t *testing.T) {
 	peerD1 := makePeerParams("peerD1", false, "fc02::1")
 	peerD2 := makePeerParams("peerD2", false, "fc02::2")
 
-	expected := makeResponse(0, 1)
+	expected := makeResponse(0, 1, peerA1)
 	checkAnnounce(peerA1, expected, srv, t)
 
 	expected = makeResponse(0, 2, peerA1)
@@ -255,7 +255,7 @@ func TestCompactAnnounce(t *testing.T) {
 	peer3["compact"] = "1"
 
 	expected := makeResponse(0, 1)
-	expected["peers"] = ""
+	expected["peers"] = compact
 	checkAnnounce(peer1, expected, srv, t)
 
 	expected = makeResponse(0, 2)
