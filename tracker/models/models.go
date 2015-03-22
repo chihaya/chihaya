@@ -46,8 +46,8 @@ func (e NotFoundError) Error() string { return string(e) }
 type PeerList []Peer
 type PeerKey string
 
-func NewPeerKey(peerID string, ip net.IP) PeerKey {
-	return PeerKey(peerID + "//" + ip.String())
+func NewPeerKey(peerID string, ip net.IP, port string) PeerKey {
+	return PeerKey(peerID + "//" + ip.String() + ":" + port)
 }
 
 func (pk PeerKey) IP() net.IP {
@@ -88,7 +88,7 @@ func (p *Peer) HasIPv6() bool {
 }
 
 func (p *Peer) Key() PeerKey {
-	return NewPeerKey(p.ID, p.IP)
+	return NewPeerKey(p.ID, p.IP, string(p.Port))
 }
 
 // Torrent is a swarm for a given torrent file.
