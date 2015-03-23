@@ -127,19 +127,19 @@ func Serve(cfg *config.Config, tkr *tracker.Tracker) {
 	}
 
 	glog.V(0).Info("Starting on ", cfg.ListenAddr)
-	if cfg.HttpListenLimit != 0 {
-		glog.V(0).Info("Limiting connections to ", cfg.HttpListenLimit)
+	if cfg.HTTPListenLimit != 0 {
+		glog.V(0).Info("Limiting connections to ", cfg.HTTPListenLimit)
 	}
 
 	grace := &graceful.Server{
 		Timeout:     cfg.RequestTimeout.Duration,
 		ConnState:   srv.connState,
-		ListenLimit: cfg.HttpListenLimit,
+		ListenLimit: cfg.HTTPListenLimit,
 		Server: &http.Server{
 			Addr:         cfg.ListenAddr,
 			Handler:      newRouter(srv),
-			ReadTimeout:  cfg.HttpReadTimeout.Duration,
-			WriteTimeout: cfg.HttpWriteTimeout.Duration,
+			ReadTimeout:  cfg.HTTPReadTimeout.Duration,
+			WriteTimeout: cfg.HTTPWriteTimeout.Duration,
 		},
 	}
 

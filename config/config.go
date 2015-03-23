@@ -91,9 +91,9 @@ type TrackerConfig struct {
 type HTTPConfig struct {
 	ListenAddr       string   `json:"http_listen_addr"`
 	RequestTimeout   Duration `json:"http_request_timeout"`
-	HttpReadTimeout  Duration `json:"http_read_timeout"`
-	HttpWriteTimeout Duration `json:"http_write_timeout"`
-	HttpListenLimit  int      `json:"http_listen_limit"`
+	HTTPReadTimeout  Duration `json:"http_read_timeout"`
+	HTTPWriteTimeout Duration `json:"http_write_timeout"`
+	HTTPListenLimit  int      `json:"http_listen_limit"`
 }
 
 // Config is the global configuration for an instance of Chihaya.
@@ -129,8 +129,8 @@ var DefaultConfig = Config{
 	HTTPConfig: HTTPConfig{
 		ListenAddr:       ":6881",
 		RequestTimeout:   Duration{10 * time.Second},
-		HttpReadTimeout:  Duration{10 * time.Second},
-		HttpWriteTimeout: Duration{10 * time.Second},
+		HTTPReadTimeout:  Duration{10 * time.Second},
+		HTTPWriteTimeout: Duration{10 * time.Second},
 	},
 
 	DriverConfig: DriverConfig{
