@@ -69,5 +69,5 @@ $ godep go test -v ./... -bench .
 
 Copy [`example_config.json`](https://github.com/chihaya/chihaya/blob/master/example_config.json)
 to your choice of location, and update the values as required.
-An explanation of the available keys can be found in [CONFIGURATION.md](https://github.com/chihaya/chihaya/blob/master/CONTRIBUTING.md).
+An explanation of the available keys can be found in [CONFIGURATION.md](https://github.com/chihaya/chihaya/blob/master/CONFIGURATION.md).
 
