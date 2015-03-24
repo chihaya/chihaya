@@ -75,6 +75,7 @@ type WhitelistConfig struct {
 
 // TrackerConfig is the configuration for tracker functionality.
 type TrackerConfig struct {
+	CreateOnAnnounce      bool     `json:"create_on_announce"`
 	PrivateEnabled        bool     `json:"private_enabled"`
 	FreeleechEnabled      bool     `json:"freeleech_enabled"`
 	PurgeInactiveTorrents bool     `json:"purge_inactive_torrents"`
@@ -107,6 +108,7 @@ type Config struct {
 // DefaultConfig is a configuration that can be used as a fallback value.
 var DefaultConfig = Config{
 	TrackerConfig: TrackerConfig{
+		CreateOnAnnounce:      true,
 		PrivateEnabled:        false,
 		FreeleechEnabled:      false,
 		PurgeInactiveTorrents: true,
