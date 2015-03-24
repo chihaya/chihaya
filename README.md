@@ -85,6 +85,13 @@ The listen address for the HTTP server. If only a port is specified, the tracker
 
 Whether this is a public or private tracker.
 
+##### `create_on_announce`
+
+    type: bool
+    default: true
+
+Whether to register new torrents with the tracker when any client announces (`true`), or to return an error if the torrent doesn't exist (`false`). This should be set to `false` for private trackers in most cases.
+
 ##### `purge_inactive_torrents`
 
     type: bool
