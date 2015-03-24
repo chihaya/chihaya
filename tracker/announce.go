@@ -27,7 +27,7 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) (err error) {
 
 	torrent, err := tkr.FindTorrent(ann.Infohash)
 
-	if err == models.ErrTorrentDNE && cfg.CreateOnAnnounce {
+	if err == models.ErrTorrentDNE && tkr.Config.CreateOnAnnounce {
 		torrent = &models.Torrent{
 			Infohash: ann.Infohash,
 			Seeders:  models.NewPeerMap(true, tkr.Config),
