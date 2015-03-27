@@ -8,6 +8,7 @@ package models
 
 import (
 	"net"
+	"strconv"
 	"strings"
 	"time"
 
@@ -104,7 +105,7 @@ func (p *Peer) HasIPv6() bool {
 
 // Key returns a PeerKey for the given peer.
 func (p *Peer) Key() PeerKey {
-	return NewPeerKey(p.ID, p.IP, string(p.Port))
+	return NewPeerKey(p.ID, p.IP, strconv.FormatUint(p.Port, 10))
 }
 
 // Torrent is a swarm for a given torrent file.
