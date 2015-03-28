@@ -27,7 +27,7 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) (err error) {
 
 	torrent, err := tkr.FindTorrent(ann.Infohash)
 
-	if err == models.ErrTorrentDNE && !tkr.Config.PrivateEnabled {
+	if err == models.ErrTorrentDNE && tkr.Config.CreateOnAnnounce {
 		torrent = &models.Torrent{
 			Infohash: ann.Infohash,
 			Seeders:  models.NewPeerMap(true, tkr.Config),
@@ -231,20 +231,13 @@ func (tkr *Tracker) handlePeerEvent(ann *models.Announce, p *models.Peer) (snatc
 		}
 
 	case ann.Event == "completed":
-		v4seed := t.Seeders.Contains(p.Key())
-		v6seed := t.Seeders.Contains(p.Key())
-
 		if t.Leechers.Contains(p.Key()) {
 			err = tkr.leecherFinished(t, p)
 		} else {
 			err = models.ErrBadRequest
 		}
 
-		// If one of the dual-stacked peers is already a seeder, they have
-		// already snatched.
-		if !(v4seed || v6seed) {
-			snatched = true
-		}
+		snatched = true
 
 	case t.Leechers.Contains(p.Key()) && ann.Left == 0:
 		// A leecher completed but the event was never received.

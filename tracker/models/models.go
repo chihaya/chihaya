@@ -8,6 +8,7 @@ package models
 
 import (
 	"net"
+	"strconv"
 	"strings"
 	"time"
 
@@ -52,13 +53,18 @@ func IsPublicError(err error) bool {
 	return cl || nf || pc
 }
 
+// PeerList represents a list of peers: either seeders or leechers.
 type PeerList []Peer
+
+// PeerKey is the key used to uniquely identify a peer in a swarm.
 type PeerKey string
 
-func NewPeerKey(peerID string, ip net.IP) PeerKey {
-	return PeerKey(peerID + "//" + ip.String())
+// NewPeerKey creates a properly formatted PeerKey.
+func NewPeerKey(peerID string, ip net.IP, port string) PeerKey {
+	return PeerKey(peerID + "//" + ip.String() + ":" + port)
 }
 
+// IP parses and returns the IP address for a given PeerKey.
 func (pk PeerKey) IP() net.IP {
 	ip := net.ParseIP(strings.Split(string(pk), "//")[1])
 	if rval := ip.To4(); rval != nil {
@@ -67,8 +73,14 @@ func (pk PeerKey) IP() net.IP {
 	return ip
 }
 
+// PeerID returns the PeerID section of a PeerKey.
 func (pk PeerKey) PeerID() string {
 	return strings.Split(string(pk), "//")[0]
+}
+
+// Port returns the port section of the PeerKey.
+func (pk PeerKey) Port() string {
+	return strings.Split(string(pk), "//")[2]
 }
 
 // Peer is a participant in a swarm.
@@ -88,16 +100,21 @@ type Peer struct {
 	LastAnnounce int64  `json:"last_announce"`
 }
 
+// HasIPv4 determines if a peer's IP address can be represented as an IPv4
+// address.
 func (p *Peer) HasIPv4() bool {
 	return !p.HasIPv6()
 }
 
+// HasIPv6 determines if a peer's IP address can be represented as an IPv6
+// address.
 func (p *Peer) HasIPv6() bool {
 	return len(p.IP) == net.IPv6len
 }
 
+// Key returns a PeerKey for the given peer.
 func (p *Peer) Key() PeerKey {
-	return NewPeerKey(p.ID, p.IP)
+	return NewPeerKey(p.ID, p.IP, strconv.FormatUint(p.Port, 10))
 }
 
 // Torrent is a swarm for a given torrent file.
