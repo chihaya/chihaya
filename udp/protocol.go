@@ -24,7 +24,17 @@ var (
 	// initialConnectionID is the magic initial connection ID specified by BEP 15.
 	initialConnectionID = []byte{0, 0, 0x04, 0x17, 0x27, 0x10, 0x19, 0x80}
 
-	// eventIDs maps IDs to event names.
+	// emptyIPs are the value of an IP field that has been left blank.
+	emptyIPv4 = []byte{0, 0, 0, 0}
+	emptyIPv6 = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+
+	// Option-Types described in BEP41 and BEP45.
+	optionEndOfOptions = byte(0x0)
+	optionNOP          = byte(0x1)
+	optionURLData      = byte(0x2)
+	optionIPv6         = byte(0x3)
+
+	// eventIDs map IDs to event names.
 	eventIDs = []string{
 		"",
 		"completed",
@@ -125,9 +135,9 @@ func (s *Server) newAnnounce(packet []byte, ip net.IP) (*models.Announce, error)
 		return nil, errMalformedEvent
 	}
 
-	ipbytes := packet[84:88]
-	if s.config.AllowIPSpoofing && !bytes.Equal(ipbytes, []byte{0, 0, 0, 0}) {
-		ip = net.ParseIP(string(ipbytes))
+	ipv4bytes := packet[84:88]
+	if s.config.AllowIPSpoofing && !bytes.Equal(ipv4bytes, emptyIPv4) {
+		ip = net.ParseIP(string(ipv4bytes))
 	}
 
 	if ip == nil {
@@ -139,16 +149,65 @@ func (s *Server) newAnnounce(packet []byte, ip net.IP) (*models.Announce, error)
 	numWant := binary.BigEndian.Uint32(packet[92:96])
 	port := binary.BigEndian.Uint16(packet[96:98])
 
+	// Optionally, parse the optional parameteres as described in BEP41.
+	var IPv6Endpoint models.Endpoint
+	if len(packet) > 98 {
+		optionStartIndex := 98
+		for optionStartIndex < len(packet)-1 {
+			option := packet[optionStartIndex]
+			switch option {
+			case optionEndOfOptions:
+				break
+
+			case optionNOP:
+				optionStartIndex++
+
+			case optionURLData:
+				if optionStartIndex+1 > len(packet)-1 {
+					return nil, errMalformedPacket
+				}
+
+				length := int(packet[optionStartIndex+1])
+				if optionStartIndex+1+length > len(packet)-1 {
+					return nil, errMalformedPacket
+				}
+
+				// TODO: Actually parse the URL Data as described in BEP41.
+
+				optionStartIndex += 1 + length
+
+			case optionIPv6:
+				if optionStartIndex+19 > len(packet)-1 {
+					return nil, errMalformedPacket
+				}
+
+				ipv6bytes := packet[optionStartIndex+1 : optionStartIndex+17]
+				if s.config.AllowIPSpoofing && !bytes.Equal(ipv6bytes, emptyIPv6) {
+					IPv6Endpoint.IP = net.ParseIP(string(ipv6bytes)).To16()
+					IPv6Endpoint.Port = binary.BigEndian.Uint16(packet[optionStartIndex+17 : optionStartIndex+19])
+					if IPv6Endpoint.IP == nil {
+						return nil, errMalformedIP
+					}
+				}
+
+				optionStartIndex += 19
+
+			default:
+				break
+			}
+		}
+	}
+
 	return &models.Announce{
 		Config:     s.config,
 		Downloaded: downloaded,
 		Event:      eventIDs[eventID],
-		IPv4:       ip,
+		IPv4:       models.Endpoint{ip, port},
+		IPv6:       IPv6Endpoint,
 		Infohash:   string(infohash),
 		Left:       left,
 		NumWant:    int(numWant),
 		PeerID:     string(peerID),
-		Port:       port,
 		Uploaded:   uploaded,
 	}, nil
 }

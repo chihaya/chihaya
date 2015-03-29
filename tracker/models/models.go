@@ -8,7 +8,6 @@ package models
 
 import (
 	"net"
-	"strconv"
 	"strings"
 	"time"
 
@@ -46,6 +45,7 @@ func (e ClientError) Error() string   { return string(e) }
 func (e NotFoundError) Error() string { return string(e) }
 func (e ProtocolError) Error() string { return string(e) }
 
+// IsPublicError determines whether an error should be propogated to the client.
 func IsPublicError(err error) bool {
 	_, cl := err.(ClientError)
 	_, nf := err.(NotFoundError)
@@ -60,8 +60,8 @@ type PeerList []Peer
 type PeerKey string
 
 // NewPeerKey creates a properly formatted PeerKey.
-func NewPeerKey(peerID string, ip net.IP, port string) PeerKey {
-	return PeerKey(peerID + "//" + ip.String() + ":" + port)
+func NewPeerKey(peerID string, ip net.IP) PeerKey {
+	return PeerKey(peerID + "//" + ip.String())
 }
 
 // IP parses and returns the IP address for a given PeerKey.
@@ -78,26 +78,23 @@ func (pk PeerKey) PeerID() string {
 	return strings.Split(string(pk), "//")[0]
 }
 
-// Port returns the port section of the PeerKey.
-func (pk PeerKey) Port() string {
-	return strings.Split(string(pk), "//")[2]
+// Endpoint is an IP and port pair.
+type Endpoint struct {
+	// Always has length net.IPv4len if IPv4, and net.IPv6len if IPv6
+	IP   net.IP `json:"ip"`
+	Port uint16 `json:"port"`
 }
 
 // Peer is a participant in a swarm.
 type Peer struct {
-	ID        string `json:"id"`
-	UserID    uint64 `json:"user_id"`
-	TorrentID uint64 `json:"torrent_id"`
-
-	// Always has length net.IPv4len if IPv4, and net.IPv6len if IPv6
-	IP net.IP `json:"ip,omitempty"`
-
-	Port uint16 `json:"port"`
-
+	ID           string `json:"id"`
+	UserID       uint64 `json:"user_id"`
+	TorrentID    uint64 `json:"torrent_id"`
 	Uploaded     uint64 `json:"uploaded"`
 	Downloaded   uint64 `json:"downloaded"`
 	Left         uint64 `json:"left"`
 	LastAnnounce int64  `json:"last_announce"`
+	Endpoint
 }
 
 // HasIPv4 determines if a peer's IP address can be represented as an IPv4
@@ -114,7 +111,7 @@ func (p *Peer) HasIPv6() bool {
 
 // Key returns a PeerKey for the given peer.
 func (p *Peer) Key() PeerKey {
-	return NewPeerKey(p.ID, p.IP, strconv.FormatUint(p.Port, 10))
+	return NewPeerKey(p.ID, p.IP)
 }
 
 // Torrent is a swarm for a given torrent file.
@@ -149,18 +146,17 @@ type User struct {
 type Announce struct {
 	Config *config.Config `json:"config"`
 
-	Compact    bool   `json:"compact"`
-	Downloaded uint64 `json:"downloaded"`
-	Event      string `json:"event"`
-	IPv4       net.IP `json:"ipv4"`
-	IPv6       net.IP `json:"ipv6"`
-	Infohash   string `json:"infohash"`
-	Left       uint64 `json:"left"`
-	NumWant    int    `json:"numwant"`
-	Passkey    string `json:"passkey"`
-	PeerID     string `json:"peer_id"`
-	Port       uint16 `json:"port"`
-	Uploaded   uint64 `json:"uploaded"`
+	Compact    bool     `json:"compact"`
+	Downloaded uint64   `json:"downloaded"`
+	Event      string   `json:"event"`
+	IPv4       Endpoint `json:"ipv4"`
+	IPv6       Endpoint `json:"ipv6"`
+	Infohash   string   `json:"infohash"`
+	Left       uint64   `json:"left"`
+	NumWant    int      `json:"numwant"`
+	Passkey    string   `json:"passkey"`
+	PeerID     string   `json:"peer_id"`
+	Uploaded   uint64   `json:"uploaded"`
 
 	Torrent *Torrent `json:"-"`
 	User    *User    `json:"-"`
@@ -186,12 +182,14 @@ func (a *Announce) ClientID() (clientID string) {
 	return
 }
 
+// HasIPv4 determines whether or not an announce has an IPv4 endpoint.
 func (a *Announce) HasIPv4() bool {
-	return a.IPv4 != nil
+	return a.IPv4.IP != nil
 }
 
+// HasIPv6 determines whether or not an announce has an IPv6 endpoint.
 func (a *Announce) HasIPv6() bool {
-	return a.IPv6 != nil
+	return a.IPv6.IP != nil
 }
 
 // BuildPeer creates the Peer representation of an Announce. When provided nil
@@ -201,7 +199,6 @@ func (a *Announce) HasIPv6() bool {
 func (a *Announce) BuildPeer(u *User, t *Torrent) {
 	a.Peer = &Peer{
 		ID:           a.PeerID,
-		Port:         a.Port,
 		Uploaded:     a.Uploaded,
 		Downloaded:   a.Downloaded,
 		Left:         a.Left,
@@ -220,15 +217,15 @@ func (a *Announce) BuildPeer(u *User, t *Torrent) {
 
 	if a.HasIPv4() && a.HasIPv6() {
 		a.PeerV4 = a.Peer
-		a.PeerV4.IP = a.IPv4
+		a.PeerV4.Endpoint = a.IPv4
 		a.PeerV6 = &*a.Peer
-		a.PeerV6.IP = a.IPv6
+		a.PeerV6.Endpoint = a.IPv6
 	} else if a.HasIPv4() {
 		a.PeerV4 = a.Peer
-		a.PeerV4.IP = a.IPv4
+		a.PeerV4.Endpoint = a.IPv4
 	} else if a.HasIPv6() {
 		a.PeerV6 = a.Peer
-		a.PeerV6.IP = a.IPv6
+		a.PeerV6.Endpoint = a.IPv6
 	} else {
 		panic("models: announce must have an IP")
 	}

@@ -38,17 +38,34 @@ func (s *Server) newAnnounce(r *http.Request, p httprouter.Params) (*models.Anno
 		return nil, models.ErrMalformedRequest
 	}
 
-	ipv4, ipv6, err := requestedIP(q, r, &s.config.NetConfig)
-	if err != nil {
-		return nil, models.ErrMalformedRequest
-	}
-
 	port, err := q.Uint64("port")
 	if err != nil {
 		return nil, models.ErrMalformedRequest
 	}
 
 	left, err := q.Uint64("left")
+
+	ipv4, ipv6, err := requestedEndpoint(q, r, &s.config.NetConfig)
+	if err != nil {
+		return nil, models.ErrMalformedRequest
+	}
+
+	var ipv4Endpoint, ipv6Endpoint models.Endpoint
+	if ipv4 != nil {
+		ipv4Endpoint = *ipv4
+		// If the port we couldn't get the port before, fallback to the port param.
+		if ipv4Endpoint.Port == uint16(0) {
+			ipv4Endpoint.Port = uint16(port)
+		}
+	}
+	if ipv6 != nil {
+		ipv6Endpoint = *ipv6
+		// If the port we couldn't get the port before, fallback to the port param.
+		if ipv6Endpoint.Port == uint16(0) {
+			ipv6Endpoint.Port = uint16(port)
+		}
+	}
+
 	if err != nil {
 		return nil, models.ErrMalformedRequest
 	}
@@ -68,14 +85,13 @@ func (s *Server) newAnnounce(r *http.Request, p httprouter.Params) (*models.Anno
 		Compact:    compact,
 		Downloaded: downloaded,
 		Event:      event,
-		IPv4:       ipv4,
-		IPv6:       ipv6,
+		IPv4:       ipv4Endpoint,
+		IPv6:       ipv6Endpoint,
 		Infohash:   infohash,
 		Left:       left,
 		NumWant:    numWant,
 		Passkey:    p.ByName("passkey"),
 		PeerID:     peerID,
-		Port:       uint16(port),
 		Uploaded:   uploaded,
 	}, nil
 }
@@ -116,26 +132,26 @@ func requestedPeerCount(q *query.Query, fallback int) int {
 	return fallback
 }
 
-// requestedIP returns the IP addresses for a request. If there are multiple
-// IP addresses in the request, one IPv4 and one IPv6 will be returned.
-func requestedIP(q *query.Query, r *http.Request, cfg *config.NetConfig) (v4, v6 net.IP, err error) {
+// requestedEndpoint returns the IP address and port pairs for a request. If
+// there are multiple in the request, one IPv4 and one IPv6 will be returned.
+func requestedEndpoint(q *query.Query, r *http.Request, cfg *config.NetConfig) (v4, v6 *models.Endpoint, err error) {
 	var done bool
 
 	if cfg.AllowIPSpoofing {
 		if str, ok := q.Params["ip"]; ok {
-			if v4, v6, done = getIPs(str, v4, v6, cfg); done {
+			if v4, v6, done = getEndpoints(str, v4, v6, cfg); done {
 				return
 			}
 		}
 
 		if str, ok := q.Params["ipv4"]; ok {
-			if v4, v6, done = getIPs(str, v4, v6, cfg); done {
+			if v4, v6, done = getEndpoints(str, v4, v6, cfg); done {
 				return
 			}
 		}
 
 		if str, ok := q.Params["ipv6"]; ok {
-			if v4, v6, done = getIPs(str, v4, v6, cfg); done {
+			if v4, v6, done = getEndpoints(str, v4, v6, cfg); done {
 				return
 			}
 		}
@@ -143,47 +159,49 @@ func requestedIP(q *query.Query, r *http.Request, cfg *config.NetConfig) (v4, v6
 
 	if cfg.RealIPHeader != "" {
 		if xRealIPs, ok := r.Header[cfg.RealIPHeader]; ok {
-			if v4, v6, done = getIPs(string(xRealIPs[0]), v4, v6, cfg); done {
+			if v4, v6, done = getEndpoints(string(xRealIPs[0]), v4, v6, cfg); done {
 				return
 			}
 		}
 	} else {
-		if r.RemoteAddr == "" {
-			if v4 == nil {
-				v4 = net.ParseIP("127.0.0.1")
-			}
-			return
-		}
-
-		var host string
-		host, _, err = net.SplitHostPort(r.RemoteAddr)
-
-		if err == nil && host != "" {
-			if v4, v6, done = getIPs(host, v4, v6, cfg); done {
+		if r.RemoteAddr == "" && v4 == nil {
+			if v4, v6, done = getEndpoints("127.0.0.1", v4, v6, cfg); done {
 				return
 			}
+		}
+
+		if v4, v6, done = getEndpoints(r.RemoteAddr, v4, v6, cfg); done {
+			return
 		}
 	}
 
 	if v4 == nil && v6 == nil {
 		err = errors.New("failed to parse IP address")
 	}
+
 	return
 }
 
-func getIPs(ipstr string, ipv4, ipv6 net.IP, cfg *config.NetConfig) (net.IP, net.IP, bool) {
-	var done bool
+func getEndpoints(ipstr string, ipv4, ipv6 *models.Endpoint, cfg *config.NetConfig) (*models.Endpoint, *models.Endpoint, bool) {
+	host, port, err := net.SplitHostPort(ipstr)
+	if err != nil {
+		host = ipstr
+	}
 
-	if ip := net.ParseIP(ipstr); ip != nil {
-		newIPv4 := ip.To4()
+	// We can ignore this error, because ports that are 0 are assumed to be the
+	// port parameter provided in the "port" param of the announce request.
+	parsedPort, _ := strconv.ParseUint(port, 10, 16)
 
-		if ipv4 == nil && newIPv4 != nil {
-			ipv4 = newIPv4
-		} else if ipv6 == nil && newIPv4 == nil {
-			ipv6 = ip
+	if ip := net.ParseIP(host); ip != nil {
+		ipTo4 := ip.To4()
+		if ipv4 == nil && ipTo4 != nil {
+			ipv4 = &models.Endpoint{ipTo4, uint16(parsedPort)}
+		} else if ipv6 == nil && ipTo4 == nil {
+			ipv6 = &models.Endpoint{ip, uint16(parsedPort)}
 		}
 	}
 
+	var done bool
 	if cfg.DualStackedPeers {
 		done = ipv4 != nil && ipv6 != nil
 	} else {
