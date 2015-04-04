@@ -256,6 +256,7 @@ type AnnounceDelta struct {
 
 // AnnounceResponse contains the information needed to fulfill an announce.
 type AnnounceResponse struct {
+	Announce              *Announce
 	Complete, Incomplete  int
 	Interval, MinInterval time.Duration
 	IPv4Peers, IPv6Peers  PeerList

@@ -264,6 +264,7 @@ func newAnnounceResponse(ann *models.Announce) *models.AnnounceResponse {
 	leechCount := ann.Torrent.Leechers.Len()
 
 	res := &models.AnnounceResponse{
+		Announce:    ann,
 		Complete:    seedCount,
 		Incomplete:  leechCount,
 		Interval:    ann.Config.Announce.Duration,
