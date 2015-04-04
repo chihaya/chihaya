@@ -28,14 +28,33 @@ func (w *Writer) WriteError(err error) error {
 	return nil
 }
 
-// WriteAnnounce encodes an announce response according to the UDP spec.
-func (w *Writer) WriteAnnounce(res *models.AnnounceResponse) error {
-	w.writeHeader(announceActionID)
-	binary.Write(w.buf, binary.BigEndian, uint32(res.Interval/time.Second))
-	binary.Write(w.buf, binary.BigEndian, uint32(res.Incomplete))
-	binary.Write(w.buf, binary.BigEndian, uint32(res.Complete))
+// WriteAnnounce encodes an announce response by selecting the proper announce
+// format based on the BitTorrent spec.
+func (w *Writer) WriteAnnounce(resp *models.AnnounceResponse) (err error) {
+	if resp.Announce.HasIPv6() {
+		err = w.WriteAnnounceIPv6(resp)
+	} else {
+		err = w.WriteAnnounceIPv4(resp)
+	}
 
-	for _, peer := range res.IPv4Peers {
+	return
+}
+
+// WriteAnnounceIPv6 encodes an announce response according to BEP45.
+func (w *Writer) WriteAnnounceIPv6(resp *models.AnnounceResponse) error {
+	w.writeHeader(announceDualStackActionID)
+	binary.Write(w.buf, binary.BigEndian, uint32(resp.Interval/time.Second))
+	binary.Write(w.buf, binary.BigEndian, uint32(resp.Incomplete))
+	binary.Write(w.buf, binary.BigEndian, uint32(resp.Complete))
+	binary.Write(w.buf, binary.BigEndian, uint32(len(resp.IPv4Peers)))
+	binary.Write(w.buf, binary.BigEndian, uint32(len(resp.IPv6Peers)))
+
+	for _, peer := range resp.IPv4Peers {
+		w.buf.Write(peer.IP)
+		binary.Write(w.buf, binary.BigEndian, peer.Port)
+	}
+
+	for _, peer := range resp.IPv6Peers {
 		w.buf.Write(peer.IP)
 		binary.Write(w.buf, binary.BigEndian, peer.Port)
 	}
@@ -43,11 +62,26 @@ func (w *Writer) WriteAnnounce(res *models.AnnounceResponse) error {
 	return nil
 }
 
-// WriteScrape encodes a scrape response according to the UDP spec.
-func (w *Writer) WriteScrape(res *models.ScrapeResponse) error {
+// WriteAnnounceIPv4 encodes an announce response according to BEP15.
+func (w *Writer) WriteAnnounceIPv4(resp *models.AnnounceResponse) error {
+	w.writeHeader(announceActionID)
+	binary.Write(w.buf, binary.BigEndian, uint32(resp.Interval/time.Second))
+	binary.Write(w.buf, binary.BigEndian, uint32(resp.Incomplete))
+	binary.Write(w.buf, binary.BigEndian, uint32(resp.Complete))
+
+	for _, peer := range resp.IPv4Peers {
+		w.buf.Write(peer.IP)
+		binary.Write(w.buf, binary.BigEndian, peer.Port)
+	}
+
+	return nil
+}
+
+// WriteScrape encodes a scrape response according to BEP15.
+func (w *Writer) WriteScrape(resp *models.ScrapeResponse) error {
 	w.writeHeader(scrapeActionID)
 
-	for _, torrent := range res.Files {
+	for _, torrent := range resp.Files {
 		binary.Write(w.buf, binary.BigEndian, uint32(torrent.Seeders.Len()))
 		binary.Write(w.buf, binary.BigEndian, uint32(torrent.Snatches))
 		binary.Write(w.buf, binary.BigEndian, uint32(torrent.Leechers.Len()))

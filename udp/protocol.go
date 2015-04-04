@@ -18,6 +18,7 @@ const (
 	announceActionID
 	scrapeActionID
 	errorActionID
+	announceDualStackActionID
 )
 
 var (
