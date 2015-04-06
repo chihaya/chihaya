@@ -150,15 +150,34 @@ func (s *Server) newAnnounce(packet []byte, ip net.IP) (*models.Announce, error)
 	numWant := binary.BigEndian.Uint32(packet[92:96])
 	port := binary.BigEndian.Uint16(packet[96:98])
 
-	// Optionally, parse the optional parameteres as described in BEP41.
-	var IPv6Endpoint models.Endpoint
+	announce := &models.Announce{
+		Config:     s.config,
+		Downloaded: downloaded,
+		Event:      eventIDs[eventID],
+		IPv4: models.Endpoint{
+			IP:   ip,
+			Port: port,
+		},
+		Infohash: string(infohash),
+		Left:     left,
+		NumWant:  int(numWant),
+		PeerID:   string(peerID),
+		Uploaded: uploaded,
+	}
+
+	return s.handleOptionalParameters(packet, announce)
+}
+
+// HandleOptionalParameters parses the optional parameters as described in BEP41
+// and updates an announce with the values parsed.
+func (s *Server) handleOptionalParameters(packet []byte, announce *models.Announce) (*models.Announce, error) {
 	if len(packet) > 98 {
 		optionStartIndex := 98
 		for optionStartIndex < len(packet)-1 {
 			option := packet[optionStartIndex]
 			switch option {
 			case optionEndOfOptions:
-				break
+				return announce, nil
 
 			case optionNOP:
 				optionStartIndex++
@@ -184,9 +203,9 @@ func (s *Server) newAnnounce(packet []byte, ip net.IP) (*models.Announce, error)
 
 				ipv6bytes := packet[optionStartIndex+1 : optionStartIndex+17]
 				if s.config.AllowIPSpoofing && !bytes.Equal(ipv6bytes, emptyIPv6) {
-					IPv6Endpoint.IP = net.ParseIP(string(ipv6bytes)).To16()
-					IPv6Endpoint.Port = binary.BigEndian.Uint16(packet[optionStartIndex+17 : optionStartIndex+19])
-					if IPv6Endpoint.IP == nil {
+					announce.IPv6.IP = net.ParseIP(string(ipv6bytes)).To16()
+					announce.IPv6.Port = binary.BigEndian.Uint16(packet[optionStartIndex+17 : optionStartIndex+19])
+					if announce.IPv6.IP == nil {
 						return nil, errMalformedIP
 					}
 				}
@@ -194,23 +213,13 @@ func (s *Server) newAnnounce(packet []byte, ip net.IP) (*models.Announce, error)
 				optionStartIndex += 19
 
 			default:
-				break
+				return announce, nil
 			}
 		}
 	}
 
-	return &models.Announce{
-		Config:     s.config,
-		Downloaded: downloaded,
-		Event:      eventIDs[eventID],
-		IPv4:       models.Endpoint{ip, port},
-		IPv6:       IPv6Endpoint,
-		Infohash:   string(infohash),
-		Left:       left,
-		NumWant:    int(numWant),
-		PeerID:     string(peerID),
-		Uploaded:   uploaded,
-	}, nil
+	// There was no optional parameters to parse.
+	return announce, nil
 }
 
 // newScrape decodes one announce packet, returning a models.Scrape.
