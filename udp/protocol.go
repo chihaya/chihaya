@@ -165,31 +165,35 @@ func (s *Server) newAnnounce(packet []byte, ip net.IP) (*models.Announce, error)
 		Uploaded: uploaded,
 	}
 
-	return s.handleOptionalParameters(packet, announce)
+	if err := s.handleOptionalParameters(packet, announce); err != nil {
+		return nil, err
+	}
+
+	return announce, nil
 }
 
-// HandleOptionalParameters parses the optional parameters as described in BEP41
+// handleOptionalParameters parses the optional parameters as described in BEP41
 // and updates an announce with the values parsed.
-func (s *Server) handleOptionalParameters(packet []byte, announce *models.Announce) (*models.Announce, error) {
+func (s *Server) handleOptionalParameters(packet []byte, announce *models.Announce) error {
 	if len(packet) > 98 {
 		optionStartIndex := 98
 		for optionStartIndex < len(packet)-1 {
 			option := packet[optionStartIndex]
 			switch option {
 			case optionEndOfOptions:
-				return announce, nil
+				return nil
 
 			case optionNOP:
 				optionStartIndex++
 
 			case optionURLData:
 				if optionStartIndex+1 > len(packet)-1 {
-					return nil, errMalformedPacket
+					return errMalformedPacket
 				}
 
 				length := int(packet[optionStartIndex+1])
 				if optionStartIndex+1+length > len(packet)-1 {
-					return nil, errMalformedPacket
+					return errMalformedPacket
 				}
 
 				// TODO: Actually parse the URL Data as described in BEP41.
@@ -198,7 +202,7 @@ func (s *Server) handleOptionalParameters(packet []byte, announce *models.Announ
 
 			case optionIPv6:
 				if optionStartIndex+19 > len(packet)-1 {
-					return nil, errMalformedPacket
+					return errMalformedPacket
 				}
 
 				ipv6bytes := packet[optionStartIndex+1 : optionStartIndex+17]
@@ -206,20 +210,20 @@ func (s *Server) handleOptionalParameters(packet []byte, announce *models.Announ
 					announce.IPv6.IP = net.ParseIP(string(ipv6bytes)).To16()
 					announce.IPv6.Port = binary.BigEndian.Uint16(packet[optionStartIndex+17 : optionStartIndex+19])
 					if announce.IPv6.IP == nil {
-						return nil, errMalformedIP
+						return errMalformedIP
 					}
 				}
 
 				optionStartIndex += 19
 
 			default:
-				return announce, nil
+				return nil
 			}
 		}
 	}
 
 	// There was no optional parameters to parse.
-	return announce, nil
+	return nil
 }
 
 // newScrape decodes one announce packet, returning a models.Scrape.
