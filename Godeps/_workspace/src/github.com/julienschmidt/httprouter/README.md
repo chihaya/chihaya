@@ -1,29 +1,17 @@
-# HttpRouter [![Build Status](https://travis-ci.org/julienschmidt/httprouter.png?branch=master)](https://travis-ci.org/julienschmidt/httprouter) [![GoDoc](http://godoc.org/github.com/julienschmidt/httprouter?status.png)](http://godoc.org/github.com/julienschmidt/httprouter)
+# HttpRouter [![Build Status](https://travis-ci.org/julienschmidt/httprouter.png?branch=master)](https://travis-ci.org/julienschmidt/httprouter) [![Coverage](http://gocover.io/_badge/github.com/julienschmidt/httprouter?0)](http://gocover.io/github.com/julienschmidt/httprouter) [![GoDoc](http://godoc.org/github.com/julienschmidt/httprouter?status.png)](http://godoc.org/github.com/julienschmidt/httprouter)
 
 HttpRouter is a lightweight high performance HTTP request router
 (also called *multiplexer* or just *mux* for short) for [Go](http://golang.org/).
 
-In contrast to the default mux of Go's net/http package, this router supports
+In contrast to the [default mux](http://golang.org/pkg/net/http/#ServeMux) of Go's net/http package, this router supports
 variables in the routing pattern and matches against the request method.
 It also scales better.
 
-The router is optimized for best performance and a small memory footprint.
+The router is optimized for high performance and a small memory footprint.
 It scales well even with very long paths and a large number of routes.
 A compressing dynamic trie (radix tree) structure is used for efficient matching.
 
 ## Features
-**Zero Garbage:** The matching and dispatching process generates zero bytes of
-garbage. In fact, the only heap allocations that are made, is by building the
-slice of the key-value pairs for path parameters. If the request path contains
-no parameters, not a single heap allocation is necessary.
-
-**Best Performance:** [Benchmarks speak for themselves](https://github.com/julienschmidt/go-http-routing-benchmark).
-See below for technical details of the implementation.
-
-**Parameters in your routing pattern:** Stop parsing the requested URL path,
-just give the path segment a name and the router delivers the dynamic value to
-you. Because of the design of the router, path parameters are very cheap.
-
 **Only explicit matches:** With other routers, like [http.ServeMux](http://golang.org/pkg/net/http/#ServeMux),
 a requested URL path could match multiple patterns. Therefore they have some
 awkward pattern priority rules, like *longest match* or *first registered,
@@ -34,7 +22,7 @@ great for SEO and improves the user experience.
 **Stop caring about trailing slashes:** Choose the URL style you like, the
 router automatically redirects the client if a trailing slash is missing or if
 there is one extra. Of course it only does so, if the new path has a handler.
-If you don't like it, you can turn off this behavior.
+If you don't like it, you can [turn off this behavior](http://godoc.org/github.com/julienschmidt/httprouter#Router.RedirectTrailingSlash).
 
 **Path auto-correction:** Besides detecting the missing or additional trailing
 slash at no extra cost, the router can also fix wrong cases and remove
@@ -43,11 +31,23 @@ Is [CAPTAIN CAPS LOCK](http://www.urbandictionary.com/define.php?term=Captain+Ca
 HttpRouter can help him by making a case-insensitive look-up and redirecting him
 to the correct URL.
 
-**No more server crashes:** You can set a PanicHandler to deal with panics
+**Parameters in your routing pattern:** Stop parsing the requested URL path,
+just give the path segment a name and the router delivers the dynamic value to
+you. Because of the design of the router, path parameters are very cheap.
+
+**Zero Garbage:** The matching and dispatching process generates zero bytes of
+garbage. In fact, the only heap allocations that are made, is by building the
+slice of the key-value pairs for path parameters. If the request path contains
+no parameters, not a single heap allocation is necessary.
+
+**Best Performance:** [Benchmarks speak for themselves](https://github.com/julienschmidt/go-http-routing-benchmark).
+See below for technical details of the implementation.
+
+**No more server crashes:** You can set a [Panic handler](http://godoc.org/github.com/julienschmidt/httprouter#Router.PanicHandler) to deal with panics
 occurring during handling a HTTP request. The router then recovers and lets the
 PanicHandler log what happened and deliver a nice error page.
 
-Of course you can also set a **custom NotFound handler** and **serve static files**.
+Of course you can also set **custom [NotFound](http://godoc.org/github.com/julienschmidt/httprouter#Router.NotFound) and  [MethodNotAllowed](http://godoc.org/github.com/julienschmidt/httprouter#Router.MethodNotAllowed) handlers** and [**serve static files**](http://godoc.org/github.com/julienschmidt/httprouter#Router.ServeFiles).
 
 ## Usage
 This is just a quick introduction, view the [GoDoc](http://godoc.org/github.com/julienschmidt/httprouter) for details.
@@ -189,7 +189,7 @@ for example the [Gorilla handlers](http://www.gorillatoolkit.org/pkg/handlers).
 Or you could [just write your own](http://justinas.org/writing-http-middleware-in-go/),
 it's very easy!
 
-Alternatively, you could try [a framework building upon HttpRouter](#web-frameworks--co-based-on-httprouter).
+Alternatively, you could try [a web framework based on HttpRouter](#web-frameworks-based-on-httprouter).
 
 ### Multi-domain / Sub-domains
 Here is a quick example: Does your server serve multiple domains / hosts?
@@ -256,7 +256,10 @@ func BasicAuth(h httprouter.Handle, user, pass []byte) httprouter.Handle {
 			payload, err := base64.StdEncoding.DecodeString(auth[len(basicAuthPrefix):])
 			if err == nil {
 				pair := bytes.SplitN(payload, []byte(":"), 2)
-				if len(pair) == 2 && bytes.Equal(pair[0], user) && bytes.Equal(pair[1], pass) {
+				if len(pair) == 2 &&
+					bytes.Equal(pair[0], user) &&
+					bytes.Equal(pair[1], pass) {
+
 					// Delegate request to the given handle
 					h(w, r, ps)
 					return
@@ -305,9 +308,16 @@ router.NotFound = http.FileServer(http.Dir("public")).ServeHTTP
 
 But this approach sidesteps the strict core rules of this router to avoid routing problems. A cleaner approach is to use a distinct sub-path for serving files, like `/static/*filepath` or `/files/*filepath`.
 
-## Web Frameworks & Co based on HttpRouter
+## Web Frameworks based on HttpRouter
 If the HttpRouter is a bit too minimalistic for you, you might try one of the following more high-level 3rd-party web frameworks building upon the HttpRouter package:
+* [Ace](https://github.com/plimble/ace): Blazing fast Go Web Framework
+* [api2go](https://github.com/univedo/api2go): A JSON API Implementation for Go
 * [Gin](https://github.com/gin-gonic/gin): Features a martini-like API with much better performance
+* [Goat](https://github.com/bahlo/goat): A minimalistic REST API server in Go
 * [Hikaru](https://github.com/najeira/hikaru): Supports standalone and Google AppEngine
 * [Hitch](https://github.com/nbio/hitch): Hitch ties httprouter, [httpcontext](https://github.com/nbio/httpcontext), and middleware up in a bow
+* [kami](https://github.com/guregu/kami): A tiny web framework using x/net/context
+* [Medeina](https://github.com/imdario/medeina): Inspired by Ruby's Roda and Cuba
 * [Neko](https://github.com/rocwong/neko): A lightweight web application framework for Golang
+* [Roxanna](https://github.com/iamthemuffinman/Roxanna): An amalgamation of httprouter, better logging, and hot reload
+* [siesta](https://github.com/VividCortex/siesta): Composable HTTP handlers with contexts

@@ -1,17 +1,30 @@
-graceful [![GoDoc](https://godoc.org/github.com/stretchr/graceful?status.png)](http://godoc.org/github.com/stretchr/graceful) [![wercker status](https://app.wercker.com/status/2729ba763abf87695a17547e0f7af4a4/s "wercker status")](https://app.wercker.com/project/bykey/2729ba763abf87695a17547e0f7af4a4)
+graceful [![GoDoc](https://godoc.org/github.com/tylerb/graceful?status.png)](http://godoc.org/github.com/tylerb/graceful) [![Build Status](https://drone.io/github.com/tylerb/graceful/status.png)](https://drone.io/github.com/tylerb/graceful/latest) [![Coverage Status](https://coveralls.io/repos/tylerb/graceful/badge.svg?branch=dronedebug)](https://coveralls.io/r/tylerb/graceful?branch=dronedebug) [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/tylerb/graceful?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 ========
 
 Graceful is a Go 1.3+ package enabling graceful shutdown of http.Handler servers.
 
+## Installation
+
+To install, simply execute:
+
+```
+go get gopkg.in/tylerb/graceful.v1
+```
+
+I am using [gopkg.in](http://http://labix.org/gopkg.in) to control releases.
+
 ## Usage
 
-Usage of Graceful is simple. Create your http.Handler and pass it to the `Run` function:
+Using Graceful is easy. Simply create your http.Handler and pass it to the `Run` function:
 
 ```go
+package main
+
 import (
-  "github.com/stretchr/graceful"
+  "gopkg.in/tylerb/graceful.v1"
   "net/http"
   "fmt"
+  "time"
 )
 
 func main() {
@@ -31,9 +44,10 @@ package main
 
 import (
   "github.com/codegangsta/negroni"
-  "github.com/stretchr/graceful"
+  "gopkg.in/tylerb/graceful.v1"
   "net/http"
   "fmt"
+  "time"
 )
 
 func main() {
@@ -111,4 +125,13 @@ same time and all will be signalled when stopping is complete.
 
 ## Contributing
 
-Before sending a pull request, please open a new issue describing the feature/issue you wish to address so it can be discussed. The subsequent pull request should close that issue.
+If you would like to contribute, please:
+
+1. Create a GitHub issue regarding the contribution. Features and bugs should be discussed beforehand.
+2. Fork the repository.
+3. Create a pull request with your solution. This pull request should reference and close the issues (Fix #2).
+
+All pull requests should:
+
+1. Pass [gometalinter -t .](https://github.com/alecthomas/gometalinter) with no warnings.
+2. Be `go fmt` formatted.

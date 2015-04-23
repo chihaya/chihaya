@@ -76,7 +76,7 @@ func (h handlerStruct) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func TestRouterAPI(t *testing.T) {
-	var get, head, post, put, patch, delete, handler, handlerFunc bool
+	var get, head, options, post, put, patch, delete, handler, handlerFunc bool
 
 	httpHandler := handlerStruct{&handler}
 
@@ -86,6 +86,9 @@ func TestRouterAPI(t *testing.T) {
 	})
 	router.HEAD("/GET", func(w http.ResponseWriter, r *http.Request, _ Params) {
 		head = true
+	})
+	router.OPTIONS("/GET", func(w http.ResponseWriter, r *http.Request, _ Params) {
+		options = true
 	})
 	router.POST("/POST", func(w http.ResponseWriter, r *http.Request, _ Params) {
 		post = true
@@ -116,6 +119,12 @@ func TestRouterAPI(t *testing.T) {
 	router.ServeHTTP(w, r)
 	if !head {
 		t.Error("routing HEAD failed")
+	}
+
+	r, _ = http.NewRequest("OPTIONS", "/GET", nil)
+	router.ServeHTTP(w, r)
+	if !options {
+		t.Error("routing OPTIONS failed")
 	}
 
 	r, _ = http.NewRequest("POST", "/POST", nil)
@@ -176,7 +185,21 @@ func TestRouterNotAllowed(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, r)
 	if !(w.Code == http.StatusMethodNotAllowed) {
-		t.Errorf("NotAllowed handling route %s failed: Code=%d, Header=%v", w.Code, w.Header())
+		t.Errorf("NotAllowed handling failed: Code=%d, Header=%v", w.Code, w.Header())
+	}
+
+	w = httptest.NewRecorder()
+	responseText := "custom method"
+	router.MethodNotAllowed = func(w http.ResponseWriter, req *http.Request) {
+		w.WriteHeader(http.StatusTeapot)
+		w.Write([]byte(responseText))
+	}
+	router.ServeHTTP(w, r)
+	if got := w.Body.String(); !(got == responseText) {
+		t.Errorf("unexpected response got %q want %q", got, responseText)
+	}
+	if w.Code != http.StatusTeapot {
+		t.Errorf("unexpected response code %d want %d", w.Code, http.StatusTeapot)
 	}
 }
 

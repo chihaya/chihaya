@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/codegangsta/negroni"
-	"github.com/stretchr/graceful"
+	"github.com/tylerb/graceful"
 )
 
 func main() {
