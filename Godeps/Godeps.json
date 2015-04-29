@@ -27,7 +27,7 @@
 			"Rev": "86044f1c998d49053e13293029414ddb63f3a422"
 		},
 		{
-			"ImportPath": "github.com/stretchr/graceful",
+			"ImportPath": "github.com/tylerb/graceful",
 			"Comment": "v1-7-g0c01122",
 			"Rev": "0c011221e91b35f488b8818b00ca279929e9ed7d"
 		},
