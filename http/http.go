@@ -132,6 +132,8 @@ func (s *Server) Serve(addr string) {
 		Timeout:     s.config.HTTPRequestTimeout.Duration,
 		ConnState:   s.connState,
 		ListenLimit: s.config.HTTPListenLimit,
+
+		NoSignalHandling: true,
 		Server: &http.Server{
 			Addr:         addr,
 			Handler:      newRouter(s),
