@@ -13,19 +13,9 @@ import (
 	"github.com/chihaya/chihaya/config"
 )
 
-func requestScrape(sock *net.UDPConn, connID []byte, hashes []string) ([]byte, error) {
-	txID := makeTransactionID()
-	request := []byte{}
-
-	request = append(request, connID...)
-	request = append(request, scrapeAction...)
-	request = append(request, txID...)
-
-	for _, hash := range hashes {
-		request = append(request, []byte(hash)...)
-	}
-
+func doRequest(sock *net.UDPConn, request, txID []byte) ([]byte, error) {
 	response := make([]byte, 1024)
+
 	n, err := sendRequest(sock, request, response)
 	if err != nil {
 		return nil, err
@@ -36,6 +26,21 @@ func requestScrape(sock *net.UDPConn, connID []byte, hashes []string) ([]byte, e
 	}
 
 	return response[:n], nil
+}
+
+func requestScrape(sock *net.UDPConn, connID []byte, hashes []string) ([]byte, error) {
+	txID := makeTransactionID()
+
+	var request []byte
+	request = append(request, connID...)
+	request = append(request, scrapeAction...)
+	request = append(request, txID...)
+
+	for _, hash := range hashes {
+		request = append(request, []byte(hash)...)
+	}
+
+	return doRequest(sock, request, txID)
 }
 
 func TestScrapeEmpty(t *testing.T) {
