@@ -1,6 +1,7 @@
 package graceful
 
 import (
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -13,32 +14,50 @@ import (
 	"time"
 )
 
-var killTime = 50 * time.Millisecond
+var (
+	killTime    = 500 * time.Millisecond
+	timeoutTime = 1000 * time.Millisecond
+	waitTime    = 100 * time.Millisecond
+)
 
-func runQuery(t *testing.T, expected int, shouldErr bool, wg *sync.WaitGroup) {
+func runQuery(t *testing.T, expected int, shouldErr bool, wg *sync.WaitGroup, once *sync.Once) {
 	wg.Add(1)
 	defer wg.Done()
 	client := http.Client{}
 	r, err := client.Get("http://localhost:3000")
 	if shouldErr && err == nil {
-		t.Fatal("Expected an error but none was encountered.")
+		once.Do(func() {
+			t.Fatal("Expected an error but none was encountered.")
+		})
 	} else if shouldErr && err != nil {
-		if err.(*url.Error).Err == io.EOF {
+		if checkErr(t, err, once) {
 			return
-		}
-		errno := err.(*url.Error).Err.(*net.OpError).Err.(syscall.Errno)
-		if errno == syscall.ECONNREFUSED {
-			return
-		} else if err != nil {
-			t.Fatal("Error on Get:", err)
 		}
 	}
-
 	if r != nil && r.StatusCode != expected {
-		t.Fatalf("Incorrect status code on response. Expected %d. Got %d", expected, r.StatusCode)
+		once.Do(func() {
+			t.Fatalf("Incorrect status code on response. Expected %d. Got %d", expected, r.StatusCode)
+		})
 	} else if r == nil {
-		t.Fatal("No response when a response was expected.")
+		once.Do(func() {
+			t.Fatal("No response when a response was expected.")
+		})
 	}
+}
+
+func checkErr(t *testing.T, err error, once *sync.Once) bool {
+	if err.(*url.Error).Err == io.EOF {
+		return true
+	}
+	errno := err.(*url.Error).Err.(*net.OpError).Err.(syscall.Errno)
+	if errno == syscall.ECONNREFUSED {
+		return true
+	} else if err != nil {
+		once.Do(func() {
+			t.Fatal("Error on Get:", err)
+		})
+	}
+	return false
 }
 
 func createListener(sleep time.Duration) (*http.Server, net.Listener, error) {
@@ -50,6 +69,9 @@ func createListener(sleep time.Duration) (*http.Server, net.Listener, error) {
 
 	server := &http.Server{Addr: ":3000", Handler: mux}
 	l, err := net.Listen("tcp", ":3000")
+	if err != nil {
+		fmt.Println(err)
+	}
 	return server, l, err
 }
 
@@ -64,16 +86,17 @@ func runServer(timeout, sleep time.Duration, c chan os.Signal) error {
 }
 
 func launchTestQueries(t *testing.T, wg *sync.WaitGroup, c chan os.Signal) {
+	var once sync.Once
 	for i := 0; i < 8; i++ {
-		go runQuery(t, http.StatusOK, false, wg)
+		go runQuery(t, http.StatusOK, false, wg, &once)
 	}
 
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(waitTime)
 	c <- os.Interrupt
-	time.Sleep(10 * time.Millisecond)
+	time.Sleep(waitTime)
 
 	for i := 0; i < 8; i++ {
-		go runQuery(t, 0, true, wg)
+		go runQuery(t, 0, true, wg, &once)
 	}
 
 	wg.Done()
@@ -106,16 +129,17 @@ func TestGracefulRunTimesOut(t *testing.T) {
 		wg.Done()
 	}()
 
+	var once sync.Once
 	wg.Add(1)
 	go func() {
 		for i := 0; i < 8; i++ {
-			go runQuery(t, 0, true, &wg)
+			go runQuery(t, 0, true, &wg, &once)
 		}
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(waitTime)
 		c <- os.Interrupt
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(waitTime)
 		for i := 0; i < 8; i++ {
-			go runQuery(t, 0, true, &wg)
+			go runQuery(t, 0, true, &wg, &once)
 		}
 		wg.Done()
 	}()
@@ -160,13 +184,22 @@ func TestGracefulRunNoRequests(t *testing.T) {
 func TestGracefulForwardsConnState(t *testing.T) {
 	c := make(chan os.Signal, 1)
 	states := make(map[http.ConnState]int)
+	var stateLock sync.Mutex
 
 	connState := func(conn net.Conn, state http.ConnState) {
+		stateLock.Lock()
 		states[state]++
+		stateLock.Unlock()
 	}
 
 	var wg sync.WaitGroup
 	wg.Add(1)
+
+	expected := map[http.ConnState]int{
+		http.StateNew:    8,
+		http.StateActive: 8,
+		http.StateClosed: 8,
+	}
 
 	go func() {
 		server, l, _ := createListener(killTime / 2)
@@ -185,15 +218,11 @@ func TestGracefulForwardsConnState(t *testing.T) {
 	go launchTestQueries(t, &wg, c)
 	wg.Wait()
 
-	expected := map[http.ConnState]int{
-		http.StateNew:    8,
-		http.StateActive: 8,
-		http.StateClosed: 8,
-	}
-
+	stateLock.Lock()
 	if !reflect.DeepEqual(states, expected) {
 		t.Errorf("Incorrect connection state tracking.\n  actual: %v\nexpected: %v\n", states, expected)
 	}
+	stateLock.Unlock()
 }
 
 func TestGracefulExplicitStop(t *testing.T) {
@@ -206,14 +235,14 @@ func TestGracefulExplicitStop(t *testing.T) {
 
 	go func() {
 		go srv.Serve(l)
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(waitTime)
 		srv.Stop(killTime)
 	}()
 
 	// block on the stopChan until the server has shut down
 	select {
 	case <-srv.StopChan():
-	case <-time.After(100 * time.Millisecond):
+	case <-time.After(timeoutTime):
 		t.Fatal("Timed out while waiting for explicit stop to complete")
 	}
 }
@@ -228,7 +257,7 @@ func TestGracefulExplicitStopOverride(t *testing.T) {
 
 	go func() {
 		go srv.Serve(l)
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(waitTime)
 		srv.Stop(killTime / 2)
 	}()
 
@@ -253,7 +282,7 @@ func TestShutdownInitiatedCallback(t *testing.T) {
 
 	go func() {
 		go srv.Serve(l)
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(waitTime)
 		srv.Stop(killTime)
 	}()
 
@@ -302,12 +331,9 @@ func TestNotifyClosed(t *testing.T) {
 		wg.Done()
 	}()
 
+	var once sync.Once
 	for i := 0; i < 8; i++ {
-		runQuery(t, http.StatusOK, false, &wg)
-	}
-
-	if len(srv.connections) > 0 {
-		t.Fatal("hijacked connections should not be managed")
+		runQuery(t, http.StatusOK, false, &wg, &once)
 	}
 
 	srv.Stop(0)
@@ -315,8 +341,39 @@ func TestNotifyClosed(t *testing.T) {
 	// block on the stopChan until the server has shut down
 	select {
 	case <-srv.StopChan():
-	case <-time.After(100 * time.Millisecond):
+	case <-time.After(timeoutTime):
 		t.Fatal("Timed out while waiting for explicit stop to complete")
 	}
 
+	if len(srv.connections) > 0 {
+		t.Fatal("hijacked connections should not be managed")
+	}
+
+}
+
+func TestStopDeadlock(t *testing.T) {
+	c := make(chan struct{})
+
+	server, l, err := createListener(1 * time.Millisecond)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	srv := &Server{Server: server, NoSignalHandling: true}
+
+	go func() {
+		time.Sleep(waitTime)
+		srv.Serve(l)
+	}()
+
+	go func() {
+		srv.Stop(0)
+		close(c)
+	}()
+
+	select {
+	case <-c:
+	case <-time.After(timeoutTime):
+		t.Fatal("Timed out while waiting for explicit stop to complete")
+	}
 }

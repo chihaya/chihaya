@@ -24,6 +24,15 @@ type Tracker struct {
 	*Storage
 }
 
+// Server represents a server for a given BitTorrent tracker protocol.
+type Server interface {
+	// Serve runs the server and blocks until the server has shut down.
+	Serve(addr string)
+
+	// Stop cleanly shuts down the server in a non-blocking manner.
+	Stop()
+}
+
 // New creates a new Tracker, and opens any necessary connections.
 // Maintenance routines are automatically spawned in the background.
 func New(cfg *config.Config) (*Tracker, error) {
@@ -64,7 +73,8 @@ func (tkr *Tracker) LoadApprovedClients(clients []string) {
 }
 
 // Writer serializes a tracker's responses, and is implemented for each
-// response transport used by the tracker.
+// response transport used by the tracker. Only one of these may be called
+// per request, and only once.
 //
 // Note, data passed into any of these functions will not contain sensitive
 // information, so it may be passed back the client freely.

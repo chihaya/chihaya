@@ -90,17 +90,24 @@ type TrackerConfig struct {
 
 // HTTPConfig is the configuration for HTTP functionality.
 type HTTPConfig struct {
-	ListenAddr       string   `json:"http_listen_addr"`
-	RequestTimeout   Duration `json:"http_request_timeout"`
-	HTTPReadTimeout  Duration `json:"http_read_timeout"`
-	HTTPWriteTimeout Duration `json:"http_write_timeout"`
-	HTTPListenLimit  int      `json:"http_listen_limit"`
+	HTTPListenAddr     string   `json:"http_listen_addr"`
+	HTTPRequestTimeout Duration `json:"http_request_timeout"`
+	HTTPReadTimeout    Duration `json:"http_read_timeout"`
+	HTTPWriteTimeout   Duration `json:"http_write_timeout"`
+	HTTPListenLimit    int      `json:"http_listen_limit"`
+}
+
+// UDPConfig is the configuration for HTTP functionality.
+type UDPConfig struct {
+	UDPListenAddr     string `json:"udp_listen_addr"`
+	UDPReadBufferSize int    `json:"udp_read_buffer_size"`
 }
 
 // Config is the global configuration for an instance of Chihaya.
 type Config struct {
 	TrackerConfig
 	HTTPConfig
+	UDPConfig
 	DriverConfig
 	StatsConfig
 }
@@ -129,10 +136,14 @@ var DefaultConfig = Config{
 	},
 
 	HTTPConfig: HTTPConfig{
-		ListenAddr:       ":6881",
-		RequestTimeout:   Duration{10 * time.Second},
-		HTTPReadTimeout:  Duration{10 * time.Second},
-		HTTPWriteTimeout: Duration{10 * time.Second},
+		HTTPListenAddr:     ":6881",
+		HTTPRequestTimeout: Duration{10 * time.Second},
+		HTTPReadTimeout:    Duration{10 * time.Second},
+		HTTPWriteTimeout:   Duration{10 * time.Second},
+	},
+
+	UDPConfig: UDPConfig{
+		UDPListenAddr: ":6882",
 	},
 
 	DriverConfig: DriverConfig{

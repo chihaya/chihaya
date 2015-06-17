@@ -7,8 +7,11 @@ package chihaya
 import (
 	"flag"
 	"os"
+	"os/signal"
 	"runtime"
 	"runtime/pprof"
+	"sync"
+	"syscall"
 
 	"github.com/golang/glog"
 
@@ -16,6 +19,7 @@ import (
 	"github.com/chihaya/chihaya/http"
 	"github.com/chihaya/chihaya/stats"
 	"github.com/chihaya/chihaya/tracker"
+	"github.com/chihaya/chihaya/udp"
 
 	// See the README for how to import custom drivers.
 	_ "github.com/chihaya/chihaya/backend/noop"
@@ -77,6 +81,50 @@ func Boot() {
 		glog.Fatal("New: ", err)
 	}
 
-	http.Serve(cfg, tkr)
-	glog.Info("Gracefully shut down")
+	var wg sync.WaitGroup
+	var servers []tracker.Server
+
+	if cfg.HTTPListenAddr != "" {
+		wg.Add(1)
+		srv := http.NewServer(cfg, tkr)
+		servers = append(servers, srv)
+
+		go func() {
+			defer wg.Done()
+			srv.Serve(cfg.HTTPListenAddr)
+		}()
+	}
+
+	if cfg.UDPListenAddr != "" {
+		wg.Add(1)
+		srv := udp.NewServer(cfg, tkr)
+		servers = append(servers, srv)
+
+		go func() {
+			defer wg.Done()
+			srv.Serve(cfg.UDPListenAddr)
+		}()
+	}
+
+	shutdown := make(chan os.Signal)
+	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		wg.Wait()
+		signal.Stop(shutdown)
+		close(shutdown)
+	}()
+
+	<-shutdown
+	glog.Info("Shutting down...")
+
+	for _, srv := range servers {
+		srv.Stop()
+	}
+
+	<-shutdown
+
+	if err := tkr.Close(); err != nil {
+		glog.Errorf("Failed to shut down tracker cleanly: %s", err.Error())
+	}
 }

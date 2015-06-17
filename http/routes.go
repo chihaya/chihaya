@@ -76,7 +76,7 @@ func (s *Server) stats(w http.ResponseWriter, r *http.Request, p httprouter.Para
 func handleTorrentError(err error, w *Writer) (int, error) {
 	if err == nil {
 		return http.StatusOK, nil
-	} else if _, ok := err.(models.ClientError); ok {
+	} else if models.IsPublicError(err) {
 		w.WriteError(err)
 		stats.RecordEvent(stats.ClientError)
 		return http.StatusOK, nil
@@ -86,10 +86,8 @@ func handleTorrentError(err error, w *Writer) (int, error) {
 }
 
 func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	stats.RecordEvent(stats.Announce)
-
 	writer := &Writer{w}
-	ann, err := NewAnnounce(s.config, r, p)
+	ann, err := s.newAnnounce(r, p)
 	if err != nil {
 		return handleTorrentError(err, writer)
 	}
@@ -98,10 +96,8 @@ func (s *Server) serveAnnounce(w http.ResponseWriter, r *http.Request, p httprou
 }
 
 func (s *Server) serveScrape(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	stats.RecordEvent(stats.Scrape)
-
 	writer := &Writer{w}
-	scrape, err := NewScrape(s.config, r, p)
+	scrape, err := s.newScrape(r, p)
 	if err != nil {
 		return handleTorrentError(err, writer)
 	}

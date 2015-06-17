@@ -12,7 +12,7 @@ import (
 
 	"github.com/golang/glog"
 	"github.com/julienschmidt/httprouter"
-	"github.com/stretchr/graceful"
+	"github.com/tylerb/graceful"
 
 	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/stats"
@@ -24,8 +24,10 @@ type ResponseHandler func(http.ResponseWriter, *http.Request, httprouter.Params)
 
 // Server represents an HTTP serving torrent tracker.
 type Server struct {
-	config  *config.Config
-	tracker *tracker.Tracker
+	config   *config.Config
+	tracker  *tracker.Tracker
+	grace    *graceful.Server
+	stopping bool
 }
 
 // makeHandler wraps our ResponseHandlers while timing requests, collecting,
@@ -118,40 +120,53 @@ func (s *Server) connState(conn net.Conn, state http.ConnState) {
 	}
 }
 
-// Serve creates a new Server and proceeds to block while handling requests
-// until a graceful shutdown.
-func Serve(cfg *config.Config, tkr *tracker.Tracker) {
-	srv := &Server{
-		config:  cfg,
-		tracker: tkr,
-	}
+// Serve runs an HTTP server, blocking until the server has shut down.
+func (s *Server) Serve(addr string) {
+	glog.V(0).Info("Starting HTTP on ", addr)
 
-	glog.V(0).Info("Starting on ", cfg.ListenAddr)
-	if cfg.HTTPListenLimit != 0 {
-		glog.V(0).Info("Limiting connections to ", cfg.HTTPListenLimit)
+	if s.config.HTTPListenLimit != 0 {
+		glog.V(0).Info("Limiting connections to ", s.config.HTTPListenLimit)
 	}
 
 	grace := &graceful.Server{
-		Timeout:     cfg.RequestTimeout.Duration,
-		ConnState:   srv.connState,
-		ListenLimit: cfg.HTTPListenLimit,
+		Timeout:     s.config.HTTPRequestTimeout.Duration,
+		ConnState:   s.connState,
+		ListenLimit: s.config.HTTPListenLimit,
+
+		NoSignalHandling: true,
 		Server: &http.Server{
-			Addr:         cfg.ListenAddr,
-			Handler:      newRouter(srv),
-			ReadTimeout:  cfg.HTTPReadTimeout.Duration,
-			WriteTimeout: cfg.HTTPWriteTimeout.Duration,
+			Addr:         addr,
+			Handler:      newRouter(s),
+			ReadTimeout:  s.config.HTTPReadTimeout.Duration,
+			WriteTimeout: s.config.HTTPWriteTimeout.Duration,
 		},
 	}
 
+	s.grace = grace
 	grace.SetKeepAlivesEnabled(false)
+	grace.ShutdownInitiated = func() { s.stopping = true }
 
 	if err := grace.ListenAndServe(); err != nil {
 		if opErr, ok := err.(*net.OpError); !ok || (ok && opErr.Op != "accept") {
 			glog.Errorf("Failed to gracefully run HTTP server: %s", err.Error())
+			return
 		}
 	}
 
-	if err := srv.tracker.Close(); err != nil {
-		glog.Errorf("Failed to shutdown tracker cleanly: %s", err.Error())
+	glog.Info("HTTP server shut down cleanly")
+}
+
+// Stop cleanly shuts down the server.
+func (s *Server) Stop() {
+	if !s.stopping {
+		s.grace.Stop(s.grace.Timeout)
+	}
+}
+
+// NewServer returns a new HTTP server for a given configuration and tracker.
+func NewServer(cfg *config.Config, tkr *tracker.Tracker) *Server {
+	return &Server{
+		config:  cfg,
+		tracker: tkr,
 	}
 }

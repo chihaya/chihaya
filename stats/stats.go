@@ -271,15 +271,21 @@ func (s *Stats) handlePeerEvent(ps *PeerStats, event int) {
 
 // RecordEvent broadcasts an event to the default stats queue.
 func RecordEvent(event int) {
-	DefaultStats.RecordEvent(event)
+	if DefaultStats != nil {
+		DefaultStats.RecordEvent(event)
+	}
 }
 
 // RecordPeerEvent broadcasts a peer event to the default stats queue.
 func RecordPeerEvent(event int, ipv6 bool) {
-	DefaultStats.RecordPeerEvent(event, ipv6)
+	if DefaultStats != nil {
+		DefaultStats.RecordPeerEvent(event, ipv6)
+	}
 }
 
 // RecordTiming broadcasts a timing event to the default stats queue.
 func RecordTiming(event int, duration time.Duration) {
-	DefaultStats.RecordTiming(event, duration)
+	if DefaultStats != nil {
+		DefaultStats.RecordTiming(event, duration)
+	}
 }
