@@ -36,16 +36,15 @@ func New(query string) (*Query, error) {
 
 	for i, length := 0, len(query); i < length; i++ {
 		separator := query[i] == '&' || query[i] == ';' || query[i] == '?'
-		if separator || i == length-1 {
-			if onKey {
+		last := i == length-1
+
+		if separator || last {
+			if onKey && !last {
 				keyStart = i + 1
 				continue
 			}
 
-			if i == length-1 && !separator {
-				if query[i] == '=' {
-					continue
-				}
+			if last && !separator && !onKey {
 				valEnd = i
 			}
 
@@ -54,9 +53,13 @@ func New(query string) (*Query, error) {
 				return nil, err
 			}
 
-			valStr, err := url.QueryUnescape(query[valStart : valEnd+1])
-			if err != nil {
-				return nil, err
+			var valStr string
+
+			if valEnd > 0 {
+				valStr, err = url.QueryUnescape(query[valStart : valEnd+1])
+				if err != nil {
+					return nil, err
+				}
 			}
 
 			q.Params[strings.ToLower(keyStr)] = valStr
@@ -74,12 +77,14 @@ func New(query string) (*Query, error) {
 				}
 			}
 
+			valEnd = 0
 			onKey = true
 			keyStart = i + 1
 
 		} else if query[i] == '=' {
 			onKey = false
 			valStart = i + 1
+			valEnd = 0
 		} else if onKey {
 			keyEnd = i
 		} else {
