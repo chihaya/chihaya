@@ -26,6 +26,7 @@ var (
 		url.Values{"info_hash": {testInfoHash}, "peer_id": {testPeerID}, "port": {"6881"}, "downloaded": {"1234"}, "left": {"4321"}, "compact": {"0"}, "no_peer_id": {"1"}, "key": {"peerKey"}, "trackerid": {"trackerId"}},
 		url.Values{"info_hash": {testInfoHash}, "peer_id": {"%3Ckey%3A+0x90%3E"}, "port": {"6881"}, "downloaded": {"1234"}, "left": {"4321"}, "compact": {"0"}, "no_peer_id": {"1"}, "key": {"peerKey"}, "trackerid": {"trackerId"}},
 		url.Values{"info_hash": {testInfoHash}, "peer_id": {"%3Ckey%3A+0x90%3E"}, "compact": {"1"}},
+		url.Values{"info_hash": {""}, "peer_id": {""}, "compact": {""}},
 	}
 
 	InvalidQueries = []string{
