@@ -6,6 +6,7 @@ sudo: false
 
 before_install:
   - go get github.com/tools/godep
+  - godep restore
 
 script:
   - godep go test ./...
