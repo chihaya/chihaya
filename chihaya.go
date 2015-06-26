@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	"runtime/pprof"
 	"sync"
 	"syscall"
 
@@ -27,13 +26,11 @@ import (
 
 var (
 	maxProcs   int
-	profile    string
 	configPath string
 )
 
 func init() {
 	flag.IntVar(&maxProcs, "maxprocs", runtime.NumCPU(), "maximum parallel threads")
-	flag.StringVar(&profile, "profile", "", "if non-empty, path to write profiling data")
 	flag.StringVar(&configPath, "config", "", "path to the configuration file")
 }
 
@@ -47,21 +44,8 @@ func Boot() {
 	runtime.GOMAXPROCS(maxProcs)
 	glog.V(1).Info("Set max threads to ", maxProcs)
 
-	if profile != "" {
-		f, err := os.Create(profile)
-		if err != nil {
-			glog.Fatalf("Failed to create profile file: %s\n", err)
-		}
-		defer f.Close()
-
-		pprof.StartCPUProfile(f)
-		glog.Info("Started profiling")
-
-		defer func() {
-			pprof.StopCPUProfile()
-			glog.Info("Stopped profiling")
-		}()
-	}
+	debugBoot()
+	defer debugShutdown()
 
 	cfg, err := config.Open(configPath)
 	if err != nil {
