@@ -43,8 +43,10 @@ Chihaya requires 64-bit Go 1.4, [Godep], and a [Go environment] previously set u
 
 ```sh
 $ export GOPATH=$PWD/chihaya
-$ git clone github.com/chihaya/chihaya chihaya/src/github.com/chihaya/chihaya
-$ godep go install chihaya/src/github.com/chihaya/cmd/chihaya
+$ git clone https://github.com/chihaya/chihaya.git chihaya/src/github.com/chihaya/chihaya
+$ cd chihaya/src/github.com/chihaya/chihaya/cmd/chihaya/
+$ godep restore
+$ godep go install
 ```
 
 ### Testing
