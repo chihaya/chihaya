@@ -68,19 +68,22 @@ func (s *Server) serve(listenAddr string) error {
 			return err
 		}
 
-		start := time.Now()
-
 		go func() {
-			response, action := s.handlePacket(buffer[:n], addr)
-			pool.GiveSlice(buffer)
+			start := time.Now()
+			response, action, err := s.handlePacket(buffer[:n], addr)
+			defer pool.GiveSlice(buffer)
+			duration := time.Since(start)
 
 			if len(response) > 0 {
 				sock.WriteToUDP(response, addr)
 			}
 
 			if glog.V(2) {
-				duration := time.Since(start)
-				glog.Infof("[UDP - %9s] %s %s", duration, action, addr)
+				if err != nil {
+					glog.Infof("[UDP - %9s] %s %s (%s)", duration, action, addr, err)
+				} else {
+					glog.Infof("[UDP - %9s] %s %s", duration, action, addr)
+				}
 			}
 		}()
 	}

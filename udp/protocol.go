@@ -62,9 +62,12 @@ func handleTorrentError(err error, w *Writer) {
 }
 
 // handlePacket decodes and processes one UDP request, returning the response.
-func (s *Server) handlePacket(packet []byte, addr *net.UDPAddr) (response []byte, actionName string) {
+func (s *Server) handlePacket(packet []byte, addr *net.UDPAddr) (response []byte, actionName string, err error) {
 	if len(packet) < 16 {
-		return // Malformed, no client packets are less than 16 bytes.
+		// Malformed, no client packets are less than 16 bytes.
+		// We explicitly return nothing in case this is a DoS attempt.
+		err = errMalformedPacket
+		return
 	}
 
 	connID := packet[0:8]
@@ -80,15 +83,18 @@ func (s *Server) handlePacket(packet []byte, addr *net.UDPAddr) (response []byte
 	defer func() { response = writer.buf.Bytes() }()
 
 	if action != 0 && !s.connIDGen.Matches(connID, addr.IP) {
-		writer.WriteError(errBadConnectionID)
+		err = errBadConnectionID
+		writer.WriteError(err)
 		return
 	}
 
 	switch action {
 	case connectActionID:
 		actionName = "connect"
+
 		if !bytes.Equal(connID, initialConnectionID) {
-			return // Malformed packet.
+			err = errMalformedPacket
+			return
 		}
 
 		writer.writeHeader(0)
@@ -96,8 +102,9 @@ func (s *Server) handlePacket(packet []byte, addr *net.UDPAddr) (response []byte
 
 	case announceActionID:
 		actionName = "announce"
-		ann, err := s.newAnnounce(packet, addr.IP)
 
+		var ann *models.Announce
+		ann, err = s.newAnnounce(packet, addr.IP)
 		if err == nil {
 			err = s.tracker.HandleAnnounce(ann, writer)
 		}
@@ -106,8 +113,9 @@ func (s *Server) handlePacket(packet []byte, addr *net.UDPAddr) (response []byte
 
 	case scrapeActionID:
 		actionName = "scrape"
-		scrape, err := s.newScrape(packet)
 
+		var scrape *models.Scrape
+		scrape, err = s.newScrape(packet)
 		if err == nil {
 			err = s.tracker.HandleScrape(scrape, writer)
 		}
