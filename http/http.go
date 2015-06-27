@@ -34,12 +34,11 @@ type Server struct {
 // stats, logging, and handling errors.
 func makeHandler(handler ResponseHandler) httprouter.Handle {
 	return func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-		var msg string
-
 		start := time.Now()
 		httpCode, err := handler(w, r, p)
 		duration := time.Since(start)
 
+		var msg string
 		if err != nil {
 			msg = err.Error()
 		} else if httpCode != http.StatusOK {
@@ -58,9 +57,9 @@ func makeHandler(handler ResponseHandler) httprouter.Handle {
 			}
 
 			if len(msg) > 0 {
-				glog.Errorf("[%d - %9s] %s (%s)", httpCode, duration, reqString, msg)
+				glog.Errorf("[HTTP - %9s] %s (%d - %s)", duration, reqString, httpCode, msg)
 			} else {
-				glog.Infof("[%d - %9s] %s", httpCode, duration, reqString)
+				glog.Infof("[HTTP - %9s] %s (%d)", duration, reqString, httpCode)
 			}
 		}
 
