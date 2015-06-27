@@ -155,11 +155,6 @@ func (tkr *Tracker) updatePeer(ann *models.Announce, peer *models.Peer) (created
 		}
 
 	default:
-		if ann.Event != "" && ann.Event != "started" {
-			err = models.ErrBadRequest
-			return
-		}
-
 		if ann.Left == 0 {
 			err = tkr.PutSeeder(t.Infohash, p)
 			if err != nil {
