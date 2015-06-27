@@ -226,12 +226,7 @@ func (tkr *Tracker) handlePeerEvent(ann *models.Announce, p *models.Peer) (snatc
 		}
 
 	case ann.Event == "completed":
-		if t.Leechers.Contains(p.Key()) {
-			err = tkr.leecherFinished(t, p)
-		} else {
-			err = models.ErrBadRequest
-		}
-
+		tkr.leecherFinished(t, p)
 		snatched = true
 
 	case t.Leechers.Contains(p.Key()) && ann.Left == 0:
@@ -244,12 +239,16 @@ func (tkr *Tracker) handlePeerEvent(ann *models.Announce, p *models.Peer) (snatc
 
 // leecherFinished moves a peer from the leeching pool to the seeder pool.
 func (tkr *Tracker) leecherFinished(t *models.Torrent, p *models.Peer) error {
-	if err := tkr.DeleteLeecher(t.Infohash, p); err != nil {
-		return err
+	if t.Leechers.Contains(p.Key()) {
+		if err := tkr.DeleteLeecher(t.Infohash, p); err != nil {
+			return err
+		}
 	}
+
 	if err := tkr.PutSeeder(t.Infohash, p); err != nil {
 		return err
 	}
+
 	stats.RecordPeerEvent(stats.Completed, p.HasIPv6())
 	return nil
 }
