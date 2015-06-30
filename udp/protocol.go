@@ -7,6 +7,7 @@ package udp
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"net"
 
 	"github.com/chihaya/chihaya/stats"
@@ -46,7 +47,7 @@ var (
 	errMalformedPacket = models.ProtocolError("malformed packet")
 	errMalformedIP     = models.ProtocolError("malformed IP address")
 	errMalformedEvent  = models.ProtocolError("malformed event ID")
-	errBadConnectionID = models.ProtocolError("bad connection ID")
+	errBadConnectionID = errors.New("bad connection ID")
 )
 
 // handleTorrentError writes err to w if err is a models.ClientError.
