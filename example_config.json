@@ -6,20 +6,32 @@
   "announce": "30m",
   "min_announce": "15m",
   "default_num_want": 50,
-  "torrent_map_shards": 1,
   "allow_ip_spoofing": true,
   "dual_stacked_peers": true,
   "real_ip_header": "",
   "respect_af": false,
+
   "client_whitelist_enabled": false,
   "client_whitelist": ["OP1011"],
+
   "udp_listen_addr": ":6881",
+
   "http_listen_addr": ":6881",
   "http_request_timeout": "4s",
   "http_read_timeout": "4s",
   "http_write_timeout": "4s",
   "http_listen_limit": 0,
-  "driver": "noop",
+
+  "store_config": {
+    "driver": "memory",
+    "params": {
+      "torrent_map_shards": 1,
+    }
+  },
+  "delta_store_config": {
+    "driver": "nop"
+  },
+
   "stats_buffer_size": 0,
   "include_mem_stats": true,
   "verbose_mem_stats": false,

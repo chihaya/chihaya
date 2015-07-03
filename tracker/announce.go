@@ -13,19 +13,19 @@ import (
 // client's Announce without being coupled to any transport protocol.
 func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) (err error) {
 	if tkr.Config.ClientWhitelistEnabled {
-		if err = tkr.ClientApproved(ann.ClientID()); err != nil {
+		if err = tkr.Store.FindClient(ann.ClientID()); err != nil {
 			return err
 		}
 	}
 
 	var user *models.User
 	if tkr.Config.PrivateEnabled {
-		if user, err = tkr.FindUser(ann.Passkey); err != nil {
+		if user, err = tkr.Store.FindUser(ann.Passkey); err != nil {
 			return err
 		}
 	}
 
-	torrent, err := tkr.FindTorrent(ann.Infohash)
+	torrent, err := tkr.Store.FindTorrent(ann.Infohash)
 
 	if err == models.ErrTorrentDNE && tkr.Config.CreateOnAnnounce {
 		torrent = &models.Torrent{
@@ -34,7 +34,7 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) (err error) {
 			Leechers: models.NewPeerMap(false, tkr.Config),
 		}
 
-		tkr.PutTorrent(torrent)
+		tkr.Store.PutTorrent(torrent)
 		stats.RecordEvent(stats.NewTorrent)
 	} else if err != nil {
 		return err
@@ -60,13 +60,13 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) (err error) {
 	if tkr.Config.PrivateEnabled {
 		delta.Created = created
 		delta.Snatched = snatched
-		if err = tkr.Backend.RecordAnnounce(delta); err != nil {
+		if err = tkr.DeltaStore.RecordAnnounce(delta); err != nil {
 			return err
 		}
 	} else if tkr.Config.PurgeInactiveTorrents && torrent.PeerCount() == 0 {
 		// Rather than deleting the torrent explicitly, let the tracker driver
 		// ensure there are no race conditions.
-		tkr.PurgeInactiveTorrent(torrent.Infohash)
+		tkr.Store.PurgeInactiveTorrent(torrent.Infohash)
 		stats.RecordEvent(stats.DeletedTorrent)
 	}
 
@@ -120,7 +120,7 @@ func newAnnounceDelta(ann *models.Announce, t *models.Torrent) *models.AnnounceD
 // updateSwarm handles the changes to a torrent's swarm given an announce.
 func (tkr *Tracker) updateSwarm(ann *models.Announce) (created bool, err error) {
 	var createdv4, createdv6 bool
-	tkr.TouchTorrent(ann.Torrent.Infohash)
+	tkr.Store.TouchTorrent(ann.Torrent.Infohash)
 
 	if ann.HasIPv4() {
 		createdv4, err = tkr.updatePeer(ann, ann.PeerV4)
@@ -143,27 +143,27 @@ func (tkr *Tracker) updatePeer(ann *models.Announce, peer *models.Peer) (created
 
 	switch {
 	case t.Seeders.Contains(p.Key()):
-		err = tkr.PutSeeder(t.Infohash, p)
+		err = tkr.Store.PutSeeder(t.Infohash, p)
 		if err != nil {
 			return
 		}
 
 	case t.Leechers.Contains(p.Key()):
-		err = tkr.PutLeecher(t.Infohash, p)
+		err = tkr.Store.PutLeecher(t.Infohash, p)
 		if err != nil {
 			return
 		}
 
 	default:
 		if ann.Left == 0 {
-			err = tkr.PutSeeder(t.Infohash, p)
+			err = tkr.Store.PutSeeder(t.Infohash, p)
 			if err != nil {
 				return
 			}
 			stats.RecordPeerEvent(stats.NewSeed, p.HasIPv6())
 
 		} else {
-			err = tkr.PutLeecher(t.Infohash, p)
+			err = tkr.Store.PutLeecher(t.Infohash, p)
 			if err != nil {
 				return
 			}
@@ -193,7 +193,7 @@ func (tkr *Tracker) handleEvent(ann *models.Announce) (snatched bool, err error)
 	}
 
 	if snatchedv4 || snatchedv6 {
-		err = tkr.IncrementTorrentSnatches(ann.Torrent.Infohash)
+		err = tkr.Store.IncrementSnatches(ann.Torrent.Infohash)
 		if err != nil {
 			return
 		}
@@ -211,14 +211,14 @@ func (tkr *Tracker) handlePeerEvent(ann *models.Announce, p *models.Peer) (snatc
 		// updateSwarm checks if the peer is active on the torrent,
 		// so one of these branches must be followed.
 		if t.Seeders.Contains(p.Key()) {
-			err = tkr.DeleteSeeder(t.Infohash, p)
+			err = tkr.Store.DeleteSeeder(t.Infohash, p.Key())
 			if err != nil {
 				return
 			}
 			stats.RecordPeerEvent(stats.DeletedSeed, p.HasIPv6())
 
 		} else if t.Leechers.Contains(p.Key()) {
-			err = tkr.DeleteLeecher(t.Infohash, p)
+			err = tkr.Store.DeleteLeecher(t.Infohash, p.Key())
 			if err != nil {
 				return
 			}
@@ -240,12 +240,12 @@ func (tkr *Tracker) handlePeerEvent(ann *models.Announce, p *models.Peer) (snatc
 // leecherFinished moves a peer from the leeching pool to the seeder pool.
 func (tkr *Tracker) leecherFinished(t *models.Torrent, p *models.Peer) error {
 	if t.Leechers.Contains(p.Key()) {
-		if err := tkr.DeleteLeecher(t.Infohash, p); err != nil {
+		if err := tkr.Store.DeleteLeecher(t.Infohash, p.Key()); err != nil {
 			return err
 		}
 	}
 
-	if err := tkr.PutSeeder(t.Infohash, p); err != nil {
+	if err := tkr.Store.PutSeeder(t.Infohash, p); err != nil {
 		return err
 	}
 

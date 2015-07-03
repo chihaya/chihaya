@@ -15,13 +15,14 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/chihaya/chihaya/config"
-	"github.com/chihaya/chihaya/http"
 	"github.com/chihaya/chihaya/stats"
 	"github.com/chihaya/chihaya/tracker"
-	"github.com/chihaya/chihaya/udp"
+	"github.com/chihaya/chihaya/transport/http"
+	"github.com/chihaya/chihaya/transport/udp"
 
-	// See the README for how to import custom drivers.
-	_ "github.com/chihaya/chihaya/backend/noop"
+	// Import our default storage drivers.
+	_ "github.com/chihaya/chihaya/deltastore/nop"
+	_ "github.com/chihaya/chihaya/store/memory"
 )
 
 var (

@@ -36,8 +36,8 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 // DriverConfig is the configuration used to connect to a tracker.Driver or
 // a backend.Driver.
 type DriverConfig struct {
-	Name   string            `json:"driver"`
-	Params map[string]string `json:"params,omitempty"`
+	Name   string                 `json:"driver"`
+	Params map[string]interface{} `json:"params,omitempty"`
 }
 
 // SubnetConfig is the configuration used to specify if local peers should be
@@ -108,8 +108,14 @@ type Config struct {
 	TrackerConfig
 	HTTPConfig
 	UDPConfig
-	DriverConfig
+	StorageConfig
 	StatsConfig
+}
+
+// StorageConfig is the configuration for both storage drivers.
+type StorageConfig struct {
+	StoreConfig      DriverConfig `json:"store_config"`
+	DeltaStoreConfig DriverConfig `json:"delta_store_config"`
 }
 
 // DefaultConfig is a configuration that can be used as a fallback value.
@@ -146,8 +152,16 @@ var DefaultConfig = Config{
 		UDPListenAddr: ":6882",
 	},
 
-	DriverConfig: DriverConfig{
-		Name: "noop",
+	StorageConfig: StorageConfig{
+		StoreConfig: DriverConfig{
+			Name: "memory",
+			Params: map[string]interface{}{
+				"torrent_map_shards": 1,
+			},
+		},
+		DeltaStoreConfig: DriverConfig{
+			Name: "nop",
+		},
 	},
 
 	StatsConfig: StatsConfig{

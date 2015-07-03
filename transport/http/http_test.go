@@ -16,7 +16,8 @@ import (
 	"github.com/chihaya/chihaya/stats"
 	"github.com/chihaya/chihaya/tracker"
 
-	_ "github.com/chihaya/chihaya/backend/noop"
+	_ "github.com/chihaya/chihaya/deltastore/nop"
+	_ "github.com/chihaya/chihaya/store/memory"
 )
 
 type params map[string]string

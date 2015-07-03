@@ -350,13 +350,13 @@ func loadPrivateTestData(tkr *tracker.Tracker) {
 	}
 
 	for i, passkey := range users {
-		tkr.PutUser(&models.User{
+		tkr.Store.PutUser(&models.User{
 			ID:      uint64(i + 1),
 			Passkey: passkey,
 		})
 	}
 
-	tkr.PutClient("TR2820")
+	tkr.Store.PutClient("TR2820")
 
 	torrent := &models.Torrent{
 		ID:       1,
@@ -365,5 +365,5 @@ func loadPrivateTestData(tkr *tracker.Tracker) {
 		Leechers: models.NewPeerMap(false, tkr.Config),
 	}
 
-	tkr.PutTorrent(torrent)
+	tkr.Store.PutTorrent(torrent)
 }

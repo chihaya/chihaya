@@ -112,7 +112,6 @@ Number of internal torrent maps to use. Leave this at 1 in general, however it c
 - `http_read_timeout: "10s"`
 - `http_write_timeout: "10s"`
 - `http_listen_limit: 0`
-- `driver: "noop"`
 - `stats_buffer_size: 0`
 - `include_mem_stats: true`
 - `verbose_mem_stats: false`

@@ -13,14 +13,14 @@ import (
 // scrape without being coupled to any transport protocol.
 func (tkr *Tracker) HandleScrape(scrape *models.Scrape, w Writer) (err error) {
 	if tkr.Config.PrivateEnabled {
-		if _, err = tkr.FindUser(scrape.Passkey); err != nil {
+		if _, err = tkr.Store.FindUser(scrape.Passkey); err != nil {
 			return err
 		}
 	}
 
 	var torrents []*models.Torrent
 	for _, infohash := range scrape.Infohashes {
-		torrent, err := tkr.FindTorrent(infohash)
+		torrent, err := tkr.Store.FindTorrent(infohash)
 		if err != nil {
 			return err
 		}

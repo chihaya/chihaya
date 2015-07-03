@@ -2,8 +2,8 @@
 // Use of this source code is governed by the BSD 2-Clause license,
 // which can be found in the LICENSE file.
 
-// Package tracker provides a generic interface for manipulating a
-// BitTorrent tracker's fast-moving data.
+// Package tracker provides an abstraction of the behavior of a BitTorrent
+// tracker that is both storage and transport protocol agnostic.
 package tracker
 
 import (
@@ -11,17 +11,18 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/chihaya/chihaya/backend"
 	"github.com/chihaya/chihaya/config"
+	"github.com/chihaya/chihaya/deltastore"
+	"github.com/chihaya/chihaya/store"
 	"github.com/chihaya/chihaya/tracker/models"
 )
 
 // Tracker represents the logic necessary to service BitTorrent announces,
 // independently of the underlying data transports used.
 type Tracker struct {
-	Config  *config.Config
-	Backend backend.Conn
-	*Storage
+	Config     *config.Config
+	Store      store.Conn
+	DeltaStore deltastore.Conn
 }
 
 // Server represents a server for a given BitTorrent tracker protocol.
@@ -36,15 +37,20 @@ type Server interface {
 // New creates a new Tracker, and opens any necessary connections.
 // Maintenance routines are automatically spawned in the background.
 func New(cfg *config.Config) (*Tracker, error) {
-	bc, err := backend.Open(&cfg.DriverConfig)
+	storeConn, err := store.Open(&cfg.StoreConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	deltaConn, err := deltastore.Open(&cfg.DeltaStoreConfig)
 	if err != nil {
 		return nil, err
 	}
 
 	tkr := &Tracker{
-		Config:  cfg,
-		Backend: bc,
-		Storage: NewStorage(cfg),
+		Config:     cfg,
+		Store:      storeConn,
+		DeltaStore: deltaConn,
 	}
 
 	go tkr.purgeInactivePeers(
@@ -62,13 +68,19 @@ func New(cfg *config.Config) (*Tracker, error) {
 
 // Close gracefully shutdowns a Tracker by closing any database connections.
 func (tkr *Tracker) Close() error {
-	return tkr.Backend.Close()
+	if err := tkr.DeltaStore.Close(); err != nil {
+		return err
+	}
+	return tkr.Store.Close()
 }
 
 // LoadApprovedClients loads a list of client IDs into the tracker's storage.
 func (tkr *Tracker) LoadApprovedClients(clients []string) {
 	for _, client := range clients {
-		tkr.PutClient(client)
+		err := tkr.Store.PutClient(client)
+		if err != nil {
+			glog.Errorf("failed to load %s into whitelist: %s", client, err)
+		}
 	}
 }
 
@@ -98,7 +110,7 @@ func (tkr *Tracker) purgeInactivePeers(purgeEmptyTorrents bool, threshold, inter
 		before := time.Now().Add(-threshold)
 		glog.V(0).Infof("Purging peers with no announces since %s", before)
 
-		err := tkr.PurgeInactivePeers(purgeEmptyTorrents, before)
+		err := tkr.Store.PurgeInactivePeers(purgeEmptyTorrents, before)
 		if err != nil {
 			glog.Errorf("Error purging torrents: %s", err)
 		}
