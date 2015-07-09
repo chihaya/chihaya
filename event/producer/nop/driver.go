@@ -2,38 +2,26 @@
 // Use of this source code is governed by the BSD 2-Clause license,
 // which can be found in the LICENSE file.
 
-// Package nop implements a Chihaya deltastore as a no-op. This is useful for
-// running Chihaya when you do not want to use a delta store.
+// Package nop implements Producer as a no-op.
 package nop
 
 import (
 	"github.com/chihaya/chihaya/config"
-	"github.com/chihaya/chihaya/deltastore"
+	"github.com/chihaya/chihaya/event/producer"
 	"github.com/chihaya/chihaya/tracker/models"
 )
 
 type driver struct{}
 
-// Nop is a delta store for Chihaya that does nothing.
+// Nop is a Producer for a BitTorrent tracker that does nothing.
 type Nop struct{}
 
-// New returns a new Chihaya backend driver that does nothing.
-func (d *driver) New(cfg *config.DriverConfig) (deltastore.Conn, error) {
+func (d *driver) New(cfg *config.DriverConfig) (producer.Producer, error) {
 	return &Nop{}, nil
 }
 
 // Close returns nil.
 func (n *Nop) Close() error {
-	return nil
-}
-
-// Ping returns nil.
-func (n *Nop) Ping() error {
-	return nil
-}
-
-// RecordAnnounce returns nil.
-func (n *Nop) RecordAnnounce(delta *models.AnnounceDelta) error {
 	return nil
 }
 
@@ -57,7 +45,7 @@ func (n *Nop) LoadAllUsers(ids []uint64) ([]*models.User, error) {
 	return nil, nil
 }
 
-// Init registers the nop driver as a backend for Chihaya.
+// Init registers the nop driver.
 func init() {
-	deltastore.Register("nop", &driver{})
+	producer.Register("nop", &driver{})
 }

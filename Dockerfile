@@ -15,7 +15,7 @@ RUN godep restore
 ADD *.go       /go/src/github.com/chihaya/chihaya/
 ADD cmd        /go/src/github.com/chihaya/chihaya/cmd
 ADD config     /go/src/github.com/chihaya/chihaya/config
-ADD deltastore /go/src/github.com/chihaya/chihaya/deltastore
+ADD event      /go/src/github.com/chihaya/chihaya/event
 ADD stats      /go/src/github.com/chihaya/chihaya/stats
 ADD store      /go/src/github.com/chihaya/chihaya/store
 ADD tracker    /go/src/github.com/chihaya/chihaya/tracker

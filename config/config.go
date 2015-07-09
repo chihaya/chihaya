@@ -105,21 +105,32 @@ type UDPConfig struct {
 
 // Config is the global configuration for an instance of Chihaya.
 type Config struct {
+	StoreConfig    DriverConfig `json:"store_config"`
+	ConsumerConfig DriverConfig `json:"consumer_config"`
+	ProducerConfig DriverConfig `json:"producer_config"`
 	TrackerConfig
 	HTTPConfig
 	UDPConfig
-	StorageConfig
 	StatsConfig
-}
-
-// StorageConfig is the configuration for both storage drivers.
-type StorageConfig struct {
-	StoreConfig      DriverConfig `json:"store_config"`
-	DeltaStoreConfig DriverConfig `json:"delta_store_config"`
 }
 
 // DefaultConfig is a configuration that can be used as a fallback value.
 var DefaultConfig = Config{
+	StoreConfig: DriverConfig{
+		Name: "memory",
+		Params: map[string]interface{}{
+			"torrent_map_shards": 1,
+		},
+	},
+
+	ConsumerConfig: DriverConfig{
+		Name: "nop",
+	},
+
+	ProducerConfig: DriverConfig{
+		Name: "nop",
+	},
+
 	TrackerConfig: TrackerConfig{
 		CreateOnAnnounce:      true,
 		PrivateEnabled:        false,
@@ -150,18 +161,6 @@ var DefaultConfig = Config{
 
 	UDPConfig: UDPConfig{
 		UDPListenAddr: ":6882",
-	},
-
-	StorageConfig: StorageConfig{
-		StoreConfig: DriverConfig{
-			Name: "memory",
-			Params: map[string]interface{}{
-				"torrent_map_shards": 1,
-			},
-		},
-		DeltaStoreConfig: DriverConfig{
-			Name: "nop",
-		},
 	},
 
 	StatsConfig: StatsConfig{

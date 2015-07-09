@@ -12,7 +12,8 @@ import (
 	"github.com/golang/glog"
 
 	"github.com/chihaya/chihaya/config"
-	"github.com/chihaya/chihaya/deltastore"
+	"github.com/chihaya/chihaya/event/consumer"
+	"github.com/chihaya/chihaya/event/producer"
 	"github.com/chihaya/chihaya/store"
 	"github.com/chihaya/chihaya/tracker/models"
 )
@@ -20,9 +21,10 @@ import (
 // Tracker represents the logic necessary to service BitTorrent announces,
 // independently of the underlying data transports used.
 type Tracker struct {
-	Config     *config.Config
-	Store      store.Conn
-	DeltaStore deltastore.Conn
+	Config   *config.Config
+	Store    store.Conn
+	Consumer consumer.Consumer
+	Producer producer.Producer
 }
 
 // Server represents a server for a given BitTorrent tracker protocol.
@@ -37,20 +39,26 @@ type Server interface {
 // New creates a new Tracker, and opens any necessary connections.
 // Maintenance routines are automatically spawned in the background.
 func New(cfg *config.Config) (*Tracker, error) {
-	storeConn, err := store.Open(&cfg.StoreConfig)
+	store, err := store.Open(&cfg.StoreConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	deltaConn, err := deltastore.Open(&cfg.DeltaStoreConfig)
+	consumer, err := consumer.Open(&cfg.ConsumerConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	producer, err := producer.Open(&cfg.ProducerConfig)
 	if err != nil {
 		return nil, err
 	}
 
 	tkr := &Tracker{
-		Config:     cfg,
-		Store:      storeConn,
-		DeltaStore: deltaConn,
+		Config:   cfg,
+		Store:    store,
+		Consumer: consumer,
+		Producer: producer,
 	}
 
 	go tkr.purgeInactivePeers(
@@ -68,9 +76,14 @@ func New(cfg *config.Config) (*Tracker, error) {
 
 // Close gracefully shutdowns a Tracker by closing any database connections.
 func (tkr *Tracker) Close() error {
-	if err := tkr.DeltaStore.Close(); err != nil {
+	if err := tkr.Consumer.Close(); err != nil {
 		return err
 	}
+
+	if err := tkr.Producer.Close(); err != nil {
+		return err
+	}
+
 	return tkr.Store.Close()
 }
 

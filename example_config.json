@@ -1,4 +1,19 @@
 {
+  "store_config": {
+    "driver": "memory",
+    "params": {
+      "torrent_map_shards": 1,
+    }
+  },
+
+  "consumer_config": {
+    "driver": "nop"
+  },
+
+  "producer_config": {
+    "driver": "nop"
+  },
+
   "create_on_announce": true,
   "private_enabled": false,
   "freeleech_enabled": false,
@@ -21,16 +36,6 @@
   "http_read_timeout": "4s",
   "http_write_timeout": "4s",
   "http_listen_limit": 0,
-
-  "store_config": {
-    "driver": "memory",
-    "params": {
-      "torrent_map_shards": 1,
-    }
-  },
-  "delta_store_config": {
-    "driver": "nop"
-  },
 
   "stats_buffer_size": 0,
   "include_mem_stats": true,

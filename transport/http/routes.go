@@ -33,13 +33,6 @@ func handleError(err error) (int, error) {
 }
 
 func (s *Server) check(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	// Attempt to ping the backend if private tracker is enabled.
-	if s.config.PrivateEnabled {
-		if err := s.tracker.DeltaStore.Ping(); err != nil {
-			return handleError(err)
-		}
-	}
-
 	_, err := w.Write([]byte("STILL-ALIVE"))
 	return handleError(err)
 }

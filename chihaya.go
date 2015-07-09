@@ -20,8 +20,9 @@ import (
 	"github.com/chihaya/chihaya/transport/http"
 	"github.com/chihaya/chihaya/transport/udp"
 
-	// Import our default storage drivers.
-	_ "github.com/chihaya/chihaya/deltastore/nop"
+	// Import our default drivers.
+	_ "github.com/chihaya/chihaya/event/consumer/nop"
+	_ "github.com/chihaya/chihaya/event/producer/nop"
 	_ "github.com/chihaya/chihaya/store/memory"
 )
 

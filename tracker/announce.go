@@ -60,7 +60,7 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) (err error) {
 	if tkr.Config.PrivateEnabled {
 		delta.Created = created
 		delta.Snatched = snatched
-		if err = tkr.DeltaStore.RecordAnnounce(delta); err != nil {
+		if err = tkr.Consumer.RecordAnnounce(delta); err != nil {
 			return err
 		}
 	} else if tkr.Config.PurgeInactiveTorrents && torrent.PeerCount() == 0 {
