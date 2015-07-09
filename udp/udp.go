@@ -41,11 +41,11 @@ func (s *Server) serve(listenAddr string) error {
 	}
 
 	sock, err := net.ListenUDP("udp", udpAddr)
-	defer sock.Close()
 	if err != nil {
 		close(s.booting)
 		return err
 	}
+	defer sock.Close()
 
 	if s.config.UDPReadBufferSize > 0 {
 		sock.SetReadBuffer(s.config.UDPReadBufferSize)
