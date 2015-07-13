@@ -33,13 +33,6 @@ func handleError(err error) (int, error) {
 }
 
 func (s *Server) check(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	// Attempt to ping the backend if private tracker is enabled.
-	if s.config.PrivateEnabled {
-		if err := s.tracker.Backend.Ping(); err != nil {
-			return handleError(err)
-		}
-	}
-
 	_, err := w.Write([]byte("STILL-ALIVE"))
 	return handleError(err)
 }
@@ -111,7 +104,7 @@ func (s *Server) getTorrent(w http.ResponseWriter, r *http.Request, p httprouter
 		return http.StatusNotFound, err
 	}
 
-	torrent, err := s.tracker.FindTorrent(infohash)
+	torrent, err := s.tracker.Store.FindTorrent(infohash)
 	if err != nil {
 		return handleError(err)
 	}
@@ -133,7 +126,7 @@ func (s *Server) putTorrent(w http.ResponseWriter, r *http.Request, p httprouter
 		return http.StatusBadRequest, err
 	}
 
-	s.tracker.PutTorrent(&torrent)
+	s.tracker.Store.PutTorrent(&torrent)
 	return http.StatusOK, nil
 }
 
@@ -143,12 +136,12 @@ func (s *Server) delTorrent(w http.ResponseWriter, r *http.Request, p httprouter
 		return http.StatusNotFound, err
 	}
 
-	s.tracker.DeleteTorrent(infohash)
+	s.tracker.Store.DeleteTorrent(infohash)
 	return http.StatusOK, nil
 }
 
 func (s *Server) getUser(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	user, err := s.tracker.FindUser(p.ByName("passkey"))
+	user, err := s.tracker.Store.FindUser(p.ByName("passkey"))
 	if err == models.ErrUserDNE {
 		return http.StatusNotFound, err
 	} else if err != nil {
@@ -172,28 +165,28 @@ func (s *Server) putUser(w http.ResponseWriter, r *http.Request, p httprouter.Pa
 		return http.StatusBadRequest, err
 	}
 
-	s.tracker.PutUser(&user)
+	s.tracker.Store.PutUser(&user)
 	return http.StatusOK, nil
 }
 
 func (s *Server) delUser(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	s.tracker.DeleteUser(p.ByName("passkey"))
+	s.tracker.Store.DeleteUser(p.ByName("passkey"))
 	return http.StatusOK, nil
 }
 
 func (s *Server) getClient(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	if err := s.tracker.ClientApproved(p.ByName("clientID")); err != nil {
+	if err := s.tracker.Store.FindClient(p.ByName("clientID")); err != nil {
 		return http.StatusNotFound, err
 	}
 	return http.StatusOK, nil
 }
 
 func (s *Server) putClient(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	s.tracker.PutClient(p.ByName("clientID"))
+	s.tracker.Store.PutClient(p.ByName("clientID"))
 	return http.StatusOK, nil
 }
 
 func (s *Server) delClient(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	s.tracker.DeleteClient(p.ByName("clientID"))
+	s.tracker.Store.DeleteClient(p.ByName("clientID"))
 	return http.StatusOK, nil
 }

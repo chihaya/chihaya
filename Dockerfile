@@ -13,13 +13,13 @@ RUN godep restore
 
 # Add source
 ADD *.go       /go/src/github.com/chihaya/chihaya/
-ADD backend    /go/src/github.com/chihaya/chihaya/backend
 ADD cmd        /go/src/github.com/chihaya/chihaya/cmd
 ADD config     /go/src/github.com/chihaya/chihaya/config
-ADD http       /go/src/github.com/chihaya/chihaya/http
+ADD event      /go/src/github.com/chihaya/chihaya/event
 ADD stats      /go/src/github.com/chihaya/chihaya/stats
+ADD store      /go/src/github.com/chihaya/chihaya/store
 ADD tracker    /go/src/github.com/chihaya/chihaya/tracker
-ADD udp        /go/src/github.com/chihaya/chihaya/udp
+ADD transport  /go/src/github.com/chihaya/chihaya/transport
 
 # Install
 RUN go install github.com/chihaya/chihaya/cmd/chihaya

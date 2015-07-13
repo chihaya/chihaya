@@ -36,8 +36,8 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 // DriverConfig is the configuration used to connect to a tracker.Driver or
 // a backend.Driver.
 type DriverConfig struct {
-	Name   string            `json:"driver"`
-	Params map[string]string `json:"params,omitempty"`
+	Name   string                 `json:"driver"`
+	Params map[string]interface{} `json:"params,omitempty"`
 }
 
 // SubnetConfig is the configuration used to specify if local peers should be
@@ -105,15 +105,32 @@ type UDPConfig struct {
 
 // Config is the global configuration for an instance of Chihaya.
 type Config struct {
+	StoreConfig    DriverConfig `json:"store_config"`
+	ConsumerConfig DriverConfig `json:"consumer_config"`
+	ProducerConfig DriverConfig `json:"producer_config"`
 	TrackerConfig
 	HTTPConfig
 	UDPConfig
-	DriverConfig
 	StatsConfig
 }
 
 // DefaultConfig is a configuration that can be used as a fallback value.
 var DefaultConfig = Config{
+	StoreConfig: DriverConfig{
+		Name: "memory",
+		Params: map[string]interface{}{
+			"torrent_map_shards": 1,
+		},
+	},
+
+	ConsumerConfig: DriverConfig{
+		Name: "nop",
+	},
+
+	ProducerConfig: DriverConfig{
+		Name: "nop",
+	},
+
 	TrackerConfig: TrackerConfig{
 		CreateOnAnnounce:      true,
 		PrivateEnabled:        false,
@@ -144,10 +161,6 @@ var DefaultConfig = Config{
 
 	UDPConfig: UDPConfig{
 		UDPListenAddr: ":6882",
-	},
-
-	DriverConfig: DriverConfig{
-		Name: "noop",
 	},
 
 	StatsConfig: StatsConfig{
