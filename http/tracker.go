@@ -171,6 +171,15 @@ func requestedEndpoint(q *query.Query, r *http.Request, cfg *config.NetConfig) (
 		}
 
 		if v4, v6, done = getEndpoints(r.RemoteAddr, v4, v6, cfg); done {
+			// "ip" param is not provided, so we guess IP from HTTP request.
+			// Still we need the port the client listens to, not the source IP
+			// port, used by HTTP request.
+			if v4 != nil {
+				v4.Port = uint16(0)
+			}
+			if v6 != nil {
+				v6.Port = uint16(0)
+			}
 			return
 		}
 	}
