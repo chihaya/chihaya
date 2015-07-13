@@ -47,7 +47,7 @@ $ export GOPATH=$PWD/chihaya
 $ git clone https://github.com/chihaya/chihaya.git chihaya/src/github.com/chihaya/chihaya
 $ cd chihaya/src/github.com/chihaya/chihaya/cmd/chihaya/
 $ godep restore
-$ godep go install
+$ godep go install github.com/chihaya/chihaya/cmd/chihaya
 ```
 
 ### Testing
