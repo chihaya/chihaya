@@ -48,6 +48,27 @@ func TestPublicAnnounce(t *testing.T) {
 	checkAnnounce(peer3, expected, srv, t)
 }
 
+func TestDisallowIPSpoofing(t *testing.T) {
+	cfg := config.DefaultConfig
+	cfg.AllowIPSpoofing = false
+
+	srv, err := setupTracker(&cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer srv.Close()
+
+	peerV4 := makePeerParams("peerV4", true, "44.0.0.1")
+	expectedPeerV4 := makePeerParams("peerV4", true)
+	expected := makeResponse(1, 0, expectedPeerV4)
+	checkAnnounce(peerV4, expected, srv, t)
+
+	peerV6 := makePeerParams("peerV6", true, "fc01::1")
+	expectedPeerV6 := makePeerParams("peerV6", true)
+	expected = makeResponse(2, 0, expectedPeerV6)
+	checkAnnounce(peerV6, expected, srv, t)
+}
+
 func TestTorrentPurging(t *testing.T) {
 	cfg := config.DefaultConfig
 	srv, err := setupTracker(&cfg)
@@ -273,15 +294,9 @@ func makePeerParams(id string, seed bool, extra ...string) params {
 		left = "0"
 	}
 
-	ip := "10.0.0.1"
-	if len(extra) >= 1 {
-		ip = extra[0]
-	}
-
-	return params{
+	r := params{
 		"info_hash":  infoHash,
 		"peer_id":    id,
-		"ip":         ip,
 		"port":       "1234",
 		"uploaded":   "0",
 		"downloaded": "0",
@@ -289,16 +304,29 @@ func makePeerParams(id string, seed bool, extra ...string) params {
 		"compact":    "0",
 		"numwant":    "50",
 	}
+
+	if len(extra) >= 1 {
+		r["ip"] = extra[0]
+	}
+
+	return r
 }
 
 func peerFromParams(peer params) bencode.Dict {
 	port, _ := strconv.ParseInt(peer["port"], 10, 64)
 
-	return bencode.Dict{
+	dict := bencode.Dict{
 		"peer id": peer["peer_id"],
-		"ip":      peer["ip"],
 		"port":    port,
 	}
+
+	if ip, ok := peer["ip"]; ok {
+		dict["ip"] = ip
+	} else {
+		dict["ip"] = "127.0.0.1"
+	}
+
+	return dict
 }
 
 func makeResponse(seeders, leechers int64, peers ...params) bencode.Dict {
