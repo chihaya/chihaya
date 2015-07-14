@@ -44,6 +44,9 @@ func (s *Server) newAnnounce(r *http.Request, p httprouter.Params) (*models.Anno
 	}
 
 	left, err := q.Uint64("left")
+	if err != nil {
+		return nil, models.ErrMalformedRequest
+	}
 
 	ipv4, ipv6, err := requestedEndpoint(q, r, &s.config.NetConfig)
 	if err != nil {
@@ -53,21 +56,11 @@ func (s *Server) newAnnounce(r *http.Request, p httprouter.Params) (*models.Anno
 	var ipv4Endpoint, ipv6Endpoint models.Endpoint
 	if ipv4 != nil {
 		ipv4Endpoint = *ipv4
-		// If the port we couldn't get the port before, fallback to the port param.
-		if ipv4Endpoint.Port == uint16(0) {
-			ipv4Endpoint.Port = uint16(port)
-		}
+		ipv4Endpoint.Port = uint16(port)
 	}
 	if ipv6 != nil {
 		ipv6Endpoint = *ipv6
-		// If the port we couldn't get the port before, fallback to the port param.
-		if ipv6Endpoint.Port == uint16(0) {
-			ipv6Endpoint.Port = uint16(port)
-		}
-	}
-
-	if err != nil {
-		return nil, models.ErrMalformedRequest
+		ipv6Endpoint.Port = uint16(port)
 	}
 
 	downloaded, err := q.Uint64("downloaded")
@@ -171,15 +164,6 @@ func requestedEndpoint(q *query.Query, r *http.Request, cfg *config.NetConfig) (
 		}
 
 		if v4, v6, done = getEndpoints(r.RemoteAddr, v4, v6, cfg); done {
-			// "ip" param is not provided, so we guess IP from HTTP request.
-			// Still we need the port the client listens to, not the source IP
-			// port, used by HTTP request.
-			if v4 != nil {
-				v4.Port = uint16(0)
-			}
-			if v6 != nil {
-				v6.Port = uint16(0)
-			}
 			return
 		}
 	}
@@ -192,21 +176,18 @@ func requestedEndpoint(q *query.Query, r *http.Request, cfg *config.NetConfig) (
 }
 
 func getEndpoints(ipstr string, ipv4, ipv6 *models.Endpoint, cfg *config.NetConfig) (*models.Endpoint, *models.Endpoint, bool) {
-	host, port, err := net.SplitHostPort(ipstr)
+	// Ignore port in the ipstr, since it's set through "port" param.
+	host, _, err := net.SplitHostPort(ipstr)
 	if err != nil {
 		host = ipstr
 	}
 
-	// We can ignore this error, because ports that are 0 are assumed to be the
-	// port parameter provided in the "port" param of the announce request.
-	parsedPort, _ := strconv.ParseUint(port, 10, 16)
-
 	if ip := net.ParseIP(host); ip != nil {
 		ipTo4 := ip.To4()
 		if ipv4 == nil && ipTo4 != nil {
-			ipv4 = &models.Endpoint{ipTo4, uint16(parsedPort)}
+			ipv4 = &models.Endpoint{ipTo4, uint16(0)}
 		} else if ipv6 == nil && ipTo4 == nil {
-			ipv6 = &models.Endpoint{ip, uint16(parsedPort)}
+			ipv6 = &models.Endpoint{ip, uint16(0)}
 		}
 	}
 
