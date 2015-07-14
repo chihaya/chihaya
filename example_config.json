@@ -8,7 +8,7 @@
   "default_num_want": 50,
   "torrent_map_shards": 1,
   "allow_ip_spoofing": true,
-  "dual_stacked_peers": false,
+  "dual_stacked_peers": true,
   "real_ip_header": "",
   "respect_af": false,
   "client_whitelist_enabled": false,
