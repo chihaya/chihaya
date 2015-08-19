@@ -1,6 +1,9 @@
 language: go
 
-go: 1.4
+go:
+  - 1.4
+  - 1.5
+  - tip
 
 sudo: false
 
@@ -9,7 +12,7 @@ before_install:
   - godep restore
 
 script:
-  - godep go test ./...
+  - go test -v ./...
 
 notifications:
   irc:
