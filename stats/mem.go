@@ -27,6 +27,7 @@ type BasicMemStats struct {
 
 	// Garbage collector statistics.
 	PauseTotalNs uint64
+	PauseNs      uint64
 }
 
 type memStatsPlaceholder interface{}
@@ -72,5 +73,6 @@ func (s *MemStatsWrapper) Update() {
 		s.basic.HeapReleased = s.cache.HeapReleased
 		s.basic.HeapObjects = s.cache.HeapObjects
 		s.basic.PauseTotalNs = s.cache.PauseTotalNs
+		s.basic.PauseNs = s.cache.PauseNs[(s.cache.NumGC+255)%256]
 	}
 }
