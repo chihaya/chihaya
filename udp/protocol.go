@@ -47,6 +47,7 @@ var (
 	errMalformedPacket = models.ProtocolError("malformed packet")
 	errMalformedIP     = models.ProtocolError("malformed IP address")
 	errMalformedEvent  = models.ProtocolError("malformed event ID")
+	errUnknownAction   = models.ProtocolError("unknown action ID")
 	errBadConnectionID = errors.New("bad connection ID")
 )
 
@@ -122,6 +123,9 @@ func (s *Server) handlePacket(packet []byte, addr *net.UDPAddr) (response []byte
 		}
 
 		handleTorrentError(err, writer)
+
+	default:
+		err = errUnknownAction
 	}
 
 	return
