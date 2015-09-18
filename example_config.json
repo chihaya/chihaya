@@ -5,6 +5,8 @@
   "purge_inactive_torrents": true,
   "announce": "30m",
   "min_announce": "15m",
+  "reap_interval": "60s",
+  "reap_ratio": "1.25",
   "default_num_want": 50,
   "torrent_map_shards": 1,
   "allow_ip_spoofing": true,

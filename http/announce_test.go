@@ -84,9 +84,8 @@ func TestTorrentPurging(t *testing.T) {
 
 func TestStalePeerPurging(t *testing.T) {
 	cfg := config.DefaultConfig
-	cfg.Announce = config.Duration{
-		Duration: 10 * time.Millisecond,
-	}
+	cfg.MinAnnounce = config.Duration{10 * time.Millisecond}
+	cfg.ReapInterval = config.Duration{10 * time.Millisecond}
 
 	srv, err := setupTracker(&cfg)
 	if err != nil {
@@ -110,7 +109,7 @@ func TestStalePeerPurging(t *testing.T) {
 	// Add a leecher.
 	peer2 := makePeerParams("peer2", false)
 	expected := makeResponse(1, 1, peer1)
-	expected["interval"] = int64(0)
+	expected["min interval"] = int64(0)
 	checkAnnounce(peer2, expected, srv, t)
 
 	// Let them both expire.
