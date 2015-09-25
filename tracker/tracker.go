@@ -49,8 +49,8 @@ func New(cfg *config.Config) (*Tracker, error) {
 
 	go tkr.purgeInactivePeers(
 		cfg.PurgeInactiveTorrents,
-		cfg.Announce.Duration*2,
-		cfg.Announce.Duration,
+		time.Duration(float64(cfg.MinAnnounce.Duration)*cfg.ReapRatio),
+		cfg.ReapInterval.Duration,
 	)
 
 	if cfg.ClientWhitelistEnabled {
@@ -86,13 +86,6 @@ type Writer interface {
 
 // purgeInactivePeers periodically walks the torrent database and removes
 // peers that haven't announced recently.
-//
-// The default threshold is 2x the announce interval, which gives delayed
-// peers a chance to stay alive, while ensuring the majority of responses
-// contain active peers.
-//
-// The default interval is equal to the announce interval, since this is a
-// relatively expensive operation.
 func (tkr *Tracker) purgeInactivePeers(purgeEmptyTorrents bool, threshold, interval time.Duration) {
 	for _ = range time.NewTicker(interval).C {
 		before := time.Now().Add(-threshold)

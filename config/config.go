@@ -81,6 +81,8 @@ type TrackerConfig struct {
 	PurgeInactiveTorrents bool     `json:"purge_inactive_torrents"`
 	Announce              Duration `json:"announce"`
 	MinAnnounce           Duration `json:"min_announce"`
+	ReapInterval          Duration `json:"reap_interval"`
+	ReapRatio             float64  `json:"reap_ratio"`
 	NumWantFallback       int      `json:"default_num_want"`
 	TorrentMapShards      int      `json:"torrent_map_shards"`
 
@@ -121,6 +123,8 @@ var DefaultConfig = Config{
 		PurgeInactiveTorrents: true,
 		Announce:              Duration{30 * time.Minute},
 		MinAnnounce:           Duration{15 * time.Minute},
+		ReapInterval:          Duration{60 * time.Second},
+		ReapRatio:             1.25,
 		NumWantFallback:       50,
 		TorrentMapShards:      1,
 
