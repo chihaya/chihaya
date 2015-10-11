@@ -37,7 +37,7 @@ use-cases).
 
 ## Building & Installing
 
-Chihaya requires 64-bit Go 1.4, [Godep], and a [Go environment] previously set up.
+Chihaya requires Go 1.4+ (preferrably the latest stable Go), [Godep], and a [Go environment] previously set up.
 
 [Godep]: https://github.com/tools/godep
 [Go environment]: https://golang.org/doc/code.html
@@ -47,7 +47,7 @@ $ export GOPATH=$PWD/chihaya
 $ git clone https://github.com/chihaya/chihaya.git chihaya/src/github.com/chihaya/chihaya
 $ cd chihaya/src/github.com/chihaya/chihaya/cmd/chihaya/
 $ godep restore
-$ godep go install github.com/chihaya/chihaya/cmd/chihaya
+$ go install github.com/chihaya/chihaya/cmd/chihaya
 ```
 
 ### Testing
