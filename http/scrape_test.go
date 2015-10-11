@@ -13,11 +13,10 @@ import (
 	"testing"
 
 	"github.com/chihaya/bencode"
-	"github.com/chihaya/chihaya/config"
 )
 
 func TestPublicScrape(t *testing.T) {
-	srv, err := setupTracker(&config.DefaultConfig)
+	srv, err := setupTracker(nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

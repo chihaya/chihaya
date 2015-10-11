@@ -27,10 +27,17 @@ func init() {
 	stats.DefaultStats = stats.New(config.StatsConfig{})
 }
 
-func setupTracker(cfg *config.Config) (*httptest.Server, error) {
-	tkr, err := tracker.New(cfg)
-	if err != nil {
-		return nil, err
+func setupTracker(cfg *config.Config, tkr *tracker.Tracker) (*httptest.Server, error) {
+	if cfg == nil {
+		cfg = &config.DefaultConfig
+	}
+
+	if tkr == nil {
+		var err error
+		tkr, err = tracker.New(cfg)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return createServer(tkr, cfg)
 }

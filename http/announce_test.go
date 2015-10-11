@@ -5,9 +5,7 @@
 package http
 
 import (
-	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"reflect"
 	"strconv"
 	"testing"
@@ -20,7 +18,7 @@ import (
 )
 
 func TestPublicAnnounce(t *testing.T) {
-	srv, err := setupTracker(&config.DefaultConfig)
+	srv, err := setupTracker(nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,24 +47,25 @@ func TestPublicAnnounce(t *testing.T) {
 }
 
 func TestTorrentPurging(t *testing.T) {
-	cfg := config.DefaultConfig
-	srv, err := setupTracker(&cfg)
+	tkr, err := tracker.New(&config.DefaultConfig)
+	if err != nil {
+		t.Fatalf("failed to create new tracker instance: %s", err)
+	}
+
+	srv, err := setupTracker(nil, tkr)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer srv.Close()
 
-	torrentAPIPath := srv.URL + "/torrents/" + url.QueryEscape(infoHash)
-
 	// Add one seeder.
 	peer := makePeerParams("peer1", true)
 	announce(peer, srv)
 
-	_, status, err := fetchPath(torrentAPIPath)
+	// Make sure the torrent was created.
+	_, err = tkr.FindTorrent(infoHash)
 	if err != nil {
-		t.Fatal(err)
-	} else if status != http.StatusOK {
-		t.Fatalf("expected torrent to exist (got %s)", http.StatusText(status))
+		t.Fatalf("expected torrent to exist after announce: %s", err)
 	}
 
 	// Remove seeder.
@@ -74,11 +73,9 @@ func TestTorrentPurging(t *testing.T) {
 	peer["event"] = "stopped"
 	announce(peer, srv)
 
-	_, status, err = fetchPath(torrentAPIPath)
-	if err != nil {
-		t.Fatal(err)
-	} else if status != http.StatusNotFound {
-		t.Fatalf("expected torrent to have been purged (got %s)", http.StatusText(status))
+	_, err = tkr.FindTorrent(infoHash)
+	if err != models.ErrTorrentDNE {
+		t.Fatalf("expected torrent to have been purged: %s", err)
 	}
 }
 
@@ -87,23 +84,25 @@ func TestStalePeerPurging(t *testing.T) {
 	cfg.MinAnnounce = config.Duration{10 * time.Millisecond}
 	cfg.ReapInterval = config.Duration{10 * time.Millisecond}
 
-	srv, err := setupTracker(&cfg)
+	tkr, err := tracker.New(&cfg)
+	if err != nil {
+		t.Fatalf("failed to create new tracker instance: %s", err)
+	}
+
+	srv, err := setupTracker(&cfg, tkr)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer srv.Close()
 
-	torrentAPIPath := srv.URL + "/torrents/" + url.QueryEscape(infoHash)
-
 	// Add one seeder.
 	peer1 := makePeerParams("peer1", true)
 	announce(peer1, srv)
 
-	_, status, err := fetchPath(torrentAPIPath)
+	// Make sure the torrent was created.
+	_, err = tkr.FindTorrent(infoHash)
 	if err != nil {
-		t.Fatal(err)
-	} else if status != http.StatusOK {
-		t.Fatalf("expected torrent to exist (got %s)", http.StatusText(status))
+		t.Fatalf("expected torrent to exist after announce: %s", err)
 	}
 
 	// Add a leecher.
@@ -115,11 +114,9 @@ func TestStalePeerPurging(t *testing.T) {
 	// Let them both expire.
 	time.Sleep(30 * time.Millisecond)
 
-	_, status, err = fetchPath(torrentAPIPath)
-	if err != nil {
-		t.Fatal(err)
-	} else if status != http.StatusNotFound {
-		t.Fatalf("expected torrent to have been purged (got %s)", http.StatusText(status))
+	_, err = tkr.FindTorrent(infoHash)
+	if err != models.ErrTorrentDNE {
+		t.Fatalf("expected torrent to have been purged: %s", err)
 	}
 }
 
@@ -170,7 +167,7 @@ func TestPreferredSubnet(t *testing.T) {
 	cfg.PreferredIPv6Subnet = 16
 	cfg.DualStackedPeers = false
 
-	srv, err := setupTracker(&cfg)
+	srv, err := setupTracker(&cfg, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -235,7 +232,7 @@ func TestPreferredSubnet(t *testing.T) {
 }
 
 func TestCompactAnnounce(t *testing.T) {
-	srv, err := setupTracker(&config.DefaultConfig)
+	srv, err := setupTracker(nil, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
