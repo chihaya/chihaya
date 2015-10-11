@@ -19,7 +19,6 @@ import (
 )
 
 var (
-	testPort       = "34137"
 	connectAction  = []byte{0, 0, 0, byte(connectActionID)}
 	announceAction = []byte{0, 0, 0, byte(announceActionID)}
 	scrapeAction   = []byte{0, 0, 0, byte(scrapeActionID)}
@@ -36,7 +35,7 @@ func setupTracker(cfg *config.Config) (*Server, chan struct{}, error) {
 	done := make(chan struct{})
 
 	go func() {
-		if err := srv.serve(":" + testPort); err != nil {
+		if err := srv.serve(); err != nil {
 			panic(err)
 		}
 		close(done)
@@ -47,7 +46,7 @@ func setupTracker(cfg *config.Config) (*Server, chan struct{}, error) {
 }
 
 func setupSocket() (*net.UDPAddr, *net.UDPConn, error) {
-	srvAddr, err := net.ResolveUDPAddr("udp", "localhost:"+testPort)
+	srvAddr, err := net.ResolveUDPAddr("udp", config.DefaultConfig.UDPConfig.ListenAddr)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -57,7 +56,7 @@ func setupSocket() (*net.UDPAddr, *net.UDPConn, error) {
 		return nil, nil, err
 	}
 
-	return srvAddr, sock, err
+	return srvAddr, sock, nil
 }
 
 func makeTransactionID() []byte {

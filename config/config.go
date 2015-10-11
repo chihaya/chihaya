@@ -90,24 +90,34 @@ type TrackerConfig struct {
 	WhitelistConfig
 }
 
-// HTTPConfig is the configuration for HTTP functionality.
-type HTTPConfig struct {
-	HTTPListenAddr     string   `json:"http_listen_addr"`
-	HTTPRequestTimeout Duration `json:"http_request_timeout"`
-	HTTPReadTimeout    Duration `json:"http_read_timeout"`
-	HTTPWriteTimeout   Duration `json:"http_write_timeout"`
-	HTTPListenLimit    int      `json:"http_listen_limit"`
+// APIConfig is the configuration for an HTTP JSON API server.
+type APIConfig struct {
+	ListenAddr     string   `json:"api_listen_addr"`
+	RequestTimeout Duration `json:"api_request_timeout"`
+	ReadTimeout    Duration `json:"api_read_timeout"`
+	WriteTimeout   Duration `json:"api_write_timeout"`
+	ListenLimit    int      `json:"api_listen_limit"`
 }
 
-// UDPConfig is the configuration for HTTP functionality.
+// HTTPConfig is the configuration for the HTTP protocol.
+type HTTPConfig struct {
+	ListenAddr     string   `json:"http_listen_addr"`
+	RequestTimeout Duration `json:"http_request_timeout"`
+	ReadTimeout    Duration `json:"http_read_timeout"`
+	WriteTimeout   Duration `json:"http_write_timeout"`
+	ListenLimit    int      `json:"http_listen_limit"`
+}
+
+// UDPConfig is the configuration for the UDP protocol.
 type UDPConfig struct {
-	UDPListenAddr     string `json:"udp_listen_addr"`
-	UDPReadBufferSize int    `json:"udp_read_buffer_size"`
+	ListenAddr     string `json:"udp_listen_addr"`
+	ReadBufferSize int    `json:"udp_read_buffer_size"`
 }
 
 // Config is the global configuration for an instance of Chihaya.
 type Config struct {
 	TrackerConfig
+	APIConfig
 	HTTPConfig
 	UDPConfig
 	DriverConfig
@@ -139,15 +149,22 @@ var DefaultConfig = Config{
 		},
 	},
 
+	APIConfig: APIConfig{
+		ListenAddr:     ":6880",
+		RequestTimeout: Duration{10 * time.Second},
+		ReadTimeout:    Duration{10 * time.Second},
+		WriteTimeout:   Duration{10 * time.Second},
+	},
+
 	HTTPConfig: HTTPConfig{
-		HTTPListenAddr:     ":6881",
-		HTTPRequestTimeout: Duration{10 * time.Second},
-		HTTPReadTimeout:    Duration{10 * time.Second},
-		HTTPWriteTimeout:   Duration{10 * time.Second},
+		ListenAddr:     ":6881",
+		RequestTimeout: Duration{10 * time.Second},
+		ReadTimeout:    Duration{10 * time.Second},
+		WriteTimeout:   Duration{10 * time.Second},
 	},
 
 	UDPConfig: UDPConfig{
-		UDPListenAddr: ":6882",
+		ListenAddr: ":6882",
 	},
 
 	DriverConfig: DriverConfig{

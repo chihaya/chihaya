@@ -2,8 +2,8 @@
 // Use of this source code is governed by the BSD 2-Clause license,
 // which can be found in the LICENSE file.
 
-// Package udp implements a UDP BitTorrent tracker per BEP 15.
-// IPv6 is currently unsupported as there is no widely-implemented standard.
+// Package udp implements a BitTorrent tracker over the UDP protocol as per
+// BEP 15.
 package udp
 
 import (
@@ -29,12 +29,12 @@ type Server struct {
 	connIDGen *ConnectionIDGenerator
 }
 
-func (s *Server) serve(listenAddr string) error {
+func (s *Server) serve() error {
 	if s.sock != nil {
 		return errors.New("server already booted")
 	}
 
-	udpAddr, err := net.ResolveUDPAddr("udp", listenAddr)
+	udpAddr, err := net.ResolveUDPAddr("udp", s.config.UDPConfig.ListenAddr)
 	if err != nil {
 		close(s.booting)
 		return err
@@ -47,8 +47,8 @@ func (s *Server) serve(listenAddr string) error {
 	}
 	defer sock.Close()
 
-	if s.config.UDPReadBufferSize > 0 {
-		sock.SetReadBuffer(s.config.UDPReadBufferSize)
+	if s.config.UDPConfig.ReadBufferSize > 0 {
+		sock.SetReadBuffer(s.config.UDPConfig.ReadBufferSize)
 	}
 
 	pool := bufferpool.New(1000, 2048)
@@ -92,17 +92,20 @@ func (s *Server) serve(listenAddr string) error {
 }
 
 // Serve runs a UDP server, blocking until the server has shut down.
-func (s *Server) Serve(addr string) {
-	glog.V(0).Info("Starting UDP on ", addr)
+func (s *Server) Serve() {
+	glog.V(0).Info("Starting UDP on ", s.config.UDPConfig.ListenAddr)
 
 	go func() {
 		// Generate a new IV every hour.
 		for range time.Tick(time.Hour) {
+			if s.done {
+				return
+			}
 			s.connIDGen.NewIV()
 		}
 	}()
 
-	if err := s.serve(addr); err != nil {
+	if err := s.serve(); err != nil {
 		glog.Errorf("Failed to run UDP server: %s", err.Error())
 	} else {
 		glog.Info("UDP server shut down cleanly")
