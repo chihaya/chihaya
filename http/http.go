@@ -2,7 +2,8 @@
 // Use of this source code is governed by the BSD 2-Clause license,
 // which can be found in the LICENSE file.
 
-// Package http implements an http-serving BitTorrent tracker.
+// Package http implements a BitTorrent tracker over the HTTP protocol as per
+// BEP 3.
 package http
 
 import (
@@ -75,25 +76,10 @@ func newRouter(s *Server) *httprouter.Router {
 	if s.config.PrivateEnabled {
 		r.GET("/users/:passkey/announce", makeHandler(s.serveAnnounce))
 		r.GET("/users/:passkey/scrape", makeHandler(s.serveScrape))
-
-		r.PUT("/users/:passkey", makeHandler(s.putUser))
-		r.DELETE("/users/:passkey", makeHandler(s.delUser))
 	} else {
 		r.GET("/announce", makeHandler(s.serveAnnounce))
 		r.GET("/scrape", makeHandler(s.serveScrape))
 	}
-
-	if s.config.ClientWhitelistEnabled {
-		r.GET("/clients/:clientID", makeHandler(s.getClient))
-		r.PUT("/clients/:clientID", makeHandler(s.putClient))
-		r.DELETE("/clients/:clientID", makeHandler(s.delClient))
-	}
-
-	r.GET("/torrents/:infohash", makeHandler(s.getTorrent))
-	r.PUT("/torrents/:infohash", makeHandler(s.putTorrent))
-	r.DELETE("/torrents/:infohash", makeHandler(s.delTorrent))
-	r.GET("/check", makeHandler(s.check))
-	r.GET("/stats", makeHandler(s.stats))
 
 	return r
 }
@@ -120,24 +106,24 @@ func (s *Server) connState(conn net.Conn, state http.ConnState) {
 }
 
 // Serve runs an HTTP server, blocking until the server has shut down.
-func (s *Server) Serve(addr string) {
-	glog.V(0).Info("Starting HTTP on ", addr)
+func (s *Server) Serve() {
+	glog.V(0).Info("Starting HTTP on ", s.config.HTTPConfig.ListenAddr)
 
-	if s.config.HTTPListenLimit != 0 {
-		glog.V(0).Info("Limiting connections to ", s.config.HTTPListenLimit)
+	if s.config.HTTPConfig.ListenLimit != 0 {
+		glog.V(0).Info("Limiting connections to ", s.config.HTTPConfig.ListenLimit)
 	}
 
 	grace := &graceful.Server{
-		Timeout:     s.config.HTTPRequestTimeout.Duration,
+		Timeout:     s.config.HTTPConfig.RequestTimeout.Duration,
 		ConnState:   s.connState,
-		ListenLimit: s.config.HTTPListenLimit,
+		ListenLimit: s.config.HTTPConfig.ListenLimit,
 
 		NoSignalHandling: true,
 		Server: &http.Server{
-			Addr:         addr,
+			Addr:         s.config.HTTPConfig.ListenAddr,
 			Handler:      newRouter(s),
-			ReadTimeout:  s.config.HTTPReadTimeout.Duration,
-			WriteTimeout: s.config.HTTPWriteTimeout.Duration,
+			ReadTimeout:  s.config.HTTPConfig.ReadTimeout.Duration,
+			WriteTimeout: s.config.HTTPConfig.WriteTimeout.Duration,
 		},
 	}
 
