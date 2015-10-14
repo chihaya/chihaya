@@ -2,6 +2,9 @@
 // Use of this source code is governed by the BSD 2-Clause license,
 // which can be found in the LICENSE file.
 
+// Package chihaya implements the ability to boot the Chihaya BitTorrent
+// tracker with your own imports that can dynamically register additional
+// functionality.
 package chihaya
 
 import (
@@ -14,6 +17,7 @@ import (
 
 	"github.com/golang/glog"
 
+	"github.com/chihaya/chihaya/api"
 	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/http"
 	"github.com/chihaya/chihaya/stats"
@@ -32,6 +36,11 @@ var (
 func init() {
 	flag.IntVar(&maxProcs, "maxprocs", runtime.NumCPU(), "maximum parallel threads")
 	flag.StringVar(&configPath, "config", "", "path to the configuration file")
+}
+
+type server interface {
+	Serve()
+	Stop()
 }
 
 // Boot starts Chihaya. By exporting this function, anyone can import their own
@@ -65,28 +74,29 @@ func Boot() {
 		glog.Fatal("New: ", err)
 	}
 
-	var wg sync.WaitGroup
-	var servers []tracker.Server
+	var servers []server
 
-	if cfg.HTTPListenAddr != "" {
-		wg.Add(1)
-		srv := http.NewServer(cfg, tkr)
+	if cfg.APIConfig.ListenAddr != "" {
+		srv := api.NewServer(cfg, tkr)
 		servers = append(servers, srv)
-
-		go func() {
-			defer wg.Done()
-			srv.Serve(cfg.HTTPListenAddr)
-		}()
 	}
 
-	if cfg.UDPListenAddr != "" {
-		wg.Add(1)
+	if cfg.HTTPConfig.ListenAddr != "" {
+		srv := http.NewServer(cfg, tkr)
+		servers = append(servers, srv)
+	}
+
+	if cfg.UDPConfig.ListenAddr != "" {
 		srv := udp.NewServer(cfg, tkr)
 		servers = append(servers, srv)
+	}
 
+	var wg sync.WaitGroup
+	for _, srv := range servers {
+		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			srv.Serve(cfg.UDPListenAddr)
+			srv.Serve()
 		}()
 	}
 
