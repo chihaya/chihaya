@@ -6,7 +6,6 @@ package api
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"runtime"
@@ -90,13 +89,8 @@ func (s *Server) getTorrent(w http.ResponseWriter, r *http.Request, p httprouter
 }
 
 func (s *Server) putTorrent(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return http.StatusInternalServerError, err
-	}
-
 	var torrent models.Torrent
-	err = json.Unmarshal(body, &torrent)
+	err := json.NewDecoder(r.Body).Decode(&torrent)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
@@ -129,13 +123,8 @@ func (s *Server) getUser(w http.ResponseWriter, r *http.Request, p httprouter.Pa
 }
 
 func (s *Server) putUser(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return http.StatusInternalServerError, err
-	}
-
 	var user models.User
-	err = json.Unmarshal(body, &user)
+	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
 		return http.StatusBadRequest, err
 	}
