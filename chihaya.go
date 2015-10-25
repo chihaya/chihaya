@@ -38,11 +38,6 @@ func init() {
 	flag.StringVar(&configPath, "config", "", "path to the configuration file")
 }
 
-type server interface {
-	Serve()
-	Stop()
-}
-
 // Boot starts Chihaya. By exporting this function, anyone can import their own
 // custom drivers into their own package main and then call chihaya.Boot.
 func Boot() {
@@ -74,7 +69,10 @@ func Boot() {
 		glog.Fatal("New: ", err)
 	}
 
-	var servers []server
+	var servers []interface {
+		Serve()
+		Stop()
+	}
 
 	if cfg.APIConfig.ListenAddr != "" {
 		srv := api.NewServer(cfg, tkr)
