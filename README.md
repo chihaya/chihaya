@@ -25,19 +25,37 @@ Features include:
 
 ## When would I use Chihaya?
 
-Chihaya is a meant for every kind of BitTorrent tracker deployment. Chihaya has
-been used to replace instances of [opentracker] and also instances of [ocelot].
-Chihaya handles torrent announces and scrapes in memory, but using a backend
-driver, can also asynchronously provide deltas to maintain a set of persistent
-data without throttling a database (this most useful for private tracker
-use-cases).
+Chihaya is a eventually meant for every kind of BitTorrent tracker deployment.
+Chihaya has been used to replace instances of [opentracker] and also instances of [ocelot].
+Chihaya handles torrent announces and scrapes in memory.
+However, using a backend driver, Chihaya can also asynchronously provide deltas to maintain a set of persistent data without throttling a database.
+This is particularly useful behavior for private tracker use-cases.
 
 [opentracker]: http://erdgeist.org/arts/software/opentracker
 [ocelot]: https://github.com/WhatCD/Ocelot
 
-## Building & Installing
+## Running Chihaya
 
-Chihaya requires Go 1.4+ (preferrably the latest stable Go), [Godep], and a [Go environment] previously set up.
+### Configuration
+
+Copy [`example_config.json`] to your choice of location, and update the values as required.
+An explanation of the available keys can be found in [CONFIGURATION.md].
+
+[`example_config.json`]: https://github.com/chihaya/chihaya/blob/master/example_config.json
+[CONFIGURATION.md]: https://github.com/chihaya/chihaya/blob/master/CONFIGURATION.md
+
+### Docker
+
+```sh
+$ docker pull quay.io/jzelinskie/chihaya:latest
+$ docker run -p 6881:6881 -v $DIR_WITH_CONFIG:/config:ro quay.io/jzelinskie/chihaya:latest
+```
+
+## Developing Chihaya
+
+### Building & Installing
+
+Chihaya requires Go 1.5+ (preferrably the latest stable Go), [Godep], and a [Go environment] previously set up.
 
 [Godep]: https://github.com/tools/godep
 [Go environment]: https://golang.org/doc/code.html
@@ -52,8 +70,8 @@ $ go install github.com/chihaya/chihaya/cmd/chihaya
 
 ### Testing
 
-Chihaya has end-to-end test coverage for announces in addition to unit tests for
-isolated components. To run the tests, use:
+Chihaya has end-to-end test coverage for announces in addition to unit tests for isolated components.
+To run the tests, use:
 
 ```sh
 $ cd $GOPATH/src/github.com/chihaya/chihaya
@@ -68,9 +86,10 @@ $ cd $GOPATH/src/github.com/chihaya/chihaya
 $ godep go test -v ./... -bench .
 ```
 
-## Configuration
+### Contributing
 
-Copy [`example_config.json`](https://github.com/chihaya/chihaya/blob/master/example_config.json)
-to your choice of location, and update the values as required.
-An explanation of the available keys can be found in [CONFIGURATION.md](https://github.com/chihaya/chihaya/blob/master/CONFIGURATION.md).
+See [CONTRIBUTING.md] for guidelines to contributing to the project.
+Feel free to make issues or ask questions.
+Our maintainers are also always idle in #chihaya on freenode.
 
+[CONTRIBUTING.md]: https://github.com/chihaya/chihaya/blob/master/CONTRIBUTING.md

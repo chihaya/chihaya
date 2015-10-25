@@ -191,6 +191,7 @@ func (s *Storage) PurgeInactiveTorrent(infohash string) error {
 	}
 
 	if torrent.PeerCount() == 0 {
+		atomic.AddInt32(&s.size, -1)
 		delete(shard.torrents, infohash)
 	}
 
