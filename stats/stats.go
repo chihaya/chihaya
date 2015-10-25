@@ -69,27 +69,27 @@ type PercentileTimes struct {
 type Stats struct {
 	Started time.Time // Time at which Chihaya was booted.
 
-	OpenConnections     int64  `json:"Connections.Open"`
-	ConnectionsAccepted uint64 `json:"Connections.Accepted"`
-	BytesTransmitted    uint64 `json:"BytesTransmitted"`
+	OpenConnections     int64  `json:"connectionsOpen"`
+	ConnectionsAccepted uint64 `json:"connectionsAccepted"`
+	BytesTransmitted    uint64 `json:"bytesTransmitted"`
 
-	GoRoutines int `json:"Runtime.GoRoutines"`
+	GoRoutines int `json:"runtimeGoRoutines"`
 
-	RequestsHandled uint64 `json:"Requests.Handled"`
-	RequestsErrored uint64 `json:"Requests.Errored"`
-	ClientErrors    uint64 `json:"Requests.Bad"`
+	RequestsHandled uint64 `json:"requestsHandled"`
+	RequestsErrored uint64 `json:"requestsErrored"`
+	ClientErrors    uint64 `json:"requestsBad"`
 	ResponseTime    PercentileTimes
 
-	Announces uint64 `json:"Tracker.Announces"`
-	Scrapes   uint64 `json:"Tracker.Scrapes"`
+	Announces uint64 `json:"trackerAnnounces"`
+	Scrapes   uint64 `json:"trackerScrapes"`
 
-	TorrentsSize    uint64 `json:"Torrents.Size"`
-	TorrentsAdded   uint64 `json:"Torrents.Added"`
-	TorrentsRemoved uint64 `json:"Torrents.Removed"`
-	TorrentsReaped  uint64 `json:"Torrents.Reaped"`
+	TorrentsSize    uint64 `json:"torrentsSize"`
+	TorrentsAdded   uint64 `json:"torrentsAdded"`
+	TorrentsRemoved uint64 `json:"torrentsRemoved"`
+	TorrentsReaped  uint64 `json:"torrentsReaped"`
 
-	IPv4Peers PeerStats `json:"Peers.IPv4"`
-	IPv6Peers PeerStats `json:"Peers.IPv6"`
+	IPv4Peers PeerStats `json:"peersIPv4"`
+	IPv6Peers PeerStats `json:"peersIPv6"`
 
 	*MemStatsWrapper `json:",omitempty"`
 
