@@ -24,15 +24,6 @@ type Tracker struct {
 	*Storage
 }
 
-// Server represents a server for a given BitTorrent tracker protocol.
-type Server interface {
-	// Serve runs the server and blocks until the server has shut down.
-	Serve(addr string)
-
-	// Stop cleanly shuts down the server in a non-blocking manner.
-	Stop()
-}
-
 // New creates a new Tracker, and opens any necessary connections.
 // Maintenance routines are automatically spawned in the background.
 func New(cfg *config.Config) (*Tracker, error) {
