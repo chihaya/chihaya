@@ -88,12 +88,12 @@ type Endpoint struct {
 // Peer is a participant in a swarm.
 type Peer struct {
 	ID           string `json:"id"`
-	UserID       uint64 `json:"user_id"`
-	TorrentID    uint64 `json:"torrent_id"`
+	UserID       uint64 `json:"userId"`
+	TorrentID    uint64 `json:"torrentId"`
 	Uploaded     uint64 `json:"uploaded"`
 	Downloaded   uint64 `json:"downloaded"`
 	Left         uint64 `json:"left"`
-	LastAnnounce int64  `json:"last_announce"`
+	LastAnnounce int64  `json:"lastAnnounce"`
 	Endpoint
 }
 
@@ -123,9 +123,9 @@ type Torrent struct {
 	Leechers *PeerMap `json:"leechers"`
 
 	Snatches       uint64  `json:"snatches"`
-	UpMultiplier   float64 `json:"up_multiplier"`
-	DownMultiplier float64 `json:"down_multiplier"`
-	LastAction     int64   `json:"last_action"`
+	UpMultiplier   float64 `json:"upMultiplier"`
+	DownMultiplier float64 `json:"downMultiplier"`
+	LastAction     int64   `json:"lastAction"`
 }
 
 // PeerCount returns the total number of peers connected on this Torrent.
@@ -138,8 +138,8 @@ type User struct {
 	ID      uint64 `json:"id"`
 	Passkey string `json:"passkey"`
 
-	UpMultiplier   float64 `json:"up_multiplier"`
-	DownMultiplier float64 `json:"down_multiplier"`
+	UpMultiplier   float64 `json:"upMultiplier"`
+	DownMultiplier float64 `json:"downMultiplier"`
 }
 
 // Announce is an Announce by a Peer.

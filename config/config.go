@@ -43,48 +43,47 @@ type DriverConfig struct {
 // SubnetConfig is the configuration used to specify if local peers should be
 // given a preference when responding to an announce.
 type SubnetConfig struct {
-	PreferredSubnet     bool `json:"preferred_subnet,omitempty"`
-	PreferredIPv4Subnet int  `json:"preferred_ipv4_subnet,omitempty"`
-	PreferredIPv6Subnet int  `json:"preferred_ipv6_subnet,omitempty"`
+	PreferredSubnet     bool `json:"preferredSubnet,omitempty"`
+	PreferredIPv4Subnet int  `json:"preferredIPv4Subnet,omitempty"`
+	PreferredIPv6Subnet int  `json:"preferredIPv6Subnet,omitempty"`
 }
 
 // NetConfig is the configuration used to tune networking behaviour.
 type NetConfig struct {
-	AllowIPSpoofing  bool   `json:"allow_ip_spoofing"`
-	DualStackedPeers bool   `json:"dual_stacked_peers"`
-	RealIPHeader     string `json:"real_ip_header"`
-	RespectAF        bool   `json:"respect_af"`
+	AllowIPSpoofing  bool   `json:"allowIPSpoofing"`
+	DualStackedPeers bool   `json:"dualStackedPeers"`
+	RealIPHeader     string `json:"realIPHeader"`
+	RespectAF        bool   `json:"respectAF"`
 	SubnetConfig
 }
 
 // StatsConfig is the configuration used to record runtime statistics.
 type StatsConfig struct {
-	BufferSize int  `json:"stats_buffer_size"`
-	IncludeMem bool `json:"include_mem_stats"`
-	VerboseMem bool `json:"verbose_mem_stats"`
-
-	MemUpdateInterval Duration `json:"mem_stats_interval"`
+	BufferSize        int      `json:"statsBufferSize"`
+	IncludeMem        bool     `json:"includeMemStats"`
+	VerboseMem        bool     `json:"verboseMemStats"`
+	MemUpdateInterval Duration `json:"memStatsInterval"`
 }
 
 // WhitelistConfig is the configuration used enable and store a whitelist of
 // acceptable torrent client peer ID prefixes.
 type WhitelistConfig struct {
-	ClientWhitelistEnabled bool     `json:"client_whitelist_enabled"`
-	ClientWhitelist        []string `json:"client_whitelist,omitempty"`
+	ClientWhitelistEnabled bool     `json:"clientWhitelistEnabled"`
+	ClientWhitelist        []string `json:"clientWhitelist,omitempty"`
 }
 
 // TrackerConfig is the configuration for tracker functionality.
 type TrackerConfig struct {
-	CreateOnAnnounce      bool     `json:"create_on_announce"`
-	PrivateEnabled        bool     `json:"private_enabled"`
-	FreeleechEnabled      bool     `json:"freeleech_enabled"`
-	PurgeInactiveTorrents bool     `json:"purge_inactive_torrents"`
+	CreateOnAnnounce      bool     `json:"createOnAnnounce"`
+	PrivateEnabled        bool     `json:"privateEnabled"`
+	FreeleechEnabled      bool     `json:"freeleechEnabled"`
+	PurgeInactiveTorrents bool     `json:"purgeInactiveTorrents"`
 	Announce              Duration `json:"announce"`
-	MinAnnounce           Duration `json:"min_announce"`
-	ReapInterval          Duration `json:"reap_interval"`
-	ReapRatio             float64  `json:"reap_ratio"`
-	NumWantFallback       int      `json:"default_num_want"`
-	TorrentMapShards      int      `json:"torrent_map_shards"`
+	MinAnnounce           Duration `json:"minAnnounce"`
+	ReapInterval          Duration `json:"reapInterval"`
+	ReapRatio             float64  `json:"reapRatio"`
+	NumWantFallback       int      `json:"defaultNumWant"`
+	TorrentMapShards      int      `json:"torrentMapShards"`
 
 	NetConfig
 	WhitelistConfig
@@ -92,26 +91,26 @@ type TrackerConfig struct {
 
 // APIConfig is the configuration for an HTTP JSON API server.
 type APIConfig struct {
-	ListenAddr     string   `json:"api_listen_addr"`
-	RequestTimeout Duration `json:"api_request_timeout"`
-	ReadTimeout    Duration `json:"api_read_timeout"`
-	WriteTimeout   Duration `json:"api_write_timeout"`
-	ListenLimit    int      `json:"api_listen_limit"`
+	ListenAddr     string   `json:"apiListenAddr"`
+	RequestTimeout Duration `json:"apiRequestTimeout"`
+	ReadTimeout    Duration `json:"apiReadTimeout"`
+	WriteTimeout   Duration `json:"apiWriteTimeout"`
+	ListenLimit    int      `json:"apiListenLimit"`
 }
 
 // HTTPConfig is the configuration for the HTTP protocol.
 type HTTPConfig struct {
-	ListenAddr     string   `json:"http_listen_addr"`
-	RequestTimeout Duration `json:"http_request_timeout"`
-	ReadTimeout    Duration `json:"http_read_timeout"`
-	WriteTimeout   Duration `json:"http_write_timeout"`
-	ListenLimit    int      `json:"http_listen_limit"`
+	ListenAddr     string   `json:"httpListenAddr"`
+	RequestTimeout Duration `json:"httpRequestTimeout"`
+	ReadTimeout    Duration `json:"httpReadTimeout"`
+	WriteTimeout   Duration `json:"httpWriteTimeout"`
+	ListenLimit    int      `json:"httpListenLimit"`
 }
 
 // UDPConfig is the configuration for the UDP protocol.
 type UDPConfig struct {
-	ListenAddr     string `json:"udp_listen_addr"`
-	ReadBufferSize int    `json:"udp_read_buffer_size"`
+	ListenAddr     string `json:"udpListenAddr"`
+	ReadBufferSize int    `json:"udpReadBufferSize"`
 }
 
 // Config is the global configuration for an instance of Chihaya.
