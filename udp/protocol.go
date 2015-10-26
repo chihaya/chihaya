@@ -22,6 +22,14 @@ const (
 	announceDualStackActionID
 )
 
+// Option-Types described in BEP41 and BEP45.
+const (
+	optionEndOfOptions byte = 0x0
+	optionNOP               = 0x1
+	optionURLData           = 0x2
+	optionIPv6              = 0x3
+)
+
 var (
 	// initialConnectionID is the magic initial connection ID specified by BEP 15.
 	initialConnectionID = []byte{0, 0, 0x04, 0x17, 0x27, 0x10, 0x19, 0x80}
@@ -29,12 +37,6 @@ var (
 	// emptyIPs are the value of an IP field that has been left blank.
 	emptyIPv4 = []byte{0, 0, 0, 0}
 	emptyIPv6 = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-
-	// Option-Types described in BEP41 and BEP45.
-	optionEndOfOptions = byte(0x0)
-	optionNOP          = byte(0x1)
-	optionURLData      = byte(0x2)
-	optionIPv6         = byte(0x3)
 
 	// eventIDs map IDs to event names.
 	eventIDs = []string{
