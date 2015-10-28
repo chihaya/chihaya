@@ -149,21 +149,21 @@ var DefaultConfig = Config{
 	},
 
 	APIConfig: APIConfig{
-		ListenAddr:     ":6880",
+		ListenAddr:     "localhost:6880",
 		RequestTimeout: Duration{10 * time.Second},
 		ReadTimeout:    Duration{10 * time.Second},
 		WriteTimeout:   Duration{10 * time.Second},
 	},
 
 	HTTPConfig: HTTPConfig{
-		ListenAddr:     ":6881",
+		ListenAddr:     "localhost:6881",
 		RequestTimeout: Duration{10 * time.Second},
 		ReadTimeout:    Duration{10 * time.Second},
 		WriteTimeout:   Duration{10 * time.Second},
 	},
 
 	UDPConfig: UDPConfig{
-		ListenAddr: ":6882",
+		ListenAddr: "localhost:6882",
 	},
 
 	DriverConfig: DriverConfig{
