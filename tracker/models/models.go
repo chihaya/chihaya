@@ -175,7 +175,7 @@ func (a *Announce) ClientID() (clientID string) {
 				clientID = a.PeerID[1:7]
 			}
 		} else {
-			clientID = a.PeerID[0:6]
+			clientID = a.PeerID[:6]
 		}
 	}
 
