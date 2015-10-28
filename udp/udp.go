@@ -22,7 +22,7 @@ import (
 type Server struct {
 	config  *config.Config
 	tracker *tracker.Tracker
-	done    bool
+	closing chan struct{}
 	booting chan struct{}
 	sock    *net.UDPConn
 
@@ -55,7 +55,12 @@ func (s *Server) serve() error {
 	s.sock = sock
 	close(s.booting)
 
-	for !s.done {
+	for {
+		select {
+		case <-s.closing:
+			return nil
+		default:
+		}
 		buffer := pool.TakeSlice()
 		sock.SetReadDeadline(time.Now().Add(time.Second))
 		n, addr, err := sock.ReadFromUDP(buffer)
@@ -97,11 +102,14 @@ func (s *Server) Serve() {
 
 	go func() {
 		// Generate a new IV every hour.
-		for range time.Tick(time.Hour) {
-			if s.done {
+		t := time.NewTicker(time.Hour)
+		for {
+			select {
+			case <-t.C:
+				s.connIDGen.NewIV()
+			case <-s.closing:
 				return
 			}
-			s.connIDGen.NewIV()
 		}
 	}()
 
@@ -114,7 +122,7 @@ func (s *Server) Serve() {
 
 // Stop cleanly shuts down the server.
 func (s *Server) Stop() {
-	s.done = true
+	close(s.closing)
 	s.sock.SetReadDeadline(time.Now())
 }
 
@@ -129,6 +137,7 @@ func NewServer(cfg *config.Config, tkr *tracker.Tracker) *Server {
 		config:    cfg,
 		tracker:   tkr,
 		connIDGen: gen,
+		closing:   make(chan struct{}),
 		booting:   make(chan struct{}),
 	}
 }
