@@ -54,7 +54,7 @@ func (n *NoOp) LoadUsers(ids []uint64) ([]*models.User, error) {
 }
 
 // LoadAllUsers returns (nil, nil).
-func (n *NoOp) LoadAllUsers(ids []uint64) ([]*models.User, error) {
+func (n *NoOp) LoadAllUsers() ([]*models.User, error) {
 	return nil, nil
 }
 

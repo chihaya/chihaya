@@ -71,5 +71,5 @@ type Conn interface {
 	LoadUsers(ids []uint64) ([]*models.User, error)
 
 	// LoadAllUsers fetches and returns all users.
-	LoadAllUsers(ids []uint64) ([]*models.User, error)
+	LoadAllUsers() ([]*models.User, error)
 }
