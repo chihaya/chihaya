@@ -9,6 +9,7 @@ package udp
 import (
 	"errors"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/golang/glog"
@@ -20,13 +21,14 @@ import (
 
 // Server represents a UDP torrent tracker.
 type Server struct {
-	config  *config.Config
-	tracker *tracker.Tracker
+	config    *config.Config
+	tracker   *tracker.Tracker
+	sock      *net.UDPConn
+	connIDGen *ConnectionIDGenerator
+
 	closing chan struct{}
 	booting chan struct{}
-	sock    *net.UDPConn
-
-	connIDGen *ConnectionIDGenerator
+	wg      sync.WaitGroup
 }
 
 func (s *Server) serve() error {
@@ -73,7 +75,9 @@ func (s *Server) serve() error {
 			return err
 		}
 
+		s.wg.Add(1)
 		go func() {
+			defer s.wg.Done()
 			start := time.Now()
 			response, action, err := s.handlePacket(buffer[:n], addr)
 			defer pool.GiveSlice(buffer)
@@ -124,6 +128,7 @@ func (s *Server) Serve() {
 func (s *Server) Stop() {
 	close(s.closing)
 	s.sock.SetReadDeadline(time.Now())
+	s.wg.Wait()
 }
 
 // NewServer returns a new UDP server for a given configuration and tracker.
