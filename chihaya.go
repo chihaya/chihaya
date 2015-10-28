@@ -38,6 +38,11 @@ func init() {
 	flag.StringVar(&configPath, "config", "", "path to the configuration file")
 }
 
+type server interface {
+	Serve()
+	Stop()
+}
+
 // Boot starts Chihaya. By exporting this function, anyone can import their own
 // custom drivers into their own package main and then call chihaya.Boot.
 func Boot() {
@@ -69,33 +74,30 @@ func Boot() {
 		glog.Fatal("New: ", err)
 	}
 
-	var servers []interface {
-		Serve()
-		Stop()
-	}
+	var servers []server
 
 	if cfg.APIConfig.ListenAddr != "" {
-		srv := api.NewServer(cfg, tkr)
-		servers = append(servers, srv)
+		servers = append(servers, api.NewServer(cfg, tkr))
 	}
 
 	if cfg.HTTPConfig.ListenAddr != "" {
-		srv := http.NewServer(cfg, tkr)
-		servers = append(servers, srv)
+		servers = append(servers, http.NewServer(cfg, tkr))
 	}
 
 	if cfg.UDPConfig.ListenAddr != "" {
-		srv := udp.NewServer(cfg, tkr)
-		servers = append(servers, srv)
+		servers = append(servers, udp.NewServer(cfg, tkr))
 	}
 
 	var wg sync.WaitGroup
 	for _, srv := range servers {
 		wg.Add(1)
-		go func() {
+
+		// If you don't explicitly pass the server, every goroutine captures the
+		// last server in the list.
+		go func(srv server) {
 			defer wg.Done()
 			srv.Serve()
-		}()
+		}(srv)
 	}
 
 	shutdown := make(chan os.Signal)
