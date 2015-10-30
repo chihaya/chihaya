@@ -104,7 +104,9 @@ func (s *Server) serve() error {
 func (s *Server) Serve() {
 	glog.V(0).Info("Starting UDP on ", s.config.UDPConfig.ListenAddr)
 
+	s.wg.Add(1)
 	go func() {
+		defer s.wg.Done()
 		// Generate a new IV every hour.
 		t := time.NewTicker(time.Hour)
 		for {
