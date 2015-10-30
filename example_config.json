@@ -6,7 +6,7 @@
   "announce": "30m",
   "minAnnounce": "15m",
   "reapInterval": "60s",
-  "reapRatio": "1.25",
+  "reapRatio": 1.25,
   "defaultNumWant": 50,
   "torrentMapShards": 1,
   "allowIPSpoofing": true,
