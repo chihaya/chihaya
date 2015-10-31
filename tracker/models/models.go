@@ -79,13 +79,14 @@ func (pk PeerKey) PeerID() string {
 }
 
 // Endpoint is an IP and port pair.
+//
+// IP always has length net.IPv4len if IPv4, and net.IPv6len if IPv6.
 type Endpoint struct {
-	// Always has length net.IPv4len if IPv4, and net.IPv6len if IPv6
 	IP   net.IP `json:"ip"`
 	Port uint16 `json:"port"`
 }
 
-// Peer is a participant in a swarm.
+// Peer represents a participant in a BitTorrent swarm.
 type Peer struct {
 	ID           string `json:"id"`
 	UserID       uint64 `json:"userId"`
@@ -114,7 +115,7 @@ func (p *Peer) Key() PeerKey {
 	return NewPeerKey(p.ID, p.IP)
 }
 
-// Torrent is a swarm for a given torrent file.
+// Torrent represents a BitTorrent swarm and its metadata.
 type Torrent struct {
 	ID       uint64 `json:"id"`
 	Infohash string `json:"infohash"`
