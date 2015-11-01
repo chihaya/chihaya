@@ -12,6 +12,8 @@ import (
 
 	"github.com/chihaya/chihaya/stats"
 	"github.com/chihaya/chihaya/tracker/models"
+	"net/url"
+	"strings"
 )
 
 const (
@@ -189,7 +191,13 @@ func (s *Server) newAnnounce(packet []byte, ip net.IP) (*models.Announce, error)
 
 // handleOptionalParameters parses the optional parameters as described in BEP41
 // and updates an announce with the values parsed.
-func (s *Server) handleOptionalParameters(packet []byte, announce *models.Announce) error {
+func (s *Server) handleOptionalParameters(packet []byte, announce *models.Announce) (err error) {
+	buf := &bytes.Buffer{}
+	defer func() {
+		if err == nil {
+			err = parseQuery(buf, announce)
+		}
+	}()
 	if len(packet) > 98 {
 		optionStartIndex := 98
 		for optionStartIndex < len(packet)-1 {
@@ -211,9 +219,9 @@ func (s *Server) handleOptionalParameters(packet []byte, announce *models.Announ
 					return errMalformedPacket
 				}
 
-				// TODO: Actually parse the URL Data as described in BEP41.
+				buf.Write(packet[optionStartIndex+2 : optionStartIndex+2+length])
 
-				optionStartIndex += 1 + length
+				optionStartIndex += 2 + length
 
 			case optionIPv6:
 				if optionStartIndex+19 > len(packet)-1 {
@@ -238,6 +246,26 @@ func (s *Server) handleOptionalParameters(packet []byte, announce *models.Announ
 	}
 
 	// There was no optional parameters to parse.
+	return nil
+}
+
+// parseQuery parses optional URLData parameters and extracts the passkey from them
+func parseQuery(buf *bytes.Buffer, announce *models.Announce) error {
+	if buf.Len() > 0 {
+		s := buf.String()
+		idx := strings.Index(s, "?")
+		if idx != -1 {
+			s := string(buf.Bytes()[idx+1:])
+
+			vals, err := url.ParseQuery(s)
+			if err != nil {
+				return err
+			}
+
+			announce.Passkey = vals.Get("passkey")
+		}
+	}
+
 	return nil
 }
 
