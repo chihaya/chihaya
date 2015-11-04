@@ -59,7 +59,7 @@ func TestParseMultipleQuery(t *testing.T) {
 	}
 }
 
-func TestURLEncoded(t *testing.T) {
+func TestParseURLEncoded(t *testing.T) {
 	passkey := "abc%20123" //has an URLEncoded space in there
 	srv := NewServer(&config.DefaultConfig, nil)
 	ann := &models.Announce{}
