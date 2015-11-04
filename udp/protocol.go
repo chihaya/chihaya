@@ -13,7 +13,6 @@ import (
 	"github.com/chihaya/chihaya/stats"
 	"github.com/chihaya/chihaya/tracker/models"
 	"net/url"
-	"strings"
 )
 
 const (
@@ -253,17 +252,13 @@ func (s *Server) handleOptionalParameters(packet []byte, announce *models.Announ
 func parseQuery(buf *bytes.Buffer, announce *models.Announce) error {
 	if buf.Len() > 0 {
 		s := buf.String()
-		idx := strings.Index(s, "?")
-		if idx != -1 {
-			s := string(buf.Bytes()[idx+1:])
 
-			vals, err := url.ParseQuery(s)
-			if err != nil {
-				return err
-			}
-
-			announce.Passkey = vals.Get("passkey")
+		u, err := url.ParseRequestURI(s)
+		if err != nil {
+			return err
 		}
+
+		announce.Passkey = u.Query().Get("passkey")
 	}
 
 	return nil
