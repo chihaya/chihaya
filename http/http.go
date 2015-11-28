@@ -51,19 +51,19 @@ func makeHandler(handler ResponseHandler) httprouter.Handle {
 			stats.RecordEvent(stats.ErroredRequest)
 		}
 
-		if len(msg) > 0 || logger.Logs(logger.LevelDebug) {
+		if len(msg) > 0 || logger.Logs(logger.LevelInfo) {
 			reqString := r.URL.Path + " " + r.RemoteAddr
-			if logger.Logs(logger.LevelTrace) {
+			if logger.Logs(logger.LevelDebug) {
 				reqString = r.URL.RequestURI() + " " + r.RemoteAddr
 			}
 
 			if len(msg) > 0 {
 				logger.Warnf("[HTTP - %9s] %s (%d - %s)", duration, reqString, httpCode, msg)
 			} else {
-				if logger.Logs(logger.LevelTrace) {
-					logger.Tracef("[HTTP - %9s] %s (%d)", duration, reqString, httpCode)
-				} else {
+				if logger.Logs(logger.LevelDebug) {
 					logger.Debugf("[HTTP - %9s] %s (%d)", duration, reqString, httpCode)
+				} else {
+					logger.Infof("[HTTP - %9s] %s (%d)", duration, reqString, httpCode)
 				}
 			}
 		}

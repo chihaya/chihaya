@@ -90,7 +90,7 @@ func (s *Server) serve() error {
 			if err != nil {
 				logger.Warnf("[UDP - %9s] %s %s (%s)", duration, action, addr, err)
 			} else {
-				logger.Debugf("[UDP - %9s] %s %s", duration, action, addr)
+				logger.Infof("[UDP - %9s] %s %s", duration, action, addr)
 			}
 		}()
 	}
