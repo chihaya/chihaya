@@ -14,8 +14,7 @@ import (
 	"runtime"
 	"sync"
 	"syscall"
-
-	"github.com/golang/glog"
+	"log"
 
 	"github.com/chihaya/chihaya/api"
 	"github.com/chihaya/chihaya/config"
@@ -23,16 +22,22 @@ import (
 	"github.com/chihaya/chihaya/stats"
 	"github.com/chihaya/chihaya/tracker"
 	"github.com/chihaya/chihaya/udp"
+
+	"github.com/mrd0ll4r/logger"
 )
 
 var (
-	maxProcs   int
-	configPath string
+	maxProcs        int
+	configPath      string
+	logLevel        int
+	logFileLocation bool
 )
 
 func init() {
 	flag.IntVar(&maxProcs, "maxprocs", runtime.NumCPU(), "maximum parallel threads")
 	flag.StringVar(&configPath, "config", "", "path to the configuration file")
+	flag.IntVar(&logLevel, "level", int(logger.LevelInfo), "level of logging, where 0=Everything, 1=Trace, 2=Debug, 3=Info, 4=Warnings, 5=Fatal")
+	flag.BoolVar(&logFileLocation, "logLocation", false, "whether to log file locations")
 }
 
 type server interface {
@@ -43,32 +48,49 @@ type server interface {
 // Boot starts Chihaya. By exporting this function, anyone can import their own
 // custom drivers into their own package main and then call chihaya.Boot.
 func Boot() {
-	defer glog.Flush()
-
 	flag.Parse()
 
+	l := logger.NewStdlibLogger()
+	if logFileLocation {
+		l.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
+	} else {
+		l.SetFlags(log.Lmicroseconds | log.Ldate)
+	}
+
+	level := logger.LogLevel(logLevel)
+
+	if level < logger.Everything || level >= logger.Off {
+		l.Fatalln("Invalid log level")
+	}
+	l.SetLevel(level)
+
+	// we have to do this to use the short functions like logger.Infoln
+	l.SetCalldepthForDefault()
+
+	logger.SetDefaultLogger(l)
+
 	runtime.GOMAXPROCS(maxProcs)
-	glog.V(1).Info("Set max threads to ", maxProcs)
+	logger.Debugf("Set max threads to %d", maxProcs)
 
 	debugBoot()
 	defer debugShutdown()
 
 	cfg, err := config.Open(configPath)
 	if err != nil {
-		glog.Fatalf("Failed to parse configuration file: %s\n", err)
+		logger.Fatalf("Failed to parse configuration file: %s", err)
 	}
 
 	if cfg == &config.DefaultConfig {
-		glog.V(1).Info("Using default config")
+		logger.Infoln("Using default config")
 	} else {
-		glog.V(1).Infof("Loaded config file: %s", configPath)
+		logger.Infof("Loaded config file %s", configPath)
 	}
 
 	stats.DefaultStats = stats.New(cfg.StatsConfig)
 
 	tkr, err := tracker.New(cfg)
 	if err != nil {
-		glog.Fatal("New: ", err)
+		logger.Fatalln("Unable to create new tracker:", err)
 	}
 
 	var servers []server
@@ -107,7 +129,7 @@ func Boot() {
 	}()
 
 	<-shutdown
-	glog.Info("Shutting down...")
+	logger.Infoln("Shutting down...")
 
 	for _, srv := range servers {
 		srv.Stop()
@@ -116,6 +138,6 @@ func Boot() {
 	<-shutdown
 
 	if err := tkr.Close(); err != nil {
-		glog.Errorf("Failed to shut down tracker cleanly: %s", err.Error())
+		logger.Warnf("Failed to shut down tracker cleanly: %s", err.Error())
 	}
 }
