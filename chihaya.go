@@ -29,14 +29,14 @@ import (
 var (
 	maxProcs        int
 	configPath      string
-	logLevel        int
+	logLevel        string
 	logFileLocation bool
 )
 
 func init() {
 	flag.IntVar(&maxProcs, "maxprocs", runtime.NumCPU(), "maximum parallel threads")
 	flag.StringVar(&configPath, "config", "", "path to the configuration file")
-	flag.IntVar(&logLevel, "level", int(logger.LevelInfo), "level of logging, where 0=Everything, 1=Trace, 2=Debug, 3=Info, 4=Warnings, 5=Fatal")
+	flag.StringVar(&logLevel, "level", "info", "level of logging (everything, trace, debug, info, warn, fatal), everything above and including will be logged")
 	flag.BoolVar(&logFileLocation, "logLocation", false, "whether to log file locations")
 }
 
@@ -57,11 +57,16 @@ func Boot() {
 		l.SetFlags(log.Lmicroseconds | log.Ldate)
 	}
 
-	level := logger.LogLevel(logLevel)
-
-	if level < logger.Everything || level >= logger.Off {
-		l.Fatalln("Invalid log level")
+	level, err := logger.ByName(logLevel)
+	if err != nil {
+		flag.Usage()
+		l.Fatalln("Unkown level of logging")
 	}
+
+	if level == logger.Everything {
+		l.SetFlags(log.Lshortfile | log.Lmicroseconds | log.Ldate)
+	}
+
 	l.SetLevel(level)
 
 	// we have to do this to use the short functions like logger.Infoln

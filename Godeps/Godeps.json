@@ -12,7 +12,7 @@
 		},
 		{
 			"ImportPath": "github.com/mrd0ll4r/logger",
-			"Rev": "33b710fa18d6e0f642a5367cb3b12e07337497e2"
+			"Rev": "a8147cde61c12b31f77ef89d079a56101e7febaa"
 		},
 		{
 			"ImportPath": "github.com/pushrax/bufferpool",
