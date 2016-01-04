@@ -87,7 +87,8 @@ func (s *Storage) FindTorrent(infohash string) (*models.Torrent, error) {
 		return nil, models.ErrTorrentDNE
 	}
 
-	return &*torrent, nil
+	torrentCopy := *torrent
+	return &torrentCopy, nil
 }
 
 func (s *Storage) PutTorrent(torrent *models.Torrent) {
@@ -98,7 +99,9 @@ func (s *Storage) PutTorrent(torrent *models.Torrent) {
 	if !exists {
 		atomic.AddInt32(&s.size, 1)
 	}
-	shard.torrents[torrent.Infohash] = &*torrent
+
+	torrentCopy := *torrent
+	shard.torrents[torrent.Infohash] = &torrentCopy
 }
 
 func (s *Storage) DeleteTorrent(infohash string) {
@@ -257,14 +260,16 @@ func (s *Storage) FindUser(passkey string) (*models.User, error) {
 		return nil, models.ErrUserDNE
 	}
 
-	return &*user, nil
+	userCopy := *user
+	return &userCopy, nil
 }
 
 func (s *Storage) PutUser(user *models.User) {
 	s.usersM.Lock()
 	defer s.usersM.Unlock()
 
-	s.users[user.Passkey] = &*user
+	userCopy := *user
+	s.users[user.Passkey] = &userCopy
 }
 
 func (s *Storage) DeleteUser(passkey string) {
