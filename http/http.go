@@ -73,13 +73,8 @@ func makeHandler(handler ResponseHandler) httprouter.Handle {
 func newRouter(s *Server) *httprouter.Router {
 	r := httprouter.New()
 
-	if s.config.PrivateEnabled {
-		r.GET("/users/:passkey/announce", makeHandler(s.serveAnnounce))
-		r.GET("/users/:passkey/scrape", makeHandler(s.serveScrape))
-	} else {
-		r.GET("/announce", makeHandler(s.serveAnnounce))
-		r.GET("/scrape", makeHandler(s.serveScrape))
-	}
+	r.GET("/announce", makeHandler(s.serveAnnounce))
+	r.GET("/scrape", makeHandler(s.serveScrape))
 
 	return r
 }

@@ -32,13 +32,6 @@ func handleError(err error) (int, error) {
 }
 
 func (s *Server) check(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	// Attempt to ping the backend if private tracker is enabled.
-	if s.config.PrivateEnabled {
-		if err := s.tracker.Backend.Ping(); err != nil {
-			return handleError(err)
-		}
-	}
-
 	_, err := w.Write([]byte("STILL-ALIVE"))
 	return handleError(err)
 }
@@ -106,35 +99,6 @@ func (s *Server) delTorrent(w http.ResponseWriter, r *http.Request, p httprouter
 	}
 
 	s.tracker.DeleteTorrent(infohash)
-	return http.StatusOK, nil
-}
-
-func (s *Server) getUser(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	user, err := s.tracker.FindUser(p.ByName("passkey"))
-	if err == models.ErrUserDNE {
-		return http.StatusNotFound, err
-	} else if err != nil {
-		return http.StatusInternalServerError, err
-	}
-
-	w.Header().Set("Content-Type", jsonContentType)
-	e := json.NewEncoder(w)
-	return handleError(e.Encode(user))
-}
-
-func (s *Server) putUser(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	var user models.User
-	err := json.NewDecoder(r.Body).Decode(&user)
-	if err != nil {
-		return http.StatusBadRequest, err
-	}
-
-	s.tracker.PutUser(&user)
-	return http.StatusOK, nil
-}
-
-func (s *Server) delUser(w http.ResponseWriter, r *http.Request, p httprouter.Params) (int, error) {
-	s.tracker.DeleteUser(p.ByName("passkey"))
 	return http.StatusOK, nil
 }
 

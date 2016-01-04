@@ -24,17 +24,11 @@ var (
 	// not a leecher or a "stopped" event while not active.
 	ErrBadRequest = ClientError("bad request")
 
-	// ErrUserDNE is returned when a user does not exist.
-	ErrUserDNE = NotFoundError("user does not exist")
-
 	// ErrTorrentDNE is returned when a torrent does not exist.
 	ErrTorrentDNE = NotFoundError("torrent does not exist")
 
 	// ErrClientUnapproved is returned when a clientID is not in the whitelist.
 	ErrClientUnapproved = ClientError("client is not approved")
-
-	// ErrInvalidPasskey is returned when a passkey is not properly formatted.
-	ErrInvalidPasskey = ClientError("passkey is invalid")
 )
 
 type ClientError string
@@ -89,8 +83,6 @@ type Endpoint struct {
 // Peer represents a participant in a BitTorrent swarm.
 type Peer struct {
 	ID           string `json:"id"`
-	UserID       uint64 `json:"userId"`
-	TorrentID    uint64 `json:"torrentId"`
 	Uploaded     uint64 `json:"uploaded"`
 	Downloaded   uint64 `json:"downloaded"`
 	Left         uint64 `json:"left"`
@@ -117,30 +109,17 @@ func (p *Peer) Key() PeerKey {
 
 // Torrent represents a BitTorrent swarm and its metadata.
 type Torrent struct {
-	ID       uint64 `json:"id"`
-	Infohash string `json:"infohash"`
+	Infohash   string `json:"infohash"`
+	Snatches   uint64 `json:"snatches"`
+	LastAction int64  `json:"lastAction"`
 
 	Seeders  *PeerMap `json:"seeders"`
 	Leechers *PeerMap `json:"leechers"`
-
-	Snatches       uint64  `json:"snatches"`
-	UpMultiplier   float64 `json:"upMultiplier"`
-	DownMultiplier float64 `json:"downMultiplier"`
-	LastAction     int64   `json:"lastAction"`
 }
 
 // PeerCount returns the total number of peers connected on this Torrent.
 func (t *Torrent) PeerCount() int {
 	return t.Seeders.Len() + t.Leechers.Len()
-}
-
-// User is a registered user for private trackers.
-type User struct {
-	ID      uint64 `json:"id"`
-	Passkey string `json:"passkey"`
-
-	UpMultiplier   float64 `json:"upMultiplier"`
-	DownMultiplier float64 `json:"downMultiplier"`
 }
 
 // Announce is an Announce by a Peer.
@@ -155,12 +134,10 @@ type Announce struct {
 	Infohash   string   `json:"infohash"`
 	Left       uint64   `json:"left"`
 	NumWant    int      `json:"numwant"`
-	Passkey    string   `json:"passkey"`
 	PeerID     string   `json:"peer_id"`
 	Uploaded   uint64   `json:"uploaded"`
 
 	Torrent *Torrent `json:"-"`
-	User    *User    `json:"-"`
 	Peer    *Peer    `json:"-"`
 	PeerV4  *Peer    `json:"-"` // Only valid if HasIPv4() is true.
 	PeerV6  *Peer    `json:"-"` // Only valid if HasIPv6() is true.
@@ -193,11 +170,9 @@ func (a *Announce) HasIPv6() bool {
 	return a.IPv6.IP != nil
 }
 
-// BuildPeer creates the Peer representation of an Announce. When provided nil
-// for the user or torrent parameter, it creates a Peer{UserID: 0} or
-// Peer{TorrentID: 0}, respectively. BuildPeer creates one peer for each IP
-// in the announce, and panics if there are none.
-func (a *Announce) BuildPeer(u *User, t *Torrent) {
+// BuildPeer creates the Peer representation of an Announce. BuildPeer creates
+// one peer for each IP in the announce, and panics if there are none.
+func (a *Announce) BuildPeer(t *Torrent) {
 	a.Peer = &Peer{
 		ID:           a.PeerID,
 		Uploaded:     a.Uploaded,
@@ -207,13 +182,7 @@ func (a *Announce) BuildPeer(u *User, t *Torrent) {
 	}
 
 	if t != nil {
-		a.Peer.TorrentID = t.ID
 		a.Torrent = t
-	}
-
-	if u != nil {
-		a.Peer.UserID = u.ID
-		a.User = u
 	}
 
 	if a.HasIPv4() && a.HasIPv6() {
@@ -230,29 +199,8 @@ func (a *Announce) BuildPeer(u *User, t *Torrent) {
 	} else {
 		panic("models: announce must have an IP")
 	}
+
 	return
-}
-
-// AnnounceDelta contains the changes to a Peer's state. These changes are
-// recorded by the backend driver.
-type AnnounceDelta struct {
-	Peer    *Peer
-	Torrent *Torrent
-	User    *User
-
-	// Created is true if this announce created a new peer or changed an existing
-	// peer's address
-	Created bool
-	// Snatched is true if this announce completed the download
-	Snatched bool
-
-	// Uploaded contains the upload delta for this announce, in bytes
-	Uploaded    uint64
-	RawUploaded uint64
-
-	// Downloaded contains the download delta for this announce, in bytes
-	Downloaded    uint64
-	RawDownloaded uint64
 }
 
 // AnnounceResponse contains the information needed to fulfill an announce.
@@ -267,9 +215,7 @@ type AnnounceResponse struct {
 
 // Scrape is a Scrape by a Peer.
 type Scrape struct {
-	Config *config.Config `json:"config"`
-
-	Passkey    string
+	Config     *config.Config `json:"config"`
 	Infohashes []string
 }
 

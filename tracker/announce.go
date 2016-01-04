@@ -18,13 +18,6 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) (err error) {
 		}
 	}
 
-	var user *models.User
-	if tkr.Config.PrivateEnabled {
-		if user, err = tkr.FindUser(ann.Passkey); err != nil {
-			return err
-		}
-	}
-
 	torrent, err := tkr.FindTorrent(ann.Infohash)
 
 	if err == models.ErrTorrentDNE && tkr.Config.CreateOnAnnounce {
@@ -40,30 +33,19 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) (err error) {
 		return err
 	}
 
-	ann.BuildPeer(user, torrent)
-	var delta *models.AnnounceDelta
+	ann.BuildPeer(torrent)
 
-	if tkr.Config.PrivateEnabled {
-		delta = newAnnounceDelta(ann, torrent)
-	}
-
-	created, err := tkr.updateSwarm(ann)
+	_, err = tkr.updateSwarm(ann)
 	if err != nil {
 		return err
 	}
 
-	snatched, err := tkr.handleEvent(ann)
+	_, err = tkr.handleEvent(ann)
 	if err != nil {
 		return err
 	}
 
-	if tkr.Config.PrivateEnabled {
-		delta.Created = created
-		delta.Snatched = snatched
-		if err = tkr.Backend.RecordAnnounce(delta); err != nil {
-			return err
-		}
-	} else if tkr.Config.PurgeInactiveTorrents && torrent.PeerCount() == 0 {
+	if tkr.Config.PurgeInactiveTorrents && torrent.PeerCount() == 0 {
 		// Rather than deleting the torrent explicitly, let the tracker driver
 		// ensure there are no race conditions.
 		tkr.PurgeInactiveTorrent(torrent.Infohash)
@@ -72,49 +54,6 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) (err error) {
 
 	stats.RecordEvent(stats.Announce)
 	return w.WriteAnnounce(newAnnounceResponse(ann))
-}
-
-// Builds a partially populated AnnounceDelta, without the Snatched and Created
-// fields set.
-func newAnnounceDelta(ann *models.Announce, t *models.Torrent) *models.AnnounceDelta {
-	var oldUp, oldDown, rawDeltaUp, rawDeltaDown uint64
-
-	switch {
-	case t.Seeders.Contains(ann.Peer.Key()):
-		oldPeer, _ := t.Seeders.LookUp(ann.Peer.Key())
-		oldUp = oldPeer.Uploaded
-		oldDown = oldPeer.Downloaded
-	case t.Leechers.Contains(ann.Peer.Key()):
-		oldPeer, _ := t.Leechers.LookUp(ann.Peer.Key())
-		oldUp = oldPeer.Uploaded
-		oldDown = oldPeer.Downloaded
-	}
-
-	// Restarting a torrent may cause a delta to be negative.
-	if ann.Peer.Uploaded > oldUp {
-		rawDeltaUp = ann.Peer.Uploaded - oldUp
-	}
-	if ann.Peer.Downloaded > oldDown {
-		rawDeltaDown = ann.Peer.Downloaded - oldDown
-	}
-
-	uploaded := uint64(float64(rawDeltaUp) * ann.User.UpMultiplier * ann.Torrent.UpMultiplier)
-	downloaded := uint64(float64(rawDeltaDown) * ann.User.DownMultiplier * ann.Torrent.DownMultiplier)
-
-	if ann.Config.FreeleechEnabled {
-		downloaded = 0
-	}
-
-	return &models.AnnounceDelta{
-		Peer:    ann.Peer,
-		Torrent: ann.Torrent,
-		User:    ann.User,
-
-		Uploaded:      uploaded,
-		RawUploaded:   rawDeltaUp,
-		Downloaded:    downloaded,
-		RawDownloaded: rawDeltaDown,
-	}
 }
 
 // updateSwarm handles the changes to a torrent's swarm given an announce.

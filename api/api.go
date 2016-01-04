@@ -84,11 +84,6 @@ func (s *Server) Serve() {
 func newRouter(s *Server) *httprouter.Router {
 	r := httprouter.New()
 
-	if s.config.PrivateEnabled {
-		r.PUT("/users/:passkey", makeHandler(s.putUser))
-		r.DELETE("/users/:passkey", makeHandler(s.delUser))
-	}
-
 	if s.config.ClientWhitelistEnabled {
 		r.GET("/clients/:clientID", makeHandler(s.getClient))
 		r.PUT("/clients/:clientID", makeHandler(s.putClient))

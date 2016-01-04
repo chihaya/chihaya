@@ -22,9 +22,6 @@ type Torrents struct {
 }
 
 type Storage struct {
-	users  map[string]*models.User
-	usersM sync.RWMutex
-
 	shards []Torrents
 	size   int32
 
@@ -34,7 +31,6 @@ type Storage struct {
 
 func NewStorage(cfg *config.Config) *Storage {
 	s := &Storage{
-		users:   make(map[string]*models.User),
 		shards:  make([]Torrents, cfg.TorrentMapShards),
 		clients: make(map[string]bool),
 	}
@@ -249,34 +245,6 @@ func (s *Storage) PurgeInactivePeers(purgeEmptyTorrents bool, before time.Time) 
 	}
 
 	return nil
-}
-
-func (s *Storage) FindUser(passkey string) (*models.User, error) {
-	s.usersM.RLock()
-	defer s.usersM.RUnlock()
-
-	user, exists := s.users[passkey]
-	if !exists {
-		return nil, models.ErrUserDNE
-	}
-
-	userCopy := *user
-	return &userCopy, nil
-}
-
-func (s *Storage) PutUser(user *models.User) {
-	s.usersM.Lock()
-	defer s.usersM.Unlock()
-
-	userCopy := *user
-	s.users[user.Passkey] = &userCopy
-}
-
-func (s *Storage) DeleteUser(passkey string) {
-	s.usersM.Lock()
-	defer s.usersM.Unlock()
-
-	delete(s.users, passkey)
 }
 
 func (s *Storage) ClientApproved(peerID string) error {
