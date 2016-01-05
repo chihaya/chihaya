@@ -212,3 +212,26 @@ Whether the information about memory should be verbose.
     default: "5s"
 
 Interval at which to collect statistics about memory.
+
+
+##### `jwkSetURI`
+
+    type: string
+    default: ""
+
+If this string is not empty, then the tracker will attempt to use JWTs to validate infohashes before announces. The format for the JSON at this endpoint can be found at [the RFC for JWKs](https://tools.ietf.org/html/draft-ietf-jose-json-web-key-41#page-10) with the addition of an "issuer" key. Simply stated, this feature requires two fields at this JSON endpoint: "keys" and "issuer". "keys" is a list of JWKs that can be used to validate JWTs and "issuer" should match the "iss" claim in the JWT. The lifetime of a JWK is based upon standard HTTP caching headers and falls back to 5 minutes if no cache headers are provided.
+
+
+#### `jwkSetUpdateInterval`
+
+    type: duration
+    default: "5m"
+
+The interval at which keys are updated from JWKSetURI. Because the fallback lifetime for keys without cache headers is 5 minutes, this value should never be below 5 minutes unless you know your jwkSetURI has caching headers.
+
+#### `jwtAudience`
+
+    type: string
+    default: ""
+
+The audience claim that is used to validate JWTs.

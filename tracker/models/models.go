@@ -136,6 +136,7 @@ type Announce struct {
 	NumWant    int      `json:"numwant"`
 	PeerID     string   `json:"peer_id"`
 	Uploaded   uint64   `json:"uploaded"`
+	JWT        string   `json:"jwt"`
 
 	Torrent *Torrent `json:"-"`
 	Peer    *Peer    `json:"-"`

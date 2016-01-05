@@ -7,6 +7,7 @@
 package tracker
 
 import (
+	"sync"
 	"time"
 
 	"github.com/golang/glog"
@@ -19,6 +20,12 @@ import (
 // independently of the underlying data transports used.
 type Tracker struct {
 	Config *config.Config
+
+	jwkSet jwkSet
+
+	shuttingDown chan struct{}
+	shutdownWG   sync.WaitGroup
+
 	*Storage
 }
 
@@ -26,15 +33,24 @@ type Tracker struct {
 // Maintenance routines are automatically spawned in the background.
 func New(cfg *config.Config) (*Tracker, error) {
 	tkr := &Tracker{
-		Config:  cfg,
-		Storage: NewStorage(cfg),
+		Config:       cfg,
+		Storage:      NewStorage(cfg),
+		shuttingDown: make(chan struct{}),
 	}
 
+	glog.Info("Starting garbage collection goroutine")
+	tkr.shutdownWG.Add(1)
 	go tkr.purgeInactivePeers(
 		cfg.PurgeInactiveTorrents,
 		time.Duration(float64(cfg.MinAnnounce.Duration)*cfg.ReapRatio),
 		cfg.ReapInterval.Duration,
 	)
+
+	if tkr.Config.JWKSetURI != "" {
+		glog.Info("Starting JWK Set update goroutine")
+		tkr.shutdownWG.Add(1)
+		go tkr.updateJWKSetForever()
+	}
 
 	if cfg.ClientWhitelistEnabled {
 		tkr.LoadApprovedClients(cfg.ClientWhitelist)
@@ -45,8 +61,8 @@ func New(cfg *config.Config) (*Tracker, error) {
 
 // Close gracefully shutdowns a Tracker by closing any database connections.
 func (tkr *Tracker) Close() error {
-
-	// TODO(jzelinskie): shutdown purgeInactivePeers goroutine.
+	close(tkr.shuttingDown)
+	tkr.shutdownWG.Wait()
 
 	return nil
 }
@@ -73,13 +89,21 @@ type Writer interface {
 // purgeInactivePeers periodically walks the torrent database and removes
 // peers that haven't announced recently.
 func (tkr *Tracker) purgeInactivePeers(purgeEmptyTorrents bool, threshold, interval time.Duration) {
-	for _ = range time.NewTicker(interval).C {
-		before := time.Now().Add(-threshold)
-		glog.V(0).Infof("Purging peers with no announces since %s", before)
+	defer tkr.shutdownWG.Done()
 
-		err := tkr.PurgeInactivePeers(purgeEmptyTorrents, before)
-		if err != nil {
-			glog.Errorf("Error purging torrents: %s", err)
+	for {
+		select {
+		case <-tkr.shuttingDown:
+			return
+
+		case <-time.NewTicker(interval).C:
+			before := time.Now().Add(-threshold)
+			glog.V(0).Infof("Purging peers with no announces since %s", before)
+
+			err := tkr.PurgeInactivePeers(purgeEmptyTorrents, before)
+			if err != nil {
+				glog.Errorf("Error purging torrents: %s", err)
+			}
 		}
 	}
 }

@@ -10,15 +10,18 @@ programming language. It is still heavily under development and the current
 `master` branch should probably not be used in production
 (unless you know what you're doing).
 
-Features include:
+Current features include:
 
 - Public tracker feature-set with full compatibility with what exists of the BitTorrent spec
-- Private tracker feature-set with compatibility for a [Gazelle]-like deployment (WIP)
 - Low resource consumption, and fast, asynchronous request processing
 - Full IPv6 support, including handling for dual-stacked peers
 - Extensive metrics for visibility into the tracker and swarm's performance
 - Ability to prioritize peers in local subnets to reduce backbone contention
-- Pluggable backend driver that can coordinate with an external database
+- JWT Validation to approve the usage of a given infohash.
+
+Planned features include:
+
+- Private tracker feature-set with compatibility for a [Gazelle]-like deployment (WIP)
 
 [BitTorrent tracker]: http://en.wikipedia.org/wiki/BitTorrent_tracker
 [gazelle]: https://github.com/whatcd/gazelle

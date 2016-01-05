@@ -18,8 +18,14 @@ func (tkr *Tracker) HandleAnnounce(ann *models.Announce, w Writer) (err error) {
 		}
 	}
 
-	torrent, err := tkr.FindTorrent(ann.Infohash)
+	if tkr.Config.JWKSetURI != "" {
+		err := tkr.validateJWT(ann.JWT, ann.Infohash)
+		if err != nil {
+			return err
+		}
+	}
 
+	torrent, err := tkr.FindTorrent(ann.Infohash)
 	if err == models.ErrTorrentDNE && tkr.Config.CreateOnAnnounce {
 		torrent = &models.Torrent{
 			Infohash: ann.Infohash,
