@@ -14,8 +14,6 @@ import (
 
 	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/tracker"
-
-	_ "github.com/chihaya/chihaya/backend/noop"
 )
 
 var (

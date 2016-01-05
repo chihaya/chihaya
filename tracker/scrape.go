@@ -12,12 +12,6 @@ import (
 // HandleScrape encapsulates all the logic of handling a BitTorrent client's
 // scrape without being coupled to any transport protocol.
 func (tkr *Tracker) HandleScrape(scrape *models.Scrape, w Writer) (err error) {
-	if tkr.Config.PrivateEnabled {
-		if _, err = tkr.FindUser(scrape.Passkey); err != nil {
-			return err
-		}
-	}
-
 	var torrents []*models.Torrent
 	for _, infohash := range scrape.Infohashes {
 		torrent, err := tkr.FindTorrent(infohash)

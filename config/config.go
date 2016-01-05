@@ -7,15 +7,10 @@ package config
 
 import (
 	"encoding/json"
-	"errors"
 	"io"
 	"os"
 	"time"
 )
-
-// ErrMissingRequiredParam is used by drivers to indicate that an entry required
-// to be within the DriverConfig.Params map is not present.
-var ErrMissingRequiredParam = errors.New("A parameter that was required by a driver is not present")
 
 // Duration wraps a time.Duration and adds JSON marshalling.
 type Duration struct{ time.Duration }
@@ -31,13 +26,6 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 	err := json.Unmarshal(b, &str)
 	d.Duration, err = time.ParseDuration(str)
 	return err
-}
-
-// DriverConfig is the configuration used to connect to a tracker.Driver or
-// a backend.Driver.
-type DriverConfig struct {
-	Name   string            `json:"driver"`
-	Params map[string]string `json:"params,omitempty"`
 }
 
 // SubnetConfig is the configuration used to specify if local peers should be
@@ -75,8 +63,6 @@ type WhitelistConfig struct {
 // TrackerConfig is the configuration for tracker functionality.
 type TrackerConfig struct {
 	CreateOnAnnounce      bool     `json:"createOnAnnounce"`
-	PrivateEnabled        bool     `json:"privateEnabled"`
-	FreeleechEnabled      bool     `json:"freeleechEnabled"`
 	PurgeInactiveTorrents bool     `json:"purgeInactiveTorrents"`
 	Announce              Duration `json:"announce"`
 	MinAnnounce           Duration `json:"minAnnounce"`
@@ -119,7 +105,6 @@ type Config struct {
 	APIConfig
 	HTTPConfig
 	UDPConfig
-	DriverConfig
 	StatsConfig
 }
 
@@ -127,8 +112,6 @@ type Config struct {
 var DefaultConfig = Config{
 	TrackerConfig: TrackerConfig{
 		CreateOnAnnounce:      true,
-		PrivateEnabled:        false,
-		FreeleechEnabled:      false,
 		PurgeInactiveTorrents: true,
 		Announce:              Duration{30 * time.Minute},
 		MinAnnounce:           Duration{15 * time.Minute},
@@ -164,10 +147,6 @@ var DefaultConfig = Config{
 
 	UDPConfig: UDPConfig{
 		ListenAddr: "localhost:6882",
-	},
-
-	DriverConfig: DriverConfig{
-		Name: "noop",
 	},
 
 	StatsConfig: StatsConfig{

@@ -120,46 +120,6 @@ func TestStalePeerPurging(t *testing.T) {
 	}
 }
 
-func TestPrivateAnnounce(t *testing.T) {
-	cfg := config.DefaultConfig
-	cfg.PrivateEnabled = true
-
-	tkr, err := tracker.New(&cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	loadPrivateTestData(tkr)
-
-	srv, err := createServer(tkr, &cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	defer srv.Close()
-	baseURL := srv.URL
-
-	peer1 := makePeerParams("-TR2820-peer1", false)
-	peer2 := makePeerParams("-TR2820-peer2", false)
-	peer3 := makePeerParams("-TR2820-peer3", true)
-
-	expected := makeResponse(0, 1, peer1)
-	srv.URL = baseURL + "/users/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv1"
-	checkAnnounce(peer1, expected, srv, t)
-
-	expected = makeResponse(0, 2, peer1)
-	srv.URL = baseURL + "/users/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv2"
-	checkAnnounce(peer2, expected, srv, t)
-
-	expected = makeResponse(1, 2, peer1, peer2)
-	srv.URL = baseURL + "/users/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv3"
-	checkAnnounce(peer3, expected, srv, t)
-
-	expected = makeResponse(1, 2, peer2, peer3)
-	srv.URL = baseURL + "/users/vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv1"
-	checkAnnounce(peer1, expected, srv, t)
-}
-
 func TestPreferredSubnet(t *testing.T) {
 	cfg := config.DefaultConfig
 	cfg.PreferredSubnet = true
@@ -336,30 +296,4 @@ func checkAnnounce(p params, expected interface{}, srv *httptest.Server, t *test
 		return false
 	}
 	return true
-}
-
-func loadPrivateTestData(tkr *tracker.Tracker) {
-	users := []string{
-		"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv1",
-		"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv2",
-		"vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv3",
-	}
-
-	for i, passkey := range users {
-		tkr.PutUser(&models.User{
-			ID:      uint64(i + 1),
-			Passkey: passkey,
-		})
-	}
-
-	tkr.PutClient("TR2820")
-
-	torrent := &models.Torrent{
-		ID:       1,
-		Infohash: infoHash,
-		Seeders:  models.NewPeerMap(true, tkr.Config),
-		Leechers: models.NewPeerMap(false, tkr.Config),
-	}
-
-	tkr.PutTorrent(torrent)
 }

@@ -14,7 +14,6 @@ RUN godep restore
 # Add source
 ADD *.go       /go/src/github.com/chihaya/chihaya/
 ADD api        /go/src/github.com/chihaya/chihaya/api
-ADD backend    /go/src/github.com/chihaya/chihaya/backend
 ADD cmd        /go/src/github.com/chihaya/chihaya/cmd
 ADD config     /go/src/github.com/chihaya/chihaya/config
 ADD http       /go/src/github.com/chihaya/chihaya/http

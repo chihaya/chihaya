@@ -45,26 +45,19 @@ Limits the number of outstanding requests. Set to `0` to disable.
 
 Then listen address for the UDP server. If only a port is specified, the tracker will listen on all interfaces. If left empty, the tracker will not run a UDP endpoint.
 
-##### `privateEnabled`
-
-    type: bool
-    default: true
-
-Whether this is a public or private tracker.
-
 ##### `createOnAnnounce`
 
     type: bool
     default: true
 
-Whether to register new torrents with the tracker when any client announces (`true`), or to return an error if the torrent doesn't exist (`false`). This should be set to `false` for private trackers in most cases.
+Whether to register new torrents with the tracker when any client announces (`true`), or to return an error if the torrent doesn't exist (`false`).
 
 ##### `purgeInactiveTorrents`
 
     type: bool
     default: true
 
-If torrents should be forgotten when there are no active peers. This should be set to `false` for private trackers.
+If torrents should be forgotten when there are no active peers.
 
 ##### `announce`
 
@@ -128,13 +121,6 @@ Enables the peer ID whitelist.
     default: []
 
 List of peer ID prefixes to allow if `client_whitelist_enabled` is set to true.
-
-##### `freeleechEnabled`
-
-    type: bool
-    default: false
-
-For private trackers only, whether download stats should be counted or ignored for users.
 
 ##### `torrentMapShards`
 
@@ -225,4 +211,4 @@ Whether the information about memory should be verbose.
     type: duration
     default: "5s"
 
-Interval at which to collect statistics about memory. 
+Interval at which to collect statistics about memory.

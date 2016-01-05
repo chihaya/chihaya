@@ -76,7 +76,6 @@ func (s *Server) newAnnounce(r *http.Request, p httprouter.Params) (*models.Anno
 		Infohash:   infohash,
 		Left:       left,
 		NumWant:    numWant,
-		Passkey:    p.ByName("passkey"),
 		PeerID:     peerID,
 		Uploaded:   uploaded,
 	}, nil
@@ -98,9 +97,7 @@ func (s *Server) newScrape(r *http.Request, p httprouter.Params) (*models.Scrape
 	}
 
 	return &models.Scrape{
-		Config: s.config,
-
-		Passkey:    p.ByName("passkey"),
+		Config:     s.config,
 		Infohashes: q.Infohashes,
 	}, nil
 }

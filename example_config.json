@@ -1,7 +1,5 @@
 {
   "createOnAnnounce": true,
-  "privateEnabled": false,
-  "freeleechEnabled": false,
   "purgeInactiveTorrents": true,
   "announce": "30m",
   "minAnnounce": "15m",

@@ -11,7 +11,6 @@ import (
 
 	"github.com/golang/glog"
 
-	"github.com/chihaya/chihaya/backend"
 	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/tracker/models"
 )
@@ -19,22 +18,15 @@ import (
 // Tracker represents the logic necessary to service BitTorrent announces,
 // independently of the underlying data transports used.
 type Tracker struct {
-	Config  *config.Config
-	Backend backend.Conn
+	Config *config.Config
 	*Storage
 }
 
 // New creates a new Tracker, and opens any necessary connections.
 // Maintenance routines are automatically spawned in the background.
 func New(cfg *config.Config) (*Tracker, error) {
-	bc, err := backend.Open(&cfg.DriverConfig)
-	if err != nil {
-		return nil, err
-	}
-
 	tkr := &Tracker{
 		Config:  cfg,
-		Backend: bc,
 		Storage: NewStorage(cfg),
 	}
 
@@ -53,7 +45,10 @@ func New(cfg *config.Config) (*Tracker, error) {
 
 // Close gracefully shutdowns a Tracker by closing any database connections.
 func (tkr *Tracker) Close() error {
-	return tkr.Backend.Close()
+
+	// TODO(jzelinskie): shutdown purgeInactivePeers goroutine.
+
+	return nil
 }
 
 // LoadApprovedClients loads a list of client IDs into the tracker's storage.

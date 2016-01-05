@@ -201,5 +201,5 @@ func AppendPeer(ipv4s, ipv6s *PeerList, ann *Announce, peer *Peer) int {
 
 // peersEquivalent checks if two peers represent the same entity.
 func peersEquivalent(a, b *Peer) bool {
-	return a.ID == b.ID || a.UserID != 0 && a.UserID == b.UserID
+	return a.ID == b.ID
 }
