@@ -51,7 +51,8 @@ An explanation of the available keys can be found in [CONFIGURATION.md].
 
 ```sh
 $ docker pull quay.io/jzelinskie/chihaya:latest
-$ docker run -p 6880-6882:6880-6882 -v $PATH_TO_DIR_WITH_CONF_FILE:/config:ro -e CHIHAYA_LOG_LEVEL=5 quay.io/jzelinskie/chihaya:latest
+$ export CHIHAYA_LOG_LEVEL=5 # most verbose, and the default
+$ docker run -p 6880-6882:6880-6882 -v $PATH_TO_DIR_WITH_CONF_FILE:/config:ro -e quay.io/jzelinskie/chihaya:latest -v=$CHIHAYA_LOG_LEVEL
 ```
 
 ## Developing Chihaya

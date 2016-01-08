@@ -26,8 +26,8 @@ RUN go install github.com/chihaya/chihaya/cmd/chihaya
 
 # Configuration/environment
 VOLUME ["/config"]
-ENV CHIHAYA_LOG_LEVEL 5
 EXPOSE 6880-6882
 
-# docker run -p 6880-6882:6880-6882 -v $PATH_TO_DIR_WITH_CONF_FILE:/config:ro -e CHIHAYA_LOG_LEVEL=5 quay.io/jzelinskie/chihaya:latest
-CMD ["sh", "-c", "chihaya", "-config=/config/config.json", "-logtostderr=true", "-v=$CHIHAYA_LOG_LEVEL"]
+# docker run -p 6880-6882:6880-6882 -v $PATH_TO_DIR_WITH_CONF_FILE:/config:ro -e quay.io/jzelinskie/chihaya:latest -v=5
+ENTRYPOINT ["chihaya", "-config=/config/config.json", "-logtostderr=true"]
+CMD ["-v=5"]
