@@ -96,7 +96,7 @@ func (tkr *Tracker) purgeInactivePeers(purgeEmptyTorrents bool, threshold, inter
 		case <-tkr.shuttingDown:
 			return
 
-		case <-time.NewTicker(interval).C:
+		case <-time.After(interval):
 			before := time.Now().Add(-threshold)
 			glog.V(0).Infof("Purging peers with no announces since %s", before)
 
