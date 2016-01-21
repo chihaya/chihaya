@@ -188,7 +188,8 @@ func (a *Announce) BuildPeer(t *Torrent) {
 	if a.HasIPv4() && a.HasIPv6() {
 		a.PeerV4 = a.Peer
 		a.PeerV4.Endpoint = a.IPv4
-		a.PeerV6 = &*a.Peer
+		peer6 := *a.Peer
+		a.PeerV6 = &peer6
 		a.PeerV6.Endpoint = a.IPv6
 	} else if a.HasIPv4() {
 		a.PeerV4 = a.Peer
