@@ -11,13 +11,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/julienschmidt/httprouter"
 	"github.com/tylerb/graceful"
 
 	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/stats"
 	"github.com/chihaya/chihaya/tracker"
+	"github.com/mrd0ll4r/logger"
 )
 
 // Server represents an API server for a torrent tracker.
@@ -46,10 +46,10 @@ func (s *Server) Stop() {
 
 // Serve runs an API server, blocking until the server has shut down.
 func (s *Server) Serve() {
-	glog.V(0).Info("Starting API on ", s.config.APIConfig.ListenAddr)
+	logger.Infof("Starting API on %s", s.config.APIConfig.ListenAddr)
 
 	if s.config.APIConfig.ListenLimit != 0 {
-		glog.V(0).Info("Limiting connections to ", s.config.APIConfig.ListenLimit)
+		logger.Infof("Limiting connections to %d", s.config.APIConfig.ListenLimit)
 	}
 
 	grace := &graceful.Server{
@@ -72,12 +72,12 @@ func (s *Server) Serve() {
 
 	if err := grace.ListenAndServe(); err != nil {
 		if opErr, ok := err.(*net.OpError); !ok || (ok && opErr.Op != "accept") {
-			glog.Errorf("Failed to gracefully run API server: %s", err.Error())
+			logger.Fatalf("Failed to gracefully run API server: %s", err.Error())
 			return
 		}
 	}
 
-	glog.Info("API server shut down cleanly")
+	logger.Infoln("API server shut down cleanly")
 }
 
 // newRouter returns a router with all the routes.
@@ -116,7 +116,7 @@ func (s *Server) connState(conn net.Conn, state http.ConnState) {
 	case http.StateActive, http.StateIdle:
 
 	default:
-		glog.Errorf("Connection transitioned to unknown state %s (%d)", state, state)
+		logger.Fatalf("Connection transitioned to unknown state %s (%d)", state, state)
 	}
 }
 
@@ -143,16 +143,20 @@ func makeHandler(handler ResponseHandler) httprouter.Handle {
 			stats.RecordEvent(stats.ErroredRequest)
 		}
 
-		if len(msg) > 0 || glog.V(2) {
+		if len(msg) > 0 || logger.Logs(logger.LevelInfo) {
 			reqString := r.URL.Path + " " + r.RemoteAddr
-			if glog.V(3) {
+			if logger.Logs(logger.LevelDebug) {
 				reqString = r.URL.RequestURI() + " " + r.RemoteAddr
 			}
 
 			if len(msg) > 0 {
-				glog.Errorf("[API - %9s] %s (%d - %s)", duration, reqString, httpCode, msg)
+				logger.Warnf("[API - %9s] %s (%d - %s)", duration, reqString, httpCode, msg)
 			} else {
-				glog.Infof("[API - %9s] %s (%d)", duration, reqString, httpCode)
+				if logger.Logs(logger.LevelDebug) {
+					logger.Debugf("[API - %9s] %s (%d)", duration, reqString, httpCode)
+				} else {
+					logger.Infof("[API - %9s] %s (%d)", duration, reqString, httpCode)
+				}
 			}
 		}
 

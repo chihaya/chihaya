@@ -12,11 +12,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/pushrax/bufferpool"
 
 	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/tracker"
+	"github.com/mrd0ll4r/logger"
 )
 
 // Server represents a UDP torrent tracker.
@@ -87,12 +87,10 @@ func (s *Server) serve() error {
 				sock.WriteToUDP(response, addr)
 			}
 
-			if glog.V(2) {
-				if err != nil {
-					glog.Infof("[UDP - %9s] %s %s (%s)", duration, action, addr, err)
-				} else {
-					glog.Infof("[UDP - %9s] %s %s", duration, action, addr)
-				}
+			if err != nil {
+				logger.Warnf("[UDP - %9s] %s %s (%s)", duration, action, addr, err)
+			} else {
+				logger.Infof("[UDP - %9s] %s %s", duration, action, addr)
 			}
 		}()
 	}
@@ -102,7 +100,7 @@ func (s *Server) serve() error {
 
 // Serve runs a UDP server, blocking until the server has shut down.
 func (s *Server) Serve() {
-	glog.V(0).Info("Starting UDP on ", s.config.UDPConfig.ListenAddr)
+	logger.Infof("Starting UDP on %s", s.config.UDPConfig.ListenAddr)
 
 	s.wg.Add(1)
 	go func() {
@@ -120,9 +118,9 @@ func (s *Server) Serve() {
 	}()
 
 	if err := s.serve(); err != nil {
-		glog.Errorf("Failed to run UDP server: %s", err.Error())
+		logger.Fatalf("Failed to run UDP server: %s", err.Error())
 	} else {
-		glog.Info("UDP server shut down cleanly")
+		logger.Infoln("UDP server shut down cleanly")
 	}
 }
 

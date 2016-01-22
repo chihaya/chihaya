@@ -1,18 +1,18 @@
 {
 	"ImportPath": "github.com/chihaya/chihaya",
-	"GoVersion": "go1.4.2",
+	"GoVersion": "go1.5",
 	"Deps": [
 		{
 			"ImportPath": "github.com/chihaya/bencode",
 			"Rev": "3c485a8d166ff6a79baba90c2c2da01c8348e930"
 		},
 		{
-			"ImportPath": "github.com/golang/glog",
-			"Rev": "44145f04b68cf362d9c4df2182967c2275eaefed"
-		},
-		{
 			"ImportPath": "github.com/julienschmidt/httprouter",
 			"Rev": "8c199fb6259ffc1af525cc3ad52ee60ba8359669"
+		},
+		{
+			"ImportPath": "github.com/mrd0ll4r/logger",
+			"Rev": "a8147cde61c12b31f77ef89d079a56101e7febaa"
 		},
 		{
 			"ImportPath": "github.com/pushrax/bufferpool",

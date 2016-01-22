@@ -10,9 +10,8 @@ import (
 	"os"
 	"runtime/pprof"
 
+	"github.com/mrd0ll4r/logger"
 	_ "net/http/pprof"
-
-	"github.com/golang/glog"
 )
 
 var (
@@ -31,19 +30,19 @@ func debugBoot() {
 
 	if debugAddr != "" {
 		go func() {
-			glog.Info("Starting debug HTTP on ", debugAddr)
-			glog.Fatal(http.ListenAndServe(debugAddr, nil))
+			logger.Infof("Starting debug HTTP on %s", debugAddr)
+			logger.Fatalln(http.ListenAndServe(debugAddr, nil))
 		}()
 	}
 
 	if profile != "" {
 		profileFile, err = os.Create(profile)
 		if err != nil {
-			glog.Fatalf("Failed to create profile file: %s\n", err)
+			logger.Fatalf("Failed to create profile file: %s", err)
 		}
 
 		pprof.StartCPUProfile(profileFile)
-		glog.Info("Started profiling")
+		logger.Infoln("Started profiling")
 	}
 }
 
@@ -51,6 +50,6 @@ func debugShutdown() {
 	if profileFile != nil {
 		profileFile.Close()
 		pprof.StopCPUProfile()
-		glog.Info("Stopped profiling")
+		logger.Infoln("Stopped profiling")
 	}
 }

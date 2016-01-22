@@ -9,10 +9,10 @@ package tracker
 import (
 	"time"
 
-	"github.com/golang/glog"
-
 	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/tracker/models"
+	
+	"github.com/mrd0ll4r/logger"
 )
 
 // Tracker represents the logic necessary to service BitTorrent announces,
@@ -75,11 +75,11 @@ type Writer interface {
 func (tkr *Tracker) purgeInactivePeers(purgeEmptyTorrents bool, threshold, interval time.Duration) {
 	for _ = range time.NewTicker(interval).C {
 		before := time.Now().Add(-threshold)
-		glog.V(0).Infof("Purging peers with no announces since %s", before)
+		logger.Infof("Purging peers with no announces since %s", before)
 
 		err := tkr.PurgeInactivePeers(purgeEmptyTorrents, before)
 		if err != nil {
-			glog.Errorf("Error purging torrents: %s", err)
+			logger.Warnf("Error purging torrents: %s", err)
 		}
 	}
 }

@@ -11,13 +11,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/julienschmidt/httprouter"
 	"github.com/tylerb/graceful"
 
 	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/stats"
 	"github.com/chihaya/chihaya/tracker"
+	"github.com/mrd0ll4r/logger"
 )
 
 // ResponseHandler is an HTTP handler that returns a status code.
@@ -51,16 +51,20 @@ func makeHandler(handler ResponseHandler) httprouter.Handle {
 			stats.RecordEvent(stats.ErroredRequest)
 		}
 
-		if len(msg) > 0 || glog.V(2) {
+		if len(msg) > 0 || logger.Logs(logger.LevelInfo) {
 			reqString := r.URL.Path + " " + r.RemoteAddr
-			if glog.V(3) {
+			if logger.Logs(logger.LevelDebug) {
 				reqString = r.URL.RequestURI() + " " + r.RemoteAddr
 			}
 
 			if len(msg) > 0 {
-				glog.Errorf("[HTTP - %9s] %s (%d - %s)", duration, reqString, httpCode, msg)
+				logger.Warnf("[HTTP - %9s] %s (%d - %s)", duration, reqString, httpCode, msg)
 			} else {
-				glog.Infof("[HTTP - %9s] %s (%d)", duration, reqString, httpCode)
+				if logger.Logs(logger.LevelDebug) {
+					logger.Debugf("[HTTP - %9s] %s (%d)", duration, reqString, httpCode)
+				} else {
+					logger.Infof("[HTTP - %9s] %s (%d)", duration, reqString, httpCode)
+				}
 			}
 		}
 
@@ -96,16 +100,16 @@ func (s *Server) connState(conn net.Conn, state http.ConnState) {
 	case http.StateActive, http.StateIdle:
 
 	default:
-		glog.Errorf("Connection transitioned to unknown state %s (%d)", state, state)
+		logger.Fatalf("Connection transitioned to unknown state %s (%d)", state, state)
 	}
 }
 
 // Serve runs an HTTP server, blocking until the server has shut down.
 func (s *Server) Serve() {
-	glog.V(0).Info("Starting HTTP on ", s.config.HTTPConfig.ListenAddr)
+	logger.Infof("Starting HTTP on %s", s.config.HTTPConfig.ListenAddr)
 
 	if s.config.HTTPConfig.ListenLimit != 0 {
-		glog.V(0).Info("Limiting connections to ", s.config.HTTPConfig.ListenLimit)
+		logger.Infof("Limiting connections to %d", s.config.HTTPConfig.ListenLimit)
 	}
 
 	grace := &graceful.Server{
@@ -128,12 +132,12 @@ func (s *Server) Serve() {
 
 	if err := grace.ListenAndServe(); err != nil {
 		if opErr, ok := err.(*net.OpError); !ok || (ok && opErr.Op != "accept") {
-			glog.Errorf("Failed to gracefully run HTTP server: %s", err.Error())
+			logger.Fatalf("Failed to gracefully run HTTP server: %s", err.Error())
 			return
 		}
 	}
 
-	glog.Info("HTTP server shut down cleanly")
+	logger.Infoln("HTTP server shut down cleanly")
 }
 
 // Stop cleanly shuts down the server.
