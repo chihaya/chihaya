@@ -16,7 +16,7 @@ func TestNew(t *testing.T) {
 		expected    event
 		expectedErr error
 	}{
-		{"", None, nil},
+		{"", None, ErrUnknownEvent},
 		{"NONE", None, nil},
 		{"none", None, nil},
 		{"started", Started, nil},

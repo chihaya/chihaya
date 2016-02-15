@@ -13,10 +13,6 @@ import (
 // has been delivered to a client.
 type AnnounceHandler func(*config.TrackerConfig, chihaya.AnnounceRequest, *chihaya.AnnounceResponse) error
 
-func (h AnnounceHandler) handleAnnounce(cfg *config.TrackerConfig, req chihaya.AnnounceRequest, resp *chihaya.AnnounceResponse) error {
-	return h(cfg, req, resp)
-}
-
 // AnnounceMiddleware is higher-order AnnounceHandler used to implement modular
 // behavior processing an announce.
 type AnnounceMiddleware func(AnnounceHandler) AnnounceHandler
@@ -24,10 +20,7 @@ type AnnounceMiddleware func(AnnounceHandler) AnnounceHandler
 type announceChain struct{ mw []AnnounceMiddleware }
 
 func (c *announceChain) Append(mw ...AnnounceMiddleware) {
-	newMW := make([]AnnounceMiddleware, len(c.mw)+len(mw))
-	copy(newMW[:len(c.mw)], c.mw)
-	copy(newMW[len(c.mw):], mw)
-	c.mw = newMW
+	c.mw = append(c.mw, mw...)
 }
 
 func (c *announceChain) Handler() AnnounceHandler {
@@ -63,10 +56,6 @@ func RegisterAnnounceMiddleware(name string, mw AnnounceMiddleware) {
 // before it has been delivered to a client.
 type ScrapeHandler func(*config.TrackerConfig, chihaya.ScrapeRequest, *chihaya.ScrapeResponse) error
 
-func (h ScrapeHandler) handleScrape(cfg *config.TrackerConfig, req chihaya.ScrapeRequest, resp *chihaya.ScrapeResponse) error {
-	return h(cfg, req, resp)
-}
-
 // ScrapeMiddleware is higher-order ScrapeHandler used to implement modular
 // behavior processing a scrape.
 type ScrapeMiddleware func(ScrapeHandler) ScrapeHandler
@@ -74,10 +63,7 @@ type ScrapeMiddleware func(ScrapeHandler) ScrapeHandler
 type scrapeChain struct{ mw []ScrapeMiddleware }
 
 func (c *scrapeChain) Append(mw ...ScrapeMiddleware) {
-	newMW := make([]ScrapeMiddleware, len(c.mw)+len(mw))
-	copy(newMW[:len(c.mw)], c.mw)
-	copy(newMW[len(c.mw):], mw)
-	c.mw = newMW
+	c.mw = append(c.mw, mw...)
 }
 
 func (c *scrapeChain) Handler() ScrapeHandler {

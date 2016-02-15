@@ -69,7 +69,6 @@ func (w *writer) writeScrapeResponse(resp *chihaya.ScrapeResponse) error {
 		filesDict[infohash] = bencode.Dict{
 			"complete":   scrape.Complete,
 			"incomplete": scrape.Incomplete,
-			"downloaded": scrape.Downloaded,
 		}
 	}
 

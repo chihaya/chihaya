@@ -52,8 +52,8 @@ func newPeerStoreConfig(storecfg *store.Config) (*peerStoreConfig, error) {
 	return &cfg, nil
 }
 
-const seedersSuffix = "-seeders"
-const leechersSuffix = "-leechers"
+const seedersSuffix = "-s"
+const leechersSuffix = "-l"
 
 type peer struct {
 	chihaya.Peer
