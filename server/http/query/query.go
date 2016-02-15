@@ -196,11 +196,6 @@ func (q *Query) AnnounceRequest() (chihaya.AnnounceRequest, error) {
 		return nil, errors.New("failed to parse parameter: numwant")
 	}
 
-	request["ip"], err = q.Uint64("port")
-	if err != nil {
-		return nil, errors.New("failed to parse parameter: port")
-	}
-
 	request["port"], err = q.Uint64("port")
 	if err != nil {
 		return nil, errors.New("failed to parse parameter: port")

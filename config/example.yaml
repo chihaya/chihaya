@@ -28,11 +28,11 @@ chihaya:
           shards: 1
 
     - name: "http"
-    config:
-      addr: "localhost:6881"
-      requestTimeout: "10s"
-      readTimeout: "10s"
-      writeTimeout: "10s"
+      config:
+        addr: "localhost:6881"
+        requestTimeout: "10s"
+        readTimeout: "10s"
+        writeTimeout: "10s"
 
     - name: "udp"
       config:
