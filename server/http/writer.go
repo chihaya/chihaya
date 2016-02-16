@@ -8,18 +8,28 @@ import (
 	"net/http"
 
 	"github.com/chihaya/chihaya"
+	"github.com/chihaya/chihaya/errors"
 	"github.com/chihaya/chihaya/pkg/bencode"
 )
 
-type writer struct{ http.ResponseWriter }
+func writeError(w http.ResponseWriter, err error) error {
+	message := "internal server error"
+	chihayaErr, ok := err.(*errors.Error)
 
-func (w *writer) writeError(err error) error {
+	if ok {
+		w.WriteHeader(chihayaErr.Status())
+
+		if chihayaErr.Public() {
+			message = err.Error()
+		}
+	}
+
 	return bencode.NewEncoder(w).Encode(bencode.Dict{
-		"failure reason": err.Error(),
+		"failure reason": message,
 	})
 }
 
-func (w *writer) writeAnnounceResponse(resp *chihaya.AnnounceResponse) error {
+func writeAnnounceResponse(w http.ResponseWriter, resp *chihaya.AnnounceResponse) error {
 	bdict := bencode.Dict{
 		"complete":     resp.Complete,
 		"incomplete":   resp.Incomplete,
@@ -63,7 +73,7 @@ func (w *writer) writeAnnounceResponse(resp *chihaya.AnnounceResponse) error {
 	return bencode.NewEncoder(w).Encode(bdict)
 }
 
-func (w *writer) writeScrapeResponse(resp *chihaya.ScrapeResponse) error {
+func writeScrapeResponse(w http.ResponseWriter, resp *chihaya.ScrapeResponse) error {
 	filesDict := bencode.NewDict()
 	for infohash, scrape := range resp.Files {
 		filesDict[infohash] = bencode.Dict{

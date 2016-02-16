@@ -17,8 +17,8 @@ import (
 // DefaultConfig is a sane configuration used as a fallback or for testing.
 var DefaultConfig = Config{
 	Tracker: TrackerConfig{
-		AnnounceInterval:    10 * time.Minute,
-		MinAnnounceInterval: 5 * time.Minute,
+		AnnounceInterval:    30 * time.Minute,
+		MinAnnounceInterval: 20 * time.Minute,
 		AnnounceMiddleware:  []string{},
 		ScrapeMiddleware:    []string{},
 	},

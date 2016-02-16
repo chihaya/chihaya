@@ -2,38 +2,37 @@
 # Use of this source code is governed by the BSD 2-Clause license,
 # which can be found in the LICENSE file.
 
-chihaya:
-  tracker:
-    announce: "10m"
-    minAnnounce: "5m"
-    announceMiddleware:
-      - "prometheus"
-      - "storeClientValidation"
-      - "storeCreateOnAnnounce"
-    scrapeMiddleware:
-      - "prometheus"
-      - "storeClientValidation"
+tracker:
+  announce: 10m
+  minAnnounce: 5m
+  announceMiddleware:
+    - prometheus
+    - storeClientValidation
+    - storeCreateOnAnnounce
+  scrapeMiddleware:
+    - prometheus
+    - storeClientValidation
 
-  servers:
-    - name: "store"
-      config:
-        addr: "localhost:6880"
-        requestTimeout: "10s"
-        readTimeout: "10s"
-        writeTimeout: "10s"
-        clientStore: "memory"
-        peerStore: "memory"
-        peerStoreConfig:
-          gcAfter: "30m"
-          shards: 1
+servers:
+  - name: store
+    config:
+      addr: localhost:6880
+      requestTimeout: 10s
+      readTimeout: 10s
+      writeTimeout: 10s
+      clientStore: memory
+      peerStore: memory
+      peerStoreConfig:
+        gcAfter: 30m
+        shards: 1
 
-    - name: "http"
-      config:
-        addr: "localhost:6881"
-        requestTimeout: "10s"
-        readTimeout: "10s"
-        writeTimeout: "10s"
+  - name: http
+    config:
+      addr: localhost:6881
+      requestTimeout: 10s
+      readTimeout: 10s
+      writeTimeout: 10s
 
-    - name: "udp"
-      config:
-        addr: "localhost:6882"
+  - name: udp
+    config:
+      addr: localhost:6882

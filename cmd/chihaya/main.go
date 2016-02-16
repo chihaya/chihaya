@@ -14,6 +14,8 @@ import (
 	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/server"
 	"github.com/chihaya/chihaya/tracker"
+
+	_ "github.com/chihaya/chihaya/server/http"
 )
 
 var configPath string

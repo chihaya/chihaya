@@ -15,14 +15,14 @@ var peerStoreDrivers = make(map[string]PeerStoreDriver)
 
 // PeerStore represents an interface for manipulating peers.
 type PeerStore interface {
-	PutSeeder(infohash string, p chihaya.Peer) error
-	DeleteSeeder(infohash, peerID string) error
+	PutSeeder(infoHash chihaya.InfoHash, p chihaya.Peer) error
+	DeleteSeeder(infoHash chihaya.InfoHash, peerID chihaya.Peer) error
 
-	PutLeecher(infohash string, p chihaya.Peer) error
-	DeleteLeecher(infohash, peerID string) error
+	PutLeecher(infoHash chihaya.InfoHash, p chihaya.Peer) error
+	DeleteLeecher(infoHash chihaya.InfoHash, peerID chihaya.Peer) error
 
-	GraduateLeecher(infohash string, p chihaya.Peer) error
-	AnnouncePeers(infohash string, seeder bool, numWant int) (peers, peers6 []chihaya.Peer, err error)
+	GraduateLeecher(infoHash chihaya.InfoHash, p chihaya.Peer) error
+	AnnouncePeers(infoHash chihaya.InfoHash, seeder bool, numWant int) (peers, peers6 []chihaya.Peer, err error)
 	CollectGarbage(cutoff time.Time) error
 }
 

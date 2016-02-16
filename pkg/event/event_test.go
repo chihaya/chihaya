@@ -13,7 +13,7 @@ import (
 func TestNew(t *testing.T) {
 	var table = []struct {
 		data        string
-		expected    event
+		expected    Event
 		expectedErr error
 	}{
 		{"", None, ErrUnknownEvent},
