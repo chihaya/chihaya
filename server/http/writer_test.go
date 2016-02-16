@@ -5,10 +5,10 @@
 package http
 
 import (
-	"errors"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/chihaya/chihaya/errors"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,9 +22,17 @@ func TestWriteError(t *testing.T) {
 
 	for _, tt := range table {
 		r := httptest.NewRecorder()
-		w := &writer{r}
-		err := w.writeError(errors.New(tt.reason))
-		assert.Nil(t, err, "writeError should not fail with test input")
-		assert.Equal(t, r.Body.String(), tt.expected, "writer should write the expected value")
+		err := writeError(r, errors.NewMessage(tt.reason))
+		assert.Nil(t, err)
+		assert.Equal(t, r.Body.String(), tt.expected)
+		assert.Equal(t, r.Code, 200)
 	}
+}
+
+func TestWriteStatus(t *testing.T) {
+	r := httptest.NewRecorder()
+	err := writeError(r, errors.NewBadRequest("something is missing"))
+	assert.Nil(t, err)
+	assert.Equal(t, r.Body.String(), "d14:failure reason20:something is missinge")
+	assert.Equal(t, r.Code, 400)
 }

@@ -15,12 +15,12 @@ import (
 var ErrUnknownEvent = errors.New("unknown event")
 
 // Event represents an event done by a BitTorrent client.
-type event uint8
+type Event uint8
 
 const (
 	// None is the event when a BitTorrent client announces due to time lapsed
 	// since the previous announce.
-	None event = iota
+	None Event = iota
 
 	// Started is the event sent by a BitTorrent client when it joins a swarm.
 	Started
@@ -34,8 +34,8 @@ const (
 )
 
 var (
-	eventToString = make(map[event]string)
-	stringToEvent = make(map[string]event)
+	eventToString = make(map[Event]string)
+	stringToEvent = make(map[string]Event)
 )
 
 func init() {
@@ -50,7 +50,7 @@ func init() {
 }
 
 // New returns the proper Event given a string.
-func New(eventStr string) (event, error) {
+func New(eventStr string) (Event, error) {
 	if e, ok := stringToEvent[strings.ToLower(eventStr)]; ok {
 		return e, nil
 	}
@@ -59,7 +59,7 @@ func New(eventStr string) (event, error) {
 }
 
 // String implements Stringer for an event.
-func (e event) String() string {
+func (e Event) String() string {
 	if name, ok := eventToString[e]; ok {
 		return name
 	}

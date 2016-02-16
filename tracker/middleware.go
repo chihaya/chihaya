@@ -11,7 +11,7 @@ import (
 
 // AnnounceHandler is a function that operates on an AnnounceResponse before it
 // has been delivered to a client.
-type AnnounceHandler func(*config.TrackerConfig, chihaya.AnnounceRequest, *chihaya.AnnounceResponse) error
+type AnnounceHandler func(*config.TrackerConfig, *chihaya.AnnounceRequest, *chihaya.AnnounceResponse) error
 
 // AnnounceMiddleware is higher-order AnnounceHandler used to implement modular
 // behavior processing an announce.
@@ -24,7 +24,7 @@ func (c *announceChain) Append(mw ...AnnounceMiddleware) {
 }
 
 func (c *announceChain) Handler() AnnounceHandler {
-	final := func(cfg *config.TrackerConfig, req chihaya.AnnounceRequest, resp *chihaya.AnnounceResponse) error {
+	final := func(cfg *config.TrackerConfig, req *chihaya.AnnounceRequest, resp *chihaya.AnnounceResponse) error {
 		return nil
 	}
 	for i := len(c.mw) - 1; i >= 0; i-- {
@@ -54,7 +54,7 @@ func RegisterAnnounceMiddleware(name string, mw AnnounceMiddleware) {
 
 // ScrapeHandler is a middleware function that operates on a ScrapeResponse
 // before it has been delivered to a client.
-type ScrapeHandler func(*config.TrackerConfig, chihaya.ScrapeRequest, *chihaya.ScrapeResponse) error
+type ScrapeHandler func(*config.TrackerConfig, *chihaya.ScrapeRequest, *chihaya.ScrapeResponse) error
 
 // ScrapeMiddleware is higher-order ScrapeHandler used to implement modular
 // behavior processing a scrape.
@@ -67,7 +67,7 @@ func (c *scrapeChain) Append(mw ...ScrapeMiddleware) {
 }
 
 func (c *scrapeChain) Handler() ScrapeHandler {
-	final := func(cfg *config.TrackerConfig, req chihaya.ScrapeRequest, resp *chihaya.ScrapeResponse) error {
+	final := func(cfg *config.TrackerConfig, req *chihaya.ScrapeRequest, resp *chihaya.ScrapeResponse) error {
 		return nil
 	}
 	for i := len(c.mw) - 1; i >= 0; i-- {

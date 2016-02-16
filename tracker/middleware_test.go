@@ -14,7 +14,7 @@ import (
 )
 
 func testAnnounceMW1(next AnnounceHandler) AnnounceHandler {
-	return func(cfg *config.TrackerConfig, req chihaya.AnnounceRequest, resp *chihaya.AnnounceResponse) error {
+	return func(cfg *config.TrackerConfig, req *chihaya.AnnounceRequest, resp *chihaya.AnnounceResponse) error {
 		resp.IPv4Peers = append(resp.IPv4Peers, chihaya.Peer{
 			Port: 1,
 		})
@@ -23,7 +23,7 @@ func testAnnounceMW1(next AnnounceHandler) AnnounceHandler {
 }
 
 func testAnnounceMW2(next AnnounceHandler) AnnounceHandler {
-	return func(cfg *config.TrackerConfig, req chihaya.AnnounceRequest, resp *chihaya.AnnounceResponse) error {
+	return func(cfg *config.TrackerConfig, req *chihaya.AnnounceRequest, resp *chihaya.AnnounceResponse) error {
 		resp.IPv4Peers = append(resp.IPv4Peers, chihaya.Peer{
 			Port: 2,
 		})
@@ -32,7 +32,7 @@ func testAnnounceMW2(next AnnounceHandler) AnnounceHandler {
 }
 
 func testAnnounceMW3(next AnnounceHandler) AnnounceHandler {
-	return func(cfg *config.TrackerConfig, req chihaya.AnnounceRequest, resp *chihaya.AnnounceResponse) error {
+	return func(cfg *config.TrackerConfig, req *chihaya.AnnounceRequest, resp *chihaya.AnnounceResponse) error {
 		resp.IPv4Peers = append(resp.IPv4Peers, chihaya.Peer{
 			Port: 3,
 		})
@@ -47,7 +47,7 @@ func TestAnnounceChain(t *testing.T) {
 	achain.Append(testAnnounceMW3)
 	handler := achain.Handler()
 	resp := &chihaya.AnnounceResponse{}
-	err := handler(nil, chihaya.AnnounceRequest{}, resp)
+	err := handler(nil, &chihaya.AnnounceRequest{}, resp)
 	assert.Nil(t, err, "the handler should not return an error")
 	assert.Equal(t, resp.IPv4Peers, []chihaya.Peer{chihaya.Peer{Port: 1}, chihaya.Peer{Port: 2}, chihaya.Peer{Port: 3}}, "the list of peers added from the middleware should be in the same order.")
 }

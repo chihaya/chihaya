@@ -49,7 +49,7 @@ func NewTracker(cfg *config.TrackerConfig) (*Tracker, error) {
 
 // HandleAnnounce runs an AnnounceRequest through a Tracker's middleware and
 // returns the result.
-func (t *Tracker) HandleAnnounce(req chihaya.AnnounceRequest) (*chihaya.AnnounceResponse, error) {
+func (t *Tracker) HandleAnnounce(req *chihaya.AnnounceRequest) (*chihaya.AnnounceResponse, error) {
 	resp := &chihaya.AnnounceResponse{}
 	err := t.handleAnnounce(t.cfg, req, resp)
 	return resp, err
@@ -57,7 +57,7 @@ func (t *Tracker) HandleAnnounce(req chihaya.AnnounceRequest) (*chihaya.Announce
 
 // HandleScrape runs a ScrapeRequest through a Tracker's middleware and returns
 // the result.
-func (t *Tracker) HandleScrape(req chihaya.ScrapeRequest) (*chihaya.ScrapeResponse, error) {
+func (t *Tracker) HandleScrape(req *chihaya.ScrapeRequest) (*chihaya.ScrapeResponse, error) {
 	resp := &chihaya.ScrapeResponse{}
 	err := t.handleScrape(t.cfg, req, resp)
 	return resp, err

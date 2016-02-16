@@ -52,9 +52,6 @@ func newPeerStoreConfig(storecfg *store.Config) (*peerStoreConfig, error) {
 	return &cfg, nil
 }
 
-const seedersSuffix = "-s"
-const leechersSuffix = "-l"
-
 type peer struct {
 	chihaya.Peer
 	LastAction time.Time
@@ -71,16 +68,28 @@ type peerStore struct {
 
 var _ store.PeerStore = &peerStore{}
 
-func (s *peerStore) shardIndex(infohash string) uint32 {
+func (s *peerStore) shardIndex(infoHash chihaya.InfoHash) uint32 {
 	idx := fnv.New32()
-	idx.Write([]byte(infohash))
+	idx.Write([]byte(infoHash))
 	return idx.Sum32() % uint32(len(s.shards))
 }
 
-func (s *peerStore) PutSeeder(infohash string, p chihaya.Peer) error {
-	key := infohash + seedersSuffix
+func peerKey(p chihaya.Peer) string {
+	return string(p.IP) + string(p.ID)
+}
 
-	shard := s.shards[s.shardIndex(infohash)]
+func seedersKey(infoHash chihaya.InfoHash) string {
+	return string(infoHash) + "-s"
+}
+
+func leechersKey(infoHash chihaya.InfoHash) string {
+	return string(infoHash) + "-l"
+}
+
+func (s *peerStore) PutSeeder(infoHash chihaya.InfoHash, p chihaya.Peer) error {
+	key := seedersKey(infoHash)
+
+	shard := s.shards[s.shardIndex(infoHash)]
 	shard.Lock()
 	defer shard.Unlock()
 
@@ -88,7 +97,7 @@ func (s *peerStore) PutSeeder(infohash string, p chihaya.Peer) error {
 		shard.peers[key] = make(map[string]peer)
 	}
 
-	shard.peers[key][p.ID] = peer{
+	shard.peers[key][peerKey(p)] = peer{
 		Peer:       p,
 		LastAction: time.Now(),
 	}
@@ -96,10 +105,10 @@ func (s *peerStore) PutSeeder(infohash string, p chihaya.Peer) error {
 	return nil
 }
 
-func (s *peerStore) DeleteSeeder(infohash, peerID string) error {
-	key := infohash + seedersSuffix
+func (s *peerStore) DeleteSeeder(infoHash chihaya.InfoHash, p chihaya.Peer) error {
+	key := seedersKey(infoHash)
 
-	shard := s.shards[s.shardIndex(infohash)]
+	shard := s.shards[s.shardIndex(infoHash)]
 	shard.Lock()
 	defer shard.Unlock()
 
@@ -107,7 +116,7 @@ func (s *peerStore) DeleteSeeder(infohash, peerID string) error {
 		return nil
 	}
 
-	delete(shard.peers[key], peerID)
+	delete(shard.peers[key], peerKey(p))
 
 	if len(shard.peers[key]) == 0 {
 		shard.peers[key] = nil
@@ -116,10 +125,10 @@ func (s *peerStore) DeleteSeeder(infohash, peerID string) error {
 	return nil
 }
 
-func (s *peerStore) PutLeecher(infohash string, p chihaya.Peer) error {
-	key := infohash + leechersSuffix
+func (s *peerStore) PutLeecher(infoHash chihaya.InfoHash, p chihaya.Peer) error {
+	key := leechersKey(infoHash)
 
-	shard := s.shards[s.shardIndex(infohash)]
+	shard := s.shards[s.shardIndex(infoHash)]
 	shard.Lock()
 	defer shard.Unlock()
 
@@ -127,7 +136,7 @@ func (s *peerStore) PutLeecher(infohash string, p chihaya.Peer) error {
 		shard.peers[key] = make(map[string]peer)
 	}
 
-	shard.peers[key][p.ID] = peer{
+	shard.peers[key][peerKey(p)] = peer{
 		Peer:       p,
 		LastAction: time.Now(),
 	}
@@ -135,10 +144,10 @@ func (s *peerStore) PutLeecher(infohash string, p chihaya.Peer) error {
 	return nil
 }
 
-func (s *peerStore) DeleteLeecher(infohash, peerID string) error {
-	key := infohash + leechersSuffix
+func (s *peerStore) DeleteLeecher(infoHash chihaya.InfoHash, p chihaya.Peer) error {
+	key := leechersKey(infoHash)
 
-	shard := s.shards[s.shardIndex(infohash)]
+	shard := s.shards[s.shardIndex(infoHash)]
 	shard.Lock()
 	defer shard.Unlock()
 
@@ -146,7 +155,7 @@ func (s *peerStore) DeleteLeecher(infohash, peerID string) error {
 		return nil
 	}
 
-	delete(shard.peers[key], peerID)
+	delete(shard.peers[key], peerKey(p))
 
 	if len(shard.peers[key]) == 0 {
 		shard.peers[key] = nil
@@ -155,23 +164,23 @@ func (s *peerStore) DeleteLeecher(infohash, peerID string) error {
 	return nil
 }
 
-func (s *peerStore) GraduateLeecher(infohash string, p chihaya.Peer) error {
-	leecherKey := infohash + leechersSuffix
-	seederKey := infohash + seedersSuffix
+func (s *peerStore) GraduateLeecher(infoHash chihaya.InfoHash, p chihaya.Peer) error {
+	lkey := leechersKey(infoHash)
+	skey := seedersKey(infoHash)
 
-	shard := s.shards[s.shardIndex(infohash)]
+	shard := s.shards[s.shardIndex(infoHash)]
 	shard.Lock()
 	defer shard.Unlock()
 
-	if shard.peers[leecherKey] != nil {
-		delete(shard.peers[leecherKey], p.ID)
+	if shard.peers[lkey] != nil {
+		delete(shard.peers[lkey], peerKey(p))
 	}
 
-	if shard.peers[seederKey] == nil {
-		shard.peers[seederKey] = make(map[string]peer)
+	if shard.peers[skey] == nil {
+		shard.peers[skey] = make(map[string]peer)
 	}
 
-	shard.peers[seederKey][p.ID] = peer{
+	shard.peers[skey][peerKey(p)] = peer{
 		Peer:       p,
 		LastAction: time.Now(),
 	}
@@ -191,16 +200,13 @@ func (s *peerStore) CollectGarbage(cutoff time.Time) error {
 
 		for _, key := range keys {
 			shard.Lock()
-			var peersToDelete []string
-			for peerID, p := range shard.peers[key] {
+
+			for peerKey, p := range shard.peers[key] {
 				if p.LastAction.Before(cutoff) {
-					peersToDelete = append(peersToDelete, peerID)
+					delete(shard.peers[key], peerKey)
 				}
 			}
 
-			for _, peerID := range peersToDelete {
-				delete(shard.peers[key], peerID)
-			}
 			shard.Unlock()
 			runtime.Gosched()
 		}
@@ -211,17 +217,17 @@ func (s *peerStore) CollectGarbage(cutoff time.Time) error {
 	return nil
 }
 
-func (s *peerStore) AnnouncePeers(infohash string, seeder bool, numWant int) (peers, peers6 []chihaya.Peer, err error) {
-	leecherKey := infohash + leechersSuffix
-	seederKey := infohash + seedersSuffix
+func (s *peerStore) AnnouncePeers(infoHash chihaya.InfoHash, seeder bool, numWant int) (peers, peers6 []chihaya.Peer, err error) {
+	lkey := leechersKey(infoHash)
+	skey := seedersKey(infoHash)
 
-	shard := s.shards[s.shardIndex(infohash)]
+	shard := s.shards[s.shardIndex(infoHash)]
 	shard.RLock()
 	defer shard.RUnlock()
 
 	if seeder {
 		// Append leechers as possible.
-		leechers := shard.peers[leecherKey]
+		leechers := shard.peers[lkey]
 		for _, p := range leechers {
 			if numWant == 0 {
 				break
@@ -236,7 +242,7 @@ func (s *peerStore) AnnouncePeers(infohash string, seeder bool, numWant int) (pe
 		}
 	} else {
 		// Append as many seeders as possible.
-		seeders := shard.peers[seederKey]
+		seeders := shard.peers[skey]
 		for _, p := range seeders {
 			if numWant == 0 {
 				break
@@ -251,7 +257,7 @@ func (s *peerStore) AnnouncePeers(infohash string, seeder bool, numWant int) (pe
 		}
 
 		// Append leechers until we reach numWant.
-		leechers := shard.peers[leecherKey]
+		leechers := shard.peers[lkey]
 		if numWant > 0 {
 			for _, p := range leechers {
 				if numWant == 0 {

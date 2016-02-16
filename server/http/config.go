@@ -11,10 +11,13 @@ import (
 )
 
 type httpConfig struct {
-	Addr           string        `yaml:"addr"`
-	RequestTimeout time.Duration `yaml:"requestTimeout"`
-	ReadTimeout    time.Duration `yaml:"readTimeout"`
-	WriteTimeout   time.Duration `yaml:"writeTimeout"`
+	Addr             string        `yaml:"addr"`
+	RequestTimeout   time.Duration `yaml:"requestTimeout"`
+	ReadTimeout      time.Duration `yaml:"readTimeout"`
+	WriteTimeout     time.Duration `yaml:"writeTimeout"`
+	AllowIPSpoofing  bool          `yaml:"allowIPSpoofing"`
+	DualStackedPeers bool          `yaml:"dualStackedPeers"`
+	RealIPHeader     string        `yaml:"realIPHeader"`
 }
 
 func newHTTPConfig(srvcfg interface{}) (*httpConfig, error) {

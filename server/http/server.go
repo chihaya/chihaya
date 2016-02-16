@@ -15,7 +15,6 @@ import (
 
 	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/server"
-	"github.com/chihaya/chihaya/server/http/query"
 	"github.com/chihaya/chihaya/tracker"
 )
 
@@ -99,49 +98,33 @@ func (s *httpServer) routes() *httprouter.Router {
 }
 
 func (s *httpServer) serveAnnounce(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-	writer := &writer{w}
-
-	q, err := query.New(r.URL.RawQuery)
+	req, err := announceRequest(r, s.cfg)
 	if err != nil {
-		writer.writeError(err)
-		return
-	}
-
-	req, err := q.AnnounceRequest()
-	if err != nil {
-		writer.writeError(err)
+		writeError(w, err)
 		return
 	}
 
 	resp, err := s.tkr.HandleAnnounce(req)
 	if err != nil {
-		writer.writeError(err)
+		writeError(w, err)
 		return
 	}
 
-	writer.writeAnnounceResponse(resp)
+	writeAnnounceResponse(w, resp)
 }
 
 func (s *httpServer) serveScrape(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-	writer := &writer{w}
-
-	q, err := query.New(r.URL.RawQuery)
+	req, err := scrapeRequest(r, s.cfg)
 	if err != nil {
-		writer.writeError(err)
-		return
-	}
-
-	req, err := q.ScrapeRequest()
-	if err != nil {
-		writer.writeError(err)
+		writeError(w, err)
 		return
 	}
 
 	resp, err := s.tkr.HandleScrape(req)
 	if err != nil {
-		writer.writeError(err)
+		writeError(w, err)
 		return
 	}
 
-	writer.writeScrapeResponse(resp)
+	writeScrapeResponse(w, resp)
 }

@@ -7,10 +7,28 @@ package chihaya
 import (
 	"net"
 	"time"
+
+	"github.com/chihaya/chihaya/pkg/event"
 )
 
+type PeerID string
+type InfoHash string
+
 // AnnounceRequest represents the parsed parameters from an announce request.
-type AnnounceRequest map[string]interface{}
+type AnnounceRequest struct {
+	Event    event.Event
+	InfoHash InfoHash
+	PeerID   PeerID
+	IP       string
+	Port     uint16
+
+	Compact bool
+	NumWant uint64
+
+	Left, Downloaded, Uploaded uint64
+
+	Params Params
+}
 
 // AnnounceResponse represents the parameters used to create an announce
 // response.
@@ -25,7 +43,10 @@ type AnnounceResponse struct {
 }
 
 // ScrapeRequest represents the parsed parameters from a scrape request.
-type ScrapeRequest map[string]interface{}
+type ScrapeRequest struct {
+	InfoHashes []InfoHash
+	Params     Params
+}
 
 // ScrapeResponse represents the parameters used to create a scrape response.
 type ScrapeResponse struct {
@@ -41,7 +62,12 @@ type Scrape struct {
 // Peer represents the connection details of a peer that is returned in an
 // announce response.
 type Peer struct {
-	ID   string
+	ID   PeerID
 	IP   net.IP
 	Port uint16
+}
+
+// Params is used to fetch request parameters.
+type Params interface {
+	String(key string) (string, error)
 }

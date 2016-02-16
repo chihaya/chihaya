@@ -14,7 +14,6 @@ import (
 	"strings"
 
 	"github.com/chihaya/chihaya"
-	"github.com/chihaya/chihaya/pkg/event"
 )
 
 // ErrKeyNotFound is returned when a provided key has no value associated with
@@ -24,8 +23,8 @@ var ErrKeyNotFound = errors.New("query: value for the provided key does not exis
 // Query represents a parsed URL.Query.
 type Query struct {
 	query      string
-	infohashes []string
 	params     map[string]string
+	infoHashes []chihaya.InfoHash
 }
 
 // New parses a raw URL query.
@@ -33,14 +32,12 @@ func New(query string) (*Query, error) {
 	var (
 		keyStart, keyEnd int
 		valStart, valEnd int
-		firstInfohash    string
 
-		onKey       = true
-		hasInfohash = false
+		onKey = true
 
 		q = &Query{
 			query:      query,
-			infohashes: nil,
+			infoHashes: nil,
 			params:     make(map[string]string),
 		}
 	)
@@ -73,19 +70,10 @@ func New(query string) (*Query, error) {
 				}
 			}
 
-			q.params[strings.ToLower(keyStr)] = valStr
-
 			if keyStr == "info_hash" {
-				if hasInfohash {
-					// Multiple infohashes
-					if q.infohashes == nil {
-						q.infohashes = []string{firstInfohash}
-					}
-					q.infohashes = append(q.infohashes, valStr)
-				} else {
-					firstInfohash = valStr
-					hasInfohash = true
-				}
+				q.infoHashes = append(q.infoHashes, chihaya.InfoHash(valStr))
+			} else {
+				q.params[strings.ToLower(keyStr)] = valStr
 			}
 
 			valEnd = 0
@@ -104,18 +92,6 @@ func New(query string) (*Query, error) {
 	}
 
 	return q, nil
-}
-
-// Infohashes returns a list of requested infohashes.
-func (q *Query) Infohashes() ([]string, error) {
-	if q.infohashes == nil {
-		infohash, err := q.String("info_hash")
-		if err != nil {
-			return nil, err
-		}
-		return []string{infohash}, nil
-	}
-	return q.infohashes, nil
 }
 
 // String returns a string parsed from a query. Every key can be returned as a
@@ -144,91 +120,7 @@ func (q *Query) Uint64(key string) (uint64, error) {
 	return val, nil
 }
 
-// AnnounceRequest generates an chihaya.AnnounceRequest with the parameters
-// provided by a query.
-func (q *Query) AnnounceRequest() (chihaya.AnnounceRequest, error) {
-	request := make(chihaya.AnnounceRequest)
-
-	request["query"] = q.query
-
-	eventStr, err := q.String("event")
-	if err != nil {
-		return nil, errors.New("failed to parse parameter: event")
-	}
-	request["event"], err = event.New(eventStr)
-	if err != nil {
-		return nil, errors.New("failed to provide valid client event")
-	}
-
-	compactStr, err := q.String("compact")
-	if err != nil {
-		return nil, errors.New("failed to parse parameter: compact")
-	}
-	request["compact"] = compactStr != "0"
-
-	request["info_hash"], err = q.String("info_hash")
-	if err != nil {
-		return nil, errors.New("failed to parse parameter: info_hash")
-	}
-
-	request["peer_id"], err = q.String("peer_id")
-	if err != nil {
-		return nil, errors.New("failed to parse parameter: peer_id")
-	}
-
-	request["left"], err = q.Uint64("left")
-	if err != nil {
-		return nil, errors.New("failed to parse parameter: left")
-	}
-
-	request["downloaded"], err = q.Uint64("downloaded")
-	if err != nil {
-		return nil, errors.New("failed to parse parameter: downloaded")
-	}
-
-	request["uploaded"], err = q.Uint64("uploaded")
-	if err != nil {
-		return nil, errors.New("failed to parse parameter: uploaded")
-	}
-
-	request["numwant"], err = q.String("numwant")
-	if err != nil {
-		return nil, errors.New("failed to parse parameter: numwant")
-	}
-
-	request["port"], err = q.Uint64("port")
-	if err != nil {
-		return nil, errors.New("failed to parse parameter: port")
-	}
-
-	request["ip"], err = q.String("ip")
-	if err != nil {
-		return nil, errors.New("failed to parse parameter: ip")
-	}
-
-	request["ipv4"], err = q.String("ipv4")
-	if err != nil {
-		return nil, errors.New("failed to parse parameter: ipv4")
-	}
-
-	request["ipv6"], err = q.String("ipv6")
-	if err != nil {
-		return nil, errors.New("failed to parse parameter: ipv6")
-	}
-
-	return request, nil
-}
-
-// ScrapeRequest generates an chihaya.ScrapeRequeset with the parameters
-// provided by a query.
-func (q *Query) ScrapeRequest() (chihaya.ScrapeRequest, error) {
-	request := make(chihaya.ScrapeRequest)
-
-	var err error
-	request["info_hash"], err = q.Infohashes()
-	if err != nil {
-		return nil, errors.New("failed to parse parameter: info_hash")
-	}
-
-	return request, nil
+// InfoHashes returns a list of requested infohashes.
+func (q *Query) InfoHashes() []chihaya.InfoHash {
+	return q.infoHashes
 }
