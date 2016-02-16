@@ -48,6 +48,8 @@ type Config struct {
 	ClientStoreConfig interface{}   `yaml:"clienStoreConfig"`
 	PeerStore         string        `yaml:"peerStore"`
 	PeerStoreConfig   interface{}   `yaml:"peerStoreConfig"`
+	IPStore           string        `yaml:"ipStore"`
+	IPStoreConfig     interface{}   `yaml:"ipStoreConfig"`
 }
 
 func newConfig(srvcfg interface{}) (*Config, error) {
@@ -84,6 +86,7 @@ type Store struct {
 
 	PeerStore
 	ClientStore
+	IPStore
 }
 
 func (s *Store) Start() {
