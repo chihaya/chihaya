@@ -21,6 +21,7 @@ servers:
       readTimeout: 10s
       writeTimeout: 10s
       clientStore: memory
+      ipStore: memory
       peerStore: memory
       peerStoreConfig:
         gcAfter: 30m
