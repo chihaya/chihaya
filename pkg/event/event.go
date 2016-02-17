@@ -44,6 +44,8 @@ func init() {
 	eventToString[Stopped] = "stopped"
 	eventToString[Completed] = "completed"
 
+	stringToEvent[""] = None
+
 	for k, v := range eventToString {
 		stringToEvent[v] = k
 	}
