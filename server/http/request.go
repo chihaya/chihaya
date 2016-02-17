@@ -31,10 +31,7 @@ func announceRequest(r *http.Request, cfg *httpConfig) (*chihaya.AnnounceRequest
 		return nil, errors.NewBadRequest("failed to provide valid client event")
 	}
 
-	compactStr, err := q.String("compact")
-	if err != nil {
-		return nil, errors.NewBadRequest("failed to parse parameter: compact")
-	}
+	compactStr, _ := q.String("compact")
 	request.Compact = compactStr != "0"
 
 	infoHashes := q.InfoHashes()
@@ -67,16 +64,20 @@ func announceRequest(r *http.Request, cfg *httpConfig) (*chihaya.AnnounceRequest
 		return nil, errors.NewBadRequest("failed to parse parameter: uploaded")
 	}
 
-	request.NumWant, err = q.Uint64("numwant")
-	if err != nil {
-		return nil, errors.NewBadRequest("failed to parse parameter: numwant")
-	}
+	request.NumWant, _ = q.Uint64("numwant")
 
 	port, err := q.Uint64("port")
 	if err != nil {
 		return nil, errors.NewBadRequest("failed to parse parameter: port")
 	}
 	request.Port = uint16(port)
+
+	v4, v6, err := requestedIP(q, r, cfg)
+	if err != nil {
+		return nil, errors.NewBadRequest("failed to parse remote IP")
+	}
+	request.IPv4 = v4
+	request.IPv6 = v6
 
 	return request, nil
 }
@@ -87,8 +88,13 @@ func scrapeRequest(r *http.Request, cfg *httpConfig) (*chihaya.ScrapeRequest, er
 		return nil, err
 	}
 
+	infoHashes := q.InfoHashes()
+	if len(infoHashes) < 1 {
+		return nil, errors.NewBadRequest("no info_hash parameter supplied")
+	}
+
 	request := &chihaya.ScrapeRequest{
-		InfoHashes: q.InfoHashes(),
+		InfoHashes: infoHashes,
 		Params:     q,
 	}
 

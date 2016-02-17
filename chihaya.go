@@ -19,8 +19,9 @@ type AnnounceRequest struct {
 	Event    event.Event
 	InfoHash InfoHash
 	PeerID   PeerID
-	IP       string
-	Port     uint16
+
+	IPv4, IPv6 net.IP
+	Port       uint16
 
 	Compact bool
 	NumWant uint64
