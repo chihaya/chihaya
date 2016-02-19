@@ -41,8 +41,8 @@ func (s *clientStore) CreateClient(clientID string) error {
 
 func (s *clientStore) FindClient(peerID string) (bool, error) {
 	clientID := clientid.New(peerID)
-	s.Lock()
-	defer s.Unlock()
+	s.RLock()
+	defer s.RUnlock()
 
 	_, ok := s.clientIDs[clientID]
 

@@ -119,7 +119,7 @@ func (s *peerStore) DeleteSeeder(infoHash chihaya.InfoHash, p chihaya.Peer) erro
 	delete(shard.peers[key], peerKey(p))
 
 	if len(shard.peers[key]) == 0 {
-		shard.peers[key] = nil
+		delete(shard.peers, key)
 	}
 
 	return nil
@@ -158,7 +158,7 @@ func (s *peerStore) DeleteLeecher(infoHash chihaya.InfoHash, p chihaya.Peer) err
 	delete(shard.peers[key], peerKey(p))
 
 	if len(shard.peers[key]) == 0 {
-		shard.peers[key] = nil
+		delete(shard.peers, key)
 	}
 
 	return nil
@@ -205,6 +205,10 @@ func (s *peerStore) CollectGarbage(cutoff time.Time) error {
 				if p.LastAction.Before(cutoff) {
 					delete(shard.peers[key], peerKey)
 				}
+			}
+
+			if len(shard.peers[key] == 0) {
+				delete(shard.peers, key)
 			}
 
 			shard.Unlock()
