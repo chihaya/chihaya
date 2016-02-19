@@ -64,7 +64,8 @@ func announceRequest(r *http.Request, cfg *httpConfig) (*chihaya.AnnounceRequest
 		return nil, errors.NewBadRequest("failed to parse parameter: uploaded")
 	}
 
-	request.NumWant, _ = q.Uint64("numwant")
+	numwant, _ := q.Uint64("numwant")
+	request.NumWant = int32(numwant)
 
 	port, err := q.Uint64("port")
 	if err != nil {

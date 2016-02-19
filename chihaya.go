@@ -24,7 +24,7 @@ type AnnounceRequest struct {
 	Port       uint16
 
 	Compact bool
-	NumWant uint64
+	NumWant int32
 
 	Left, Downloaded, Uploaded uint64
 
