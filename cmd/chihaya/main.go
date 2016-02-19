@@ -15,6 +15,7 @@ import (
 	"github.com/chihaya/chihaya/server"
 	"github.com/chihaya/chihaya/tracker"
 
+	_ "github.com/chihaya/chihaya/server/store/middleware/ip"
 	_ "github.com/chihaya/chihaya/server/http"
 )
 
