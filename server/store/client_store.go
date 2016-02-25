@@ -36,13 +36,10 @@ func RegisterClientStoreDriver(name string, driver ClientStoreDriver) {
 }
 
 // OpenClientStore returns a ClientStore specified by a configuration.
-func OpenClientStore(name string, cfg *Config) (ClientStore, error) {
-	driver, ok := clientStoreDrivers[name]
+func OpenClientStore(cfg *Config) (ClientStore, error) {
+	driver, ok := clientStoreDrivers[cfg.ClientStore]
 	if !ok {
-		return nil, fmt.Errorf(
-			"store: unknown driver %q (forgotten import?)",
-			name,
-		)
+		return nil, fmt.Errorf("store: unknown driver %q (forgotten import?)", cfg.ClientStore)
 	}
 
 	return driver.New(cfg)

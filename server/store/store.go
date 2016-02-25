@@ -30,9 +30,27 @@ func constructor(srvcfg *config.ServerConfig, tkr *tracker.Tracker) (server.Serv
 			return nil, errors.New("store: invalid store config: " + err.Error())
 		}
 
+		cs, err := OpenClientStore(cfg)
+		if err != nil {
+			return nil, err
+		}
+
+		ps, err := OpenPeerStore(cfg)
+		if err != nil {
+			return nil, err
+		}
+
+		ips, err := OpenIPStore(cfg)
+		if err != nil {
+			return nil, err
+		}
+
 		theStore = &Store{
-			cfg: cfg,
-			tkr: tkr,
+			cfg:         cfg,
+			tkr:         tkr,
+			ClientStore: cs,
+			PeerStore:   ps,
+			IPStore:     ips,
 		}
 	}
 	return theStore, nil
@@ -48,6 +66,8 @@ type Config struct {
 	ClientStoreConfig interface{}   `yaml:"clienStoreConfig"`
 	PeerStore         string        `yaml:"peerStore"`
 	PeerStoreConfig   interface{}   `yaml:"peerStoreConfig"`
+	IPStore           string        `yaml:"ipStore"`
+	IPStoreConfig     interface{}   `yaml:"ipStoreConfig"`
 }
 
 func newConfig(srvcfg interface{}) (*Config, error) {
@@ -84,6 +104,7 @@ type Store struct {
 
 	PeerStore
 	ClientStore
+	IPStore
 }
 
 func (s *Store) Start() {

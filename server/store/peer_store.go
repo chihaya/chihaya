@@ -49,13 +49,10 @@ func RegisterPeerStoreDriver(name string, driver PeerStoreDriver) {
 }
 
 // OpenPeerStore returns a PeerStore specified by a configuration.
-func OpenPeerStore(name string, cfg *Config) (PeerStore, error) {
-	driver, ok := peerStoreDrivers[name]
+func OpenPeerStore(cfg *Config) (PeerStore, error) {
+	driver, ok := peerStoreDrivers[cfg.PeerStore]
 	if !ok {
-		return nil, fmt.Errorf(
-			"storage: unknown driver %q (forgotten import?)",
-			name,
-		)
+		return nil, fmt.Errorf("storage: unknown driver %q (forgotten import?)", cfg.PeerStore)
 	}
 
 	return driver.New(cfg)
