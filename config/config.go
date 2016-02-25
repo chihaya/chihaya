@@ -71,6 +71,10 @@ type TrackerConfig struct {
 	NumWantFallback       int      `json:"defaultNumWant"`
 	TorrentMapShards      int      `json:"torrentMapShards"`
 
+	JWKSetURI            string   `json:"jwkSetURI"`
+	JWKSetUpdateInterval Duration `json:"jwkSetUpdateInterval"`
+	JWTAudience          string   `json:"jwtAudience"`
+
 	NetConfig
 	WhitelistConfig
 }
@@ -119,6 +123,9 @@ var DefaultConfig = Config{
 		ReapRatio:             1.25,
 		NumWantFallback:       50,
 		TorrentMapShards:      1,
+		JWKSetURI:             "",
+		JWKSetUpdateInterval:  Duration{5 * time.Minute},
+		JWTAudience:           "",
 
 		NetConfig: NetConfig{
 			AllowIPSpoofing:  true,

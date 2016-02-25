@@ -107,14 +107,12 @@ func (s *Server) Serve() {
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
-		// Generate a new IV every hour.
-		t := time.NewTicker(time.Hour)
 		for {
 			select {
-			case <-t.C:
-				s.connIDGen.NewIV()
 			case <-s.closing:
 				return
+			case <-time.After(time.Hour):
+				s.connIDGen.NewIV()
 			}
 		}
 	}()

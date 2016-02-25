@@ -1,18 +1,36 @@
 {
 	"ImportPath": "github.com/chihaya/chihaya",
-	"GoVersion": "go1.4.2",
+	"GoVersion": "go1.5.1",
 	"Deps": [
 		{
 			"ImportPath": "github.com/chihaya/bencode",
 			"Rev": "3c485a8d166ff6a79baba90c2c2da01c8348e930"
 		},
 		{
+			"ImportPath": "github.com/coreos/go-oidc/http",
+			"Rev": "ec2746d2ccb220e81c41b0b0cb2d4a1cc23f7950"
+		},
+		{
+			"ImportPath": "github.com/coreos/go-oidc/jose",
+			"Rev": "ec2746d2ccb220e81c41b0b0cb2d4a1cc23f7950"
+		},
+		{
+			"ImportPath": "github.com/coreos/go-systemd/journal",
+			"Comment": "v4-36-gdd4f6b8",
+			"Rev": "dd4f6b87c2a80813d1a01790344322da19ff195e"
+		},
+		{
+			"ImportPath": "github.com/coreos/pkg/capnslog",
+			"Rev": "2c77715c4df99b5420ffcae14ead08f52104065d"
+		},
+		{
 			"ImportPath": "github.com/golang/glog",
-			"Rev": "44145f04b68cf362d9c4df2182967c2275eaefed"
+			"Rev": "fca8c8854093a154ff1eb580aae10276ad6b1b5f"
 		},
 		{
 			"ImportPath": "github.com/julienschmidt/httprouter",
-			"Rev": "8c199fb6259ffc1af525cc3ad52ee60ba8359669"
+			"Comment": "v1.1-14-g21439ef",
+			"Rev": "21439ef4d70ba4f3e2a5ed9249e7b03af4019b40"
 		},
 		{
 			"ImportPath": "github.com/pushrax/bufferpool",
@@ -28,12 +46,12 @@
 		},
 		{
 			"ImportPath": "github.com/tylerb/graceful",
-			"Comment": "v1-7-g0c01122",
-			"Rev": "0c011221e91b35f488b8818b00ca279929e9ed7d"
+			"Comment": "v1.2.3",
+			"Rev": "48afeb21e2fcbcff0f30bd5ad6b97747b0fae38e"
 		},
 		{
 			"ImportPath": "golang.org/x/net/netutil",
-			"Rev": "d175081df37eff8cda13f478bc11a0a65b39958b"
+			"Rev": "520af5de654dc4dd4f0f65aa40e66dbbd9043df1"
 		}
 	]
 }

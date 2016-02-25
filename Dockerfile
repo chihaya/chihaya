@@ -24,7 +24,10 @@ ADD udp        /go/src/github.com/chihaya/chihaya/udp
 # Install
 RUN go install github.com/chihaya/chihaya/cmd/chihaya
 
-# docker run -p 6881:6881 -v $PATH_TO_DIR_WITH_CONF_FILE:/config quay.io/jzelinskie/chihaya
+# Configuration/environment
 VOLUME ["/config"]
-EXPOSE 6881
-CMD ["chihaya", "-config=/config/config.json", "-logtostderr=true"]
+EXPOSE 6880-6882
+
+# docker run -p 6880-6882:6880-6882 -v $PATH_TO_DIR_WITH_CONF_FILE:/config:ro -e quay.io/jzelinskie/chihaya:latest -v=5
+ENTRYPOINT ["chihaya", "-config=/config/config.json", "-logtostderr=true"]
+CMD ["-v=5"]

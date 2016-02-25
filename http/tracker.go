@@ -38,6 +38,11 @@ func (s *Server) newAnnounce(r *http.Request, p httprouter.Params) (*models.Anno
 		return nil, models.ErrMalformedRequest
 	}
 
+	jwt, exists := q.Params["jwt"]
+	if s.config.JWKSetURI != "" && !exists {
+		return nil, models.ErrMalformedRequest
+	}
+
 	port, err := q.Uint64("port")
 	if err != nil {
 		return nil, models.ErrMalformedRequest
@@ -78,6 +83,7 @@ func (s *Server) newAnnounce(r *http.Request, p httprouter.Params) (*models.Anno
 		NumWant:    numWant,
 		PeerID:     peerID,
 		Uploaded:   uploaded,
+		JWT:        jwt,
 	}, nil
 }
 

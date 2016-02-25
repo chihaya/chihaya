@@ -10,15 +10,18 @@ programming language. It is still heavily under development and the current
 `master` branch should probably not be used in production
 (unless you know what you're doing).
 
-Features include:
+Current features include:
 
 - Public tracker feature-set with full compatibility with what exists of the BitTorrent spec
-- Private tracker feature-set with compatibility for a [Gazelle]-like deployment (WIP)
 - Low resource consumption, and fast, asynchronous request processing
 - Full IPv6 support, including handling for dual-stacked peers
 - Extensive metrics for visibility into the tracker and swarm's performance
 - Ability to prioritize peers in local subnets to reduce backbone contention
-- Pluggable backend driver that can coordinate with an external database
+- JWT Validation to approve the usage of a given infohash.
+
+Planned features include:
+
+- Private tracker feature-set with compatibility for a [Gazelle]-like deployment (WIP)
 
 [BitTorrent tracker]: http://en.wikipedia.org/wiki/BitTorrent_tracker
 [gazelle]: https://github.com/whatcd/gazelle
@@ -48,7 +51,8 @@ An explanation of the available keys can be found in [CONFIGURATION.md].
 
 ```sh
 $ docker pull quay.io/jzelinskie/chihaya:latest
-$ docker run -p 6881:6881 -v $DIR_WITH_CONFIG:/config:ro quay.io/jzelinskie/chihaya:latest
+$ export CHIHAYA_LOG_LEVEL=5 # most verbose, and the default
+$ docker run -p 6880-6882:6880-6882 -v $PATH_TO_DIR_WITH_CONF_FILE:/config:ro -e quay.io/jzelinskie/chihaya:latest -v=$CHIHAYA_LOG_LEVEL
 ```
 
 ## Developing Chihaya
