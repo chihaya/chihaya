@@ -1,0 +1,19 @@
+language: go
+
+go:
+  - 1.6
+  - tip
+
+sudo: false
+
+script: go test -v ./...
+
+notifications:
+  irc:
+    channels:
+      - irc.freenode.net#chihaya
+    use_notice: true
+    skip_join: true
+    on_success: always
+    on_failure: always
+  email: false
