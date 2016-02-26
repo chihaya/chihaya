@@ -4,35 +4,35 @@
 
 tracker:
   announce: 10m
-  minAnnounce: 5m
-  announceMiddleware:
+  min_announce: 5m
+  announce_middleware:
     - prometheus
-    - storeClientValidation
-    - storeCreateOnAnnounce
-  scrapeMiddleware:
+    - store_client_validation
+    - store_create_on_announce
+  scrape_middleware:
     - prometheus
-    - storeClientValidation
+    - store_client_validation
 
 servers:
   - name: store
     config:
       addr: localhost:6880
-      requestTimeout: 10s
-      readTimeout: 10s
-      writeTimeout: 10s
-      clientStore: memory
-      ipStore: memory
-      peerStore: memory
-      peerStoreConfig:
+      request_timeout: 10s
+      read_timeout: 10s
+      write_timeout: 10s
+      client_store: memory
+      ip_store: memory
+      peer_store: memory
+      peer_store_config:
         gcAfter: 30m
         shards: 1
 
   - name: http
     config:
       addr: localhost:6881
-      requestTimeout: 10s
-      readTimeout: 10s
-      writeTimeout: 10s
+      request_timeout: 10s
+      read_timeout: 10s
+      write_timeout: 10s
 
   - name: udp
     config:

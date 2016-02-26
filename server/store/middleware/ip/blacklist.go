@@ -15,7 +15,7 @@ import (
 )
 
 func init() {
-	tracker.RegisterAnnounceMiddleware("IPBlacklist", blacklistAnnounceIP)
+	tracker.RegisterAnnounceMiddleware("ip_blacklist", blacklistAnnounceIP)
 }
 
 // ErrBlockedIP is returned by an announce middleware if any of the announcing

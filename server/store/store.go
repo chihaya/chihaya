@@ -58,16 +58,16 @@ func constructor(srvcfg *config.ServerConfig, tkr *tracker.Tracker) (server.Serv
 
 type Config struct {
 	Addr              string        `yaml:"addr"`
-	RequestTimeout    time.Duration `yaml:"requestTimeout"`
-	ReadTimeout       time.Duration `yaml:"readTimeout"`
-	WriteTimeout      time.Duration `yaml:"writeTimeout"`
-	GCAfter           time.Duration `yaml:"gcAfter"`
-	ClientStore       string        `yaml:"clientStore"`
-	ClientStoreConfig interface{}   `yaml:"clienStoreConfig"`
-	PeerStore         string        `yaml:"peerStore"`
-	PeerStoreConfig   interface{}   `yaml:"peerStoreConfig"`
-	IPStore           string        `yaml:"ipStore"`
-	IPStoreConfig     interface{}   `yaml:"ipStoreConfig"`
+	RequestTimeout    time.Duration `yaml:"request_timeout"`
+	ReadTimeout       time.Duration `yaml:"read_timeout"`
+	WriteTimeout      time.Duration `yaml:"write_timeout"`
+	GCAfter           time.Duration `yaml:"gc_after"`
+	ClientStore       string        `yaml:"client_store"`
+	ClientStoreConfig interface{}   `yaml:"client_store_config"`
+	PeerStore         string        `yaml:"peer_store"`
+	PeerStoreConfig   interface{}   `yaml:"peer_store_config"`
+	IPStore           string        `yaml:"ip_store"`
+	IPStoreConfig     interface{}   `yaml:"ip_store_config"`
 }
 
 func newConfig(srvcfg interface{}) (*Config, error) {

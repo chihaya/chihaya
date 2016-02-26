@@ -35,9 +35,9 @@ type Config struct {
 // chihaya.
 type TrackerConfig struct {
 	AnnounceInterval    time.Duration `yaml:"announce"`
-	MinAnnounceInterval time.Duration `yaml:"minAnnounce"`
-	AnnounceMiddleware  []string      `yaml:"announceMiddleware"`
-	ScrapeMiddleware    []string      `yaml:"scrapeMiddleware"`
+	MinAnnounceInterval time.Duration `yaml:"min_announce"`
+	AnnounceMiddleware  []string      `yaml:"announce_middleware"`
+	ScrapeMiddleware    []string      `yaml:"scrape_middleware"`
 }
 
 // ServerConfig represents the configuration of the servers started by chihaya.
