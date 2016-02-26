@@ -11,6 +11,10 @@ import (
 	"github.com/chihaya/chihaya/config"
 )
 
+type ClientError string
+
+func (c ClientError) Error() string { return string(c) }
+
 // Tracker represents a protocol independent, middleware-composed BitTorrent
 // tracker.
 type Tracker struct {

@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/chihaya/chihaya/errors"
+	"github.com/chihaya/chihaya/tracker"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -22,17 +22,15 @@ func TestWriteError(t *testing.T) {
 
 	for _, tt := range table {
 		r := httptest.NewRecorder()
-		err := writeError(r, errors.NewMessage(tt.reason))
+		err := writeError(r, tracker.ClientError(tt.reason))
 		assert.Nil(t, err)
 		assert.Equal(t, r.Body.String(), tt.expected)
-		assert.Equal(t, r.Code, 200)
 	}
 }
 
 func TestWriteStatus(t *testing.T) {
 	r := httptest.NewRecorder()
-	err := writeError(r, errors.NewBadRequest("something is missing"))
+	err := writeError(r, tracker.ClientError("something is missing"))
 	assert.Nil(t, err)
 	assert.Equal(t, r.Body.String(), "d14:failure reason20:something is missinge")
-	assert.Equal(t, r.Code, 400)
 }
