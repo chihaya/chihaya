@@ -14,7 +14,7 @@ import (
 )
 
 func init() {
-	tracker.RegisterAnnounceMiddleware("IPWhitelist", whitelistAnnounceIP)
+	tracker.RegisterAnnounceMiddleware("ip_whitelist", whitelistAnnounceIP)
 }
 
 // whitelistAnnounceIP provides a middleware that only allows IPs to announce
