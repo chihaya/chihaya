@@ -9,7 +9,6 @@ import (
 
 	"github.com/chihaya/chihaya"
 	"github.com/chihaya/chihaya/config"
-	"github.com/chihaya/chihaya/errors"
 	"github.com/chihaya/chihaya/server/store"
 	"github.com/chihaya/chihaya/tracker"
 )
@@ -20,7 +19,7 @@ func init() {
 
 // ErrBlockedIP is returned by an announce middleware if any of the announcing
 // IPs is disallowed.
-var ErrBlockedIP = errors.NewMessage("disallowed IP address")
+var ErrBlockedIP = tracker.ClientError("disallowed IP address")
 
 // blacklistAnnounceIP provides a middleware that only allows IPs to announce
 // that are not stored in an IPStore.

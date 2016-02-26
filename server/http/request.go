@@ -9,9 +9,9 @@ import (
 	"net/http"
 
 	"github.com/chihaya/chihaya"
-	"github.com/chihaya/chihaya/errors"
 	"github.com/chihaya/chihaya/pkg/event"
 	"github.com/chihaya/chihaya/server/http/query"
+	"github.com/chihaya/chihaya/tracker"
 )
 
 func announceRequest(r *http.Request, cfg *httpConfig) (*chihaya.AnnounceRequest, error) {
@@ -24,11 +24,11 @@ func announceRequest(r *http.Request, cfg *httpConfig) (*chihaya.AnnounceRequest
 
 	eventStr, err := q.String("event")
 	if err != nil {
-		return nil, errors.NewBadRequest("failed to parse parameter: event")
+		return nil, tracker.ClientError("failed to parse parameter: event")
 	}
 	request.Event, err = event.New(eventStr)
 	if err != nil {
-		return nil, errors.NewBadRequest("failed to provide valid client event")
+		return nil, tracker.ClientError("failed to provide valid client event")
 	}
 
 	compactStr, _ := q.String("compact")
@@ -36,32 +36,32 @@ func announceRequest(r *http.Request, cfg *httpConfig) (*chihaya.AnnounceRequest
 
 	infoHashes := q.InfoHashes()
 	if len(infoHashes) < 1 {
-		return nil, errors.NewBadRequest("no info_hash parameter supplied")
+		return nil, tracker.ClientError("no info_hash parameter supplied")
 	}
 	if len(infoHashes) > 1 {
-		return nil, errors.NewBadRequest("multiple info_hash parameters supplied")
+		return nil, tracker.ClientError("multiple info_hash parameters supplied")
 	}
 	request.InfoHash = infoHashes[0]
 
 	peerID, err := q.String("peer_id")
 	if err != nil {
-		return nil, errors.NewBadRequest("failed to parse parameter: peer_id")
+		return nil, tracker.ClientError("failed to parse parameter: peer_id")
 	}
 	request.PeerID = chihaya.PeerID(peerID)
 
 	request.Left, err = q.Uint64("left")
 	if err != nil {
-		return nil, errors.NewBadRequest("failed to parse parameter: left")
+		return nil, tracker.ClientError("failed to parse parameter: left")
 	}
 
 	request.Downloaded, err = q.Uint64("downloaded")
 	if err != nil {
-		return nil, errors.NewBadRequest("failed to parse parameter: downloaded")
+		return nil, tracker.ClientError("failed to parse parameter: downloaded")
 	}
 
 	request.Uploaded, err = q.Uint64("uploaded")
 	if err != nil {
-		return nil, errors.NewBadRequest("failed to parse parameter: uploaded")
+		return nil, tracker.ClientError("failed to parse parameter: uploaded")
 	}
 
 	numwant, _ := q.Uint64("numwant")
@@ -69,13 +69,13 @@ func announceRequest(r *http.Request, cfg *httpConfig) (*chihaya.AnnounceRequest
 
 	port, err := q.Uint64("port")
 	if err != nil {
-		return nil, errors.NewBadRequest("failed to parse parameter: port")
+		return nil, tracker.ClientError("failed to parse parameter: port")
 	}
 	request.Port = uint16(port)
 
 	v4, v6, err := requestedIP(q, r, cfg)
 	if err != nil {
-		return nil, errors.NewBadRequest("failed to parse remote IP")
+		return nil, tracker.ClientError("failed to parse remote IP")
 	}
 	request.IPv4 = v4
 	request.IPv6 = v6
@@ -91,7 +91,7 @@ func scrapeRequest(r *http.Request, cfg *httpConfig) (*chihaya.ScrapeRequest, er
 
 	infoHashes := q.InfoHashes()
 	if len(infoHashes) < 1 {
-		return nil, errors.NewBadRequest("no info_hash parameter supplied")
+		return nil, tracker.ClientError("no info_hash parameter supplied")
 	}
 
 	request := &chihaya.ScrapeRequest{
@@ -146,7 +146,7 @@ func requestedIP(q *query.Query, r *http.Request, cfg *httpConfig) (v4, v6 net.I
 	}
 
 	if v4 == nil && v6 == nil {
-		err = errors.NewBadRequest("failed to parse IP address")
+		err = tracker.ClientError("failed to parse IP address")
 	}
 
 	return

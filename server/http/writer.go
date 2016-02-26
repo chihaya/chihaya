@@ -8,22 +8,17 @@ import (
 	"net/http"
 
 	"github.com/chihaya/chihaya"
-	"github.com/chihaya/chihaya/errors"
 	"github.com/chihaya/chihaya/pkg/bencode"
+	"github.com/chihaya/chihaya/tracker"
 )
 
 func writeError(w http.ResponseWriter, err error) error {
 	message := "internal server error"
-	chihayaErr, ok := err.(*errors.Error)
-
-	if ok {
-		w.WriteHeader(chihayaErr.Status())
-
-		if chihayaErr.Public() {
-			message = err.Error()
-		}
+	if _, clientErr := err.(tracker.ClientError); clientErr {
+		message = err.Error()
 	}
 
+	w.WriteHeader(http.StatusOK)
 	return bencode.NewEncoder(w).Encode(bencode.Dict{
 		"failure reason": message,
 	})
