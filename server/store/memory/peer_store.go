@@ -207,7 +207,7 @@ func (s *peerStore) CollectGarbage(cutoff time.Time) error {
 				}
 			}
 
-			if len(shard.peers[key] == 0) {
+			if len(shard.peers[key]) == 0 {
 				delete(shard.peers, key)
 			}
 
