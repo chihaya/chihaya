@@ -12,12 +12,12 @@ import (
 
 type httpConfig struct {
 	Addr             string        `yaml:"addr"`
-	RequestTimeout   time.Duration `yaml:"requestTimeout"`
-	ReadTimeout      time.Duration `yaml:"readTimeout"`
-	WriteTimeout     time.Duration `yaml:"writeTimeout"`
-	AllowIPSpoofing  bool          `yaml:"allowIPSpoofing"`
-	DualStackedPeers bool          `yaml:"dualStackedPeers"`
-	RealIPHeader     string        `yaml:"realIPHeader"`
+	RequestTimeout   time.Duration `yaml:"request_timeout"`
+	ReadTimeout      time.Duration `yaml:"read_timeout"`
+	WriteTimeout     time.Duration `yaml:"write_timeout"`
+	AllowIPSpoofing  bool          `yaml:"allow_ip_spoofing"`
+	DualStackedPeers bool          `yaml:"dual_stacked_peers"`
+	RealIPHeader     string        `yaml:"real_ip_header"`
 }
 
 func newHTTPConfig(srvcfg interface{}) (*httpConfig, error) {
