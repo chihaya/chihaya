@@ -1,17 +1,17 @@
 ## IP Blacklisting/Whitelisting Middlewares
 
-This package provides the announce middlewares `IPBlacklist` and `IPWhitelist` for blacklisting or whitelisting IP addresses and networks for announces.
+This package provides the announce middlewares `ip_blacklist` and `ip_whitelist` for blacklisting or whitelisting IP addresses and networks for announces.
 
-### `IPBlacklist`
+### `ip_blacklist`
 
-The `IPBlacklist` middleware uses all IP addresses and networks stored in the `IPStore` to blacklist, i.e. block announces.
+The `ip_blacklist` middleware uses all IP addresses and networks stored in the `IPStore` to blacklist, i.e. block announces.
 
 Both the IPv4 and the IPv6 addresses contained in the announce are matched against the `IPStore`.
 If one or both of the two are contained in the `IPStore`, the announce will be rejected _completely_.
 
-### `IPWhitelist`
+### `ip_whitelist`
 
-The `IPWhitelist` middleware uses all IP addresses and networks stored in the `IPStore` to whitelist, i.e. allow announces.
+The `ip_whitelist` middleware uses all IP addresses and networks stored in the `IPStore` to whitelist, i.e. allow announces.
 
 If present, both the IPv4 and the IPv6 addresses contained in the announce are matched against the `IPStore`.
 Only if all IP address that are present in the announce are also present in the `IPStore` will the announce be allowed, otherwise it will be rejected _completely_.
@@ -26,7 +26,7 @@ _This middleware does not (dis)allow announces coming from certain IP addresses,
 Always keep that in mind.
 
 Both middlewares use the same `IPStore`.
-It is therefore not advised to have both the `IPBlacklist` and the `IPWhitelist` middleware running.
+It is therefore not advised to have both the `ip_blacklist` and the `ip_whitelist` middleware running.
 (If you add an IP address or network to the `IPStore`, it will be used for blacklisting and whitelisting.
 If your store contains no addresses, no announces will be blocked by the blacklist, but all announces will be blocked by the whitelist.
 If your store contains all addresses, no announces will be blocked by the whitelist, but all announces will be blocked by the blacklist.)
