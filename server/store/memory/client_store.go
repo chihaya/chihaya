@@ -7,6 +7,7 @@ package memory
 import (
 	"sync"
 
+	"github.com/chihaya/chihaya"
 	"github.com/chihaya/chihaya/pkg/clientid"
 	"github.com/chihaya/chihaya/server/store"
 )
@@ -39,8 +40,8 @@ func (s *clientStore) CreateClient(clientID string) error {
 	return nil
 }
 
-func (s *clientStore) FindClient(peerID string) (bool, error) {
-	clientID := clientid.New(peerID)
+func (s *clientStore) FindClient(peerID chihaya.PeerID) (bool, error) {
+	clientID := clientid.New(string(peerID))
 	s.RLock()
 	defer s.RUnlock()
 

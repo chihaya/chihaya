@@ -4,14 +4,17 @@
 
 package store
 
-import "fmt"
+import (
+	"fmt"
+	"github.com/chihaya/chihaya"
+)
 
 var clientStoreDrivers = make(map[string]ClientStoreDriver)
 
 // ClientStore represents an interface for manipulating clientIDs.
 type ClientStore interface {
 	CreateClient(clientID string) error
-	FindClient(peerID string) (bool, error)
+	FindClient(peerID chihaya.PeerID) (bool, error)
 	DeleteClient(clientID string) error
 }
 
