@@ -48,6 +48,7 @@ func constructor(srvcfg *config.ServerConfig, tkr *tracker.Tracker) (server.Serv
 		theStore = &Store{
 			cfg:         cfg,
 			tkr:         tkr,
+			shutdown:    make(chan struct{}),
 			ClientStore: cs,
 			PeerStore:   ps,
 			IPStore:     ips,
