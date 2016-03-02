@@ -7,6 +7,7 @@ package http
 import (
 	"time"
 
+	"github.com/chihaya/chihaya/config"
 	"gopkg.in/yaml.v2"
 )
 
@@ -20,8 +21,8 @@ type httpConfig struct {
 	RealIPHeader     string        `yaml:"real_ip_header"`
 }
 
-func newHTTPConfig(srvcfg interface{}) (*httpConfig, error) {
-	bytes, err := yaml.Marshal(srvcfg)
+func newHTTPConfig(srvcfg *config.ServerConfig) (*httpConfig, error) {
+	bytes, err := yaml.Marshal(srvcfg.Config)
 	if err != nil {
 		return nil, err
 	}

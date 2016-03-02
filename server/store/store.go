@@ -70,8 +70,8 @@ type Config struct {
 	IPStoreConfig     interface{}   `yaml:"ip_store_config"`
 }
 
-func newConfig(srvcfg interface{}) (*Config, error) {
-	bytes, err := yaml.Marshal(srvcfg)
+func newConfig(srvcfg *config.ServerConfig) (*Config, error) {
+	bytes, err := yaml.Marshal(srvcfg.Config)
 	if err != nil {
 		return nil, err
 	}
