@@ -79,6 +79,8 @@ func (s *httpServer) Start() {
 			return
 		}
 	}
+
+	log.Println("HTTP server shut down cleanly")
 }
 
 func (s *httpServer) Stop() {

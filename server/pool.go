@@ -20,8 +20,7 @@ type Pool struct {
 // StartPool creates a new pool of servers specified by the provided config and
 // runs them.
 func StartPool(cfgs []config.ServerConfig, tkr *tracker.Tracker) (*Pool, error) {
-	var servers []Server
-	var wg sync.WaitGroup
+	var toReturn Pool
 
 	for _, cfg := range cfgs {
 		srv, err := New(&cfg, tkr)
@@ -29,19 +28,16 @@ func StartPool(cfgs []config.ServerConfig, tkr *tracker.Tracker) (*Pool, error) 
 			return nil, err
 		}
 
-		wg.Add(1)
+		toReturn.wg.Add(1)
 		go func(srv Server) {
-			defer wg.Done()
+			defer toReturn.wg.Done()
 			srv.Start()
 		}(srv)
 
-		servers = append(servers, srv)
+		toReturn.servers = append(toReturn.servers, srv)
 	}
 
-	return &Pool{
-		servers: servers,
-		wg:      wg,
-	}, nil
+	return &toReturn, nil
 }
 
 // Stop safely shuts down a pool of servers.
