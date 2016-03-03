@@ -7,10 +7,12 @@ chihaya:
     announce: 10m
     min_announce: 5m
     announce_middleware:
+      # These are currently fake values
       - prometheus
       - store_client_validation
       - store_create_on_announce
     scrape_middleware:
+      # These are currently fake values
       - prometheus
       - store_client_validation
 
@@ -28,13 +30,20 @@ chihaya:
           gcAfter: 30m
           shards: 1
 
-    - name: http
+    - name: prometheus
       config:
         addr: localhost:6881
+        shutdown_timeout: 10s
+        read_timeout: 10s
+        write_timeout: 10s
+
+    - name: http
+      config:
+        addr: localhost:6882
         request_timeout: 10s
         read_timeout: 10s
         write_timeout: 10s
 
     - name: udp
       config:
-        addr: localhost:6882
+        addr: localhost:6883

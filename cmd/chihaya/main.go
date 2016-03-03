@@ -16,6 +16,7 @@ import (
 	"github.com/chihaya/chihaya/tracker"
 
 	_ "github.com/chihaya/chihaya/server/http"
+	_ "github.com/chihaya/chihaya/server/prometheus"
 	_ "github.com/chihaya/chihaya/server/store"
 	_ "github.com/chihaya/chihaya/server/store/memory"
 	_ "github.com/chihaya/chihaya/server/store/middleware/client"
