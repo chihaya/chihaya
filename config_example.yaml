@@ -25,6 +25,7 @@ chihaya:
         write_timeout: 10s
         client_store: memory
         ip_store: memory
+        string_store: memory
         peer_store: memory
         peer_store_config:
           gcAfter: 30m

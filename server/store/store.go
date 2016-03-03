@@ -45,6 +45,11 @@ func constructor(srvcfg *chihaya.ServerConfig, tkr *tracker.Tracker) (server.Ser
 			return nil, err
 		}
 
+		ss, err := OpenStringStore(cfg)
+		if err != nil {
+			return nil, err
+		}
+
 		theStore = &Store{
 			cfg:         cfg,
 			tkr:         tkr,
@@ -52,6 +57,7 @@ func constructor(srvcfg *chihaya.ServerConfig, tkr *tracker.Tracker) (server.Ser
 			ClientStore: cs,
 			PeerStore:   ps,
 			IPStore:     ips,
+			StringStore: ss,
 		}
 	}
 	return theStore, nil
@@ -69,6 +75,8 @@ type Config struct {
 	PeerStoreConfig   interface{}   `yaml:"peer_store_config"`
 	IPStore           string        `yaml:"ip_store"`
 	IPStoreConfig     interface{}   `yaml:"ip_store_config"`
+	StringStore       string        `yaml:"string_store"`
+	StringStoreConfig interface{}   `yaml:"string_store_config"`
 }
 
 func newConfig(srvcfg *chihaya.ServerConfig) (*Config, error) {
@@ -106,6 +114,7 @@ type Store struct {
 	PeerStore
 	ClientStore
 	IPStore
+	StringStore
 }
 
 func (s *Store) Start() {
