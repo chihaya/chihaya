@@ -11,7 +11,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/chihaya/chihaya/config"
+	"github.com/chihaya/chihaya"
 	"github.com/chihaya/chihaya/server"
 	"github.com/chihaya/chihaya/tracker"
 
@@ -31,7 +31,7 @@ func init() {
 func main() {
 	flag.Parse()
 
-	cfg, err := config.Open(configPath)
+	cfg, err := chihaya.OpenConfigFile(configPath)
 	if err != nil {
 		log.Fatal("failed to load config: " + err.Error())
 	}

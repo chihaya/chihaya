@@ -2,8 +2,7 @@
 // Use of this source code is governed by the BSD 2-Clause license,
 // which can be found in the LICENSE file.
 
-// Package config implements the opening and parsing of a chihaya configuration.
-package config
+package chihaya
 
 import (
 	"io"
@@ -31,8 +30,8 @@ type Config struct {
 	Servers []ServerConfig `yaml:"servers"`
 }
 
-// TrackerConfig represents the configuration of the BitTorrent tracker used by
-// chihaya.
+// TrackerConfig represents the configuration of protocol-agnostic BitTorrent
+// Tracker used by Servers started by chihaya.
 type TrackerConfig struct {
 	AnnounceInterval    time.Duration `yaml:"announce"`
 	MinAnnounceInterval time.Duration `yaml:"min_announce"`
@@ -40,15 +39,39 @@ type TrackerConfig struct {
 	ScrapeMiddleware    []string      `yaml:"scrape_middleware"`
 }
 
-// ServerConfig represents the configuration of the servers started by chihaya.
+// ServerConfig represents the configuration of the Servers started by chihaya.
 type ServerConfig struct {
 	Name   string      `yaml:"name"`
 	Config interface{} `yaml:"config"`
 }
 
-// Open is a shortcut to open a file, read it, and allocates a new Config.
-// It supports relative and absolute paths. Given "", it returns DefaultConfig.
-func Open(path string) (*Config, error) {
+// ConfigFile represents a YAML configuration file that namespaces all chihaya
+// configuration under the "chihaya" namespace.
+type ConfigFile struct {
+	Chihaya Config `yaml:"chihaya"`
+}
+
+// DecodeConfigFile unmarshals an io.Reader into a new Config.
+func DecodeConfigFile(r io.Reader) (*Config, error) {
+	contents, err := ioutil.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+
+	cfgFile := &ConfigFile{}
+	err = yaml.Unmarshal(contents, cfgFile)
+	if err != nil {
+		return nil, err
+	}
+
+	return &cfgFile.Chihaya, nil
+}
+
+// OpenConfigFile returns a new Config given the path to a YAML configuration
+// file.
+// It supports relative and absolute paths and environment variables.
+// Given "", it returns DefaultConfig.
+func OpenConfigFile(path string) (*Config, error) {
 	if path == "" {
 		return &DefaultConfig, nil
 	}
@@ -59,23 +82,7 @@ func Open(path string) (*Config, error) {
 	}
 	defer f.Close()
 
-	cfg, err := Decode(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return cfg, nil
-}
-
-// Decode unmarshals an io.Reader into a newly allocated *Config.
-func Decode(r io.Reader) (*Config, error) {
-	contents, err := ioutil.ReadAll(r)
-	if err != nil {
-		return nil, err
-	}
-
-	cfg := &Config{}
-	err = yaml.Unmarshal(contents, cfg)
+	cfg, err := DecodeConfigFile(f)
 	if err != nil {
 		return nil, err
 	}

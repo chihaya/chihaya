@@ -13,7 +13,7 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/tylerb/graceful"
 
-	"github.com/chihaya/chihaya/config"
+	"github.com/chihaya/chihaya"
 	"github.com/chihaya/chihaya/server"
 	"github.com/chihaya/chihaya/tracker"
 )
@@ -22,7 +22,7 @@ func init() {
 	server.Register("http", constructor)
 }
 
-func constructor(srvcfg *config.ServerConfig, tkr *tracker.Tracker) (server.Server, error) {
+func constructor(srvcfg *chihaya.ServerConfig, tkr *tracker.Tracker) (server.Server, error) {
 	cfg, err := newHTTPConfig(srvcfg)
 	if err != nil {
 		return nil, errors.New("http: invalid config: " + err.Error())

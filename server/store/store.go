@@ -12,7 +12,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/chihaya/chihaya/config"
+	"github.com/chihaya/chihaya"
 	"github.com/chihaya/chihaya/server"
 	"github.com/chihaya/chihaya/tracker"
 )
@@ -23,7 +23,7 @@ func init() {
 	server.Register("store", constructor)
 }
 
-func constructor(srvcfg *config.ServerConfig, tkr *tracker.Tracker) (server.Server, error) {
+func constructor(srvcfg *chihaya.ServerConfig, tkr *tracker.Tracker) (server.Server, error) {
 	if theStore == nil {
 		cfg, err := newConfig(srvcfg)
 		if err != nil {
@@ -71,7 +71,7 @@ type Config struct {
 	IPStoreConfig     interface{}   `yaml:"ip_store_config"`
 }
 
-func newConfig(srvcfg *config.ServerConfig) (*Config, error) {
+func newConfig(srvcfg *chihaya.ServerConfig) (*Config, error) {
 	bytes, err := yaml.Marshal(srvcfg.Config)
 	if err != nil {
 		return nil, err

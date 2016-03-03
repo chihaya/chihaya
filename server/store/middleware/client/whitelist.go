@@ -6,7 +6,6 @@ package ip
 
 import (
 	"github.com/chihaya/chihaya"
-	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/server/store"
 	"github.com/chihaya/chihaya/tracker"
 )
@@ -18,7 +17,7 @@ func init() {
 // whitelistAnnounceClient provides a middleware that only allows Clients to
 // announce that are stored in a ClientStore.
 func whitelistAnnounceClient(next tracker.AnnounceHandler) tracker.AnnounceHandler {
-	return func(cfg *config.TrackerConfig, req *chihaya.AnnounceRequest, resp *chihaya.AnnounceResponse) error {
+	return func(cfg *chihaya.TrackerConfig, req *chihaya.AnnounceRequest, resp *chihaya.AnnounceResponse) error {
 		whitelisted, err := store.MustGetStore().FindClient(req.PeerID)
 
 		if err != nil {

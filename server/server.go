@@ -12,14 +12,14 @@ package server
 import (
 	"fmt"
 
-	"github.com/chihaya/chihaya/config"
+	"github.com/chihaya/chihaya"
 	"github.com/chihaya/chihaya/tracker"
 )
 
 var constructors = make(map[string]Constructor)
 
 // Constructor is a function that creates a new Server.
-type Constructor func(*config.ServerConfig, *tracker.Tracker) (Server, error)
+type Constructor func(*chihaya.ServerConfig, *tracker.Tracker) (Server, error)
 
 // Register makes a Constructor available by the provided name.
 //
@@ -36,7 +36,7 @@ func Register(name string, con Constructor) {
 }
 
 // New creates a Server specified by a configuration.
-func New(cfg *config.ServerConfig, tkr *tracker.Tracker) (Server, error) {
+func New(cfg *chihaya.ServerConfig, tkr *tracker.Tracker) (Server, error) {
 	con, ok := constructors[cfg.Name]
 	if !ok {
 		return nil, fmt.Errorf(

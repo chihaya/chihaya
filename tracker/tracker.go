@@ -1,31 +1,35 @@
 // Copyright 2016 The Chihaya Authors. All rights reserved.
 // Use of this source code is governed by the BSD 2-Clause license,
-// which can be found in the LICENSE file.package middleware
+// which can be found in the LICENSE file.
 
+// Package tracker implements a protocol-independent, middleware-composed
+// BitTorrent tracker.
 package tracker
 
 import (
 	"errors"
 
 	"github.com/chihaya/chihaya"
-	"github.com/chihaya/chihaya/config"
 )
 
+// ClientError represents an error that should be exposed to the client over
+// the BitTorrent protocol implementation.
 type ClientError string
 
+// Error implements the error interface for ClientError.
 func (c ClientError) Error() string { return string(c) }
 
-// Tracker represents a protocol independent, middleware-composed BitTorrent
+// Tracker represents a protocol-independent, middleware-composed BitTorrent
 // tracker.
 type Tracker struct {
-	cfg            *config.TrackerConfig
+	cfg            *chihaya.TrackerConfig
 	handleAnnounce AnnounceHandler
 	handleScrape   ScrapeHandler
 }
 
-// NewTracker parses a config and generates a Tracker composed by the middleware
-// specified in the config.
-func NewTracker(cfg *config.TrackerConfig) (*Tracker, error) {
+// NewTracker constructs a newly allocated Tracker composed of the middleware
+// in the provided configuration.
+func NewTracker(cfg *chihaya.TrackerConfig) (*Tracker, error) {
 	var achain announceChain
 	for _, mwName := range cfg.AnnounceMiddleware {
 		mw, ok := announceMiddleware[mwName]
@@ -51,7 +55,7 @@ func NewTracker(cfg *config.TrackerConfig) (*Tracker, error) {
 	}, nil
 }
 
-// HandleAnnounce runs an AnnounceRequest through a Tracker's middleware and
+// HandleAnnounce runs an AnnounceRequest through the Tracker's middleware and
 // returns the result.
 func (t *Tracker) HandleAnnounce(req *chihaya.AnnounceRequest) (*chihaya.AnnounceResponse, error) {
 	resp := &chihaya.AnnounceResponse{}
@@ -59,8 +63,8 @@ func (t *Tracker) HandleAnnounce(req *chihaya.AnnounceRequest) (*chihaya.Announc
 	return resp, err
 }
 
-// HandleScrape runs a ScrapeRequest through a Tracker's middleware and returns
-// the result.
+// HandleScrape runs a ScrapeRequest through the Tracker's middleware and
+// returns the result.
 func (t *Tracker) HandleScrape(req *chihaya.ScrapeRequest) (*chihaya.ScrapeResponse, error) {
 	resp := &chihaya.ScrapeResponse{}
 	err := t.handleScrape(t.cfg, req, resp)

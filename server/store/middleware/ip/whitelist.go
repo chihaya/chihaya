@@ -8,7 +8,6 @@ import (
 	"net"
 
 	"github.com/chihaya/chihaya"
-	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/server/store"
 	"github.com/chihaya/chihaya/tracker"
 )
@@ -20,7 +19,7 @@ func init() {
 // whitelistAnnounceIP provides a middleware that only allows IPs to announce
 // that are stored in an IPStore.
 func whitelistAnnounceIP(next tracker.AnnounceHandler) tracker.AnnounceHandler {
-	return func(cfg *config.TrackerConfig, req *chihaya.AnnounceRequest, resp *chihaya.AnnounceResponse) (err error) {
+	return func(cfg *chihaya.TrackerConfig, req *chihaya.AnnounceRequest, resp *chihaya.AnnounceResponse) (err error) {
 		whitelisted := false
 		storage := store.MustGetStore()
 

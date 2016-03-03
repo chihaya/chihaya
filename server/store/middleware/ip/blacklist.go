@@ -8,7 +8,6 @@ import (
 	"net"
 
 	"github.com/chihaya/chihaya"
-	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/server/store"
 	"github.com/chihaya/chihaya/tracker"
 )
@@ -24,7 +23,7 @@ var ErrBlockedIP = tracker.ClientError("disallowed IP address")
 // blacklistAnnounceIP provides a middleware that only allows IPs to announce
 // that are not stored in an IPStore.
 func blacklistAnnounceIP(next tracker.AnnounceHandler) tracker.AnnounceHandler {
-	return func(cfg *config.TrackerConfig, req *chihaya.AnnounceRequest, resp *chihaya.AnnounceResponse) (err error) {
+	return func(cfg *chihaya.TrackerConfig, req *chihaya.AnnounceRequest, resp *chihaya.AnnounceResponse) (err error) {
 		blacklisted := false
 		storage := store.MustGetStore()
 

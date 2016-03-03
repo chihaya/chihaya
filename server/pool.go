@@ -7,7 +7,7 @@ package server
 import (
 	"sync"
 
-	"github.com/chihaya/chihaya/config"
+	"github.com/chihaya/chihaya"
 	"github.com/chihaya/chihaya/tracker"
 )
 
@@ -17,9 +17,9 @@ type Pool struct {
 	wg      sync.WaitGroup
 }
 
-// StartPool creates a new pool of servers specified by the provided config and
-// runs them.
-func StartPool(cfgs []config.ServerConfig, tkr *tracker.Tracker) (*Pool, error) {
+// StartPool creates a new pool of servers specified by the provided
+// configuration and runs them.
+func StartPool(cfgs []chihaya.ServerConfig, tkr *tracker.Tracker) (*Pool, error) {
 	var toReturn Pool
 
 	for _, cfg := range cfgs {

@@ -6,7 +6,6 @@ package ip
 
 import (
 	"github.com/chihaya/chihaya"
-	"github.com/chihaya/chihaya/config"
 	"github.com/chihaya/chihaya/server/store"
 	"github.com/chihaya/chihaya/tracker"
 )
@@ -22,7 +21,7 @@ var ErrBlockedClient = tracker.ClientError("disallowed client")
 // blacklistAnnounceClient provides a middleware that only allows Clients to
 // announce that are not stored in a ClientStore.
 func blacklistAnnounceClient(next tracker.AnnounceHandler) tracker.AnnounceHandler {
-	return func(cfg *config.TrackerConfig, req *chihaya.AnnounceRequest, resp *chihaya.AnnounceResponse) error {
+	return func(cfg *chihaya.TrackerConfig, req *chihaya.AnnounceRequest, resp *chihaya.AnnounceResponse) error {
 		blacklisted, err := store.MustGetStore().FindClient(req.PeerID)
 
 		if err != nil {
