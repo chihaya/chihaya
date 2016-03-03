@@ -6,7 +6,13 @@ go:
 
 sudo: false
 
-script: go test -v ./...
+install:
+  - go get github.com/axw/gocov/gocov
+  - go get github.com/mattn/goveralls
+  - go get -t ./...
+
+script:
+  - $HOME/gopath/bin/goveralls -service=travis-ci ./...
 
 notifications:
   irc:
