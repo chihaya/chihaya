@@ -18,8 +18,8 @@ var DefaultConfig = Config{
 	Tracker: TrackerConfig{
 		AnnounceInterval:    30 * time.Minute,
 		MinAnnounceInterval: 20 * time.Minute,
-		AnnounceMiddleware:  []string{},
-		ScrapeMiddleware:    []string{},
+		AnnounceMiddleware:  []MiddlewareConfig{},
+		ScrapeMiddleware:    []MiddlewareConfig{},
 	},
 	Servers: []ServerConfig{},
 }
@@ -33,10 +33,17 @@ type Config struct {
 // TrackerConfig represents the configuration of protocol-agnostic BitTorrent
 // Tracker used by Servers started by chihaya.
 type TrackerConfig struct {
-	AnnounceInterval    time.Duration `yaml:"announce"`
-	MinAnnounceInterval time.Duration `yaml:"min_announce"`
-	AnnounceMiddleware  []string      `yaml:"announce_middleware"`
-	ScrapeMiddleware    []string      `yaml:"scrape_middleware"`
+	AnnounceInterval    time.Duration      `yaml:"announce"`
+	MinAnnounceInterval time.Duration      `yaml:"min_announce"`
+	AnnounceMiddleware  []MiddlewareConfig `yaml:"announce_middleware"`
+	ScrapeMiddleware    []MiddlewareConfig `yaml:"scrape_middleware"`
+}
+
+// MiddlewareConfig represents the configuration of a middleware used by
+// the tracker.
+type MiddlewareConfig struct {
+	Name   string      `yaml:"name"`
+	Config interface{} `yaml:"config"`
 }
 
 // ServerConfig represents the configuration of the Servers started by chihaya.

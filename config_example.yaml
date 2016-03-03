@@ -8,13 +8,15 @@ chihaya:
     min_announce: 5m
     announce_middleware:
       # These are currently fake values
-      - prometheus
-      - store_client_validation
-      - store_create_on_announce
+      - name: prometheus
+      - name: store_client_validation
+        config:
+          be_clever: true
+      - name: store_create_on_announce
     scrape_middleware:
       # These are currently fake values
-      - prometheus
-      - store_client_validation
+      - name: prometheus
+      - name: store_client_validation
 
   servers:
     - name: store
