@@ -63,9 +63,8 @@ func NewServerConfig(srvcfg *chihaya.ServerConfig) (*ServerConfig, error) {
 
 // Server implements a chihaya Server for serving metrics to Prometheus.
 type Server struct {
-	cfg     *ServerConfig
-	grace   *graceful.Server
-	stopped bool
+	cfg   *ServerConfig
+	grace *graceful.Server
 }
 
 var _ server.Server = &Server{}
@@ -85,9 +84,4 @@ func (s *Server) Start() {
 
 func (s *Server) Stop() {
 	s.grace.Stop(s.cfg.ShutdownTimeout)
-	stopChan := s.grace.StopChan()
-
-	// Block until the graceful server shuts down and closes this channel.
-	for range stopChan {
-	}
 }
