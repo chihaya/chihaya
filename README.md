@@ -11,25 +11,36 @@ Chihaya is an open source [BitTorrent tracker] written in [Go].
 
 Differentiating features include:
 
-- Extensible, middleware-oriented request flow that is customized in a [YAML] configuration file
-- Low resource consumption, and fast, asynchronous request processing
-- Unified IPv4 and IPv6 support
+- Protocol-agnostic and middleware-composed logic
+- Low resource consumption and fast, asynchronous request processing
+- Unified IPv4 and IPv6 [swarms]
+- [YAML] configuration
+- Optional metrics via [Prometheus]
 
 [BitTorrent tracker]: http://en.wikipedia.org/wiki/BitTorrent_tracker
 [Go]: https://golang.org
+[swarms]: https://en.wikipedia.org/wiki/Glossary_of_BitTorrent_terms#Swarm
 [YAML]: http://yaml.org
+[Prometheus]: http://prometheus.io
 
 ## Getting Started
 
-TODO(jzelinskie): I should fill this section in
+In order to compile the project, the latest stable version of Go and a working Go environment are required.
+
+```sh
+$ go get github.com/chihaya/chihaya
+$ go install github.com/chihaya/chihaya/cmd/chihaya
+```
 
 ## Development
 
 Long-term discussion and bug reports are maintained via [GitHub Issues].
 Code review is done via [GitHub Pull Requests].
+Real-time discussion is done via [freenode IRC].
 
 [GitHub Issues]: https://github.com/chihaya/chihaya/issues
 [GitHub Pull Requests]: https://github.com/chihaya/chihaya/pulls
+[freenode IRC]: http://webchat.freenode.net/?channels=chihaya
 
 ## Related projects
 
