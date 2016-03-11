@@ -21,7 +21,7 @@ type StringStore interface {
 // StringStoreDriver represents an interface for creating a handle to the
 // storage of swarms.
 type StringStoreDriver interface {
-	New(*Config) (StringStore, error)
+	New(*DriverConfig) (StringStore, error)
 }
 
 // RegisterStringStoreDriver makes a driver available by the provided name.
@@ -39,10 +39,10 @@ func RegisterStringStoreDriver(name string, driver StringStoreDriver) {
 }
 
 // OpenStringStore returns a StringStore specified by a configuration.
-func OpenStringStore(cfg *Config) (StringStore, error) {
-	driver, ok := stringStoreDrivers[cfg.StringStore]
+func OpenStringStore(cfg *DriverConfig) (StringStore, error) {
+	driver, ok := stringStoreDrivers[cfg.Name]
 	if !ok {
-		return nil, fmt.Errorf("store: unknown driver %q (forgotten import?)", cfg.StringStore)
+		return nil, fmt.Errorf("store: unknown StringStoreDriver %q (forgotten import?)", cfg)
 	}
 
 	return driver.New(cfg)

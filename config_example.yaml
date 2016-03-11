@@ -23,13 +23,17 @@ chihaya:
         request_timeout: 10s
         read_timeout: 10s
         write_timeout: 10s
-        client_store: memory
-        ip_store: memory
-        string_store: memory
-        peer_store: memory
-        peer_store_config:
-          gcAfter: 30m
-          shards: 1
+        client_store:
+          name: memory
+        ip_store:
+          name: memory
+        string_store:
+          name: memory
+        peer_store:
+          name: memory
+          config:
+            gcAfter: 30m
+            shards: 1
 
     - name: prometheus
       config:

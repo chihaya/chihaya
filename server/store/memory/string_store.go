@@ -16,7 +16,7 @@ func init() {
 
 type stringStoreDriver struct{}
 
-func (d *stringStoreDriver) New(cfg *store.Config) (store.StringStore, error) {
+func (d *stringStoreDriver) New(_ *store.DriverConfig) (store.StringStore, error) {
 	return &stringStore{
 		strings: make(map[string]struct{}),
 	}, nil

@@ -17,7 +17,7 @@ var (
 )
 
 func TestStringStore(t *testing.T) {
-	ss, err := driver.New(&store.Config{})
+	ss, err := driver.New(&store.DriverConfig{})
 	assert.Nil(t, err)
 	assert.NotNil(t, ss)
 

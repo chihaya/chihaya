@@ -18,7 +18,7 @@ func init() {
 
 type clientStoreDriver struct{}
 
-func (d *clientStoreDriver) New(cfg *store.Config) (store.ClientStore, error) {
+func (d *clientStoreDriver) New(_ *store.DriverConfig) (store.ClientStore, error) {
 	return &clientStore{
 		clientIDs: make(map[string]struct{}),
 	}, nil
