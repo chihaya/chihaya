@@ -22,7 +22,7 @@ func init() {
 
 type peerStoreDriver struct{}
 
-func (d *peerStoreDriver) New(storecfg *store.Config) (store.PeerStore, error) {
+func (d *peerStoreDriver) New(storecfg *store.DriverConfig) (store.PeerStore, error) {
 	cfg, err := newPeerStoreConfig(storecfg)
 	if err != nil {
 		return nil, err
@@ -37,8 +37,8 @@ type peerStoreConfig struct {
 	Shards int `yaml:"shards"`
 }
 
-func newPeerStoreConfig(storecfg *store.Config) (*peerStoreConfig, error) {
-	bytes, err := yaml.Marshal(storecfg.PeerStoreConfig)
+func newPeerStoreConfig(storecfg *store.DriverConfig) (*peerStoreConfig, error) {
+	bytes, err := yaml.Marshal(storecfg.Config)
 	if err != nil {
 		return nil, err
 	}

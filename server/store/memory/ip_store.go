@@ -19,7 +19,7 @@ func init() {
 
 type ipStoreDriver struct{}
 
-func (d *ipStoreDriver) New(cfg *store.Config) (store.IPStore, error) {
+func (d *ipStoreDriver) New(_ *store.DriverConfig) (store.IPStore, error) {
 	return &ipStore{
 		ips:      make(map[[16]byte]struct{}),
 		networks: netmatch.New(),

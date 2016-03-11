@@ -51,7 +51,7 @@ type IPStore interface {
 // IPStoreDriver represents an interface for creating a handle to the
 // storage of IPs.
 type IPStoreDriver interface {
-	New(*Config) (IPStore, error)
+	New(*DriverConfig) (IPStore, error)
 }
 
 // RegisterIPStoreDriver makes a driver available by the provided name.
@@ -69,10 +69,10 @@ func RegisterIPStoreDriver(name string, driver IPStoreDriver) {
 }
 
 // OpenIPStore returns an IPStore specified by a configuration.
-func OpenIPStore(cfg *Config) (IPStore, error) {
-	driver, ok := ipStoreDrivers[cfg.IPStore]
+func OpenIPStore(cfg *DriverConfig) (IPStore, error) {
+	driver, ok := ipStoreDrivers[cfg.Name]
 	if !ok {
-		return nil, fmt.Errorf("store: unknown driver %q (forgotten import?)", cfg.IPStore)
+		return nil, fmt.Errorf("store: unknown driver %q (forgotten import?)", cfg)
 	}
 
 	return driver.New(cfg)

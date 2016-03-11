@@ -21,7 +21,7 @@ type ClientStore interface {
 // ClientStoreDriver represents an interface for creating a handle to the
 // storage of swarms.
 type ClientStoreDriver interface {
-	New(*Config) (ClientStore, error)
+	New(*DriverConfig) (ClientStore, error)
 }
 
 // RegisterClientStoreDriver makes a driver available by the provided name.
@@ -39,10 +39,10 @@ func RegisterClientStoreDriver(name string, driver ClientStoreDriver) {
 }
 
 // OpenClientStore returns a ClientStore specified by a configuration.
-func OpenClientStore(cfg *Config) (ClientStore, error) {
-	driver, ok := clientStoreDrivers[cfg.ClientStore]
+func OpenClientStore(cfg *DriverConfig) (ClientStore, error) {
+	driver, ok := clientStoreDrivers[cfg.Name]
 	if !ok {
-		return nil, fmt.Errorf("store: unknown driver %q (forgotten import?)", cfg.ClientStore)
+		return nil, fmt.Errorf("store: unknown driver %q (forgotten import?)", cfg)
 	}
 
 	return driver.New(cfg)

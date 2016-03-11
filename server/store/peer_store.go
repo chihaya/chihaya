@@ -29,7 +29,7 @@ type PeerStore interface {
 // PeerStoreDriver represents an interface for creating a handle to the storage
 // of peers.
 type PeerStoreDriver interface {
-	New(*Config) (PeerStore, error)
+	New(*DriverConfig) (PeerStore, error)
 }
 
 // RegisterPeerStoreDriver makes a driver available by the provided name.
@@ -49,10 +49,10 @@ func RegisterPeerStoreDriver(name string, driver PeerStoreDriver) {
 }
 
 // OpenPeerStore returns a PeerStore specified by a configuration.
-func OpenPeerStore(cfg *Config) (PeerStore, error) {
-	driver, ok := peerStoreDrivers[cfg.PeerStore]
+func OpenPeerStore(cfg *DriverConfig) (PeerStore, error) {
+	driver, ok := peerStoreDrivers[cfg.Name]
 	if !ok {
-		return nil, fmt.Errorf("storage: unknown driver %q (forgotten import?)", cfg.PeerStore)
+		return nil, fmt.Errorf("storage: unknown driver %q (forgotten import?)", cfg)
 	}
 
 	return driver.New(cfg)

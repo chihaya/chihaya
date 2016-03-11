@@ -30,22 +30,22 @@ func constructor(srvcfg *chihaya.ServerConfig, tkr *tracker.Tracker) (server.Ser
 			return nil, errors.New("store: invalid store config: " + err.Error())
 		}
 
-		cs, err := OpenClientStore(cfg)
+		cs, err := OpenClientStore(&cfg.ClientStore)
 		if err != nil {
 			return nil, err
 		}
 
-		ps, err := OpenPeerStore(cfg)
+		ps, err := OpenPeerStore(&cfg.PeerStore)
 		if err != nil {
 			return nil, err
 		}
 
-		ips, err := OpenIPStore(cfg)
+		ips, err := OpenIPStore(&cfg.IPStore)
 		if err != nil {
 			return nil, err
 		}
 
-		ss, err := OpenStringStore(cfg)
+		ss, err := OpenStringStore(&cfg.StringStore)
 		if err != nil {
 			return nil, err
 		}
@@ -64,19 +64,20 @@ func constructor(srvcfg *chihaya.ServerConfig, tkr *tracker.Tracker) (server.Ser
 }
 
 type Config struct {
-	Addr              string        `yaml:"addr"`
-	RequestTimeout    time.Duration `yaml:"request_timeout"`
-	ReadTimeout       time.Duration `yaml:"read_timeout"`
-	WriteTimeout      time.Duration `yaml:"write_timeout"`
-	GCAfter           time.Duration `yaml:"gc_after"`
-	ClientStore       string        `yaml:"client_store"`
-	ClientStoreConfig interface{}   `yaml:"client_store_config"`
-	PeerStore         string        `yaml:"peer_store"`
-	PeerStoreConfig   interface{}   `yaml:"peer_store_config"`
-	IPStore           string        `yaml:"ip_store"`
-	IPStoreConfig     interface{}   `yaml:"ip_store_config"`
-	StringStore       string        `yaml:"string_store"`
-	StringStoreConfig interface{}   `yaml:"string_store_config"`
+	Addr           string        `yaml:"addr"`
+	RequestTimeout time.Duration `yaml:"request_timeout"`
+	ReadTimeout    time.Duration `yaml:"read_timeout"`
+	WriteTimeout   time.Duration `yaml:"write_timeout"`
+	GCAfter        time.Duration `yaml:"gc_after"`
+	ClientStore    DriverConfig  `yaml:"client_store"`
+	PeerStore      DriverConfig  `yaml:"peer_store"`
+	IPStore        DriverConfig  `yaml:"ip_store"`
+	StringStore    DriverConfig  `yaml:"string_store"`
+}
+
+type DriverConfig struct {
+	Name   string      `yaml:"name"`
+	Config interface{} `yaml:"config"`
 }
 
 func newConfig(srvcfg *chihaya.ServerConfig) (*Config, error) {

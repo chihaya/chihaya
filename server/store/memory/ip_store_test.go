@@ -37,7 +37,7 @@ func TestKey(t *testing.T) {
 func TestIPStore(t *testing.T) {
 	var d = &ipStoreDriver{}
 
-	s, err := d.New(&store.Config{})
+	s, err := d.New(&store.DriverConfig{})
 	assert.Nil(t, err)
 	assert.NotNil(t, s)
 
@@ -91,7 +91,7 @@ func TestIPStore(t *testing.T) {
 
 func TestHasAllHasAny(t *testing.T) {
 	var d = &ipStoreDriver{}
-	s, err := d.New(&store.Config{})
+	s, err := d.New(&store.DriverConfig{})
 	assert.Nil(t, err)
 	assert.NotNil(t, s)
 
@@ -143,7 +143,7 @@ func TestNetworks(t *testing.T) {
 		excludedIP = net.ParseIP("192.168.23.22")
 	)
 
-	s, err := d.New(&store.Config{})
+	s, err := d.New(&store.DriverConfig{})
 	assert.Nil(t, err)
 
 	match, err := s.HasIP(includedIP)
@@ -195,7 +195,7 @@ func TestHasAllHasAnyNetworks(t *testing.T) {
 		inNet2   = net.ParseIP("192.168.23.123")
 		excluded = net.ParseIP("10.154.243.22")
 	)
-	s, err := d.New(&store.Config{})
+	s, err := d.New(&store.DriverConfig{})
 	assert.Nil(t, err)
 
 	match, err := s.HasAnyIP([]net.IP{inNet1, inNet2, excluded})
