@@ -39,10 +39,7 @@ func Register(name string, con Constructor) {
 func New(cfg *chihaya.ServerConfig, tkr *tracker.Tracker) (Server, error) {
 	con, ok := constructors[cfg.Name]
 	if !ok {
-		return nil, fmt.Errorf(
-			"server: unknown Constructor %q (forgotten import?)",
-			cfg.Name,
-		)
+		return nil, fmt.Errorf("server: unknown Constructor %q (forgotten import?)", cfg.Name)
 	}
 	return con(cfg, tkr)
 }

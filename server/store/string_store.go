@@ -42,7 +42,7 @@ func RegisterStringStoreDriver(name string, driver StringStoreDriver) {
 func OpenStringStore(cfg *DriverConfig) (StringStore, error) {
 	driver, ok := stringStoreDrivers[cfg.Name]
 	if !ok {
-		return nil, fmt.Errorf("store: unknown driver %q (forgotten import?)", cfg)
+		return nil, fmt.Errorf("store: unknown StringStoreDriver %q (forgotten import?)", cfg)
 	}
 
 	return driver.New(cfg)

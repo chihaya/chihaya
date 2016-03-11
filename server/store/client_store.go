@@ -42,7 +42,7 @@ func RegisterClientStoreDriver(name string, driver ClientStoreDriver) {
 func OpenClientStore(cfg *DriverConfig) (ClientStore, error) {
 	driver, ok := clientStoreDrivers[cfg.Name]
 	if !ok {
-		return nil, fmt.Errorf("store: unknown driver %q (forgotten import?)", cfg)
+		return nil, fmt.Errorf("store: unknown ClientStoreDriver %q (forgotten import?)", cfg)
 	}
 
 	return driver.New(cfg)

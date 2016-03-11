@@ -60,10 +60,10 @@ type IPStoreDriver interface {
 // it panics.
 func RegisterIPStoreDriver(name string, driver IPStoreDriver) {
 	if driver == nil {
-		panic("store: could not register nil ClientStoreDriver")
+		panic("store: could not register nil IPStoreDriver")
 	}
 	if _, dup := ipStoreDrivers[name]; dup {
-		panic("store: could not register duplicate ClientStoreDriver: " + name)
+		panic("store: could not register duplicate IPStoreDriver: " + name)
 	}
 	ipStoreDrivers[name] = driver
 }
@@ -72,7 +72,7 @@ func RegisterIPStoreDriver(name string, driver IPStoreDriver) {
 func OpenIPStore(cfg *DriverConfig) (IPStore, error) {
 	driver, ok := ipStoreDrivers[cfg.Name]
 	if !ok {
-		return nil, fmt.Errorf("store: unknown driver %q (forgotten import?)", cfg)
+		return nil, fmt.Errorf("store: unknown IPStoreDriver %q (forgotten import?)", cfg)
 	}
 
 	return driver.New(cfg)
