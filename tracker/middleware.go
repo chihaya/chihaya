@@ -14,6 +14,10 @@ type AnnounceHandler func(*chihaya.TrackerConfig, *chihaya.AnnounceRequest, *chi
 // of AnnounceHandlers.
 type AnnounceMiddleware func(AnnounceHandler) AnnounceHandler
 
+// AnnounceMiddlewareConstructor is a function that creates a new
+// AnnounceMiddleware from a MiddlewareConfig.
+type AnnounceMiddlewareConstructor func(chihaya.MiddlewareConfig) AnnounceMiddleware
+
 type announceChain struct{ mw []AnnounceMiddleware }
 
 func (c *announceChain) Append(mw ...AnnounceMiddleware) {
@@ -31,23 +35,39 @@ func (c *announceChain) Handler() AnnounceHandler {
 	return final
 }
 
-var announceMiddleware = make(map[string]AnnounceMiddleware)
+var announceMiddlewareConstructors = make(map[string]AnnounceMiddlewareConstructor)
+
+// RegisterAnnounceMiddlewareConstructor makes a configurable middleware
+// globally available under the provided name.
+//
+// If this function is called twice with the same name or if the constructor is
+// nil, it panics.
+func RegisterAnnounceMiddlewareConstructor(name string, mw AnnounceMiddlewareConstructor) {
+	if mw == nil {
+		panic("tracker: could not register nil AnnounceMiddlewareConstructor")
+	}
+
+	if _, dup := announceMiddlewareConstructors[name]; dup {
+		panic("tracker: could not register duplicate AnnounceMiddleware: " + name)
+	}
+
+	announceMiddlewareConstructors[name] = mw
+}
 
 // RegisterAnnounceMiddleware makes a middleware globally available under the
-// provided named.
+// provided name.
 //
-// If this function is called twice with the same name or if the handler is nil,
-// it panics.
+// This function is intended to register middleware that has no configuration.
+// If this function is called twice with the same name or if the middleware is
+// nil, it panics.
 func RegisterAnnounceMiddleware(name string, mw AnnounceMiddleware) {
 	if mw == nil {
 		panic("tracker: could not register nil AnnounceMiddleware")
 	}
 
-	if _, dup := announceMiddleware[name]; dup {
-		panic("tracker: could not register duplicate AnnounceMiddleware: " + name)
-	}
-
-	announceMiddleware[name] = mw
+	RegisterAnnounceMiddlewareConstructor(name, func(_ chihaya.MiddlewareConfig) AnnounceMiddleware {
+		return mw
+	})
 }
 
 // ScrapeHandler is a function that operates on a ScrapeResponse before it has
@@ -57,6 +77,10 @@ type ScrapeHandler func(*chihaya.TrackerConfig, *chihaya.ScrapeRequest, *chihaya
 // ScrapeMiddleware is higher-order function used to implement the chaining of
 // ScrapeHandlers.
 type ScrapeMiddleware func(ScrapeHandler) ScrapeHandler
+
+// ScrapeMiddlewareConstructor is a function that creates a new
+// ScrapeMiddleware from a MiddlewareConfig.
+type ScrapeMiddlewareConstructor func(chihaya.MiddlewareConfig) ScrapeMiddleware
 
 type scrapeChain struct{ mw []ScrapeMiddleware }
 
@@ -74,21 +98,37 @@ func (c *scrapeChain) Handler() ScrapeHandler {
 	return final
 }
 
-var scrapeMiddleware = make(map[string]ScrapeMiddleware)
+var scrapeMiddlewareConstructors = make(map[string]ScrapeMiddlewareConstructor)
+
+// RegisterScrapeMiddlewareConstructor makes a configurable middleware globally
+// available under the provided name.
+//
+// If this function is called twice with the same name or if the constructor is
+// nil, it panics.
+func RegisterScrapeMiddlewareConstructor(name string, mw ScrapeMiddlewareConstructor) {
+	if mw == nil {
+		panic("tracker: could not register nil ScrapeMiddlewareConstructor")
+	}
+
+	if _, dup := scrapeMiddlewareConstructors[name]; dup {
+		panic("tracker: could not register duplicate ScrapeMiddleware: " + name)
+	}
+
+	scrapeMiddlewareConstructors[name] = mw
+}
 
 // RegisterScrapeMiddleware makes a middleware globally available under the
-// provided named.
+// provided name.
 //
-// If this function is called twice with the same name or if the handler is nil,
-// it panics.
+// This function is intended to register middleware that has no configuration.
+// If this function is called twice with the same name or if the middleware is
+// nil, it panics.
 func RegisterScrapeMiddleware(name string, mw ScrapeMiddleware) {
 	if mw == nil {
 		panic("tracker: could not register nil ScrapeMiddleware")
 	}
 
-	if _, dup := scrapeMiddleware[name]; dup {
-		panic("tracker: could not register duplicate ScrapeMiddleware: " + name)
-	}
-
-	scrapeMiddleware[name] = mw
+	RegisterScrapeMiddlewareConstructor(name, func(_ chihaya.MiddlewareConfig) ScrapeMiddleware {
+		return mw
+	})
 }

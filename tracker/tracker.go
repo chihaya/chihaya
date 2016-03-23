@@ -31,21 +31,21 @@ type Tracker struct {
 // in the provided configuration.
 func NewTracker(cfg *chihaya.TrackerConfig) (*Tracker, error) {
 	var achain announceChain
-	for _, mwName := range cfg.AnnounceMiddleware {
-		mw, ok := announceMiddleware[mwName]
+	for _, mwConfig := range cfg.AnnounceMiddleware {
+		mw, ok := announceMiddlewareConstructors[mwConfig.Name]
 		if !ok {
-			return nil, errors.New("failed to find announce middleware: " + mwName)
+			return nil, errors.New("failed to find announce middleware: " + mwConfig.Name)
 		}
-		achain.Append(mw)
+		achain.Append(mw(mwConfig))
 	}
 
 	var schain scrapeChain
-	for _, mwName := range cfg.ScrapeMiddleware {
-		mw, ok := scrapeMiddleware[mwName]
+	for _, mwConfig := range cfg.ScrapeMiddleware {
+		mw, ok := scrapeMiddlewareConstructors[mwConfig.Name]
 		if !ok {
-			return nil, errors.New("failed to find scrape middleware: " + mwName)
+			return nil, errors.New("failed to find scrape middleware: " + mwConfig.Name)
 		}
-		schain.Append(mw)
+		schain.Append(mw(mwConfig))
 	}
 
 	return &Tracker{
