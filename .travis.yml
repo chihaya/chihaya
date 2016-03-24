@@ -7,12 +7,17 @@ go:
 sudo: false
 
 install:
+  - go get github.com/onsi/ginkgo/ginkgo
   - go get github.com/axw/gocov/gocov
   - go get github.com/mattn/goveralls
+  - go get golang.org/x/tools/cmd/cover
+  - go get github.com/modocache/gover
   - go get -t ./...
 
 script:
-  - $HOME/gopath/bin/goveralls -service=travis-ci ./...
+  - ginkgo -r -cover -coverpkg=./... --trace --race
+  - gover ...
+  - goveralls -coverprofile=gover.coverprofile -service=travis-ci
 
 notifications:
   irc:
