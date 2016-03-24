@@ -16,7 +16,7 @@ type AnnounceMiddleware func(AnnounceHandler) AnnounceHandler
 
 // AnnounceMiddlewareConstructor is a function that creates a new
 // AnnounceMiddleware from a MiddlewareConfig.
-type AnnounceMiddlewareConstructor func(chihaya.MiddlewareConfig) AnnounceMiddleware
+type AnnounceMiddlewareConstructor func(chihaya.MiddlewareConfig) (AnnounceMiddleware, error)
 
 type announceChain struct{ mw []AnnounceMiddleware }
 
@@ -65,8 +65,8 @@ func RegisterAnnounceMiddleware(name string, mw AnnounceMiddleware) {
 		panic("tracker: could not register nil AnnounceMiddleware")
 	}
 
-	RegisterAnnounceMiddlewareConstructor(name, func(_ chihaya.MiddlewareConfig) AnnounceMiddleware {
-		return mw
+	RegisterAnnounceMiddlewareConstructor(name, func(_ chihaya.MiddlewareConfig) (AnnounceMiddleware, error) {
+		return mw, nil
 	})
 }
 
@@ -80,7 +80,7 @@ type ScrapeMiddleware func(ScrapeHandler) ScrapeHandler
 
 // ScrapeMiddlewareConstructor is a function that creates a new
 // ScrapeMiddleware from a MiddlewareConfig.
-type ScrapeMiddlewareConstructor func(chihaya.MiddlewareConfig) ScrapeMiddleware
+type ScrapeMiddlewareConstructor func(chihaya.MiddlewareConfig) (ScrapeMiddleware, error)
 
 type scrapeChain struct{ mw []ScrapeMiddleware }
 
@@ -128,7 +128,7 @@ func RegisterScrapeMiddleware(name string, mw ScrapeMiddleware) {
 		panic("tracker: could not register nil ScrapeMiddleware")
 	}
 
-	RegisterScrapeMiddlewareConstructor(name, func(_ chihaya.MiddlewareConfig) ScrapeMiddleware {
-		return mw
+	RegisterScrapeMiddlewareConstructor(name, func(_ chihaya.MiddlewareConfig) (ScrapeMiddleware, error) {
+		return mw, nil
 	})
 }
