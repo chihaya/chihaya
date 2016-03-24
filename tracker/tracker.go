@@ -9,6 +9,7 @@ package tracker
 import (
 	"errors"
 
+	"fmt"
 	"github.com/chihaya/chihaya"
 )
 
@@ -36,7 +37,11 @@ func NewTracker(cfg *chihaya.TrackerConfig) (*Tracker, error) {
 		if !ok {
 			return nil, errors.New("failed to find announce middleware: " + mwConfig.Name)
 		}
-		achain.Append(mw(mwConfig))
+		middleware, err := mw(mwConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load announce middleware %q: %s", mwConfig.Name, err.Error())
+		}
+		achain.Append(middleware)
 	}
 
 	var schain scrapeChain
@@ -45,7 +50,11 @@ func NewTracker(cfg *chihaya.TrackerConfig) (*Tracker, error) {
 		if !ok {
 			return nil, errors.New("failed to find scrape middleware: " + mwConfig.Name)
 		}
-		schain.Append(mw(mwConfig))
+		middleware, err := mw(mwConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load scrape middleware %q: %s", mwConfig.Name, err.Error())
+		}
+		schain.Append(middleware)
 	}
 
 	return &Tracker{
