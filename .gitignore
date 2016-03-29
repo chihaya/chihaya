@@ -1,3 +1,4 @@
 /config.json
 /chihaya
-/Godeps/_workspace
+/vendor/*
+!/vendor/.keep

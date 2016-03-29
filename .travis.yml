@@ -7,11 +7,11 @@ go:
 sudo: false
 
 before_install:
-  - go get github.com/tools/godep
-  - godep restore
+  - go get github.com/Masterminds/glide
+  - glide install 
 
 script:
-  - go test -v ./...
+  - go test -v $(go list ./... | grep -v /vendor/)
 
 notifications:
   irc:
