@@ -1,0 +1,33 @@
+package: ""
+import:
+- package: github.com/chihaya/bencode
+  version: 3c485a8d166ff6a79baba90c2c2da01c8348e930
+- package: github.com/coreos/go-oidc
+  version: ec2746d2ccb220e81c41b0b0cb2d4a1cc23f7950
+  subpackages:
+  - http
+  - jose
+- package: github.com/coreos/go-systemd
+  version: dd4f6b87c2a80813d1a01790344322da19ff195e
+  subpackages:
+  - journal
+- package: github.com/coreos/pkg
+  version: 2c77715c4df99b5420ffcae14ead08f52104065d
+  subpackages:
+  - capnslog
+- package: github.com/golang/glog
+  version: fca8c8854093a154ff1eb580aae10276ad6b1b5f
+- package: github.com/julienschmidt/httprouter
+  version: 21439ef4d70ba4f3e2a5ed9249e7b03af4019b40
+- package: github.com/pushrax/bufferpool
+  version: 7d6e1653dee10a165d1f357f3a57bc8031e9621b
+- package: github.com/pushrax/faststats
+  version: 0fc2c5e41a187240ffaa09320eea7df9f8071388
+- package: github.com/pushrax/flatjson
+  version: 86044f1c998d49053e13293029414ddb63f3a422
+- package: github.com/tylerb/graceful
+  version: 48afeb21e2fcbcff0f30bd5ad6b97747b0fae38e
+- package: golang.org/x/net
+  version: 520af5de654dc4dd4f0f65aa40e66dbbd9043df1
+  subpackages:
+  - netutil

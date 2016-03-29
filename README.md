@@ -59,16 +59,16 @@ $ docker run -p 6880-6882:6880-6882 -v $PATH_TO_DIR_WITH_CONF_FILE:/config:ro -e
 
 ### Building & Installing
 
-Chihaya requires Go 1.5+ (preferrably the latest stable Go), [Godep], and a [Go environment] previously set up.
+Chihaya requires Go 1.5+ (preferrably the latest stable Go), [Glide], and a [Go environment] previously set up.
 
-[Godep]: https://github.com/tools/godep
+[Glide]: https://github.com/Masterminds/glide
 [Go environment]: https://golang.org/doc/code.html
 
 ```sh
 $ export GOPATH=$PWD/chihaya
 $ git clone https://github.com/chihaya/chihaya.git chihaya/src/github.com/chihaya/chihaya
 $ cd chihaya/src/github.com/chihaya/chihaya/cmd/chihaya/
-$ godep restore
+$ glide up
 $ go install github.com/chihaya/chihaya/cmd/chihaya
 ```
 
@@ -79,7 +79,7 @@ To run the tests, use:
 
 ```sh
 $ cd $GOPATH/src/github.com/chihaya/chihaya
-$ godep go test -v ./...
+$ go test -v $(go list ./... | grep -v /vendor/) 
 ```
 
 There is also a set of benchmarks for performance-critical sections of Chihaya.
@@ -87,8 +87,10 @@ These can be run similarly:
 
 ```sh
 $ cd $GOPATH/src/github.com/chihaya/chihaya
-$ godep go test -v ./... -bench .
+$ go test -v $(go list ./... | grep -v /vendor/) -bench .
 ```
+
+Note: the grep command line is a work around for a curent [issue](https://github.com/golang/go/issues/11659)
 
 ### Contributing
 
