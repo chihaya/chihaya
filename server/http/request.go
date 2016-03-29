@@ -24,7 +24,7 @@ func announceRequest(r *http.Request, cfg *httpConfig) (*chihaya.AnnounceRequest
 
 	eventStr, err := q.String("event")
 	if err != nil {
-		return nil, tracker.ClientError("failed to parse parameter: event")
+		eventStr = "none"
 	}
 	request.Event, err = event.New(eventStr)
 	if err != nil {
