@@ -68,7 +68,7 @@ Chihaya requires Go 1.5+ (preferrably the latest stable Go), [Glide], and a [Go 
 $ export GOPATH=$PWD/chihaya
 $ git clone https://github.com/chihaya/chihaya.git chihaya/src/github.com/chihaya/chihaya
 $ cd chihaya/src/github.com/chihaya/chihaya/cmd/chihaya/
-$ glide up
+$ glide install
 $ go install github.com/chihaya/chihaya/cmd/chihaya
 ```
 
