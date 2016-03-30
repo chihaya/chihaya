@@ -23,6 +23,24 @@ Differentiating features include:
 [YAML]: http://yaml.org
 [Prometheus]: http://prometheus.io
 
+## Production Use
+
+### Facebook
+
+[Facebook] uses BitTorrent in order to speed up large deployments.
+In order to optimize the flow of traffic within their datacenters, Chihaya is configured to prefer peers within the same subnet.
+This keeps the vast majority of traffic within the same rack and more importantly off the backbone between datacenters.
+
+[Facebook]: https://facebook.com
+
+### CoreOS
+
+[Quay] is a container registry that offers the ability to download containers via BitTorrent in order to speed up large deployments or deployments geographically far away.
+Announce URLs from Quay's torrent files contain a [JWT] in order to allow Chihaya to verify that an infohash was approved by the registry.
+
+[Quay]: https://quay.io
+[JWT]: https://jwt.io
+
 ## Getting Started
 
 In order to compile the project, the latest stable version of Go and a working Go environment are required.
