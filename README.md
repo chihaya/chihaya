@@ -1,6 +1,5 @@
 # Chihaya
 
-[![Coverage Status](https://coveralls.io/repos/github/chihaya/chihaya/badge.svg?branch=master)](https://coveralls.io/github/chihaya/chihaya?branch=master)
 [![Build Status](https://api.travis-ci.org/chihaya/chihaya.svg?branch=master)](https://travis-ci.org/chihaya/chihaya)
 [![Docker Repository on Quay.io](https://quay.io/repository/jzelinskie/chihaya/status "Docker Repository on Quay.io")](https://quay.io/repository/jzelinskie/chihaya)
 [![GoDoc](https://godoc.org/github.com/chihaya/chihaya?status.svg)](https://godoc.org/github.com/chihaya/chihaya)
