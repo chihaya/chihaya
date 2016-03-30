@@ -56,9 +56,12 @@ Long-term discussion and bug reports are maintained via [GitHub Issues].
 Code review is done via [GitHub Pull Requests].
 Real-time discussion is done via [freenode IRC].
 
+For more information read [CONTRIBUTING.md].
+
 [GitHub Issues]: https://github.com/chihaya/chihaya/issues
 [GitHub Pull Requests]: https://github.com/chihaya/chihaya/pulls
 [freenode IRC]: http://webchat.freenode.net/?channels=chihaya
+[CONTRIBUTING.md]: https://github.com/chihaya/chihaya/blob/master/CONTRIBUTING.md
 
 ## Related projects
 
