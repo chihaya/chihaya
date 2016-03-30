@@ -23,8 +23,10 @@ func announceRequest(r *http.Request, cfg *httpConfig) (*chihaya.AnnounceRequest
 	request := &chihaya.AnnounceRequest{Params: q}
 
 	eventStr, err := q.String("event")
-	if err != nil {
-		eventStr = "none"
+	if err == query.ErrKeyNotFound {
+		eventStr = ""
+	} else if err != nil {
+		return nil, tracker.ClientError("failed to parse parameter: event")
 	}
 	request.Event, err = event.New(eventStr)
 	if err != nil {
