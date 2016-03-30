@@ -1,23 +1,16 @@
 language: go
-
 go:
-  - 1.6
-  - tip
-
+- 1.6
+- tip
 sudo: false
-
 install:
-  - go get github.com/axw/gocov/gocov
-  - go get github.com/mattn/goveralls
-  - go get -t ./...
-
+- go get -t ./...
 script:
-  - $HOME/gopath/bin/goveralls -service=travis-ci ./...
-
+- go test -v $(go list ./... | grep -v /vendor/)
 notifications:
   irc:
     channels:
-      - irc.freenode.net#chihaya
+    - irc.freenode.net#chihaya
     use_notice: true
     skip_join: true
     on_success: always
