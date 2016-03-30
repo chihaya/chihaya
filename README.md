@@ -26,16 +26,17 @@ Differentiating features include:
 
 ### Facebook
 
-[Facebook] uses BitTorrent in order to speed up large deployments.
+[Facebook] uses BitTorrent to deploy new versions of their software.
 In order to optimize the flow of traffic within their datacenters, Chihaya is configured to prefer peers within the same subnet.
-This keeps the vast majority of traffic within the same rack and more importantly off the backbone between datacenters.
+Because Facebook organizes their network such that server racks are allocated IP addresses in the same subnet, the vast majority of deployment traffic never impacts the congested areas of their network.
 
 [Facebook]: https://facebook.com
 
 ### CoreOS
 
-[Quay] is a container registry that offers the ability to download containers via BitTorrent in order to speed up large deployments or deployments geographically far away.
+[Quay] is a container registry that offers the ability to download containers via BitTorrent in order to speed up large or geographically distant deployments.
 Announce URLs from Quay's torrent files contain a [JWT] in order to allow Chihaya to verify that an infohash was approved by the registry.
+By verifying the infohash, Quay can be sure that only their content is being shared by their tracker.
 
 [Quay]: https://quay.io
 [JWT]: https://jwt.io
