@@ -23,18 +23,19 @@ var (
 		{"-BS5820-oy4La2MWGEFj", "fd0a:29a8:8445::38", 2878},
 		{"-BS5820-oy4La2MWGEFj", "fd45:7856:3dae::48", 8999},
 	}
-	builtPeers []*Peer
 )
 
 func TestPeerEquality(t *testing.T) {
 	// Build peers from test data.
-	for i := 0; i < len(peers); i++ {
+	var builtPeers []*Peer
+	for _, peer := range peers {
 		builtPeers = append(builtPeers, &Peer{
-			ID:   PeerID(peers[i].peerID),
-			IP:   net.ParseIP(peers[i].ip),
-			Port: peers[i].port,
+			ID:   PeerID(peer.peerID),
+			IP:   net.ParseIP(peer.ip),
+			Port: peer.port,
 		})
 	}
+
 	assert.True(t, builtPeers[0].Equal(builtPeers[0]))
 	assert.False(t, builtPeers[0].Equal(builtPeers[1]))
 	assert.True(t, builtPeers[1].Equal(builtPeers[1]))
