@@ -6,21 +6,52 @@
 [![License](https://img.shields.io/badge/license-BSD-blue.svg)](https://en.wikipedia.org/wiki/BSD_licenses#2-clause_license_.28.22Simplified_BSD_License.22_or_.22FreeBSD_License.22.29)
 [![IRC Channel](https://img.shields.io/badge/freenode-%23chihaya-blue.svg "IRC Channel")](http://webchat.freenode.net/?channels=chihaya)
 
+**Note:** The master branch may be in an unstable or even broken state during development.
+Please use [releases] instead of the master branch in order to get stable binaries.
+
 Chihaya is an open source [BitTorrent tracker] written in [Go].
 
 Differentiating features include:
 
-- Protocol-agnostic and middleware-composed logic
+- Protocol-agnostic, middleware-composed logic
 - Low resource consumption and fast, asynchronous request processing
 - Unified IPv4 and IPv6 [swarms]
 - [YAML] configuration
 - Optional metrics via [Prometheus]
 
+[releases]: https://github.com/chihaya/chihaya/releases
 [BitTorrent tracker]: http://en.wikipedia.org/wiki/BitTorrent_tracker
 [Go]: https://golang.org
 [swarms]: https://en.wikipedia.org/wiki/Glossary_of_BitTorrent_terms#Swarm
 [YAML]: http://yaml.org
 [Prometheus]: http://prometheus.io
+
+## Development
+
+### Getting Started
+
+In order to compile the project, the [latest stable version of Go] and a [working Go environment] are required.
+
+```sh
+$ go get -t -u github.com/chihaya/chihaya
+$ go install github.com/chihaya/chihaya/cmd/chihaya
+```
+
+[latest stable version of Go]: https://golang.org/dl
+[working Go environment]: https://golang.org/doc/code.html
+
+### Contributing
+
+Long-term discussion and bug reports are maintained via [GitHub Issues].
+Code review is done via [GitHub Pull Requests].
+Real-time discussion is done via [freenode IRC].
+
+For more information read [CONTRIBUTING.md].
+
+[GitHub Issues]: https://github.com/chihaya/chihaya/issues
+[GitHub Pull Requests]: https://github.com/chihaya/chihaya/pulls
+[freenode IRC]: http://webchat.freenode.net/?channels=chihaya
+[CONTRIBUTING.md]: https://github.com/chihaya/chihaya/blob/master/CONTRIBUTING.md
 
 ## Production Use
 
@@ -40,28 +71,6 @@ By verifying the infohash, Quay can be sure that only their content is being sha
 
 [Quay]: https://quay.io
 [JWT]: https://jwt.io
-
-## Getting Started
-
-In order to compile the project, the latest stable version of Go and a working Go environment are required.
-
-```sh
-$ go get github.com/chihaya/chihaya
-$ go install github.com/chihaya/chihaya/cmd/chihaya
-```
-
-## Development
-
-Long-term discussion and bug reports are maintained via [GitHub Issues].
-Code review is done via [GitHub Pull Requests].
-Real-time discussion is done via [freenode IRC].
-
-For more information read [CONTRIBUTING.md].
-
-[GitHub Issues]: https://github.com/chihaya/chihaya/issues
-[GitHub Pull Requests]: https://github.com/chihaya/chihaya/pulls
-[freenode IRC]: http://webchat.freenode.net/?channels=chihaya
-[CONTRIBUTING.md]: https://github.com/chihaya/chihaya/blob/master/CONTRIBUTING.md
 
 ## Related projects
 
