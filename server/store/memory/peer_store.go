@@ -28,8 +28,13 @@ func (d *peerStoreDriver) New(storecfg *store.DriverConfig) (store.PeerStore, er
 		return nil, err
 	}
 
+	shards := make([]*peerShard, cfg.Shards)
+	for i := 0; i < cfg.Shards; i++ {
+		shards[i] = &peerShard{}
+		shards[i].peers = make(map[string]map[string]peer)
+	}
 	return &peerStore{
-		shards: make([]*peerShard, cfg.Shards),
+		shards: shards,
 	}, nil
 }
 
@@ -49,6 +54,9 @@ func newPeerStoreConfig(storecfg *store.DriverConfig) (*peerStoreConfig, error) 
 		return nil, err
 	}
 
+	if cfg.Shards < 1 {
+		cfg.Shards = 1
+	}
 	return &cfg, nil
 }
 
@@ -88,7 +96,6 @@ func leechersKey(infoHash chihaya.InfoHash) string {
 
 func (s *peerStore) PutSeeder(infoHash chihaya.InfoHash, p chihaya.Peer) error {
 	key := seedersKey(infoHash)
-
 	shard := s.shards[s.shardIndex(infoHash)]
 	shard.Lock()
 	defer shard.Unlock()
@@ -107,7 +114,6 @@ func (s *peerStore) PutSeeder(infoHash chihaya.InfoHash, p chihaya.Peer) error {
 
 func (s *peerStore) DeleteSeeder(infoHash chihaya.InfoHash, p chihaya.Peer) error {
 	key := seedersKey(infoHash)
-
 	shard := s.shards[s.shardIndex(infoHash)]
 	shard.Lock()
 	defer shard.Unlock()
@@ -127,7 +133,6 @@ func (s *peerStore) DeleteSeeder(infoHash chihaya.InfoHash, p chihaya.Peer) erro
 
 func (s *peerStore) PutLeecher(infoHash chihaya.InfoHash, p chihaya.Peer) error {
 	key := leechersKey(infoHash)
-
 	shard := s.shards[s.shardIndex(infoHash)]
 	shard.Lock()
 	defer shard.Unlock()
@@ -146,7 +151,6 @@ func (s *peerStore) PutLeecher(infoHash chihaya.InfoHash, p chihaya.Peer) error 
 
 func (s *peerStore) DeleteLeecher(infoHash chihaya.InfoHash, p chihaya.Peer) error {
 	key := leechersKey(infoHash)
-
 	shard := s.shards[s.shardIndex(infoHash)]
 	shard.Lock()
 	defer shard.Unlock()
@@ -167,7 +171,6 @@ func (s *peerStore) DeleteLeecher(infoHash chihaya.InfoHash, p chihaya.Peer) err
 func (s *peerStore) GraduateLeecher(infoHash chihaya.InfoHash, p chihaya.Peer) error {
 	lkey := leechersKey(infoHash)
 	skey := seedersKey(infoHash)
-
 	shard := s.shards[s.shardIndex(infoHash)]
 	shard.Lock()
 	defer shard.Unlock()
@@ -224,7 +227,6 @@ func (s *peerStore) CollectGarbage(cutoff time.Time) error {
 func (s *peerStore) AnnouncePeers(infoHash chihaya.InfoHash, seeder bool, numWant int) (peers, peers6 []chihaya.Peer, err error) {
 	lkey := leechersKey(infoHash)
 	skey := seedersKey(infoHash)
-
 	shard := s.shards[s.shardIndex(infoHash)]
 	shard.RLock()
 	defer shard.RUnlock()
@@ -279,4 +281,56 @@ func (s *peerStore) AnnouncePeers(infoHash chihaya.InfoHash, seeder bool, numWan
 	}
 
 	return
+}
+
+func (s *peerStore) GetSeeders(infoHash chihaya.InfoHash) (peers, peers6 []chihaya.Peer, err error) {
+	key := seedersKey(infoHash)
+	shard := s.shards[s.shardIndex(infoHash)]
+	shard.RLock()
+	defer shard.RUnlock()
+
+	seeders := shard.peers[key]
+	for _, p := range seeders {
+		if p.IP.To4() == nil {
+			peers6 = append(peers6, p.Peer)
+		} else {
+			peers = append(peers, p.Peer)
+		}
+	}
+	return
+}
+
+func (s *peerStore) GetLeechers(infoHash chihaya.InfoHash) (peers, peers6 []chihaya.Peer, err error) {
+	key := leechersKey(infoHash)
+	shard := s.shards[s.shardIndex(infoHash)]
+	shard.RLock()
+	defer shard.RUnlock()
+
+	leechers := shard.peers[key]
+	for _, p := range leechers {
+		if p.IP.To4() == nil {
+			peers6 = append(peers6, p.Peer)
+		} else {
+			peers = append(peers, p.Peer)
+		}
+	}
+	return
+}
+
+func (s *peerStore) NumSeeders(infoHash chihaya.InfoHash) int {
+	key := seedersKey(infoHash)
+	shard := s.shards[s.shardIndex(infoHash)]
+	shard.RLock()
+	defer shard.RUnlock()
+
+	return len(shard.peers[key])
+}
+
+func (s *peerStore) NumLeechers(infoHash chihaya.InfoHash) int {
+	key := leechersKey(infoHash)
+	shard := s.shards[s.shardIndex(infoHash)]
+	shard.RLock()
+	defer shard.RUnlock()
+
+	return len(shard.peers[key])
 }
