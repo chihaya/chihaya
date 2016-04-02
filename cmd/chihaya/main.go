@@ -21,6 +21,7 @@ import (
 	_ "github.com/chihaya/chihaya/server/store/memory"
 	_ "github.com/chihaya/chihaya/server/store/middleware/client"
 	_ "github.com/chihaya/chihaya/server/store/middleware/ip"
+	_ "github.com/chihaya/chihaya/middleware/deniability"
 )
 
 var configPath string
