@@ -40,7 +40,7 @@ func testAnnounceMW3(next AnnounceHandler) AnnounceHandler {
 }
 
 func TestAnnounceChain(t *testing.T) {
-	var achain announceChain
+	var achain AnnounceChain
 	achain.Append(testAnnounceMW1)
 	achain.Append(testAnnounceMW2)
 	achain.Append(testAnnounceMW3)

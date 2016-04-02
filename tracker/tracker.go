@@ -31,7 +31,7 @@ type Tracker struct {
 // NewTracker constructs a newly allocated Tracker composed of the middleware
 // in the provided configuration.
 func NewTracker(cfg *chihaya.TrackerConfig) (*Tracker, error) {
-	var achain announceChain
+	var achain AnnounceChain
 	for _, mwConfig := range cfg.AnnounceMiddleware {
 		mw, ok := announceMiddlewareConstructors[mwConfig.Name]
 		if !ok {
@@ -44,7 +44,7 @@ func NewTracker(cfg *chihaya.TrackerConfig) (*Tracker, error) {
 		achain.Append(middleware)
 	}
 
-	var schain scrapeChain
+	var schain ScrapeChain
 	for _, mwConfig := range cfg.ScrapeMiddleware {
 		mw, ok := scrapeMiddlewareConstructors[mwConfig.Name]
 		if !ok {

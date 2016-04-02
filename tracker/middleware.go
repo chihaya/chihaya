@@ -18,13 +18,16 @@ type AnnounceMiddleware func(AnnounceHandler) AnnounceHandler
 // AnnounceMiddleware from a MiddlewareConfig.
 type AnnounceMiddlewareConstructor func(chihaya.MiddlewareConfig) (AnnounceMiddleware, error)
 
-type announceChain struct{ mw []AnnounceMiddleware }
+// AnnounceChain is a chain of AnnounceMiddlewares.
+type AnnounceChain struct{ mw []AnnounceMiddleware }
 
-func (c *announceChain) Append(mw ...AnnounceMiddleware) {
+// Append appends AnnounceMiddlewares to the AnnounceChain.
+func (c *AnnounceChain) Append(mw ...AnnounceMiddleware) {
 	c.mw = append(c.mw, mw...)
 }
 
-func (c *announceChain) Handler() AnnounceHandler {
+// Handler builds an AnnounceChain into an AnnounceHandler.
+func (c *AnnounceChain) Handler() AnnounceHandler {
 	final := func(cfg *chihaya.TrackerConfig, req *chihaya.AnnounceRequest, resp *chihaya.AnnounceResponse) error {
 		return nil
 	}
@@ -82,13 +85,16 @@ type ScrapeMiddleware func(ScrapeHandler) ScrapeHandler
 // ScrapeMiddleware from a MiddlewareConfig.
 type ScrapeMiddlewareConstructor func(chihaya.MiddlewareConfig) (ScrapeMiddleware, error)
 
-type scrapeChain struct{ mw []ScrapeMiddleware }
+// ScrapeChain is a chain of ScrapeMiddlewares.
+type ScrapeChain struct{ mw []ScrapeMiddleware }
 
-func (c *scrapeChain) Append(mw ...ScrapeMiddleware) {
+// Append appends ScrapeMiddlewares to the ScrapeChain.
+func (c *ScrapeChain) Append(mw ...ScrapeMiddleware) {
 	c.mw = append(c.mw, mw...)
 }
 
-func (c *scrapeChain) Handler() ScrapeHandler {
+// Handler builds the ScrapeChain into a ScrapeHandler.
+func (c *ScrapeChain) Handler() ScrapeHandler {
 	final := func(cfg *chihaya.TrackerConfig, req *chihaya.ScrapeRequest, resp *chihaya.ScrapeResponse) error {
 		return nil
 	}
