@@ -15,7 +15,8 @@ func init() {
 	tracker.RegisterScrapeMiddleware("store_response", responseScrapeClient)
 }
 
-// FailedToRetrievePeers represents an error that has been return when attempting to fetch peers from the store.
+// FailedToRetrievePeers represents an error that has been return when
+// attempting to fetch peers from the store.
 type FailedToRetrievePeers string
 
 // Error interface for FailedToRetrievePeers.
