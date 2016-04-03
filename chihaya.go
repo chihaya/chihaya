@@ -51,7 +51,7 @@ type ScrapeRequest struct {
 
 // ScrapeResponse represents the parameters used to create a scrape response.
 type ScrapeResponse struct {
-	Files map[string]Scrape
+	Files map[InfoHash]Scrape
 }
 
 // Scrape represents the state of a swarm that is returned in a scrape response.
