@@ -27,9 +27,6 @@ func TestASetUp(t *testing.T) {
 			StringStore: store.DriverConfig{
 				Name: "memory",
 			},
-			ClientStore: store.DriverConfig{
-				Name: "memory",
-			},
 			IPStore: store.DriverConfig{
 				Name: "memory",
 			},

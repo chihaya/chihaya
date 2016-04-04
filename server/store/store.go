@@ -30,11 +30,6 @@ func constructor(srvcfg *chihaya.ServerConfig, tkr *tracker.Tracker) (server.Ser
 			return nil, errors.New("store: invalid store config: " + err.Error())
 		}
 
-		cs, err := OpenClientStore(&cfg.ClientStore)
-		if err != nil {
-			return nil, err
-		}
-
 		ps, err := OpenPeerStore(&cfg.PeerStore)
 		if err != nil {
 			return nil, err
@@ -54,7 +49,6 @@ func constructor(srvcfg *chihaya.ServerConfig, tkr *tracker.Tracker) (server.Ser
 			cfg:         cfg,
 			tkr:         tkr,
 			shutdown:    make(chan struct{}),
-			ClientStore: cs,
 			PeerStore:   ps,
 			IPStore:     ips,
 			StringStore: ss,
@@ -69,7 +63,6 @@ type Config struct {
 	ReadTimeout    time.Duration `yaml:"read_timeout"`
 	WriteTimeout   time.Duration `yaml:"write_timeout"`
 	GCAfter        time.Duration `yaml:"gc_after"`
-	ClientStore    DriverConfig  `yaml:"client_store"`
 	PeerStore      DriverConfig  `yaml:"peer_store"`
 	IPStore        DriverConfig  `yaml:"ip_store"`
 	StringStore    DriverConfig  `yaml:"string_store"`
@@ -113,7 +106,6 @@ type Store struct {
 	wg       sync.WaitGroup
 
 	PeerStore
-	ClientStore
 	IPStore
 	StringStore
 }
