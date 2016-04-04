@@ -113,7 +113,7 @@ func unmarshal(r *bufio.Reader) (interface{}, error) {
 	}
 }
 
-func readTerminator(r *bufio.Reader, term byte) (bool, error) {
+func readTerminator(r io.ByteScanner, term byte) (bool, error) {
 	tok, err := r.ReadByte()
 	if err != nil {
 		return false, err

@@ -106,23 +106,23 @@ func scrapeRequest(r *http.Request, cfg *httpConfig) (*chihaya.ScrapeRequest, er
 
 // requestedIP returns the IP address for a request. If there are multiple in
 // the request, one IPv4 and one IPv6 will be returned.
-func requestedIP(q *query.Query, r *http.Request, cfg *httpConfig) (v4, v6 net.IP, err error) {
+func requestedIP(p chihaya.Params, r *http.Request, cfg *httpConfig) (v4, v6 net.IP, err error) {
 	var done bool
 
 	if cfg.AllowIPSpoofing {
-		if str, e := q.String("ip"); e == nil {
+		if str, e := p.String("ip"); e == nil {
 			if v4, v6, done = getIPs(str, v4, v6, cfg); done {
 				return
 			}
 		}
 
-		if str, e := q.String("ipv4"); e == nil {
+		if str, e := p.String("ipv4"); e == nil {
 			if v4, v6, done = getIPs(str, v4, v6, cfg); done {
 				return
 			}
 		}
 
-		if str, e := q.String("ipv6"); e == nil {
+		if str, e := p.String("ipv6"); e == nil {
 			if v4, v6, done = getIPs(str, v4, v6, cfg); done {
 				return
 			}
