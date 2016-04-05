@@ -15,41 +15,41 @@ var peerStoreDrivers = make(map[string]PeerStoreDriver)
 
 // PeerStore represents an interface for manipulating peers.
 type PeerStore interface {
-	// PutSeeder adds a seeder for the infoHash to the PeerStore.
+	// PutSeeder adds a seed for the infoHash to the PeerStore.
 	PutSeeder(infoHash chihaya.InfoHash, p chihaya.Peer) error
-	// DeleteSeeder removes a seeder for the infoHash from the PeerStore.
+	// DeleteSeeder removes a seed for the infoHash from the PeerStore.
 	DeleteSeeder(infoHash chihaya.InfoHash, p chihaya.Peer) error
 
-	// PutLeecher adds a leecher for the infoHash to the PeerStore.
+	// PutLeecher adds a leech for the infoHash to the PeerStore.
 	PutLeecher(infoHash chihaya.InfoHash, p chihaya.Peer) error
-	// DeleteLeecher removes a leecher for the infoHash from the PeerStore.
+	// DeleteLeecher removes a leech for the infoHash from the PeerStore.
 	DeleteLeecher(infoHash chihaya.InfoHash, p chihaya.Peer) error
 
-	// GraduateLeecher promotes a peer from a leecher to a seeder for the
+	// GraduateLeecher promotes a peer from a leech to a seed for the
 	// infoHash within the PeerStore.
 	GraduateLeecher(infoHash chihaya.InfoHash, p chihaya.Peer) error
 	// AnnouncePeers returns a list of both IPv4, and IPv6 peers for an
 	// announce.
 	//
-	// If seeder is true then the peers returned will only be leechers, the
-	// ammount of leechers returned will be the smaller value of numWant or the
-	// available leechers.
-	// If it is false then seeders will be returned up until numWant or the
-	// available seeders, whichever is smaller. If the available seeders is less
+	// If seed is true then the peers returned will only be leeches, the
+	// ammount of leeches returned will be the smaller value of numWant or the
+	// available leeches.
+	// If it is false then seeds will be returned up until numWant or the
+	// available seeds, whichever is smaller. If the available seeds is less
 	// than numWant then peers are returned until numWant or they run out.
-	AnnouncePeers(infoHash chihaya.InfoHash, seeder bool, numWant int) (peers, peers6 []chihaya.Peer, err error)
+	AnnouncePeers(infoHash chihaya.InfoHash, seed bool, numWant int) (peers, peers6 []chihaya.Peer, err error)
 	// CollectGarbage deletes peers from the peerStore which are older than the
 	// cutoff time.
 	CollectGarbage(cutoff time.Time) error
 
-	// GetSeeders gets all the seeders for a particular infoHash.
+	// GetSeeders gets all the seeds for a particular infoHash.
 	GetSeeders(infoHash chihaya.InfoHash) (peers, peers6 []chihaya.Peer, err error)
-	// GetLeechers gets all the leechers for a particular infoHash.
+	// GetLeechers gets all the leeches for a particular infoHash.
 	GetLeechers(infoHash chihaya.InfoHash) (peers, peers6 []chihaya.Peer, err error)
 
-	// NumSeeders gets the amount of seeders for a particular infoHash.
+	// NumSeeders gets the amount of seeds for a particular infoHash.
 	NumSeeders(infoHash chihaya.InfoHash) int
-	// NumLeechers gets the amount of leechers for a particular infoHash.
+	// NumLeechers gets the amount of leeches for a particular infoHash.
 	NumLeechers(infoHash chihaya.InfoHash) int
 }
 
