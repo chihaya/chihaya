@@ -28,7 +28,7 @@ func TestPeerStoreAPI(t *testing.T) {
 		hash = chihaya.InfoHash("11111111111111111111")
 
 		peers = []struct {
-			seeder bool
+			seed   bool
 			peerID string
 			ip     string
 			port   uint16
@@ -67,7 +67,7 @@ func TestPeerStoreAPI(t *testing.T) {
 			p.port,
 		}
 
-		if p.seeder {
+		if p.seed {
 			err = s.PutSeeder(hash, peer)
 		} else {
 			err = s.PutLeecher(hash, peer)
@@ -75,22 +75,22 @@ func TestPeerStoreAPI(t *testing.T) {
 		assert.Nil(t, err)
 	}
 
-	leechers1, leechers61, err := s.GetLeechers(hash)
+	leeches1, leeches61, err := s.GetLeechers(hash)
 	assert.Nil(t, err)
-	assert.NotEmpty(t, leechers1)
-	assert.NotEmpty(t, leechers61)
+	assert.NotEmpty(t, leeches1)
+	assert.NotEmpty(t, leeches61)
 	num := s.NumLeechers(hash)
-	assert.Equal(t, len(leechers1)+len(leechers61), num)
+	assert.Equal(t, len(leeches1)+len(leeches61), num)
 
-	seeders1, seeders61, err := s.GetSeeders(hash)
+	seeds1, seeds61, err := s.GetSeeders(hash)
 	assert.Nil(t, err)
-	assert.NotEmpty(t, seeders1)
-	assert.NotEmpty(t, seeders61)
+	assert.NotEmpty(t, seeds1)
+	assert.NotEmpty(t, seeds61)
 	num = s.NumSeeders(hash)
-	assert.Equal(t, len(seeders1)+len(seeders61), num)
+	assert.Equal(t, len(seeds1)+len(seeds61), num)
 
-	leechers := append(leechers1, leechers61...)
-	seeders := append(seeders1, seeders61...)
+	leeches := append(leeches1, leeches61...)
+	seeds := append(seeds1, seeds61...)
 
 	for _, p := range peers {
 		// Construct chihaya.Peer from test data.
@@ -100,13 +100,13 @@ func TestPeerStoreAPI(t *testing.T) {
 			p.port,
 		}
 
-		if p.seeder {
-			assert.True(t, peerInSlice(peer, seeders))
+		if p.seed {
+			assert.True(t, peerInSlice(peer, seeds))
 		} else {
-			assert.True(t, peerInSlice(peer, leechers))
+			assert.True(t, peerInSlice(peer, leeches))
 		}
 
-		if p.seeder {
+		if p.seed {
 			err = s.DeleteSeeder(hash, peer)
 		} else {
 			err = s.DeleteLeecher(hash, peer)
@@ -125,14 +125,14 @@ func TestPeerStoreAPI(t *testing.T) {
 			net.ParseIP(p.ip),
 			p.port,
 		}
-		if p.seeder {
+		if p.seed {
 			s.PutSeeder(hash, peer)
 		} else {
 			s.PutLeecher(hash, peer)
 		}
 	}
 
-	// Check that there are 6 seeders, and 4 leechers.
+	// Check that there are 6 seeds, and 4 leeches.
 	assert.Equal(t, 6, s.NumSeeders(hash))
 	assert.Equal(t, 4, s.NumLeechers(hash))
 	peer := chihaya.Peer{
@@ -142,8 +142,8 @@ func TestPeerStoreAPI(t *testing.T) {
 	}
 	err = s.GraduateLeecher(hash, peer)
 	assert.Nil(t, err)
-	// Check that there are 7 seeders, and 3 leechers after graduating a
-	// leecher to a seeder.
+	// Check that there are 7 seeds, and 3 leeches after graduating a
+	// leech to a seed.
 	assert.Equal(t, 7, s.NumSeeders(hash))
 	assert.Equal(t, 3, s.NumLeechers(hash))
 
