@@ -15,9 +15,9 @@ func init() {
 	tracker.RegisterAnnounceMiddleware("client_blacklist", blacklistAnnounceClient)
 }
 
-// ErrBlockedClient is returned by an announce middleware if the announcing
-// Client is disallowed.
-var ErrBlockedClient = tracker.ClientError("disallowed client")
+// ErrBlacklistedClient is returned by an announce middleware if the announcing
+// Client is blacklisted.
+var ErrBlacklistedClient = tracker.ClientError("client blacklisted")
 
 // blacklistAnnounceClient provides a middleware that only allows Clients to
 // announce that are not stored in the StringStore.
@@ -27,7 +27,7 @@ func blacklistAnnounceClient(next tracker.AnnounceHandler) tracker.AnnounceHandl
 		if err != nil {
 			return err
 		} else if blacklisted {
-			return ErrBlockedClient
+			return ErrBlacklistedClient
 		}
 		return next(cfg, req, resp)
 	}

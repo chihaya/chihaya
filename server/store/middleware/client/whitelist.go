@@ -30,7 +30,7 @@ func whitelistAnnounceClient(next tracker.AnnounceHandler) tracker.AnnounceHandl
 		if err != nil {
 			return err
 		} else if !whitelisted {
-			return ErrBlockedClient
+			return ErrNotWhitelistedClient
 		}
 		return next(cfg, req, resp)
 	}
