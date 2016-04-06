@@ -7,11 +7,11 @@ It also provides the configurable scrape middleware `infohash_blacklist` and `in
 
 #### For Announces
 
-The `infohash_blacklist` middleware uses all infohashes stored in the `StringStore` with the `store.PrefixInfohash` prefix to blacklist, i.e. block announces.
+The `infohash_blacklist` middleware uses all infohashes stored in the `StringStore` with the `PrefixInfohash` prefix to blacklist, i.e. block announces.
 
 #### For Scrapes
 
-The configurable `infohash_blacklist` middleware uses all infohashes stored in the `StringStore` with the `store.PrefixInfohash` prefix to blacklist scrape requests.
+The configurable `infohash_blacklist` middleware uses all infohashes stored in the `StringStore` with the `PrefixInfohash` prefix to blacklist scrape requests.
 
 The scrape middleware has two modes of operation: _Block_ and _Filter_.
 
@@ -25,11 +25,11 @@ See the configuration section for information about how to configure the scrape 
 
 #### For Announces
 
-The `infohash_blacklist` middleware uses all infohashes stored in the `StringStore` with the `store.PrefixInfohash` prefix to whitelist, i.e. allow announces.
+The `infohash_blacklist` middleware uses all infohashes stored in the `StringStore` with the `PrefixInfohash` prefix to whitelist, i.e. allow announces.
 
 #### For Scrapes
 
-The configurable `infohash_blacklist` middleware uses all infohashes stored in the `StringStore` with the `store.PrefixInfohash` prefix to whitelist scrape requests.
+The configurable `infohash_blacklist` middleware uses all infohashes stored in the `StringStore` with the `PrefixInfohash` prefix to whitelist scrape requests.
 
 The scrape middleware has two modes of operation: _Block_ and _Filter_.
 

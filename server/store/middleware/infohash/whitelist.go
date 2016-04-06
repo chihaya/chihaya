@@ -15,11 +15,14 @@ func init() {
 	tracker.RegisterScrapeMiddlewareConstructor("infohash_whitelist", whitelistScrapeInfohash)
 }
 
+// PrefixInfohash is the prefix to be used for infohashes.
+const PrefixInfohash = "ih-"
+
 // whitelistAnnounceInfohash provides a middleware that only allows announces
 // for infohashes that are not stored in a StringStore
 func whitelistAnnounceInfohash(next tracker.AnnounceHandler) tracker.AnnounceHandler {
 	return func(cfg *chihaya.TrackerConfig, req *chihaya.AnnounceRequest, resp *chihaya.AnnounceResponse) (err error) {
-		whitelisted, err := store.MustGetStore().HasString(store.PrefixInfohash + string(req.InfoHash))
+		whitelisted, err := store.MustGetStore().HasString(PrefixInfohash + string(req.InfoHash))
 
 		if err != nil {
 			return err
@@ -63,7 +66,7 @@ func whitelistFilterScrape(next tracker.ScrapeHandler) tracker.ScrapeHandler {
 		infohashes := req.InfoHashes
 
 		for i, ih := range infohashes {
-			whitelisted, err = storage.HasString(store.PrefixInfohash + string(ih))
+			whitelisted, err = storage.HasString(PrefixInfohash + string(ih))
 
 			if err != nil {
 				return err
@@ -83,7 +86,7 @@ func whitelistBlockScrape(next tracker.ScrapeHandler) tracker.ScrapeHandler {
 		storage := store.MustGetStore()
 
 		for _, ih := range req.InfoHashes {
-			whitelisted, err = storage.HasString(store.PrefixInfohash + string(ih))
+			whitelisted, err = storage.HasString(PrefixInfohash + string(ih))
 
 			if err != nil {
 				return err

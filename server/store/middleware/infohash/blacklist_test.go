@@ -41,7 +41,7 @@ func TestASetUp(t *testing.T) {
 	assert.Nil(t, err)
 	srv.Start()
 
-	store.MustGetStore().PutString(store.PrefixInfohash + "abc")
+	store.MustGetStore().PutString(PrefixInfohash + "abc")
 }
 
 func TestBlacklistAnnounceMiddleware(t *testing.T) {

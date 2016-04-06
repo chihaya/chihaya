@@ -23,7 +23,7 @@ var ErrBlockedInfohash = tracker.ClientError("disallowed infohash")
 // for infohashes that are not stored in a StringStore.
 func blacklistAnnounceInfohash(next tracker.AnnounceHandler) tracker.AnnounceHandler {
 	return func(cfg *chihaya.TrackerConfig, req *chihaya.AnnounceRequest, resp *chihaya.AnnounceResponse) (err error) {
-		blacklisted, err := store.MustGetStore().HasString(store.PrefixInfohash + string(req.InfoHash))
+		blacklisted, err := store.MustGetStore().HasString(PrefixInfohash + string(req.InfoHash))
 		if err != nil {
 			return err
 		} else if blacklisted {
@@ -67,7 +67,7 @@ func blacklistFilterScrape(next tracker.ScrapeHandler) tracker.ScrapeHandler {
 		infohashes := req.InfoHashes
 
 		for i, ih := range infohashes {
-			blacklisted, err = storage.HasString(store.PrefixInfohash + string(ih))
+			blacklisted, err = storage.HasString(PrefixInfohash + string(ih))
 
 			if err != nil {
 				return err
@@ -87,7 +87,7 @@ func blacklistBlockScrape(next tracker.ScrapeHandler) tracker.ScrapeHandler {
 		storage := store.MustGetStore()
 
 		for _, ih := range req.InfoHashes {
-			blacklisted, err = storage.HasString(store.PrefixInfohash + string(ih))
+			blacklisted, err = storage.HasString(PrefixInfohash + string(ih))
 
 			if err != nil {
 				return err
