@@ -23,6 +23,7 @@ import (
 
 	// Middleware
 	_ "github.com/chihaya/chihaya/middleware/deniability"
+	_ "github.com/chihaya/chihaya/middleware/varinterval"
 	_ "github.com/chihaya/chihaya/server/store/middleware/client"
 	_ "github.com/chihaya/chihaya/server/store/middleware/infohash"
 	_ "github.com/chihaya/chihaya/server/store/middleware/ip"
