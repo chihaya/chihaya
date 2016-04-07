@@ -6,9 +6,6 @@ package store
 
 import "fmt"
 
-// PrefixInfohash is the prefix to be used for infohashes.
-const PrefixInfohash = "ih-"
-
 var stringStoreDrivers = make(map[string]StringStoreDriver)
 
 // StringStore represents an interface for manipulating strings.
