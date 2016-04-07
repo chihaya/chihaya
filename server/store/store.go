@@ -111,6 +111,9 @@ type Store struct {
 }
 
 func (s *Store) Start() {
+	<-s.shutdown
+	s.wg.Wait()
+	log.Println("Store server shut down cleanly")
 }
 
 func (s *Store) Stop() {
