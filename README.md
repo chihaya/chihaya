@@ -67,7 +67,7 @@ Chihaya requires Go 1.5+ (preferrably the latest stable Go), [Godep], and a [Go 
 ```sh
 $ export GOPATH=$PWD/chihaya
 $ git clone https://github.com/chihaya/chihaya.git chihaya/src/github.com/chihaya/chihaya
-$ cd chihaya/src/github.com/chihaya/chihaya/cmd/chihaya/
+$ cd chihaya/src/github.com/chihaya/chihaya
 $ godep restore
 $ go install github.com/chihaya/chihaya/cmd/chihaya
 ```
