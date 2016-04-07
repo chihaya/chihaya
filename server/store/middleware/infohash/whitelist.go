@@ -6,7 +6,6 @@ package infohash
 
 import (
 	"github.com/chihaya/chihaya"
-	"github.com/chihaya/chihaya/server/store"
 	"github.com/chihaya/chihaya/tracker"
 )
 
@@ -22,7 +21,7 @@ const PrefixInfohash = "ih-"
 // for infohashes that are not stored in a StringStore
 func whitelistAnnounceInfohash(next tracker.AnnounceHandler) tracker.AnnounceHandler {
 	return func(cfg *chihaya.TrackerConfig, req *chihaya.AnnounceRequest, resp *chihaya.AnnounceResponse) (err error) {
-		whitelisted, err := store.MustGetStore().HasString(PrefixInfohash + string(req.InfoHash))
+		whitelisted, err := mustGetStore().HasString(PrefixInfohash + string(req.InfoHash))
 
 		if err != nil {
 			return err
@@ -62,7 +61,7 @@ func whitelistScrapeInfohash(c chihaya.MiddlewareConfig) (tracker.ScrapeMiddlewa
 func whitelistFilterScrape(next tracker.ScrapeHandler) tracker.ScrapeHandler {
 	return func(cfg *chihaya.TrackerConfig, req *chihaya.ScrapeRequest, resp *chihaya.ScrapeResponse) (err error) {
 		whitelisted := false
-		storage := store.MustGetStore()
+		storage := mustGetStore()
 		infohashes := req.InfoHashes
 
 		for i, ih := range infohashes {
@@ -83,7 +82,7 @@ func whitelistFilterScrape(next tracker.ScrapeHandler) tracker.ScrapeHandler {
 func whitelistBlockScrape(next tracker.ScrapeHandler) tracker.ScrapeHandler {
 	return func(cfg *chihaya.TrackerConfig, req *chihaya.ScrapeRequest, resp *chihaya.ScrapeResponse) (err error) {
 		whitelisted := false
-		storage := store.MustGetStore()
+		storage := mustGetStore()
 
 		for _, ih := range req.InfoHashes {
 			whitelisted, err = storage.HasString(PrefixInfohash + string(ih))

@@ -10,38 +10,42 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/chihaya/chihaya"
-	"github.com/chihaya/chihaya/server"
 	"github.com/chihaya/chihaya/server/store"
 	"github.com/chihaya/chihaya/tracker"
-
-	_ "github.com/chihaya/chihaya/server/store/memory"
 )
 
-var srv server.Server
+type storeMock struct {
+	strings map[string]struct{}
+}
+
+func (ss *storeMock) PutString(s string) error {
+	ss.strings[s] = struct{}{}
+
+	return nil
+}
+
+func (ss *storeMock) HasString(s string) (bool, error) {
+	_, ok := ss.strings[s]
+
+	return ok, nil
+}
+
+func (ss *storeMock) RemoveString(s string) error {
+	delete(ss.strings, s)
+
+	return nil
+}
+
+var mock store.StringStore = &storeMock{
+	strings: make(map[string]struct{}),
+}
 
 func TestASetUp(t *testing.T) {
-	serverConfig := chihaya.ServerConfig{
-		Name: "store",
-		Config: store.Config{
-			Addr: "localhost:6880",
-			StringStore: store.DriverConfig{
-				Name: "memory",
-			},
-			IPStore: store.DriverConfig{
-				Name: "memory",
-			},
-			PeerStore: store.DriverConfig{
-				Name: "memory",
-			},
-		},
+	mustGetStore = func() store.StringStore {
+		return mock
 	}
 
-	var err error
-	srv, err = server.New(&serverConfig, &tracker.Tracker{})
-	assert.Nil(t, err)
-	srv.Start()
-
-	store.MustGetStore().PutString(PrefixInfohash + "abc")
+	mustGetStore().PutString(PrefixInfohash + "abc")
 }
 
 func TestBlacklistAnnounceMiddleware(t *testing.T) {
