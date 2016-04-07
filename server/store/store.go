@@ -57,6 +57,7 @@ func constructor(srvcfg *chihaya.ServerConfig, tkr *tracker.Tracker) (server.Ser
 	return theStore, nil
 }
 
+// Config represents the configuration for the store.
 type Config struct {
 	Addr           string        `yaml:"addr"`
 	RequestTimeout time.Duration `yaml:"request_timeout"`
@@ -68,6 +69,7 @@ type Config struct {
 	StringStore    DriverConfig  `yaml:"string_store"`
 }
 
+// DriverConfig represents the configuration for a store driver.
 type DriverConfig struct {
 	Name   string      `yaml:"name"`
 	Config interface{} `yaml:"config"`
@@ -99,6 +101,7 @@ func MustGetStore() *Store {
 	return theStore
 }
 
+// Store provides storage for a tracker.
 type Store struct {
 	cfg      *Config
 	tkr      *tracker.Tracker
@@ -110,12 +113,14 @@ type Store struct {
 	StringStore
 }
 
+// Start starts the store drivers and blocks until all of them exit.
 func (s *Store) Start() {
 	<-s.shutdown
 	s.wg.Wait()
 	log.Println("Store server shut down cleanly")
 }
 
+// Stop stops the store drivers and waits for them to exit.
 func (s *Store) Stop() {
 	close(s.shutdown)
 	s.wg.Wait()

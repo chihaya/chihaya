@@ -50,8 +50,8 @@ func TestPeerStoreAPI(t *testing.T) {
 			1,
 		}
 		config = store.DriverConfig{
-			"memory",
-			unmarshalledConfig,
+			Name:   "memory",
+			Config: unmarshalledConfig,
 		}
 		d = &peerStoreDriver{}
 	)
@@ -62,9 +62,9 @@ func TestPeerStoreAPI(t *testing.T) {
 	for _, p := range peers {
 		// Construct chihaya.Peer from test data.
 		peer := chihaya.Peer{
-			chihaya.PeerID(p.peerID),
-			net.ParseIP(p.ip),
-			p.port,
+			ID:   chihaya.PeerID(p.peerID),
+			IP:   net.ParseIP(p.ip),
+			Port: p.port,
 		}
 
 		if p.seeder {
@@ -95,9 +95,9 @@ func TestPeerStoreAPI(t *testing.T) {
 	for _, p := range peers {
 		// Construct chihaya.Peer from test data.
 		peer := chihaya.Peer{
-			chihaya.PeerID(p.peerID),
-			net.ParseIP(p.ip),
-			p.port,
+			ID:   chihaya.PeerID(p.peerID),
+			IP:   net.ParseIP(p.ip),
+			Port: p.port,
 		}
 
 		if p.seeder {
@@ -121,9 +121,9 @@ func TestPeerStoreAPI(t *testing.T) {
 	for _, p := range peers {
 		// Construct chihaya.Peer from test data.
 		peer := chihaya.Peer{
-			chihaya.PeerID(p.peerID),
-			net.ParseIP(p.ip),
-			p.port,
+			ID:   chihaya.PeerID(p.peerID),
+			IP:   net.ParseIP(p.ip),
+			Port: p.port,
 		}
 		if p.seeder {
 			s.PutSeeder(hash, peer)
@@ -136,9 +136,9 @@ func TestPeerStoreAPI(t *testing.T) {
 	assert.Equal(t, 6, s.NumSeeders(hash))
 	assert.Equal(t, 4, s.NumLeechers(hash))
 	peer := chihaya.Peer{
-		chihaya.PeerID(peers[0].peerID),
-		net.ParseIP(peers[0].ip),
-		peers[0].port,
+		ID:   chihaya.PeerID(peers[0].peerID),
+		IP:   net.ParseIP(peers[0].ip),
+		Port: peers[0].port,
 	}
 	err = s.GraduateLeecher(hash, peer)
 	assert.Nil(t, err)

@@ -71,6 +71,9 @@ type Server struct {
 
 var _ server.Server = &Server{}
 
+// Start starts the prometheus server and blocks until it exits.
+//
+// It panics if the server exits unexpectedly.
 func (s *Server) Start() {
 	s.grace = &graceful.Server{
 		Server: &http.Server{
@@ -93,6 +96,7 @@ func (s *Server) Start() {
 	log.Println("Prometheus server shut down cleanly")
 }
 
+// Stop stops the prometheus server and blocks until it exits.
 func (s *Server) Stop() {
 	s.grace.Stop(s.cfg.ShutdownTimeout)
 	<-s.grace.StopChan()

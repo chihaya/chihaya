@@ -40,6 +40,9 @@ type httpServer struct {
 	grace *graceful.Server
 }
 
+// Start runs the server and blocks until it has exited.
+//
+// It panics if the server exits unexpectedly.
 func (s *httpServer) Start() {
 	s.grace = &graceful.Server{
 		Server: &http.Server{
@@ -81,6 +84,7 @@ func (s *httpServer) Start() {
 	log.Println("HTTP server shut down cleanly")
 }
 
+// Stop stops the server and blocks until the server has exited.
 func (s *httpServer) Stop() {
 	s.grace.Stop(s.grace.Timeout)
 	<-s.grace.StopChan()
