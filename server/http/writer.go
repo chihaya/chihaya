@@ -91,7 +91,7 @@ func compact(peer chihaya.Peer) (buf []byte) {
 
 func dict(peer chihaya.Peer) bencode.Dict {
 	return bencode.Dict{
-		"peer id": peer.ID,
+		"peer id": string(peer.ID),
 		"ip":      peer.IP.String(),
 		"port":    peer.Port,
 	}
