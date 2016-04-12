@@ -224,7 +224,7 @@ func (s *peerStore) CollectGarbage(cutoff time.Time) error {
 	return nil
 }
 
-func (s *peerStore) AnnouncePeers(infoHash chihaya.InfoHash, seeder bool, numWant int) (peers, peers6 []chihaya.Peer, err error) {
+func (s *peerStore) AnnouncePeers(infoHash chihaya.InfoHash, seeder bool, numWant int, peer4, peer6 chihaya.Peer) (peers, peers6 []chihaya.Peer, err error) {
 	lkey := leechersKey(infoHash)
 	skey := seedersKey(infoHash)
 	shard := s.shards[s.shardIndex(infoHash)]
@@ -271,8 +271,14 @@ func (s *peerStore) AnnouncePeers(infoHash chihaya.InfoHash, seeder bool, numWan
 				}
 
 				if p.IP.To4() == nil {
+					if p.Equal(&peer6) {
+						continue
+					}
 					peers6 = append(peers6, p.Peer)
 				} else {
+					if p.Equal(&peer4) {
+						continue
+					}
 					peers = append(peers, p.Peer)
 				}
 				numWant--

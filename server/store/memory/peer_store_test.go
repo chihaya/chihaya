@@ -147,7 +147,7 @@ func TestPeerStoreAPI(t *testing.T) {
 	assert.Equal(t, 7, s.NumSeeders(hash))
 	assert.Equal(t, 3, s.NumLeechers(hash))
 
-	peers1, peers61, err := s.AnnouncePeers(hash, true, 5)
+	peers1, peers61, err := s.AnnouncePeers(hash, true, 5,peer,chihaya.Peer{})
 	assert.Nil(t, err)
 	assert.NotNil(t, peers1)
 	assert.NotNil(t, peers61)
