@@ -13,17 +13,22 @@ import (
 func init() {
 	tracker.RegisterAnnounceMiddleware("infohash_blacklist", blacklistAnnounceInfohash)
 	tracker.RegisterScrapeMiddlewareConstructor("infohash_blacklist", blacklistScrapeInfohash)
+	mustGetStore = func() store.StringStore {
+		return store.MustGetStore()
+	}
 }
 
 // ErrBlockedInfohash is returned by a middleware if any of the infohashes
 // contained in an announce or scrape are disallowed.
 var ErrBlockedInfohash = tracker.ClientError("disallowed infohash")
 
+var mustGetStore func() store.StringStore
+
 // blacklistAnnounceInfohash provides a middleware that only allows announces
 // for infohashes that are not stored in a StringStore.
 func blacklistAnnounceInfohash(next tracker.AnnounceHandler) tracker.AnnounceHandler {
 	return func(cfg *chihaya.TrackerConfig, req *chihaya.AnnounceRequest, resp *chihaya.AnnounceResponse) (err error) {
-		blacklisted, err := store.MustGetStore().HasString(PrefixInfohash + string(req.InfoHash))
+		blacklisted, err := mustGetStore().HasString(PrefixInfohash + string(req.InfoHash))
 		if err != nil {
 			return err
 		} else if blacklisted {
@@ -63,7 +68,7 @@ func blacklistScrapeInfohash(c chihaya.MiddlewareConfig) (tracker.ScrapeMiddlewa
 func blacklistFilterScrape(next tracker.ScrapeHandler) tracker.ScrapeHandler {
 	return func(cfg *chihaya.TrackerConfig, req *chihaya.ScrapeRequest, resp *chihaya.ScrapeResponse) (err error) {
 		blacklisted := false
-		storage := store.MustGetStore()
+		storage := mustGetStore()
 		infohashes := req.InfoHashes
 
 		for i, ih := range infohashes {
@@ -84,7 +89,7 @@ func blacklistFilterScrape(next tracker.ScrapeHandler) tracker.ScrapeHandler {
 func blacklistBlockScrape(next tracker.ScrapeHandler) tracker.ScrapeHandler {
 	return func(cfg *chihaya.TrackerConfig, req *chihaya.ScrapeRequest, resp *chihaya.ScrapeResponse) (err error) {
 		blacklisted := false
-		storage := store.MustGetStore()
+		storage := mustGetStore()
 
 		for _, ih := range req.InfoHashes {
 			blacklisted, err = storage.HasString(PrefixInfohash + string(ih))

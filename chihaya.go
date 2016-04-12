@@ -11,7 +11,10 @@ import (
 	"github.com/chihaya/chihaya/pkg/event"
 )
 
+// PeerID represents a peer ID.
 type PeerID string
+
+// InfoHash represents an infohash in hexadecimal notation.
 type InfoHash string
 
 // AnnounceRequest represents the parsed parameters from an announce request.

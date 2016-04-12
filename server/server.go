@@ -46,6 +46,11 @@ func New(cfg *chihaya.ServerConfig, tkr *tracker.Tracker) (Server, error) {
 
 // Server represents one instance of a server accessing the tracker.
 type Server interface {
+	// Start starts a server and blocks until the server exits.
+	//
+	// It should panic if the server exits unexpectedly.
 	Start()
+
+	// Stop stops a server and blocks until the server exits.
 	Stop()
 }

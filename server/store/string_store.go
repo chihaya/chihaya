@@ -16,7 +16,7 @@ type StringStore interface {
 }
 
 // StringStoreDriver represents an interface for creating a handle to the
-// storage of swarms.
+// storage of strings.
 type StringStoreDriver interface {
 	New(*DriverConfig) (StringStore, error)
 }

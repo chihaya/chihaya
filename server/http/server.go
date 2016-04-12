@@ -35,12 +35,14 @@ func constructor(srvcfg *chihaya.ServerConfig, tkr *tracker.Tracker) (server.Ser
 }
 
 type httpServer struct {
-	cfg      *httpConfig
-	tkr      *tracker.Tracker
-	grace    *graceful.Server
-	stopping bool
+	cfg   *httpConfig
+	tkr   *tracker.Tracker
+	grace *graceful.Server
 }
 
+// Start runs the server and blocks until it has exited.
+//
+// It panics if the server exits unexpectedly.
 func (s *httpServer) Start() {
 	s.grace = &graceful.Server{
 		Server: &http.Server{
@@ -49,9 +51,8 @@ func (s *httpServer) Start() {
 			ReadTimeout:  s.cfg.ReadTimeout,
 			WriteTimeout: s.cfg.WriteTimeout,
 		},
-		Timeout:           s.cfg.RequestTimeout,
-		NoSignalHandling:  true,
-		ShutdownInitiated: func() { s.stopping = true },
+		Timeout:          s.cfg.RequestTimeout,
+		NoSignalHandling: true,
 		ConnState: func(conn net.Conn, state http.ConnState) {
 			switch state {
 			case http.StateNew:
@@ -76,20 +77,17 @@ func (s *httpServer) Start() {
 	if err := s.grace.ListenAndServe(); err != nil {
 		if opErr, ok := err.(*net.OpError); !ok || (ok && opErr.Op != "accept") {
 			log.Printf("Failed to gracefully run HTTP server: %s", err.Error())
-			return
+			panic(err)
 		}
 	}
 
 	log.Println("HTTP server shut down cleanly")
 }
 
+// Stop stops the server and blocks until the server has exited.
 func (s *httpServer) Stop() {
-	if !s.stopping {
-		s.grace.Stop(s.grace.Timeout)
-	}
-
-	s.grace = nil
-	s.stopping = false
+	s.grace.Stop(s.grace.Timeout)
+	<-s.grace.StopChan()
 }
 
 func (s *httpServer) routes() *httprouter.Router {

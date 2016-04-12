@@ -94,7 +94,3 @@ func TestWhitelistScrapeMiddlewareFilter(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, []chihaya.InfoHash{chihaya.InfoHash("abc")}, req.InfoHashes)
 }
-
-func TestZTearDown(t *testing.T) {
-	srv.Stop()
-}

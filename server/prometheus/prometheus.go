@@ -8,6 +8,8 @@ package prometheus
 
 import (
 	"errors"
+	"log"
+	"net"
 	"net/http"
 	"time"
 
@@ -69,6 +71,9 @@ type Server struct {
 
 var _ server.Server = &Server{}
 
+// Start starts the prometheus server and blocks until it exits.
+//
+// It panics if the server exits unexpectedly.
 func (s *Server) Start() {
 	s.grace = &graceful.Server{
 		Server: &http.Server{
@@ -80,8 +85,19 @@ func (s *Server) Start() {
 		Timeout:          s.cfg.ShutdownTimeout,
 		NoSignalHandling: true,
 	}
+
+	if err := s.grace.ListenAndServe(); err != nil {
+		if opErr, ok := err.(*net.OpError); !ok || (ok && opErr.Op != "accept") {
+			log.Printf("Failed to gracefully run Prometheus server: %s", err.Error())
+			panic(err)
+		}
+	}
+
+	log.Println("Prometheus server shut down cleanly")
 }
 
+// Stop stops the prometheus server and blocks until it exits.
 func (s *Server) Stop() {
 	s.grace.Stop(s.cfg.ShutdownTimeout)
+	<-s.grace.StopChan()
 }
