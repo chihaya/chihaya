@@ -34,7 +34,7 @@ func announceRequest(r *http.Request, cfg *httpConfig) (*chihaya.AnnounceRequest
 	}
 
 	compactStr, _ := q.String("compact")
-	request.Compact = compactStr != "0"
+	request.Compact = compactStr != "" && compactStr != "0"
 
 	infoHashes := q.InfoHashes()
 	if len(infoHashes) < 1 {

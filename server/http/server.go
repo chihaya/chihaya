@@ -112,7 +112,10 @@ func (s *httpServer) serveAnnounce(w http.ResponseWriter, r *http.Request, p htt
 		return
 	}
 
-	writeAnnounceResponse(w, resp)
+	err = writeAnnounceResponse(w, resp)
+	if err != nil {
+		log.Println("error serializing response", err)
+	}
 }
 
 func (s *httpServer) serveScrape(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
