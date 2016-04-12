@@ -27,12 +27,14 @@ func (f FailedToRetrievePeers) Error() string { return string(f) }
 func responseAnnounceClient(next tracker.AnnounceHandler) tracker.AnnounceHandler {
 	return func(cfg *chihaya.TrackerConfig, req *chihaya.AnnounceRequest, resp *chihaya.AnnounceResponse) (err error) {
 		storage := store.MustGetStore()
+		peer4 := chihaya.Peer{ID: req.PeerID, IP: req.IPv4, Port: req.Port}
+		peer6 := chihaya.Peer{ID: req.PeerID, IP: req.IPv6, Port: req.Port}
 
 		resp.MinInterval = cfg.MinAnnounceInterval
 		resp.Compact = req.Compact
 		resp.Complete = int32(storage.NumSeeders(req.InfoHash))
 		resp.Incomplete = int32(storage.NumLeechers(req.InfoHash))
-		resp.IPv4Peers, resp.IPv6Peers, err = storage.AnnouncePeers(req.InfoHash, req.Left == 0, int(req.NumWant))
+		resp.IPv4Peers, resp.IPv6Peers, err = storage.AnnouncePeers(req.InfoHash, req.Left == 0, int(req.NumWant), peer4, peer6)
 		if err != nil {
 			return err.(FailedToRetrievePeers)
 		}
