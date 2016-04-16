@@ -16,7 +16,7 @@ import (
 
 func peerInSlice(peer chihaya.Peer, peers []chihaya.Peer) bool {
 	for _, v := range peers {
-		if v.Equal(&peer) {
+		if v.Equal(peer) {
 			return true
 		}
 	}
@@ -147,7 +147,7 @@ func TestPeerStoreAPI(t *testing.T) {
 	assert.Equal(t, 7, s.NumSeeders(hash))
 	assert.Equal(t, 3, s.NumLeechers(hash))
 
-	peers1, peers61, err := s.AnnouncePeers(hash, true, 5,peer,chihaya.Peer{})
+	peers1, peers61, err := s.AnnouncePeers(hash, true, 5, peer, chihaya.Peer{})
 	assert.Nil(t, err)
 	assert.NotNil(t, peers1)
 	assert.NotNil(t, peers61)

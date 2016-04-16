@@ -271,12 +271,12 @@ func (s *peerStore) AnnouncePeers(infoHash chihaya.InfoHash, seeder bool, numWan
 				}
 
 				if p.IP.To4() == nil {
-					if p.Equal(&peer6) {
+					if p.Equal(peer6) {
 						continue
 					}
 					peers6 = append(peers6, p.Peer)
 				} else {
-					if p.Equal(&peer4) {
+					if p.Equal(peer4) {
 						continue
 					}
 					peers = append(peers, p.Peer)
