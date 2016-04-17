@@ -77,9 +77,6 @@ type Params interface {
 }
 
 // Equal reports whether peer and x are the same.
-func (peer *Peer) Equal(x *Peer) bool {
-	if peer.ID == x.ID && peer.Port == x.Port && peer.IP.Equal(x.IP) {
-		return true
-	}
-	return false
+func (peer Peer) Equal(x Peer) bool {
+	return peer.ID == x.ID && peer.Port == x.Port && peer.IP.Equal(x.IP)
 }

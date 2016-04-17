@@ -27,9 +27,9 @@ var (
 
 func TestPeerEquality(t *testing.T) {
 	// Build peers from test data.
-	var builtPeers []*Peer
+	var builtPeers []Peer
 	for _, peer := range peers {
-		builtPeers = append(builtPeers, &Peer{
+		builtPeers = append(builtPeers, Peer{
 			ID:   PeerID(peer.peerID),
 			IP:   net.ParseIP(peer.ip),
 			Port: peer.port,

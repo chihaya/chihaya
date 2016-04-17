@@ -43,8 +43,8 @@ func TestConstructor(t *testing.T) {
 func TestModifyResponse(t *testing.T) {
 	var (
 		achain tracker.AnnounceChain
-		req chihaya.AnnounceRequest
-		resp chihaya.AnnounceResponse
+		req    chihaya.AnnounceRequest
+		resp   chihaya.AnnounceResponse
 	)
 
 	mw, err := constructor(chihaya.MiddlewareConfig{
