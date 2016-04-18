@@ -34,6 +34,28 @@ type AnnounceRequest struct {
 	Params Params
 }
 
+// Peer4 returns a Peer using the IPv4 endpoint of the Announce.
+// Note that, if the Announce does not contain an IPv4 address, the IP field of
+// the returned Peer can be nil.
+func (r *AnnounceRequest) Peer4() Peer {
+	return Peer{
+		IP:   r.IPv4,
+		Port: r.Port,
+		ID:   r.PeerID,
+	}
+}
+
+// Peer6 returns a Peer using the IPv6 endpoint of the Announce.
+// Note that, if the Announce does not contain an IPv6 address, the IP field of
+// the returned Peer can be nil.
+func (r *AnnounceRequest) Peer6() Peer {
+	return Peer{
+		IP:   r.IPv6,
+		Port: r.Port,
+		ID:   r.PeerID,
+	}
+}
+
 // AnnounceResponse represents the parameters used to create an announce
 // response.
 type AnnounceResponse struct {
