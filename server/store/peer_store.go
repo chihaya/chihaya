@@ -33,7 +33,11 @@ type PeerStore interface {
 
 	// GraduateLeecher promotes a peer from a leecher to a seeder for the
 	// infoHash within the PeerStore.
+	//
+	// If the given Peer is not a leecher, it will still be added to the
+	// list of seeders and no error will be returned.
 	GraduateLeecher(infoHash chihaya.InfoHash, p chihaya.Peer) error
+
 	// AnnouncePeers returns a list of both IPv4, and IPv6 peers for an
 	// announce.
 	//
