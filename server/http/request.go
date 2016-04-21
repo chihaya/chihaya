@@ -49,7 +49,10 @@ func announceRequest(r *http.Request, cfg *httpConfig) (*chihaya.AnnounceRequest
 	if err != nil {
 		return nil, tracker.ClientError("failed to parse parameter: peer_id")
 	}
-	request.PeerID = chihaya.PeerID(peerID)
+	if len(peerID) != 20 {
+		return nil, tracker.ClientError("failed to provide valid peer_id")
+	}
+	request.PeerID = chihaya.PeerIDFromString(peerID)
 
 	request.Left, err = q.Uint64("left")
 	if err != nil {

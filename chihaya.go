@@ -12,10 +12,62 @@ import (
 )
 
 // PeerID represents a peer ID.
-type PeerID string
+type PeerID [20]byte
 
-// InfoHash represents an infohash in hexadecimal notation.
-type InfoHash string
+// PeerIDFromBytes creates a PeerID from a byte slice.
+//
+// It panics if b is not 20 bytes long.
+func PeerIDFromBytes(b []byte) PeerID {
+	if len(b) != 20 {
+		panic("peer ID must be 20 bytes")
+	}
+
+	var buf [20]byte
+	copy(buf[:], b)
+	return PeerID(buf)
+}
+
+// PeerIDFromString creates a PeerID from a string.
+//
+// It panics if s is not 20 bytes long.
+func PeerIDFromString(s string) PeerID {
+	if len(s) != 20 {
+		panic("peer ID must be 20 bytes")
+	}
+
+	var buf [20]byte
+	copy(buf[:], s)
+	return PeerID(buf)
+}
+
+// InfoHash represents an infohash.
+type InfoHash [20]byte
+
+// InfoHashFromBytes creates an InfoHash from a byte slice.
+//
+// It panics if b is not 20 bytes long.
+func InfoHashFromBytes(b []byte) InfoHash {
+	if len(b) != 20 {
+		panic("infohash must be 20 bytes")
+	}
+
+	var buf [20]byte
+	copy(buf[:], b)
+	return InfoHash(buf)
+}
+
+// InfoHashFromString creates an InfoHash from a string.
+//
+// It panics if s is not 20 bytes long.
+func InfoHashFromString(s string) InfoHash {
+	if len(s) != 20 {
+		panic("infohash must be 20 bytes")
+	}
+
+	var buf [20]byte
+	copy(buf[:], s)
+	return InfoHash(buf)
+}
 
 // AnnounceRequest represents the parsed parameters from an announce request.
 type AnnounceRequest struct {

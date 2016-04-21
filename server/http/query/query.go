@@ -20,6 +20,10 @@ import (
 // it.
 var ErrKeyNotFound = errors.New("query: value for the provided key does not exist")
 
+// ErrInvalidInfohash is returned when parsing a query encounters an infohash
+// with invalid length.
+var ErrInvalidInfohash = errors.New("query: invalid infohash")
+
 // Query represents a parsed URL.Query.
 type Query struct {
 	query      string
@@ -71,7 +75,10 @@ func New(query string) (*Query, error) {
 			}
 
 			if keyStr == "info_hash" {
-				q.infoHashes = append(q.infoHashes, chihaya.InfoHash(valStr))
+				if len(valStr) != 20 {
+					return nil, ErrInvalidInfohash
+				}
+				q.infoHashes = append(q.infoHashes, chihaya.InfoHashFromString(valStr))
 			} else {
 				q.params[strings.ToLower(keyStr)] = valStr
 			}

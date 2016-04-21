@@ -25,7 +25,7 @@ func peerInSlice(peer chihaya.Peer, peers []chihaya.Peer) bool {
 
 func TestPeerStoreAPI(t *testing.T) {
 	var (
-		hash = chihaya.InfoHash("11111111111111111111")
+		hash = chihaya.InfoHash([20]byte{})
 
 		peers = []struct {
 			seeder bool
@@ -62,7 +62,7 @@ func TestPeerStoreAPI(t *testing.T) {
 	for _, p := range peers {
 		// Construct chihaya.Peer from test data.
 		peer := chihaya.Peer{
-			ID:   chihaya.PeerID(p.peerID),
+			ID:   chihaya.PeerIDFromString(p.peerID),
 			IP:   net.ParseIP(p.ip),
 			Port: p.port,
 		}
@@ -95,7 +95,7 @@ func TestPeerStoreAPI(t *testing.T) {
 	for _, p := range peers {
 		// Construct chihaya.Peer from test data.
 		peer := chihaya.Peer{
-			ID:   chihaya.PeerID(p.peerID),
+			ID:   chihaya.PeerIDFromString(p.peerID),
 			IP:   net.ParseIP(p.ip),
 			Port: p.port,
 		}
@@ -121,7 +121,7 @@ func TestPeerStoreAPI(t *testing.T) {
 	for _, p := range peers {
 		// Construct chihaya.Peer from test data.
 		peer := chihaya.Peer{
-			ID:   chihaya.PeerID(p.peerID),
+			ID:   chihaya.PeerIDFromString(p.peerID),
 			IP:   net.ParseIP(p.ip),
 			Port: p.port,
 		}
@@ -136,7 +136,7 @@ func TestPeerStoreAPI(t *testing.T) {
 	assert.Equal(t, 6, s.NumSeeders(hash))
 	assert.Equal(t, 4, s.NumLeechers(hash))
 	peer := chihaya.Peer{
-		ID:   chihaya.PeerID(peers[0].peerID),
+		ID:   chihaya.PeerIDFromString(peers[0].peerID),
 		IP:   net.ParseIP(peers[0].ip),
 		Port: peers[0].port,
 	}

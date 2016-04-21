@@ -30,7 +30,7 @@ func TestPeerEquality(t *testing.T) {
 	var builtPeers []Peer
 	for _, peer := range peers {
 		builtPeers = append(builtPeers, Peer{
-			ID:   PeerID(peer.peerID),
+			ID:   PeerIDFromString(peer.peerID),
 			IP:   net.ParseIP(peer.ip),
 			Port: peer.port,
 		})

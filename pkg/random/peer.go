@@ -67,7 +67,7 @@ func Peer(r *rand.Rand, prefix string, v6 bool, minPort, maxPort int) chihaya.Pe
 	prefix = prefix + AlphaNumericString(r, 20-len(prefix))
 
 	return chihaya.Peer{
-		ID:   chihaya.PeerID(prefix),
+		ID:   chihaya.PeerIDFromString(prefix),
 		Port: port,
 		IP:   ip,
 	}

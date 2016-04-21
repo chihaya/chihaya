@@ -26,7 +26,7 @@ var ErrNotWhitelistedClient = tracker.ClientError("client not whitelisted")
 // announce that are stored in the StringStore.
 func whitelistAnnounceClient(next tracker.AnnounceHandler) tracker.AnnounceHandler {
 	return func(cfg *chihaya.TrackerConfig, req *chihaya.AnnounceRequest, resp *chihaya.AnnounceResponse) error {
-		whitelisted, err := store.MustGetStore().HasString(PrefixClient + clientid.New(string(req.PeerID)))
+		whitelisted, err := store.MustGetStore().HasString(PrefixClient + clientid.New(string(req.PeerID[:])))
 		if err != nil {
 			return err
 		} else if !whitelisted {

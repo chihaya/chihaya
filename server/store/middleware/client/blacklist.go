@@ -23,7 +23,7 @@ var ErrBlacklistedClient = tracker.ClientError("client blacklisted")
 // announce that are not stored in the StringStore.
 func blacklistAnnounceClient(next tracker.AnnounceHandler) tracker.AnnounceHandler {
 	return func(cfg *chihaya.TrackerConfig, req *chihaya.AnnounceRequest, resp *chihaya.AnnounceResponse) error {
-		blacklisted, err := store.MustGetStore().HasString(PrefixClient + clientid.New(string(req.PeerID)))
+		blacklisted, err := store.MustGetStore().HasString(PrefixClient + clientid.New(string(req.PeerID[:])))
 		if err != nil {
 			return err
 		} else if blacklisted {
