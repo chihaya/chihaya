@@ -43,11 +43,17 @@ func announceRequest(r *http.Request, cfg *httpConfig) (*chihaya.AnnounceRequest
 	if len(infoHashes) > 1 {
 		return nil, tracker.ClientError("multiple info_hash parameters supplied")
 	}
+	if len(infoHashes[0]) != 20 {
+		return nil, tracker.ClientError("failed to provide valid info_hash")
+	}
 	request.InfoHash = infoHashes[0]
 
 	peerID, err := q.String("peer_id")
 	if err != nil {
 		return nil, tracker.ClientError("failed to parse parameter: peer_id")
+	}
+	if len(peerID) != 20 {
+		return nil, tracker.ClientError("failed to provide valid peer_id")
 	}
 	request.PeerID = chihaya.PeerID(peerID)
 
