@@ -43,14 +43,15 @@ type PeerStore interface {
 	// announce.
 	//
 	// If seeder is true then the peers returned will only be leechers, the
-	// ammount of leechers returned will be the smaller value of numWant or
+	// amount of leechers returned will be the smaller value of numWant or
 	// the available leechers.
 	// If it is false then seeders will be returned up until numWant or the
 	// available seeders, whichever is smaller. If the available seeders is
-	// less than numWant then peers are returned until numWant or they run out.
+	// less than numWant then leechers are returned until numWant or they
+	// run out.
 	AnnouncePeers(infoHash chihaya.InfoHash, seeder bool, numWant int, peer4, peer6 chihaya.Peer) (peers, peers6 []chihaya.Peer, err error)
-	// CollectGarbage deletes peers from the peerStore which are older than the
-	// cutoff time.
+	// CollectGarbage deletes peers from the peerStore which are older than
+	// the cutoff time.
 	CollectGarbage(cutoff time.Time) error
 
 	// GetSeeders gets all the seeders for a particular infoHash.
