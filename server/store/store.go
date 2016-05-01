@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tylerb/graceful"
 	"gopkg.in/yaml.v2"
 
 	"github.com/chihaya/chihaya"
@@ -21,6 +22,8 @@ var theStore *Store
 
 func init() {
 	server.Register("store", constructor)
+	registeredRoutes = make(map[string]map[string]ResponseFunc)
+	activatedRoutes = make(map[string]map[string]ResponseFunc)
 }
 
 // ErrResourceDoesNotExist is the error returned by all delete methods in the
@@ -111,21 +114,9 @@ type Store struct {
 	tkr      *tracker.Tracker
 	shutdown chan struct{}
 	wg       sync.WaitGroup
+	grace    *graceful.Server
 
 	PeerStore
 	IPStore
 	StringStore
-}
-
-// Start starts the store drivers and blocks until all of them exit.
-func (s *Store) Start() {
-	<-s.shutdown
-	s.wg.Wait()
-	log.Println("Store server shut down cleanly")
-}
-
-// Stop stops the store drivers and waits for them to exit.
-func (s *Store) Stop() {
-	close(s.shutdown)
-	s.wg.Wait()
 }
