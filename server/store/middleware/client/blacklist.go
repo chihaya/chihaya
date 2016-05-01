@@ -5,6 +5,8 @@
 package client
 
 import (
+	"net/http"
+
 	"github.com/chihaya/chihaya"
 	"github.com/chihaya/chihaya/pkg/clientid"
 	"github.com/chihaya/chihaya/server/store"
@@ -13,6 +15,10 @@ import (
 
 func init() {
 	tracker.RegisterAnnounceMiddleware("client_blacklist", blacklistAnnounceClient)
+
+	store.RegisterNoResponseHandler(http.MethodPut, pathClient, handlePutClient)
+	store.RegisterNoResponseHandler(http.MethodDelete, pathClient, handleDeleteClient)
+	store.RegisterHandler(http.MethodGet, pathClient, handleGetClient)
 }
 
 // ErrBlacklistedClient is returned by an announce middleware if the announcing
@@ -22,6 +28,8 @@ var ErrBlacklistedClient = tracker.ClientError("client blacklisted")
 // blacklistAnnounceClient provides a middleware that only allows Clients to
 // announce that are not stored in the StringStore.
 func blacklistAnnounceClient(next tracker.AnnounceHandler) tracker.AnnounceHandler {
+	routesActivated.Do(activateRoutes)
+
 	return func(cfg *chihaya.TrackerConfig, req *chihaya.AnnounceRequest, resp *chihaya.AnnounceResponse) error {
 		blacklisted, err := store.MustGetStore().HasString(PrefixClient + clientid.New(string(req.PeerID[:])))
 		if err != nil {

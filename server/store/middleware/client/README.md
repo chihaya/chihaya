@@ -14,7 +14,16 @@ The `client_whitelist` middleware uses all clientIDs stored in the `StringStore`
 
 The clientID part of the peerID of an announce is matched against the `StringStore`, if it's _not_ contained within the `StringStore`, the announce is aborted.
 
-### Important things to notice
+## Routes
+
+Using any of the middlewares provided by this package will enable the following store API endpoints:
+
+- `PUT /clients/:client` will add the given clientID to the store.
+- `DELETE /clients/:client` will remove the given clientID from the store, if it was contained, or return an error otherwise.
+- `GET /clients/:client` will match the given clientID against the store.  
+    This method will return a `store.ContainedResult`.
+
+## Important things to notice
 
 Both middlewares operate on announce requests only.
 
