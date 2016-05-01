@@ -14,12 +14,11 @@ func init() {
 	tracker.RegisterScrapeMiddlewareConstructor("infohash_whitelist", whitelistScrapeInfohash)
 }
 
-// PrefixInfohash is the prefix to be used for infohashes.
-const PrefixInfohash = "ih-"
-
 // whitelistAnnounceInfohash provides a middleware that only allows announces
 // for infohashes that are not stored in a StringStore
 func whitelistAnnounceInfohash(next tracker.AnnounceHandler) tracker.AnnounceHandler {
+	routesActivated.Do(activateRoutes)
+
 	return func(cfg *chihaya.TrackerConfig, req *chihaya.AnnounceRequest, resp *chihaya.AnnounceResponse) (err error) {
 		whitelisted, err := mustGetStore().HasString(PrefixInfohash + string(req.InfoHash[:]))
 
@@ -43,6 +42,8 @@ func whitelistAnnounceInfohash(next tracker.AnnounceHandler) tracker.AnnounceHan
 //
 // ErrUnknownMode is returned if the Mode specified in the config is unknown.
 func whitelistScrapeInfohash(c chihaya.MiddlewareConfig) (tracker.ScrapeMiddleware, error) {
+	routesActivated.Do(activateRoutes)
+
 	cfg, err := newConfig(c)
 	if err != nil {
 		return nil, err

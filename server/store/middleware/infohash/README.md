@@ -39,7 +39,25 @@ The scrape middleware has two modes of operation: _Block_ and _Filter_.
 
 See the configuration section for information about how to configure the scrape middleware.
 
-### Important things to notice
+## Routes
+
+Using any of the middlewares provided by this package will enable the following two store API endpoints:
+
+- `PUT /infohashes/:infohash` will add the given infohash to the store.
+- `DELETE /infohashes/:infohash` will remove the given infohash from the store, if it was contained, or return an error otherwise.
+- `GET /infohashes/:infohash` will attempt to match the given infohash against the store.  
+    This method will return a combined result, consisting of a `store.ContainedResult` and an `infohashResult`.
+
+All API methods defined by this middleware will attempt to parse an infohash.
+As soon as they succeed, the result of the API call will contain an `infohashResult` of this form:
+
+```json
+{
+    "infohash":"00112233445566778899aabbccddeeff00112233"
+}
+```
+
+## Important things to notice
 
 Both blacklist and whitelist middleware use the same `StringStore`.
 It is therefore not advised to have both the `infohash_blacklist` and the `infohash_whitelist` announce or scrape middleware running.
@@ -50,7 +68,7 @@ If your store contains all addresses, no announces/scrapes will be blocked by th
 Also note that the announce and scrape middleware both use the same `StringStore`.
 It is therefore not possible to use different infohashes for black-/whitelisting on announces and scrape requests.
 
-### Configuration
+## Configuration
 
 The scrape middleware is configurable.
 
