@@ -10,8 +10,16 @@ var stringStoreDrivers = make(map[string]StringStoreDriver)
 
 // StringStore represents an interface for manipulating strings.
 type StringStore interface {
+	// PutString adds the given string to the StringStore.
 	PutString(s string) error
+
+	// HasString returns whether or not the StringStore contains the given
+	// string.
 	HasString(s string) (bool, error)
+
+	// RemoveString removes the string from the string store.
+	// Returns ErrResourceDoesNotExist if the given string is not contained
+	// in the store.
 	RemoveString(s string) error
 }
 

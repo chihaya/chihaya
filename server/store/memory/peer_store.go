@@ -119,10 +119,16 @@ func (s *peerStore) DeleteSeeder(infoHash chihaya.InfoHash, p chihaya.Peer) erro
 	defer shard.Unlock()
 
 	if shard.peers[key] == nil {
-		return nil
+		return store.ErrResourceDoesNotExist
 	}
 
-	delete(shard.peers[key], peerKey(p))
+	pk := peerKey(p)
+
+	if _, ok := shard.peers[key][pk]; !ok {
+		return store.ErrResourceDoesNotExist
+	}
+
+	delete(shard.peers[key], pk)
 
 	if len(shard.peers[key]) == 0 {
 		delete(shard.peers, key)
@@ -156,10 +162,16 @@ func (s *peerStore) DeleteLeecher(infoHash chihaya.InfoHash, p chihaya.Peer) err
 	defer shard.Unlock()
 
 	if shard.peers[key] == nil {
-		return nil
+		return store.ErrResourceDoesNotExist
 	}
 
-	delete(shard.peers[key], peerKey(p))
+	pk := peerKey(p)
+
+	if _, ok := shard.peers[key][pk]; !ok {
+		return store.ErrResourceDoesNotExist
+	}
+
+	delete(shard.peers[key], pk)
 
 	if len(shard.peers[key]) == 0 {
 		delete(shard.peers, key)

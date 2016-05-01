@@ -57,13 +57,13 @@ func key(ip net.IP) [16]byte {
 }
 
 func (s *ipStore) AddNetwork(network string) error {
-	s.Lock()
-	defer s.Unlock()
-
 	key, length, err := netmatch.ParseNetwork(network)
 	if err != nil {
 		return err
 	}
+
+	s.Lock()
+	defer s.Unlock()
 
 	return s.networks.Add(key, length)
 }
@@ -78,9 +78,9 @@ func (s *ipStore) AddIP(ip net.IP) error {
 }
 
 func (s *ipStore) HasIP(ip net.IP) (bool, error) {
+	key := key(ip)
 	s.RLock()
 	defer s.RUnlock()
-	key := key(ip)
 
 	_, ok := s.ips[key]
 	if ok {
@@ -138,22 +138,31 @@ func (s *ipStore) HasAllIPs(ips []net.IP) (bool, error) {
 }
 
 func (s *ipStore) RemoveIP(ip net.IP) error {
+	key := key(ip)
 	s.Lock()
 	defer s.Unlock()
 
-	delete(s.ips, key(ip))
+	if _, ok := s.ips[key]; !ok {
+		return store.ErrResourceDoesNotExist
+	}
+
+	delete(s.ips, key)
 
 	return nil
 }
 
 func (s *ipStore) RemoveNetwork(network string) error {
-	s.Lock()
-	defer s.Unlock()
-
 	key, length, err := netmatch.ParseNetwork(network)
 	if err != nil {
 		return err
 	}
 
-	return s.networks.Remove(key, length)
+	s.Lock()
+	defer s.Unlock()
+
+	err = s.networks.Remove(key, length)
+	if err != nil && err == netmatch.ErrNotContained {
+		return store.ErrResourceDoesNotExist
+	}
+	return err
 }

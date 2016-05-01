@@ -18,11 +18,17 @@ type PeerStore interface {
 	// PutSeeder adds a seeder for the infoHash to the PeerStore.
 	PutSeeder(infoHash chihaya.InfoHash, p chihaya.Peer) error
 	// DeleteSeeder removes a seeder for the infoHash from the PeerStore.
+	//
+	// Returns ErrResourceDoesNotExist if the infoHash or peer does not
+	// exist.
 	DeleteSeeder(infoHash chihaya.InfoHash, p chihaya.Peer) error
 
 	// PutLeecher adds a leecher for the infoHash to the PeerStore.
 	PutLeecher(infoHash chihaya.InfoHash, p chihaya.Peer) error
 	// DeleteLeecher removes a leecher for the infoHash from the PeerStore.
+	//
+	// Returns ErrResourceDoesNotExist if the infoHash or peer does not
+	// exist.
 	DeleteLeecher(infoHash chihaya.InfoHash, p chihaya.Peer) error
 
 	// GraduateLeecher promotes a peer from a leecher to a seeder for the
@@ -32,11 +38,11 @@ type PeerStore interface {
 	// announce.
 	//
 	// If seeder is true then the peers returned will only be leechers, the
-	// ammount of leechers returned will be the smaller value of numWant or the
-	// available leechers.
+	// ammount of leechers returned will be the smaller value of numWant or
+	// the available leechers.
 	// If it is false then seeders will be returned up until numWant or the
-	// available seeders, whichever is smaller. If the available seeders is less
-	// than numWant then peers are returned until numWant or they run out.
+	// available seeders, whichever is smaller. If the available seeders is
+	// less than numWant then peers are returned until numWant or they run out.
 	AnnouncePeers(infoHash chihaya.InfoHash, seeder bool, numWant int, peer4, peer6 chihaya.Peer) (peers, peers6 []chihaya.Peer, err error)
 	// CollectGarbage deletes peers from the peerStore which are older than the
 	// cutoff time.
