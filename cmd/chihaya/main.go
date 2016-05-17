@@ -28,6 +28,7 @@ import (
 	_ "github.com/chihaya/chihaya/server/store/middleware/infohash"
 	_ "github.com/chihaya/chihaya/server/store/middleware/ip"
 	_ "github.com/chihaya/chihaya/server/store/middleware/response"
+	_ "github.com/chihaya/chihaya/server/store/middleware/swarm"
 )
 
 var configPath string

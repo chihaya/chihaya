@@ -21,30 +21,36 @@ type IPStore interface {
 	AddNetwork(network string) error
 
 	// HasIP returns whether the given IP address is contained in the IPStore
-	// or belong to any of the stored networks.
+	// or belongs to any of the stored networks.
 	HasIP(ip net.IP) (bool, error)
 
-	// HasAnyIP returns whether any of the given IP addresses are contained in
-	// the IPStore or belong to any of the stored networks.
+	// HasAnyIP returns whether any of the given IP addresses are contained
+	// in the IPStore or belongs to any of the stored networks.
 	HasAnyIP(ips []net.IP) (bool, error)
 
-	// HassAllIPs returns whether all of the given IP addresses are contained in
-	// the IPStore or belong to any of the stored networks.
+	// HassAllIPs returns whether all of the given IP addresses are
+	// contained in the IPStore or belongs to any of the stored networks.
 	HasAllIPs(ips []net.IP) (bool, error)
 
 	// RemoveIP removes a single IP address from the IPStore.
 	//
 	// This wil not remove the given address from any networks it belongs to
 	// that are stored in the IPStore.
+	//
+	// Returns ErrResourceDoesNotExist if the given IP address is not
+	// contained in the store.
 	RemoveIP(ip net.IP) error
 
-	// RemoveNetwork removes a range of IP addresses that was previously added
-	// through AddNetwork.
+	// RemoveNetwork removes a range of IP addresses that was previously
+	// added through AddNetwork.
 	//
 	// The given network must not, as a string, match the previously added
 	// network, but rather denote the same network, e.g. if the network
 	// 192.168.22.255/24 was added, removing the network 192.168.22.123/24
 	// will succeed.
+	//
+	// Returns ErrResourceDoesNotExist if the given network is not
+	// contained in the store.
 	RemoveNetwork(network string) error
 }
 

@@ -8,8 +8,8 @@ package tracker
 
 import (
 	"errors"
-
 	"fmt"
+
 	"github.com/chihaya/chihaya"
 )
 

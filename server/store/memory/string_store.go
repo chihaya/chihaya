@@ -51,6 +51,10 @@ func (ss *stringStore) RemoveString(s string) error {
 	ss.Lock()
 	defer ss.Unlock()
 
+	if _, ok := ss.strings[s]; !ok {
+		return store.ErrResourceDoesNotExist
+	}
+
 	delete(ss.strings, s)
 
 	return nil

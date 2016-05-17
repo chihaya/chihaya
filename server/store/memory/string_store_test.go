@@ -5,9 +5,11 @@
 package memory
 
 import (
-	"github.com/chihaya/chihaya/server/store"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/chihaya/chihaya/server/store"
 )
 
 var (
@@ -30,7 +32,7 @@ func TestStringStore(t *testing.T) {
 	assert.False(t, has)
 
 	err = ss.RemoveString(s1)
-	assert.Nil(t, err)
+	assert.NotNil(t, err)
 
 	err = ss.PutString(s1)
 	assert.Nil(t, err)

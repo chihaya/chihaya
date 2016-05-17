@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/chihaya/chihaya/server/store"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -64,7 +65,7 @@ func TestIPStore(t *testing.T) {
 
 	// check removes
 	err = s.RemoveIP(v6)
-	assert.Nil(t, err)
+	assert.NotNil(t, err)
 
 	err = s.RemoveIP(v4s)
 	assert.Nil(t, err)

@@ -23,6 +23,10 @@ func init() {
 	server.Register("store", constructor)
 }
 
+// ErrResourceDoesNotExist is the error returned by all delete methods in the
+// store if the requested resource does not exist.
+var ErrResourceDoesNotExist = errors.New("resource does not exist")
+
 func constructor(srvcfg *chihaya.ServerConfig, tkr *tracker.Tracker) (server.Server, error) {
 	if theStore == nil {
 		cfg, err := newConfig(srvcfg)
