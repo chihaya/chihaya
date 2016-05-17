@@ -21,7 +21,7 @@ const PrefixInfohash = "ih-"
 // for infohashes that are not stored in a StringStore
 func whitelistAnnounceInfohash(next tracker.AnnounceHandler) tracker.AnnounceHandler {
 	return func(cfg *chihaya.TrackerConfig, req *chihaya.AnnounceRequest, resp *chihaya.AnnounceResponse) (err error) {
-		whitelisted, err := mustGetStore().HasString(PrefixInfohash + string(req.InfoHash))
+		whitelisted, err := mustGetStore().HasString(PrefixInfohash + string(req.InfoHash[:]))
 
 		if err != nil {
 			return err
@@ -65,7 +65,7 @@ func whitelistFilterScrape(next tracker.ScrapeHandler) tracker.ScrapeHandler {
 		infohashes := req.InfoHashes
 
 		for i, ih := range infohashes {
-			whitelisted, err = storage.HasString(PrefixInfohash + string(ih))
+			whitelisted, err = storage.HasString(PrefixInfohash + string(ih[:]))
 
 			if err != nil {
 				return err
@@ -85,7 +85,7 @@ func whitelistBlockScrape(next tracker.ScrapeHandler) tracker.ScrapeHandler {
 		storage := mustGetStore()
 
 		for _, ih := range req.InfoHashes {
-			whitelisted, err = storage.HasString(PrefixInfohash + string(ih))
+			whitelisted, err = storage.HasString(PrefixInfohash + string(ih[:]))
 
 			if err != nil {
 				return err

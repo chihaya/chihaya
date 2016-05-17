@@ -26,11 +26,11 @@ func TestWhitelistAnnounceMiddleware(t *testing.T) {
 	err := handler(nil, &req, &resp)
 	assert.Equal(t, ErrBlockedInfohash, err)
 
-	req.InfoHash = chihaya.InfoHash("def")
+	req.InfoHash = chihaya.InfoHash(ih2)
 	err = handler(nil, &req, &resp)
 	assert.Equal(t, ErrBlockedInfohash, err)
 
-	req.InfoHash = chihaya.InfoHash("abc")
+	req.InfoHash = chihaya.InfoHash(ih1)
 	err = handler(nil, &req, &resp)
 	assert.Nil(t, err)
 }
@@ -55,11 +55,11 @@ func TestWhitelistScrapeMiddlewareBlock(t *testing.T) {
 	err = handler(nil, &req, &resp)
 	assert.Nil(t, err)
 
-	req.InfoHashes = []chihaya.InfoHash{chihaya.InfoHash("abc"), chihaya.InfoHash("def")}
+	req.InfoHashes = []chihaya.InfoHash{chihaya.InfoHash(ih1), chihaya.InfoHash(ih2)}
 	err = handler(nil, &req, &resp)
 	assert.Equal(t, ErrBlockedInfohash, err)
 
-	req.InfoHashes = []chihaya.InfoHash{chihaya.InfoHash("abc")}
+	req.InfoHashes = []chihaya.InfoHash{chihaya.InfoHash(ih1)}
 	err = handler(nil, &req, &resp)
 	assert.Nil(t, err)
 }
@@ -84,13 +84,13 @@ func TestWhitelistScrapeMiddlewareFilter(t *testing.T) {
 	err = handler(nil, &req, &resp)
 	assert.Nil(t, err)
 
-	req.InfoHashes = []chihaya.InfoHash{chihaya.InfoHash("abc"), chihaya.InfoHash("def")}
+	req.InfoHashes = []chihaya.InfoHash{chihaya.InfoHash(ih1), chihaya.InfoHash(ih2)}
 	err = handler(nil, &req, &resp)
 	assert.Nil(t, err)
-	assert.Equal(t, []chihaya.InfoHash{chihaya.InfoHash("abc")}, req.InfoHashes)
+	assert.Equal(t, []chihaya.InfoHash{chihaya.InfoHash(ih1)}, req.InfoHashes)
 
-	req.InfoHashes = []chihaya.InfoHash{chihaya.InfoHash("abc")}
+	req.InfoHashes = []chihaya.InfoHash{chihaya.InfoHash(ih1)}
 	err = handler(nil, &req, &resp)
 	assert.Nil(t, err)
-	assert.Equal(t, []chihaya.InfoHash{chihaya.InfoHash("abc")}, req.InfoHashes)
+	assert.Equal(t, []chihaya.InfoHash{chihaya.InfoHash(ih1)}, req.InfoHashes)
 }

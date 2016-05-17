@@ -34,10 +34,10 @@ func TestPeer(t *testing.T) {
 	}
 
 	p := Peer(r, "abcdefghijklmnopqrst", false, 2000, 2000)
-	assert.Equal(t, "abcdefghijklmnopqrst", string(p.ID))
+	assert.Equal(t, "abcdefghijklmnopqrst", string(p.ID[:]))
 	assert.Equal(t, uint16(2000), p.Port)
 
 	p = Peer(r, "abcdefghijklmnopqrstUVWXYZ", true, -10, -5)
-	assert.Equal(t, "abcdefghijklmnopqrst", string(p.ID))
+	assert.Equal(t, "abcdefghijklmnopqrst", string(p.ID[:]))
 	assert.True(t, p.Port >= uint16(1) && p.Port <= uint16(65535))
 }

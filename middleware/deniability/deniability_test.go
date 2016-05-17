@@ -42,7 +42,7 @@ func TestReplacePeer(t *testing.T) {
 		cfg: &cfg,
 	}
 	peer := chihaya.Peer{
-		ID:   chihaya.PeerID("abcdefghijklmnoprstu"),
+		ID:   chihaya.PeerID([20]byte{}),
 		Port: 2000,
 		IP:   net.ParseIP("10.150.255.23"),
 	}
@@ -77,7 +77,7 @@ func TestInsertPeer(t *testing.T) {
 		cfg: &cfg,
 	}
 	peer := chihaya.Peer{
-		ID:   chihaya.PeerID("abcdefghijklmnoprstu"),
+		ID:   chihaya.PeerID([20]byte{}),
 		Port: 2000,
 		IP:   net.ParseIP("10.150.255.23"),
 	}

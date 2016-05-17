@@ -40,12 +40,17 @@ var mock store.StringStore = &storeMock{
 	strings: make(map[string]struct{}),
 }
 
+var (
+	ih1 = chihaya.InfoHash([20]byte{1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
+	ih2 = chihaya.InfoHash([20]byte{2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0})
+)
+
 func TestASetUp(t *testing.T) {
 	mustGetStore = func() store.StringStore {
 		return mock
 	}
 
-	mustGetStore().PutString(PrefixInfohash + "abc")
+	mustGetStore().PutString(PrefixInfohash + string(ih1[:]))
 }
 
 func TestBlacklistAnnounceMiddleware(t *testing.T) {
@@ -61,11 +66,11 @@ func TestBlacklistAnnounceMiddleware(t *testing.T) {
 	err := handler(nil, &req, &resp)
 	assert.Nil(t, err)
 
-	req.InfoHash = chihaya.InfoHash("abc")
+	req.InfoHash = chihaya.InfoHash(ih1)
 	err = handler(nil, &req, &resp)
 	assert.Equal(t, ErrBlockedInfohash, err)
 
-	req.InfoHash = chihaya.InfoHash("def")
+	req.InfoHash = chihaya.InfoHash(ih2)
 	err = handler(nil, &req, &resp)
 	assert.Nil(t, err)
 }
@@ -90,11 +95,11 @@ func TestBlacklistScrapeMiddlewareBlock(t *testing.T) {
 	err = handler(nil, &req, &resp)
 	assert.Nil(t, err)
 
-	req.InfoHashes = []chihaya.InfoHash{chihaya.InfoHash("abc"), chihaya.InfoHash("def")}
+	req.InfoHashes = []chihaya.InfoHash{chihaya.InfoHash(ih1), chihaya.InfoHash(ih2)}
 	err = handler(nil, &req, &resp)
 	assert.Equal(t, ErrBlockedInfohash, err)
 
-	req.InfoHashes = []chihaya.InfoHash{chihaya.InfoHash("def")}
+	req.InfoHashes = []chihaya.InfoHash{chihaya.InfoHash(ih2)}
 	err = handler(nil, &req, &resp)
 	assert.Nil(t, err)
 }
@@ -119,12 +124,12 @@ func TestBlacklistScrapeMiddlewareFilter(t *testing.T) {
 	err = handler(nil, &req, &resp)
 	assert.Nil(t, err)
 
-	req.InfoHashes = []chihaya.InfoHash{chihaya.InfoHash("abc"), chihaya.InfoHash("def")}
+	req.InfoHashes = []chihaya.InfoHash{chihaya.InfoHash(ih1), chihaya.InfoHash(ih2)}
 	err = handler(nil, &req, &resp)
 	assert.Nil(t, err)
-	assert.Equal(t, []chihaya.InfoHash{chihaya.InfoHash("def")}, req.InfoHashes)
+	assert.Equal(t, []chihaya.InfoHash{chihaya.InfoHash(ih2)}, req.InfoHashes)
 
-	req.InfoHashes = []chihaya.InfoHash{chihaya.InfoHash("def")}
+	req.InfoHashes = []chihaya.InfoHash{chihaya.InfoHash(ih2)}
 	err = handler(nil, &req, &resp)
 	assert.Nil(t, err)
 }

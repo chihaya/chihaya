@@ -78,20 +78,20 @@ var _ store.PeerStore = &peerStore{}
 
 func (s *peerStore) shardIndex(infoHash chihaya.InfoHash) uint32 {
 	idx := fnv.New32()
-	idx.Write([]byte(infoHash))
+	idx.Write(infoHash[:])
 	return idx.Sum32() % uint32(len(s.shards))
 }
 
 func peerKey(p chihaya.Peer) string {
-	return string(p.IP) + string(p.ID)
+	return string(p.IP) + string(p.ID[:])
 }
 
 func seedersKey(infoHash chihaya.InfoHash) string {
-	return string(infoHash) + "-s"
+	return string(infoHash[:]) + "-s"
 }
 
 func leechersKey(infoHash chihaya.InfoHash) string {
-	return string(infoHash) + "-l"
+	return string(infoHash[:]) + "-l"
 }
 
 func (s *peerStore) PutSeeder(infoHash chihaya.InfoHash, p chihaya.Peer) error {
