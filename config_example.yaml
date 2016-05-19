@@ -7,16 +7,21 @@ chihaya:
     announce: 10m
     min_announce: 5m
     announce_middleware:
-      # These are currently fake values
-      - name: prometheus
-      - name: store_client_validation
-        config:
-          be_clever: true
-      - name: store_create_on_announce
+#      - name: ip_blacklist
+#      - name: ip_whitelist
+#      - name: client_blacklist
+#      - name: client_whitelist
+#      - name: infohash_blacklist
+#      - name: infohash_whitelist
+#      - name: varinterval
+#      - name: deniability
+      - name: store_swarm_interaction
+      - name: store_response
     scrape_middleware:
-      # These are currently fake values
-      - name: prometheus
-      - name: store_client_validation
+#      - name: infohash_blacklist
+#        config:
+#          mode: block
+      - name: store_response
 
   servers:
     - name: store
@@ -51,6 +56,6 @@ chihaya:
         read_timeout: 10s
         write_timeout: 10s
 
-    - name: udp
-      config:
-        addr: localhost:6883
+#    - name: udp
+#      config:
+#        addr: localhost:6883
