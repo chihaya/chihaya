@@ -5,8 +5,13 @@ go:
 sudo: false
 install:
 - go get -t ./...
+- go get -u github.com/golang/lint/golint
+- go get -u golang.org/x/tools/cmd/goimports
 script:
 - go test -v $(go list ./... | grep -v /vendor/)
+- go vet $(go list ./... | grep -v /vendor/)
+- diff <(goimports -d $(find . -type f -name '*.go' -not -path "./vendor/*")) <(printf "")
+- for d in $(go list ./... | grep -v /vendor/); do diff <(golint $d) <(printf ""); done
 notifications:
   irc:
     channels:
