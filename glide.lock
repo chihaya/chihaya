@@ -1,0 +1,44 @@
+hash: e7d2be6c361fe6fe6242b56e502829e8a72733f9ff0aa57443c9397c3488174f
+updated: 2016-05-21T17:58:26.448148976-04:00
+imports:
+- name: github.com/beorn7/perks
+  version: 3ac7bf7a47d159a033b107610db8a1b6575507a4
+  subpackages:
+  - quantile
+- name: github.com/golang/protobuf
+  version: cd85f19845cc96cc6e5269c894d8cd3c67e9ed83
+  subpackages:
+  - proto
+- name: github.com/julienschmidt/httprouter
+  version: 77366a47451a56bb3ba682481eed85b64fea14e8
+- name: github.com/matttproud/golang_protobuf_extensions
+  version: c12348ce28de40eed0136aa2b644d0ee0650e56c
+  subpackages:
+  - pbutil
+- name: github.com/mrd0ll4r/netmatch
+  version: af335c21c765757f2649dbf1d3d43f77eb6c4eb8
+- name: github.com/prometheus/client_golang
+  version: d38f1ef46f0d78136db3e585f7ebe1bcc3476f73
+  subpackages:
+  - prometheus
+- name: github.com/prometheus/client_model
+  version: fa8ad6fec33561be4280a8f0514318c79d7f6cb6
+  subpackages:
+  - go
+- name: github.com/prometheus/common
+  version: a715f9d07a512e8339f70a275ace0e67c0f9a65f
+  subpackages:
+  - expfmt
+  - internal/bitbucket.org/ww/goautoneg
+  - model
+- name: github.com/prometheus/procfs
+  version: abf152e5f3e97f2fafac028d2cc06c1feb87ffa5
+- name: github.com/tylerb/graceful
+  version: 9a3d4236b03bb5d26f7951134d248f9d5510d599
+- name: golang.org/x/net
+  version: 0c607074acd38c5f23d1344dfe74c977464d1257
+  subpackages:
+  - netutil
+- name: gopkg.in/yaml.v2
+  version: a83829b6f1293c91addabc89d0571c246397bbf4
+devImports: []
