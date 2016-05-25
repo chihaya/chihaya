@@ -18,7 +18,7 @@ By randomizing the announce interval, load spikes will flatten out after a few c
 
 This middleware provides the following parameters for configuration:
 
-- `modify_response_probability` (float, >0, <= 1) indicates the probability by which a response will be augmented with random peers.
+- `modify_response_probability` (float, >0, <= 1) indicates the probability by which a response will be chosen to have its announce intervals modified.
 - `max_increase_delta` (int, >0) sets an upper boundary (inclusive) for the amount of seconds added.
 - `modify_min_interval` (boolean) whether to modify the `min_interval` field as well.
 
