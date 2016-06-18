@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"net"
+
 	"github.com/stretchr/testify/require"
 )
 
