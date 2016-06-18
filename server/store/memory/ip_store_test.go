@@ -18,7 +18,8 @@ var (
 	v4  = net.ParseIP("12.13.14.15")
 	v4s = net.ParseIP("12.13.14.15").To4()
 
-	ipStoreTester = store.PrepareIPStoreTester(&ipStoreDriver{})
+	ipStoreTester      = store.PrepareIPStoreTester(&ipStoreDriver{})
+	ipStoreBenchmarker = store.PrepareIPStoreBenchmarker(&ipStoreDriver{})
 )
 
 func TestKey(t *testing.T) {
@@ -51,4 +52,148 @@ func TestNetworks(t *testing.T) {
 
 func TestHasAllHasAnyNetworks(t *testing.T) {
 	ipStoreTester.TestHasAllHasAnyNetworks(t, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_AddV4(b *testing.B) {
+	ipStoreBenchmarker.AddV4(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_AddV6(b *testing.B) {
+	ipStoreBenchmarker.AddV6(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_LookupV4(b *testing.B) {
+	ipStoreBenchmarker.LookupV4(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_LookupV6(b *testing.B) {
+	ipStoreBenchmarker.LookupV6(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_AddRemoveV4(b *testing.B) {
+	ipStoreBenchmarker.AddRemoveV4(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_AddRemoveV6(b *testing.B) {
+	ipStoreBenchmarker.AddRemoveV6(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_LookupNonExistV4(b *testing.B) {
+	ipStoreBenchmarker.LookupNonExistV4(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_LookupNonExistV6(b *testing.B) {
+	ipStoreBenchmarker.LookupNonExistV6(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_RemoveNonExistV4(b *testing.B) {
+	ipStoreBenchmarker.RemoveNonExistV4(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_RemoveNonExistV6(b *testing.B) {
+	ipStoreBenchmarker.RemoveNonExistV6(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_AddV4Network(b *testing.B) {
+	ipStoreBenchmarker.AddV4Network(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_AddV6Network(b *testing.B) {
+	ipStoreBenchmarker.AddV6Network(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_LookupV4Network(b *testing.B) {
+	ipStoreBenchmarker.LookupV4Network(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_LookupV6Network(b *testing.B) {
+	ipStoreBenchmarker.LookupV6Network(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_AddRemoveV4Network(b *testing.B) {
+	ipStoreBenchmarker.AddRemoveV4Network(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_AddRemoveV6Network(b *testing.B) {
+	ipStoreBenchmarker.AddRemoveV6Network(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_RemoveNonExistV4Network(b *testing.B) {
+	ipStoreBenchmarker.RemoveNonExistV4Network(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_RemoveNonExistV6Network(b *testing.B) {
+	ipStoreBenchmarker.RemoveNonExistV6Network(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_Add1KV4(b *testing.B) {
+	ipStoreBenchmarker.Add1KV4(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_Add1KV6(b *testing.B) {
+	ipStoreBenchmarker.Add1KV6(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_Lookup1KV4(b *testing.B) {
+	ipStoreBenchmarker.Lookup1KV4(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_Lookup1KV6(b *testing.B) {
+	ipStoreBenchmarker.Lookup1KV6(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_AddRemove1KV4(b *testing.B) {
+	ipStoreBenchmarker.AddRemove1KV4(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_AddRemove1KV6(b *testing.B) {
+	ipStoreBenchmarker.AddRemove1KV6(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_LookupNonExist1KV4(b *testing.B) {
+	ipStoreBenchmarker.LookupNonExist1KV4(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_LookupNonExist1KV6(b *testing.B) {
+	ipStoreBenchmarker.LookupNonExist1KV6(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_RemoveNonExist1KV4(b *testing.B) {
+	ipStoreBenchmarker.RemoveNonExist1KV4(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_RemoveNonExist1KV6(b *testing.B) {
+	ipStoreBenchmarker.RemoveNonExist1KV6(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_Add1KV4Network(b *testing.B) {
+	ipStoreBenchmarker.Add1KV4Network(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_Add1KV6Network(b *testing.B) {
+	ipStoreBenchmarker.Add1KV6Network(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_Lookup1KV4Network(b *testing.B) {
+	ipStoreBenchmarker.Lookup1KV4Network(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_Lookup1KV6Network(b *testing.B) {
+	ipStoreBenchmarker.Lookup1KV6Network(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_AddRemove1KV4Network(b *testing.B) {
+	ipStoreBenchmarker.AddRemove1KV4Network(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_AddRemove1KV6Network(b *testing.B) {
+	ipStoreBenchmarker.AddRemove1KV6Network(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_RemoveNonExist1KV4Network(b *testing.B) {
+	ipStoreBenchmarker.RemoveNonExist1KV4Network(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_RemoveNonExist1KV6Network(b *testing.B) {
+	ipStoreBenchmarker.RemoveNonExist1KV6Network(b, &store.DriverConfig{})
 }
