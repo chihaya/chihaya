@@ -7,12 +7,12 @@ package store
 import (
 	"errors"
 	"log"
-	"sync"
 	"time"
 
 	"gopkg.in/yaml.v2"
 
 	"github.com/chihaya/chihaya"
+	"github.com/chihaya/chihaya/pkg/stopper"
 	"github.com/chihaya/chihaya/server"
 	"github.com/chihaya/chihaya/tracker"
 )
@@ -34,29 +34,34 @@ func constructor(srvcfg *chihaya.ServerConfig, tkr *tracker.Tracker) (server.Ser
 			return nil, errors.New("store: invalid store config: " + err.Error())
 		}
 
+		theStore = &Store{
+			cfg:      cfg,
+			tkr:      tkr,
+			shutdown: make(chan struct{}),
+			sg:       stopper.NewStopGroup(),
+		}
+
 		ps, err := OpenPeerStore(&cfg.PeerStore)
 		if err != nil {
 			return nil, err
 		}
+		theStore.sg.Add(ps)
 
 		ips, err := OpenIPStore(&cfg.IPStore)
 		if err != nil {
 			return nil, err
 		}
+		theStore.sg.Add(ips)
 
 		ss, err := OpenStringStore(&cfg.StringStore)
 		if err != nil {
 			return nil, err
 		}
+		theStore.sg.Add(ss)
 
-		theStore = &Store{
-			cfg:         cfg,
-			tkr:         tkr,
-			shutdown:    make(chan struct{}),
-			PeerStore:   ps,
-			IPStore:     ips,
-			StringStore: ss,
-		}
+		theStore.PeerStore = ps
+		theStore.IPStore = ips
+		theStore.StringStore = ss
 	}
 	return theStore, nil
 }
@@ -110,7 +115,7 @@ type Store struct {
 	cfg      *Config
 	tkr      *tracker.Tracker
 	shutdown chan struct{}
-	wg       sync.WaitGroup
+	sg       *stopper.StopGroup
 
 	PeerStore
 	IPStore
@@ -120,12 +125,18 @@ type Store struct {
 // Start starts the store drivers and blocks until all of them exit.
 func (s *Store) Start() {
 	<-s.shutdown
-	s.wg.Wait()
-	log.Println("Store server shut down cleanly")
 }
 
 // Stop stops the store drivers and waits for them to exit.
 func (s *Store) Stop() {
+	errors := s.sg.Stop()
+	if len(errors) == 0 {
+		log.Println("Store server shut down cleanly")
+	} else {
+		log.Println("Store server: failed to shutdown drivers")
+		for _, err := range errors {
+			log.Println(err.Error())
+		}
+	}
 	close(s.shutdown)
-	s.wg.Wait()
 }

@@ -11,7 +11,7 @@ import (
 
 	"github.com/chihaya/chihaya"
 	"github.com/chihaya/chihaya/server/store"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func peerInSlice(peer chihaya.Peer, peers []chihaya.Peer) bool {
@@ -56,8 +56,8 @@ func TestPeerStoreAPI(t *testing.T) {
 		d = &peerStoreDriver{}
 	)
 	s, err := d.New(&config)
-	assert.Nil(t, err)
-	assert.NotNil(t, s)
+	require.Nil(t, err)
+	require.NotNil(t, s)
 
 	for _, p := range peers {
 		// Construct chihaya.Peer from test data.
@@ -72,22 +72,22 @@ func TestPeerStoreAPI(t *testing.T) {
 		} else {
 			err = s.PutLeecher(hash, peer)
 		}
-		assert.Nil(t, err)
+		require.Nil(t, err)
 	}
 
 	leechers1, leechers61, err := s.GetLeechers(hash)
-	assert.Nil(t, err)
-	assert.NotEmpty(t, leechers1)
-	assert.NotEmpty(t, leechers61)
+	require.Nil(t, err)
+	require.NotEmpty(t, leechers1)
+	require.NotEmpty(t, leechers61)
 	num := s.NumLeechers(hash)
-	assert.Equal(t, len(leechers1)+len(leechers61), num)
+	require.Equal(t, len(leechers1)+len(leechers61), num)
 
 	seeders1, seeders61, err := s.GetSeeders(hash)
-	assert.Nil(t, err)
-	assert.NotEmpty(t, seeders1)
-	assert.NotEmpty(t, seeders61)
+	require.Nil(t, err)
+	require.NotEmpty(t, seeders1)
+	require.NotEmpty(t, seeders61)
 	num = s.NumSeeders(hash)
-	assert.Equal(t, len(seeders1)+len(seeders61), num)
+	require.Equal(t, len(seeders1)+len(seeders61), num)
 
 	leechers := append(leechers1, leechers61...)
 	seeders := append(seeders1, seeders61...)
@@ -101,9 +101,9 @@ func TestPeerStoreAPI(t *testing.T) {
 		}
 
 		if p.seeder {
-			assert.True(t, peerInSlice(peer, seeders))
+			require.True(t, peerInSlice(peer, seeders))
 		} else {
-			assert.True(t, peerInSlice(peer, leechers))
+			require.True(t, peerInSlice(peer, leechers))
 		}
 
 		if p.seeder {
@@ -111,11 +111,11 @@ func TestPeerStoreAPI(t *testing.T) {
 		} else {
 			err = s.DeleteLeecher(hash, peer)
 		}
-		assert.Nil(t, err)
+		require.Nil(t, err)
 	}
 
-	assert.Zero(t, s.NumLeechers(hash))
-	assert.Zero(t, s.NumSeeders(hash))
+	require.Zero(t, s.NumLeechers(hash))
+	require.Zero(t, s.NumSeeders(hash))
 
 	// Re-add all the peers to the peerStore.
 	for _, p := range peers {
@@ -133,27 +133,31 @@ func TestPeerStoreAPI(t *testing.T) {
 	}
 
 	// Check that there are 6 seeders, and 4 leechers.
-	assert.Equal(t, 6, s.NumSeeders(hash))
-	assert.Equal(t, 4, s.NumLeechers(hash))
+	require.Equal(t, 6, s.NumSeeders(hash))
+	require.Equal(t, 4, s.NumLeechers(hash))
 	peer := chihaya.Peer{
 		ID:   chihaya.PeerIDFromString(peers[0].peerID),
 		IP:   net.ParseIP(peers[0].ip),
 		Port: peers[0].port,
 	}
 	err = s.GraduateLeecher(hash, peer)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 	// Check that there are 7 seeders, and 3 leechers after graduating a
 	// leecher to a seeder.
-	assert.Equal(t, 7, s.NumSeeders(hash))
-	assert.Equal(t, 3, s.NumLeechers(hash))
+	require.Equal(t, 7, s.NumSeeders(hash))
+	require.Equal(t, 3, s.NumLeechers(hash))
 
 	peers1, peers61, err := s.AnnouncePeers(hash, true, 5, peer, chihaya.Peer{})
-	assert.Nil(t, err)
-	assert.NotNil(t, peers1)
-	assert.NotNil(t, peers61)
+	require.Nil(t, err)
+	require.NotNil(t, peers1)
+	require.NotNil(t, peers61)
 
 	err = s.CollectGarbage(time.Now())
-	assert.Nil(t, err)
-	assert.Equal(t, s.NumLeechers(hash), 0)
-	assert.Equal(t, s.NumSeeders(hash), 0)
+	require.Nil(t, err)
+	require.Equal(t, s.NumLeechers(hash), 0)
+	require.Equal(t, s.NumSeeders(hash), 0)
+
+	errChan := s.Stop()
+	err = <-errChan
+	require.Nil(t, err, "PeerStore shutdown must not fail")
 }

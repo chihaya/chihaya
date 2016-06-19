@@ -14,7 +14,7 @@ func init() {
 	tracker.RegisterAnnounceMiddleware("infohash_blacklist", blacklistAnnounceInfohash)
 	tracker.RegisterScrapeMiddlewareConstructor("infohash_blacklist", blacklistScrapeInfohash)
 	mustGetStore = func() store.StringStore {
-		return store.MustGetStore()
+		return store.MustGetStore().StringStore
 	}
 }
 

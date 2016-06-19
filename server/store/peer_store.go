@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/chihaya/chihaya"
+	"github.com/chihaya/chihaya/pkg/stopper"
 )
 
 var peerStoreDrivers = make(map[string]PeerStoreDriver)
@@ -61,6 +62,12 @@ type PeerStore interface {
 	NumSeeders(infoHash chihaya.InfoHash) int
 	// NumLeechers gets the amount of leechers for a particular infoHash.
 	NumLeechers(infoHash chihaya.InfoHash) int
+
+	// Stopper provides the Stop method that stops the PeerStore.
+	// Stop should shut down the PeerStore in a separate goroutine and send
+	// an error to the channel if the shutdown failed. If the shutdown
+	// was successful, the channel is to be closed.
+	stopper.Stopper
 }
 
 // PeerStoreDriver represents an interface for creating a handle to the storage

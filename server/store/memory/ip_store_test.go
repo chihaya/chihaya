@@ -10,7 +10,7 @@ import (
 
 	"github.com/chihaya/chihaya/server/store"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
@@ -31,7 +31,7 @@ func TestKey(t *testing.T) {
 
 	for _, tt := range table {
 		got := key(tt.input)
-		assert.Equal(t, got, tt.expected)
+		require.Equal(t, got, tt.expected)
 	}
 }
 
@@ -39,100 +39,108 @@ func TestIPStore(t *testing.T) {
 	var d = &ipStoreDriver{}
 
 	s, err := d.New(&store.DriverConfig{})
-	assert.Nil(t, err)
-	assert.NotNil(t, s)
+	require.Nil(t, err)
+	require.NotNil(t, s)
 
 	// check default state
 	found, err := s.HasIP(v4)
-	assert.Nil(t, err)
-	assert.False(t, found)
+	require.Nil(t, err)
+	require.False(t, found)
 
 	// check IPv4
 	err = s.AddIP(v4)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	found, err = s.HasIP(v4)
-	assert.Nil(t, err)
-	assert.True(t, found)
+	require.Nil(t, err)
+	require.True(t, found)
 
 	found, err = s.HasIP(v4s)
-	assert.Nil(t, err)
-	assert.True(t, found)
+	require.Nil(t, err)
+	require.True(t, found)
 
 	found, err = s.HasIP(v6)
-	assert.Nil(t, err)
-	assert.False(t, found)
+	require.Nil(t, err)
+	require.False(t, found)
 
 	// check removes
 	err = s.RemoveIP(v6)
-	assert.NotNil(t, err)
+	require.NotNil(t, err)
 
 	err = s.RemoveIP(v4s)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	found, err = s.HasIP(v4)
-	assert.Nil(t, err)
-	assert.False(t, found)
+	require.Nil(t, err)
+	require.False(t, found)
 
 	// check IPv6
 	err = s.AddIP(v6)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	found, err = s.HasIP(v6)
-	assert.Nil(t, err)
-	assert.True(t, found)
+	require.Nil(t, err)
+	require.True(t, found)
 
 	err = s.RemoveIP(v6)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	found, err = s.HasIP(v6)
-	assert.Nil(t, err)
-	assert.False(t, found)
+	require.Nil(t, err)
+	require.False(t, found)
+
+	errChan := s.Stop()
+	err = <-errChan
+	require.Nil(t, err, "IPStore shutdown must not fail")
 }
 
 func TestHasAllHasAny(t *testing.T) {
 	var d = &ipStoreDriver{}
 	s, err := d.New(&store.DriverConfig{})
-	assert.Nil(t, err)
-	assert.NotNil(t, s)
+	require.Nil(t, err)
+	require.NotNil(t, s)
 
 	found, err := s.HasAnyIP(nil)
-	assert.Nil(t, err)
-	assert.False(t, found)
+	require.Nil(t, err)
+	require.False(t, found)
 
 	found, err = s.HasAllIPs(nil)
-	assert.Nil(t, err)
-	assert.True(t, found)
+	require.Nil(t, err)
+	require.True(t, found)
 
 	found, err = s.HasAllIPs([]net.IP{v4})
-	assert.Nil(t, err)
-	assert.False(t, found)
+	require.Nil(t, err)
+	require.False(t, found)
 
 	err = s.AddIP(v4)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	found, err = s.HasAnyIP([]net.IP{v4, v6})
-	assert.Nil(t, err)
-	assert.True(t, found)
+	require.Nil(t, err)
+	require.True(t, found)
 
 	found, err = s.HasAllIPs([]net.IP{v4, v6})
-	assert.Nil(t, err)
-	assert.False(t, found)
+	require.Nil(t, err)
+	require.False(t, found)
 
 	found, err = s.HasAllIPs([]net.IP{v4})
-	assert.Nil(t, err)
-	assert.True(t, found)
+	require.Nil(t, err)
+	require.True(t, found)
 
 	err = s.AddIP(v6)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	found, err = s.HasAnyIP([]net.IP{v4, v6})
-	assert.Nil(t, err)
-	assert.True(t, found)
+	require.Nil(t, err)
+	require.True(t, found)
 
 	found, err = s.HasAllIPs([]net.IP{v4, v6})
-	assert.Nil(t, err)
-	assert.True(t, found)
+	require.Nil(t, err)
+	require.True(t, found)
+
+	errChan := s.Stop()
+	err = <-errChan
+	require.Nil(t, err, "IPStore shutdown must not fail")
 }
 
 func TestNetworks(t *testing.T) {
@@ -145,46 +153,51 @@ func TestNetworks(t *testing.T) {
 	)
 
 	s, err := d.New(&store.DriverConfig{})
-	assert.Nil(t, err)
+	require.Nil(t, err)
+	require.NotNil(t, s)
 
 	match, err := s.HasIP(includedIP)
-	assert.Nil(t, err)
-	assert.False(t, match)
+	require.Nil(t, err)
+	require.False(t, match)
 
 	match, err = s.HasIP(excludedIP)
-	assert.Nil(t, err)
-	assert.False(t, match)
+	require.Nil(t, err)
+	require.False(t, match)
 
 	err = s.AddNetwork("")
-	assert.NotNil(t, err)
+	require.NotNil(t, err)
 
 	err = s.RemoveNetwork("")
-	assert.NotNil(t, err)
+	require.NotNil(t, err)
 
 	err = s.AddNetwork(net1)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	match, err = s.HasIP(includedIP)
-	assert.Nil(t, err)
-	assert.True(t, match)
+	require.Nil(t, err)
+	require.True(t, match)
 
 	match, err = s.HasIP(excludedIP)
-	assert.Nil(t, err)
-	assert.False(t, match)
+	require.Nil(t, err)
+	require.False(t, match)
 
 	err = s.RemoveNetwork(net2)
-	assert.NotNil(t, err)
+	require.NotNil(t, err)
 
 	err = s.RemoveNetwork(net1)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	match, err = s.HasIP(includedIP)
-	assert.Nil(t, err)
-	assert.False(t, match)
+	require.Nil(t, err)
+	require.False(t, match)
 
 	match, err = s.HasIP(excludedIP)
-	assert.Nil(t, err)
-	assert.False(t, match)
+	require.Nil(t, err)
+	require.False(t, match)
+
+	errChan := s.Stop()
+	err = <-errChan
+	require.Nil(t, err, "IPStore shutdown must not fail")
 }
 
 func TestHasAllHasAnyNetworks(t *testing.T) {
@@ -197,61 +210,66 @@ func TestHasAllHasAnyNetworks(t *testing.T) {
 		excluded = net.ParseIP("10.154.243.22")
 	)
 	s, err := d.New(&store.DriverConfig{})
-	assert.Nil(t, err)
+	require.Nil(t, err)
+	require.NotNil(t, s)
 
 	match, err := s.HasAnyIP([]net.IP{inNet1, inNet2, excluded})
-	assert.Nil(t, err)
-	assert.False(t, match)
+	require.Nil(t, err)
+	require.False(t, match)
 
 	match, err = s.HasAllIPs([]net.IP{inNet1, inNet2, excluded})
-	assert.Nil(t, err)
-	assert.False(t, match)
+	require.Nil(t, err)
+	require.False(t, match)
 
 	err = s.AddNetwork(net1)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	match, err = s.HasAnyIP([]net.IP{inNet1, inNet2})
-	assert.Nil(t, err)
-	assert.True(t, match)
+	require.Nil(t, err)
+	require.True(t, match)
 
 	match, err = s.HasAllIPs([]net.IP{inNet1, inNet2})
-	assert.Nil(t, err)
-	assert.False(t, match)
+	require.Nil(t, err)
+	require.False(t, match)
 
 	err = s.AddNetwork(net2)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	match, err = s.HasAnyIP([]net.IP{inNet1, inNet2, excluded})
-	assert.Nil(t, err)
-	assert.True(t, match)
+	require.Nil(t, err)
+	require.True(t, match)
 
 	match, err = s.HasAllIPs([]net.IP{inNet1, inNet2})
-	assert.Nil(t, err)
-	assert.True(t, match)
+	require.Nil(t, err)
+	require.True(t, match)
 
 	match, err = s.HasAllIPs([]net.IP{inNet1, inNet2, excluded})
-	assert.Nil(t, err)
-	assert.False(t, match)
+	require.Nil(t, err)
+	require.False(t, match)
 
 	err = s.RemoveNetwork(net1)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	match, err = s.HasAnyIP([]net.IP{inNet1, inNet2})
-	assert.Nil(t, err)
-	assert.True(t, match)
+	require.Nil(t, err)
+	require.True(t, match)
 
 	match, err = s.HasAllIPs([]net.IP{inNet1, inNet2})
-	assert.Nil(t, err)
-	assert.False(t, match)
+	require.Nil(t, err)
+	require.False(t, match)
 
 	err = s.RemoveNetwork(net2)
-	assert.Nil(t, err)
+	require.Nil(t, err)
 
 	match, err = s.HasAnyIP([]net.IP{inNet1, inNet2})
-	assert.Nil(t, err)
-	assert.False(t, match)
+	require.Nil(t, err)
+	require.False(t, match)
 
 	match, err = s.HasAllIPs([]net.IP{inNet1, inNet2})
-	assert.Nil(t, err)
-	assert.False(t, match)
+	require.Nil(t, err)
+	require.False(t, match)
+
+	errChan := s.Stop()
+	err = <-errChan
+	require.Nil(t, err, "IPStore shutdown must not fail")
 }

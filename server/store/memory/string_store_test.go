@@ -7,69 +7,14 @@ package memory
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/chihaya/chihaya/server/store"
 )
 
 var (
-	driver = &stringStoreDriver{}
-	s1     = "abc"
-	s2     = "def"
+	driver            = &stringStoreDriver{}
+	stringStoreTester = store.PrepareStringStoreTester(driver)
 )
 
 func TestStringStore(t *testing.T) {
-	ss, err := driver.New(&store.DriverConfig{})
-	assert.Nil(t, err)
-	assert.NotNil(t, ss)
-
-	has, err := ss.HasString(s1)
-	assert.Nil(t, err)
-	assert.False(t, has)
-
-	has, err = ss.HasString(s2)
-	assert.Nil(t, err)
-	assert.False(t, has)
-
-	err = ss.RemoveString(s1)
-	assert.NotNil(t, err)
-
-	err = ss.PutString(s1)
-	assert.Nil(t, err)
-
-	has, err = ss.HasString(s1)
-	assert.Nil(t, err)
-	assert.True(t, has)
-
-	has, err = ss.HasString(s2)
-	assert.Nil(t, err)
-	assert.False(t, has)
-
-	err = ss.PutString(s1)
-	assert.Nil(t, err)
-
-	err = ss.PutString(s2)
-	assert.Nil(t, err)
-
-	has, err = ss.HasString(s1)
-	assert.Nil(t, err)
-	assert.True(t, has)
-
-	has, err = ss.HasString(s2)
-	assert.Nil(t, err)
-	assert.True(t, has)
-
-	err = ss.RemoveString(s1)
-	assert.Nil(t, err)
-
-	err = ss.RemoveString(s2)
-	assert.Nil(t, err)
-
-	has, err = ss.HasString(s1)
-	assert.Nil(t, err)
-	assert.False(t, has)
-
-	has, err = ss.HasString(s2)
-	assert.Nil(t, err)
-	assert.False(t, has)
+	stringStoreTester.TestStringStore(t, &store.DriverConfig{})
 }

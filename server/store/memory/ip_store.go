@@ -23,6 +23,7 @@ func (d *ipStoreDriver) New(_ *store.DriverConfig) (store.IPStore, error) {
 	return &ipStore{
 		ips:      make(map[[16]byte]struct{}),
 		networks: netmatch.New(),
+		closed:   make(chan struct{}),
 	}, nil
 }
 
@@ -31,6 +32,7 @@ func (d *ipStoreDriver) New(_ *store.DriverConfig) (store.IPStore, error) {
 type ipStore struct {
 	ips      map[[16]byte]struct{}
 	networks *netmatch.Trie
+	closed   chan struct{}
 	sync.RWMutex
 }
 
@@ -65,12 +67,24 @@ func (s *ipStore) AddNetwork(network string) error {
 	s.Lock()
 	defer s.Unlock()
 
+	select {
+	case <-s.closed:
+		panic("attempted to interact with stopped store")
+	default:
+	}
+
 	return s.networks.Add(key, length)
 }
 
 func (s *ipStore) AddIP(ip net.IP) error {
 	s.Lock()
 	defer s.Unlock()
+
+	select {
+	case <-s.closed:
+		panic("attempted to interact with stopped store")
+	default:
+	}
 
 	s.ips[key(ip)] = struct{}{}
 
@@ -81,6 +95,12 @@ func (s *ipStore) HasIP(ip net.IP) (bool, error) {
 	key := key(ip)
 	s.RLock()
 	defer s.RUnlock()
+
+	select {
+	case <-s.closed:
+		panic("attempted to interact with stopped store")
+	default:
+	}
 
 	_, ok := s.ips[key]
 	if ok {
@@ -98,6 +118,12 @@ func (s *ipStore) HasIP(ip net.IP) (bool, error) {
 func (s *ipStore) HasAnyIP(ips []net.IP) (bool, error) {
 	s.RLock()
 	defer s.RUnlock()
+
+	select {
+	case <-s.closed:
+		panic("attempted to interact with stopped store")
+	default:
+	}
 
 	for _, ip := range ips {
 		key := key(ip)
@@ -121,6 +147,12 @@ func (s *ipStore) HasAllIPs(ips []net.IP) (bool, error) {
 	s.RLock()
 	defer s.RUnlock()
 
+	select {
+	case <-s.closed:
+		panic("attempted to interact with stopped store")
+	default:
+	}
+
 	for _, ip := range ips {
 		key := key(ip)
 		if _, ok := s.ips[key]; !ok {
@@ -142,6 +174,12 @@ func (s *ipStore) RemoveIP(ip net.IP) error {
 	s.Lock()
 	defer s.Unlock()
 
+	select {
+	case <-s.closed:
+		panic("attempted to interact with stopped store")
+	default:
+	}
+
 	if _, ok := s.ips[key]; !ok {
 		return store.ErrResourceDoesNotExist
 	}
@@ -160,9 +198,28 @@ func (s *ipStore) RemoveNetwork(network string) error {
 	s.Lock()
 	defer s.Unlock()
 
+	select {
+	case <-s.closed:
+		panic("attempted to interact with stopped store")
+	default:
+	}
+
 	err = s.networks.Remove(key, length)
 	if err != nil && err == netmatch.ErrNotContained {
 		return store.ErrResourceDoesNotExist
 	}
 	return err
+}
+
+func (s *ipStore) Stop() <-chan error {
+	toReturn := make(chan error)
+	go func() {
+		s.Lock()
+		defer s.Unlock()
+		s.ips = make(map[[16]byte]struct{})
+		s.networks = netmatch.New()
+		close(s.closed)
+		close(toReturn)
+	}()
+	return toReturn
 }
