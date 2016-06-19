@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/chihaya/chihaya"
 	"github.com/stretchr/testify/require"
 )
 
@@ -774,6 +775,486 @@ func (ib ipStoreBench) RemoveNonExist1KV6Network(b *testing.B, cfg *DriverConfig
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.RemoveNetwork(ib.v6Networks[i%num1KElements])
+			return nil
+		})
+}
+
+// PeerStoreBenchmarker is a collection of benchmarks for PeerStore drivers.
+// Every benchmark expects a new, clean storage. Every benchmark should be
+// called with a DriverConfig that ensures this.
+type PeerStoreBenchmarker interface {
+	PutSeeder(*testing.B, *DriverConfig)
+	PutSeeder1KInfohash(*testing.B, *DriverConfig)
+	PutSeeder1KSeeders(*testing.B, *DriverConfig)
+	PutSeeder1KInfohash1KSeeders(*testing.B, *DriverConfig)
+
+	PutDeleteSeeder(*testing.B, *DriverConfig)
+	PutDeleteSeeder1KInfohash(*testing.B, *DriverConfig)
+	PutDeleteSeeder1KSeeders(*testing.B, *DriverConfig)
+	PutDeleteSeeder1KInfohash1KSeeders(*testing.B, *DriverConfig)
+
+	DeleteSeederNonExist(*testing.B, *DriverConfig)
+	DeleteSeederNonExist1KInfohash(*testing.B, *DriverConfig)
+	DeleteSeederNonExist1KSeeders(*testing.B, *DriverConfig)
+	DeleteSeederNonExist1KInfohash1KSeeders(*testing.B, *DriverConfig)
+
+	PutGraduateDeleteLeecher(*testing.B, *DriverConfig)
+	PutGraduateDeleteLeecher1KInfohash(*testing.B, *DriverConfig)
+	PutGraduateDeleteLeecher1KLeechers(*testing.B, *DriverConfig)
+	PutGraduateDeleteLeecher1KInfohash1KLeechers(*testing.B, *DriverConfig)
+
+	GraduateLeecherNonExist(*testing.B, *DriverConfig)
+	GraduateLeecherNonExist1KInfohash(*testing.B, *DriverConfig)
+	GraduateLeecherNonExist1KLeechers(*testing.B, *DriverConfig)
+	GraduateLeecherNonExist1KInfohash1KLeechers(*testing.B, *DriverConfig)
+
+	AnnouncePeers(*testing.B, *DriverConfig)
+	AnnouncePeers1KInfohash(*testing.B, *DriverConfig)
+	AnnouncePeersSeeder(*testing.B, *DriverConfig)
+	AnnouncePeersSeeder1KInfohash(*testing.B, *DriverConfig)
+
+	GetSeeders(*testing.B, *DriverConfig)
+	GetSeeders1KInfohash(*testing.B, *DriverConfig)
+
+	NumSeeders(*testing.B, *DriverConfig)
+	NumSeeders1KInfohash(*testing.B, *DriverConfig)
+}
+
+type peerStoreBench struct {
+	infohashes [num1KElements]chihaya.InfoHash
+	peers      [num1KElements]chihaya.Peer
+	driver     PeerStoreDriver
+}
+
+func generateInfohashes() (a [num1KElements]chihaya.InfoHash) {
+	b := make([]byte, 2)
+	for i := range a {
+		b[0] = byte(i)
+		b[1] = byte(i >> 8)
+		a[i] = chihaya.InfoHash([20]byte{b[0], b[1]})
+	}
+
+	return
+}
+
+func generatePeers() (a [num1KElements]chihaya.Peer) {
+	b := make([]byte, 2)
+	for i := range a {
+		b[0] = byte(i)
+		b[1] = byte(i >> 8)
+		a[i] = chihaya.Peer{
+			ID:   chihaya.PeerID([20]byte{b[0], b[1]}),
+			IP:   net.ParseIP(fmt.Sprintf("64.%d.%d.64", b[0], b[1])),
+			Port: uint16(i),
+		}
+	}
+
+	return
+}
+
+// PreparePeerStoreBenchmarker prepares a reusable suite for PeerStore driver
+// benchmarks.
+func PreparePeerStoreBenchmarker(driver PeerStoreDriver) PeerStoreBenchmarker {
+	return peerStoreBench{
+		driver: driver,
+	}
+}
+
+type peerStoreSetupFunc func(PeerStore) error
+
+func peerStoreSetupNOP(PeerStore) error { return nil }
+
+type peerStoreBenchFunc func(PeerStore, int) error
+
+func (pb peerStoreBench) runBenchmark(b *testing.B, cfg *DriverConfig, setup peerStoreSetupFunc, execute peerStoreBenchFunc) {
+	ps, err := pb.driver.New(cfg)
+	require.Nil(b, err, "Constructor error must be nil")
+	require.NotNil(b, ps, "Peer store must not be nil")
+
+	err = setup(ps)
+	require.Nil(b, err, "Benchmark setup must not fail")
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		execute(ps, i)
+	}
+	b.StopTimer()
+
+	errChan := ps.Stop()
+	err = <-errChan
+	require.Nil(b, err, "PeerStore shutdown must not fail")
+}
+
+func (pb peerStoreBench) PutSeeder(b *testing.B, cfg *DriverConfig) {
+	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
+		func(ps PeerStore, i int) error {
+			ps.PutSeeder(pb.infohashes[0], pb.peers[0])
+			return nil
+		})
+}
+
+func (pb peerStoreBench) PutSeeder1KInfohash(b *testing.B, cfg *DriverConfig) {
+	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
+		func(ps PeerStore, i int) error {
+			ps.PutSeeder(pb.infohashes[i%num1KElements], pb.peers[0])
+			return nil
+		})
+}
+
+func (pb peerStoreBench) PutSeeder1KSeeders(b *testing.B, cfg *DriverConfig) {
+	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
+		func(ps PeerStore, i int) error {
+			ps.PutSeeder(pb.infohashes[0], pb.peers[i%num1KElements])
+			return nil
+		})
+}
+
+func (pb peerStoreBench) PutSeeder1KInfohash1KSeeders(b *testing.B, cfg *DriverConfig) {
+	j := 0
+	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
+		func(ps PeerStore, i int) error {
+			ps.PutSeeder(pb.infohashes[i%num1KElements], pb.peers[j%num1KElements])
+			j += 3
+			return nil
+		})
+}
+
+func (pb peerStoreBench) PutDeleteSeeder(b *testing.B, cfg *DriverConfig) {
+	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
+		func(ps PeerStore, i int) error {
+			ps.PutSeeder(pb.infohashes[0], pb.peers[0])
+			ps.DeleteSeeder(pb.infohashes[0], pb.peers[0])
+			return nil
+		})
+}
+
+func (pb peerStoreBench) PutDeleteSeeder1KInfohash(b *testing.B, cfg *DriverConfig) {
+	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
+		func(ps PeerStore, i int) error {
+			ps.PutSeeder(pb.infohashes[i%num1KElements], pb.peers[0])
+			ps.DeleteSeeder(pb.infohashes[i%num1KElements], pb.peers[0])
+			return nil
+		})
+}
+
+func (pb peerStoreBench) PutDeleteSeeder1KSeeders(b *testing.B, cfg *DriverConfig) {
+	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
+		func(ps PeerStore, i int) error {
+			ps.PutSeeder(pb.infohashes[0], pb.peers[i%num1KElements])
+			ps.DeleteSeeder(pb.infohashes[0], pb.peers[i%num1KElements])
+			return nil
+		})
+}
+
+func (pb peerStoreBench) PutDeleteSeeder1KInfohash1KSeeders(b *testing.B, cfg *DriverConfig) {
+	j := 0
+	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
+		func(ps PeerStore, i int) error {
+			ps.PutSeeder(pb.infohashes[i%num1KElements], pb.peers[j%num1KElements])
+			ps.DeleteSeeder(pb.infohashes[i%num1KElements], pb.peers[j%num1KElements])
+			j += 3
+			return nil
+		})
+}
+
+func (pb peerStoreBench) DeleteSeederNonExist(b *testing.B, cfg *DriverConfig) {
+	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
+		func(ps PeerStore, i int) error {
+			ps.DeleteSeeder(pb.infohashes[0], pb.peers[0])
+			return nil
+		})
+}
+
+func (pb peerStoreBench) DeleteSeederNonExist1KInfohash(b *testing.B, cfg *DriverConfig) {
+	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
+		func(ps PeerStore, i int) error {
+			ps.DeleteSeeder(pb.infohashes[i%num1KElements], pb.peers[0])
+			return nil
+		})
+}
+
+func (pb peerStoreBench) DeleteSeederNonExist1KSeeders(b *testing.B, cfg *DriverConfig) {
+	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
+		func(ps PeerStore, i int) error {
+			ps.DeleteSeeder(pb.infohashes[0], pb.peers[i%num1KElements])
+			return nil
+		})
+}
+
+func (pb peerStoreBench) DeleteSeederNonExist1KInfohash1KSeeders(b *testing.B, cfg *DriverConfig) {
+	j := 0
+	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
+		func(ps PeerStore, i int) error {
+			ps.DeleteSeeder(pb.infohashes[i%num1KElements], pb.peers[j%num1KElements])
+			j += 3
+			return nil
+		})
+}
+
+func (pb peerStoreBench) GraduateLeecherNonExist(b *testing.B, cfg *DriverConfig) {
+	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
+		func(ps PeerStore, i int) error {
+			ps.GraduateLeecher(pb.infohashes[0], pb.peers[0])
+			return nil
+		})
+}
+
+func (pb peerStoreBench) GraduateLeecherNonExist1KInfohash(b *testing.B, cfg *DriverConfig) {
+	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
+		func(ps PeerStore, i int) error {
+			ps.GraduateLeecher(pb.infohashes[i%num1KElements], pb.peers[0])
+			return nil
+		})
+}
+
+func (pb peerStoreBench) GraduateLeecherNonExist1KLeechers(b *testing.B, cfg *DriverConfig) {
+	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
+		func(ps PeerStore, i int) error {
+			ps.GraduateLeecher(pb.infohashes[0], pb.peers[i%num1KElements])
+			return nil
+		})
+}
+
+func (pb peerStoreBench) GraduateLeecherNonExist1KInfohash1KLeechers(b *testing.B, cfg *DriverConfig) {
+	j := 0
+	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
+		func(ps PeerStore, i int) error {
+			ps.GraduateLeecher(pb.infohashes[i%num1KElements], pb.peers[j%num1KElements])
+			j += 3
+			return nil
+		})
+}
+
+func (pb peerStoreBench) PutGraduateDeleteLeecher(b *testing.B, cfg *DriverConfig) {
+	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
+		func(ps PeerStore, i int) error {
+			ps.PutLeecher(pb.infohashes[0], pb.peers[0])
+			ps.GraduateLeecher(pb.infohashes[0], pb.peers[0])
+			ps.DeleteSeeder(pb.infohashes[0], pb.peers[0])
+			return nil
+		})
+}
+
+func (pb peerStoreBench) PutGraduateDeleteLeecher1KInfohash(b *testing.B, cfg *DriverConfig) {
+	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
+		func(ps PeerStore, i int) error {
+			ps.PutLeecher(pb.infohashes[i%num1KElements], pb.peers[0])
+			ps.GraduateLeecher(pb.infohashes[i%num1KElements], pb.peers[0])
+			ps.DeleteSeeder(pb.infohashes[i%num1KElements], pb.peers[0])
+			return nil
+		})
+}
+
+func (pb peerStoreBench) PutGraduateDeleteLeecher1KLeechers(b *testing.B, cfg *DriverConfig) {
+	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
+		func(ps PeerStore, i int) error {
+			ps.PutLeecher(pb.infohashes[0], pb.peers[i%num1KElements])
+			ps.GraduateLeecher(pb.infohashes[0], pb.peers[i%num1KElements])
+			ps.DeleteSeeder(pb.infohashes[0], pb.peers[i%num1KElements])
+			return nil
+		})
+}
+
+func (pb peerStoreBench) PutGraduateDeleteLeecher1KInfohash1KLeechers(b *testing.B, cfg *DriverConfig) {
+	j := 0
+	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
+		func(ps PeerStore, i int) error {
+			ps.PutLeecher(pb.infohashes[i%num1KElements], pb.peers[j%num1KElements])
+			ps.GraduateLeecher(pb.infohashes[i%num1KElements], pb.peers[j%num1KElements])
+			ps.DeleteSeeder(pb.infohashes[i%num1KElements], pb.peers[j%num1KElements])
+			j += 3
+			return nil
+		})
+}
+
+func (pb peerStoreBench) AnnouncePeers(b *testing.B, cfg *DriverConfig) {
+	pb.runBenchmark(b, cfg,
+		func(ps PeerStore) error {
+			for i := 0; i < num1KElements; i++ {
+				for j := 0; j < num1KElements; j++ {
+					var err error
+					if j < num1KElements/2 {
+						err = ps.PutLeecher(pb.infohashes[i], pb.peers[j])
+					} else {
+						err = ps.PutSeeder(pb.infohashes[i], pb.peers[j])
+					}
+					if err != nil {
+						return err
+					}
+				}
+			}
+			return nil
+		},
+		func(ps PeerStore, i int) error {
+			ps.AnnouncePeers(pb.infohashes[0], false, 50, pb.peers[0], chihaya.Peer{})
+			return nil
+		})
+}
+
+func (pb peerStoreBench) AnnouncePeers1KInfohash(b *testing.B, cfg *DriverConfig) {
+	pb.runBenchmark(b, cfg,
+		func(ps PeerStore) error {
+			for i := 0; i < num1KElements; i++ {
+				for j := 0; j < num1KElements; j++ {
+					var err error
+					if j < num1KElements/2 {
+						err = ps.PutLeecher(pb.infohashes[i], pb.peers[j])
+					} else {
+						err = ps.PutSeeder(pb.infohashes[i], pb.peers[j])
+					}
+					if err != nil {
+						return err
+					}
+				}
+			}
+			return nil
+		},
+		func(ps PeerStore, i int) error {
+			ps.AnnouncePeers(pb.infohashes[i%num1KElements], false, 50, pb.peers[0], chihaya.Peer{})
+			return nil
+		})
+}
+
+func (pb peerStoreBench) AnnouncePeersSeeder(b *testing.B, cfg *DriverConfig) {
+	pb.runBenchmark(b, cfg,
+		func(ps PeerStore) error {
+			for i := 0; i < num1KElements; i++ {
+				for j := 0; j < num1KElements; j++ {
+					var err error
+					if j < num1KElements/2 {
+						err = ps.PutLeecher(pb.infohashes[i], pb.peers[j])
+					} else {
+						err = ps.PutSeeder(pb.infohashes[i], pb.peers[j])
+					}
+					if err != nil {
+						return err
+					}
+				}
+			}
+			return nil
+		},
+		func(ps PeerStore, i int) error {
+			ps.AnnouncePeers(pb.infohashes[0], true, 50, pb.peers[0], chihaya.Peer{})
+			return nil
+		})
+}
+
+func (pb peerStoreBench) AnnouncePeersSeeder1KInfohash(b *testing.B, cfg *DriverConfig) {
+	pb.runBenchmark(b, cfg,
+		func(ps PeerStore) error {
+			for i := 0; i < num1KElements; i++ {
+				for j := 0; j < num1KElements; j++ {
+					var err error
+					if j < num1KElements/2 {
+						err = ps.PutLeecher(pb.infohashes[i], pb.peers[j])
+					} else {
+						err = ps.PutSeeder(pb.infohashes[i], pb.peers[j])
+					}
+					if err != nil {
+						return err
+					}
+				}
+			}
+			return nil
+		},
+		func(ps PeerStore, i int) error {
+			ps.AnnouncePeers(pb.infohashes[i%num1KElements], true, 50, pb.peers[0], chihaya.Peer{})
+			return nil
+		})
+}
+
+func (pb peerStoreBench) GetSeeders(b *testing.B, cfg *DriverConfig) {
+	pb.runBenchmark(b, cfg,
+		func(ps PeerStore) error {
+			for i := 0; i < num1KElements; i++ {
+				for j := 0; j < num1KElements; j++ {
+					var err error
+					if j < num1KElements/2 {
+						err = ps.PutLeecher(pb.infohashes[i], pb.peers[j])
+					} else {
+						err = ps.PutSeeder(pb.infohashes[i], pb.peers[j])
+					}
+					if err != nil {
+						return err
+					}
+				}
+			}
+			return nil
+		},
+		func(ps PeerStore, i int) error {
+			ps.GetSeeders(pb.infohashes[0])
+			return nil
+		})
+}
+
+func (pb peerStoreBench) GetSeeders1KInfohash(b *testing.B, cfg *DriverConfig) {
+	pb.runBenchmark(b, cfg,
+		func(ps PeerStore) error {
+			for i := 0; i < num1KElements; i++ {
+				for j := 0; j < num1KElements; j++ {
+					var err error
+					if j < num1KElements/2 {
+						err = ps.PutLeecher(pb.infohashes[i], pb.peers[j])
+					} else {
+						err = ps.PutSeeder(pb.infohashes[i], pb.peers[j])
+					}
+					if err != nil {
+						return err
+					}
+				}
+			}
+			return nil
+		},
+		func(ps PeerStore, i int) error {
+			ps.GetSeeders(pb.infohashes[i%num1KElements])
+			return nil
+		})
+}
+
+func (pb peerStoreBench) NumSeeders(b *testing.B, cfg *DriverConfig) {
+	pb.runBenchmark(b, cfg,
+		func(ps PeerStore) error {
+			for i := 0; i < num1KElements; i++ {
+				for j := 0; j < num1KElements; j++ {
+					var err error
+					if j < num1KElements/2 {
+						err = ps.PutLeecher(pb.infohashes[i], pb.peers[j])
+					} else {
+						err = ps.PutSeeder(pb.infohashes[i], pb.peers[j])
+					}
+					if err != nil {
+						return err
+					}
+				}
+			}
+			return nil
+		},
+		func(ps PeerStore, i int) error {
+			ps.NumSeeders(pb.infohashes[0])
+			return nil
+		})
+}
+
+func (pb peerStoreBench) NumSeeders1KInfohash(b *testing.B, cfg *DriverConfig) {
+	pb.runBenchmark(b, cfg,
+		func(ps PeerStore) error {
+			for i := 0; i < num1KElements; i++ {
+				for j := 0; j < num1KElements; j++ {
+					var err error
+					if j < num1KElements/2 {
+						err = ps.PutLeecher(pb.infohashes[i], pb.peers[j])
+					} else {
+						err = ps.PutSeeder(pb.infohashes[i], pb.peers[j])
+					}
+					if err != nil {
+						return err
+					}
+				}
+			}
+			return nil
+		},
+		func(ps PeerStore, i int) error {
+			ps.NumSeeders(pb.infohashes[i%num1KElements])
 			return nil
 		})
 }
