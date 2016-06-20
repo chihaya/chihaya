@@ -10,13 +10,16 @@ import (
 
 	"github.com/chihaya/chihaya/server/store"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var (
 	v6  = net.ParseIP("0c22:384e:0:0c22:384e::68")
 	v4  = net.ParseIP("12.13.14.15")
 	v4s = net.ParseIP("12.13.14.15").To4()
+
+	ipStoreTester      = store.PrepareIPStoreTester(&ipStoreDriver{})
+	ipStoreBenchmarker = store.PrepareIPStoreBenchmarker(&ipStoreDriver{})
 )
 
 func TestKey(t *testing.T) {
@@ -31,227 +34,166 @@ func TestKey(t *testing.T) {
 
 	for _, tt := range table {
 		got := key(tt.input)
-		assert.Equal(t, got, tt.expected)
+		require.Equal(t, got, tt.expected)
 	}
 }
 
 func TestIPStore(t *testing.T) {
-	var d = &ipStoreDriver{}
-
-	s, err := d.New(&store.DriverConfig{})
-	assert.Nil(t, err)
-	assert.NotNil(t, s)
-
-	// check default state
-	found, err := s.HasIP(v4)
-	assert.Nil(t, err)
-	assert.False(t, found)
-
-	// check IPv4
-	err = s.AddIP(v4)
-	assert.Nil(t, err)
-
-	found, err = s.HasIP(v4)
-	assert.Nil(t, err)
-	assert.True(t, found)
-
-	found, err = s.HasIP(v4s)
-	assert.Nil(t, err)
-	assert.True(t, found)
-
-	found, err = s.HasIP(v6)
-	assert.Nil(t, err)
-	assert.False(t, found)
-
-	// check removes
-	err = s.RemoveIP(v6)
-	assert.NotNil(t, err)
-
-	err = s.RemoveIP(v4s)
-	assert.Nil(t, err)
-
-	found, err = s.HasIP(v4)
-	assert.Nil(t, err)
-	assert.False(t, found)
-
-	// check IPv6
-	err = s.AddIP(v6)
-	assert.Nil(t, err)
-
-	found, err = s.HasIP(v6)
-	assert.Nil(t, err)
-	assert.True(t, found)
-
-	err = s.RemoveIP(v6)
-	assert.Nil(t, err)
-
-	found, err = s.HasIP(v6)
-	assert.Nil(t, err)
-	assert.False(t, found)
+	ipStoreTester.TestIPStore(t, &store.DriverConfig{})
 }
 
 func TestHasAllHasAny(t *testing.T) {
-	var d = &ipStoreDriver{}
-	s, err := d.New(&store.DriverConfig{})
-	assert.Nil(t, err)
-	assert.NotNil(t, s)
-
-	found, err := s.HasAnyIP(nil)
-	assert.Nil(t, err)
-	assert.False(t, found)
-
-	found, err = s.HasAllIPs(nil)
-	assert.Nil(t, err)
-	assert.True(t, found)
-
-	found, err = s.HasAllIPs([]net.IP{v4})
-	assert.Nil(t, err)
-	assert.False(t, found)
-
-	err = s.AddIP(v4)
-	assert.Nil(t, err)
-
-	found, err = s.HasAnyIP([]net.IP{v4, v6})
-	assert.Nil(t, err)
-	assert.True(t, found)
-
-	found, err = s.HasAllIPs([]net.IP{v4, v6})
-	assert.Nil(t, err)
-	assert.False(t, found)
-
-	found, err = s.HasAllIPs([]net.IP{v4})
-	assert.Nil(t, err)
-	assert.True(t, found)
-
-	err = s.AddIP(v6)
-	assert.Nil(t, err)
-
-	found, err = s.HasAnyIP([]net.IP{v4, v6})
-	assert.Nil(t, err)
-	assert.True(t, found)
-
-	found, err = s.HasAllIPs([]net.IP{v4, v6})
-	assert.Nil(t, err)
-	assert.True(t, found)
+	ipStoreTester.TestHasAllHasAny(t, &store.DriverConfig{})
 }
 
 func TestNetworks(t *testing.T) {
-	var (
-		d          = &ipStoreDriver{}
-		net1       = "192.168.22.255/24"
-		net2       = "192.168.23.255/24"
-		includedIP = net.ParseIP("192.168.22.23")
-		excludedIP = net.ParseIP("192.168.23.22")
-	)
-
-	s, err := d.New(&store.DriverConfig{})
-	assert.Nil(t, err)
-
-	match, err := s.HasIP(includedIP)
-	assert.Nil(t, err)
-	assert.False(t, match)
-
-	match, err = s.HasIP(excludedIP)
-	assert.Nil(t, err)
-	assert.False(t, match)
-
-	err = s.AddNetwork("")
-	assert.NotNil(t, err)
-
-	err = s.RemoveNetwork("")
-	assert.NotNil(t, err)
-
-	err = s.AddNetwork(net1)
-	assert.Nil(t, err)
-
-	match, err = s.HasIP(includedIP)
-	assert.Nil(t, err)
-	assert.True(t, match)
-
-	match, err = s.HasIP(excludedIP)
-	assert.Nil(t, err)
-	assert.False(t, match)
-
-	err = s.RemoveNetwork(net2)
-	assert.NotNil(t, err)
-
-	err = s.RemoveNetwork(net1)
-	assert.Nil(t, err)
-
-	match, err = s.HasIP(includedIP)
-	assert.Nil(t, err)
-	assert.False(t, match)
-
-	match, err = s.HasIP(excludedIP)
-	assert.Nil(t, err)
-	assert.False(t, match)
+	ipStoreTester.TestNetworks(t, &store.DriverConfig{})
 }
 
 func TestHasAllHasAnyNetworks(t *testing.T) {
-	var (
-		d        = &ipStoreDriver{}
-		net1     = "192.168.22.255/24"
-		net2     = "192.168.23.255/24"
-		inNet1   = net.ParseIP("192.168.22.234")
-		inNet2   = net.ParseIP("192.168.23.123")
-		excluded = net.ParseIP("10.154.243.22")
-	)
-	s, err := d.New(&store.DriverConfig{})
-	assert.Nil(t, err)
+	ipStoreTester.TestHasAllHasAnyNetworks(t, &store.DriverConfig{})
+}
 
-	match, err := s.HasAnyIP([]net.IP{inNet1, inNet2, excluded})
-	assert.Nil(t, err)
-	assert.False(t, match)
+func BenchmarkIPStore_AddV4(b *testing.B) {
+	ipStoreBenchmarker.AddV4(b, &store.DriverConfig{})
+}
 
-	match, err = s.HasAllIPs([]net.IP{inNet1, inNet2, excluded})
-	assert.Nil(t, err)
-	assert.False(t, match)
+func BenchmarkIPStore_AddV6(b *testing.B) {
+	ipStoreBenchmarker.AddV6(b, &store.DriverConfig{})
+}
 
-	err = s.AddNetwork(net1)
-	assert.Nil(t, err)
+func BenchmarkIPStore_LookupV4(b *testing.B) {
+	ipStoreBenchmarker.LookupV4(b, &store.DriverConfig{})
+}
 
-	match, err = s.HasAnyIP([]net.IP{inNet1, inNet2})
-	assert.Nil(t, err)
-	assert.True(t, match)
+func BenchmarkIPStore_LookupV6(b *testing.B) {
+	ipStoreBenchmarker.LookupV6(b, &store.DriverConfig{})
+}
 
-	match, err = s.HasAllIPs([]net.IP{inNet1, inNet2})
-	assert.Nil(t, err)
-	assert.False(t, match)
+func BenchmarkIPStore_AddRemoveV4(b *testing.B) {
+	ipStoreBenchmarker.AddRemoveV4(b, &store.DriverConfig{})
+}
 
-	err = s.AddNetwork(net2)
-	assert.Nil(t, err)
+func BenchmarkIPStore_AddRemoveV6(b *testing.B) {
+	ipStoreBenchmarker.AddRemoveV6(b, &store.DriverConfig{})
+}
 
-	match, err = s.HasAnyIP([]net.IP{inNet1, inNet2, excluded})
-	assert.Nil(t, err)
-	assert.True(t, match)
+func BenchmarkIPStore_LookupNonExistV4(b *testing.B) {
+	ipStoreBenchmarker.LookupNonExistV4(b, &store.DriverConfig{})
+}
 
-	match, err = s.HasAllIPs([]net.IP{inNet1, inNet2})
-	assert.Nil(t, err)
-	assert.True(t, match)
+func BenchmarkIPStore_LookupNonExistV6(b *testing.B) {
+	ipStoreBenchmarker.LookupNonExistV6(b, &store.DriverConfig{})
+}
 
-	match, err = s.HasAllIPs([]net.IP{inNet1, inNet2, excluded})
-	assert.Nil(t, err)
-	assert.False(t, match)
+func BenchmarkIPStore_RemoveNonExistV4(b *testing.B) {
+	ipStoreBenchmarker.RemoveNonExistV4(b, &store.DriverConfig{})
+}
 
-	err = s.RemoveNetwork(net1)
-	assert.Nil(t, err)
+func BenchmarkIPStore_RemoveNonExistV6(b *testing.B) {
+	ipStoreBenchmarker.RemoveNonExistV6(b, &store.DriverConfig{})
+}
 
-	match, err = s.HasAnyIP([]net.IP{inNet1, inNet2})
-	assert.Nil(t, err)
-	assert.True(t, match)
+func BenchmarkIPStore_AddV4Network(b *testing.B) {
+	ipStoreBenchmarker.AddV4Network(b, &store.DriverConfig{})
+}
 
-	match, err = s.HasAllIPs([]net.IP{inNet1, inNet2})
-	assert.Nil(t, err)
-	assert.False(t, match)
+func BenchmarkIPStore_AddV6Network(b *testing.B) {
+	ipStoreBenchmarker.AddV6Network(b, &store.DriverConfig{})
+}
 
-	err = s.RemoveNetwork(net2)
-	assert.Nil(t, err)
+func BenchmarkIPStore_LookupV4Network(b *testing.B) {
+	ipStoreBenchmarker.LookupV4Network(b, &store.DriverConfig{})
+}
 
-	match, err = s.HasAnyIP([]net.IP{inNet1, inNet2})
-	assert.Nil(t, err)
-	assert.False(t, match)
+func BenchmarkIPStore_LookupV6Network(b *testing.B) {
+	ipStoreBenchmarker.LookupV6Network(b, &store.DriverConfig{})
+}
 
-	match, err = s.HasAllIPs([]net.IP{inNet1, inNet2})
-	assert.Nil(t, err)
-	assert.False(t, match)
+func BenchmarkIPStore_AddRemoveV4Network(b *testing.B) {
+	ipStoreBenchmarker.AddRemoveV4Network(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_AddRemoveV6Network(b *testing.B) {
+	ipStoreBenchmarker.AddRemoveV6Network(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_RemoveNonExistV4Network(b *testing.B) {
+	ipStoreBenchmarker.RemoveNonExistV4Network(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_RemoveNonExistV6Network(b *testing.B) {
+	ipStoreBenchmarker.RemoveNonExistV6Network(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_Add1KV4(b *testing.B) {
+	ipStoreBenchmarker.Add1KV4(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_Add1KV6(b *testing.B) {
+	ipStoreBenchmarker.Add1KV6(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_Lookup1KV4(b *testing.B) {
+	ipStoreBenchmarker.Lookup1KV4(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_Lookup1KV6(b *testing.B) {
+	ipStoreBenchmarker.Lookup1KV6(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_AddRemove1KV4(b *testing.B) {
+	ipStoreBenchmarker.AddRemove1KV4(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_AddRemove1KV6(b *testing.B) {
+	ipStoreBenchmarker.AddRemove1KV6(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_LookupNonExist1KV4(b *testing.B) {
+	ipStoreBenchmarker.LookupNonExist1KV4(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_LookupNonExist1KV6(b *testing.B) {
+	ipStoreBenchmarker.LookupNonExist1KV6(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_RemoveNonExist1KV4(b *testing.B) {
+	ipStoreBenchmarker.RemoveNonExist1KV4(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_RemoveNonExist1KV6(b *testing.B) {
+	ipStoreBenchmarker.RemoveNonExist1KV6(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_Add1KV4Network(b *testing.B) {
+	ipStoreBenchmarker.Add1KV4Network(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_Add1KV6Network(b *testing.B) {
+	ipStoreBenchmarker.Add1KV6Network(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_Lookup1KV4Network(b *testing.B) {
+	ipStoreBenchmarker.Lookup1KV4Network(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_Lookup1KV6Network(b *testing.B) {
+	ipStoreBenchmarker.Lookup1KV6Network(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_AddRemove1KV4Network(b *testing.B) {
+	ipStoreBenchmarker.AddRemove1KV4Network(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_AddRemove1KV6Network(b *testing.B) {
+	ipStoreBenchmarker.AddRemove1KV6Network(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_RemoveNonExist1KV4Network(b *testing.B) {
+	ipStoreBenchmarker.RemoveNonExist1KV4Network(b, &store.DriverConfig{})
+}
+
+func BenchmarkIPStore_RemoveNonExist1KV6Network(b *testing.B) {
+	ipStoreBenchmarker.RemoveNonExist1KV6Network(b, &store.DriverConfig{})
 }

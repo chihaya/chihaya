@@ -7,69 +7,95 @@ package memory
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-
 	"github.com/chihaya/chihaya/server/store"
 )
 
 var (
-	driver = &stringStoreDriver{}
-	s1     = "abc"
-	s2     = "def"
+	driver                 = &stringStoreDriver{}
+	stringStoreTester      = store.PrepareStringStoreTester(driver)
+	stringStoreBenchmarker = store.PrepareStringStoreBenchmarker(&stringStoreDriver{})
 )
 
 func TestStringStore(t *testing.T) {
-	ss, err := driver.New(&store.DriverConfig{})
-	assert.Nil(t, err)
-	assert.NotNil(t, ss)
+	stringStoreTester.TestStringStore(t, &store.DriverConfig{})
+}
 
-	has, err := ss.HasString(s1)
-	assert.Nil(t, err)
-	assert.False(t, has)
+func BenchmarkStringStore_AddShort(b *testing.B) {
+	stringStoreBenchmarker.AddShort(b, &store.DriverConfig{})
+}
 
-	has, err = ss.HasString(s2)
-	assert.Nil(t, err)
-	assert.False(t, has)
+func BenchmarkStringStore_AddLong(b *testing.B) {
+	stringStoreBenchmarker.AddLong(b, &store.DriverConfig{})
+}
 
-	err = ss.RemoveString(s1)
-	assert.NotNil(t, err)
+func BenchmarkStringStore_LookupShort(b *testing.B) {
+	stringStoreBenchmarker.LookupShort(b, &store.DriverConfig{})
+}
 
-	err = ss.PutString(s1)
-	assert.Nil(t, err)
+func BenchmarkStringStore_LookupLong(b *testing.B) {
+	stringStoreBenchmarker.LookupLong(b, &store.DriverConfig{})
+}
 
-	has, err = ss.HasString(s1)
-	assert.Nil(t, err)
-	assert.True(t, has)
+func BenchmarkStringStore_AddRemoveShort(b *testing.B) {
+	stringStoreBenchmarker.AddRemoveShort(b, &store.DriverConfig{})
+}
 
-	has, err = ss.HasString(s2)
-	assert.Nil(t, err)
-	assert.False(t, has)
+func BenchmarkStringStore_AddRemoveLong(b *testing.B) {
+	stringStoreBenchmarker.AddRemoveLong(b, &store.DriverConfig{})
+}
 
-	err = ss.PutString(s1)
-	assert.Nil(t, err)
+func BenchmarkStringStore_LookupNonExistShort(b *testing.B) {
+	stringStoreBenchmarker.LookupNonExistShort(b, &store.DriverConfig{})
+}
 
-	err = ss.PutString(s2)
-	assert.Nil(t, err)
+func BenchmarkStringStore_LookupNonExistLong(b *testing.B) {
+	stringStoreBenchmarker.LookupNonExistLong(b, &store.DriverConfig{})
+}
 
-	has, err = ss.HasString(s1)
-	assert.Nil(t, err)
-	assert.True(t, has)
+func BenchmarkStringStore_RemoveNonExistShort(b *testing.B) {
+	stringStoreBenchmarker.RemoveNonExistShort(b, &store.DriverConfig{})
+}
 
-	has, err = ss.HasString(s2)
-	assert.Nil(t, err)
-	assert.True(t, has)
+func BenchmarkStringStore_RemoveNonExistLong(b *testing.B) {
+	stringStoreBenchmarker.RemoveNonExistLong(b, &store.DriverConfig{})
+}
 
-	err = ss.RemoveString(s1)
-	assert.Nil(t, err)
+func BenchmarkStringStore_Add1KShort(b *testing.B) {
+	stringStoreBenchmarker.Add1KShort(b, &store.DriverConfig{})
+}
 
-	err = ss.RemoveString(s2)
-	assert.Nil(t, err)
+func BenchmarkStringStore_Add1KLong(b *testing.B) {
+	stringStoreBenchmarker.Add1KLong(b, &store.DriverConfig{})
+}
 
-	has, err = ss.HasString(s1)
-	assert.Nil(t, err)
-	assert.False(t, has)
+func BenchmarkStringStore_Lookup1KShort(b *testing.B) {
+	stringStoreBenchmarker.Lookup1KShort(b, &store.DriverConfig{})
+}
 
-	has, err = ss.HasString(s2)
-	assert.Nil(t, err)
-	assert.False(t, has)
+func BenchmarkStringStore_Lookup1KLong(b *testing.B) {
+	stringStoreBenchmarker.Lookup1KLong(b, &store.DriverConfig{})
+}
+
+func BenchmarkStringStore_AddRemove1KShort(b *testing.B) {
+	stringStoreBenchmarker.AddRemove1KShort(b, &store.DriverConfig{})
+}
+
+func BenchmarkStringStore_AddRemove1KLong(b *testing.B) {
+	stringStoreBenchmarker.AddRemove1KLong(b, &store.DriverConfig{})
+}
+
+func BenchmarkStringStore_LookupNonExist1KShort(b *testing.B) {
+	stringStoreBenchmarker.LookupNonExist1KShort(b, &store.DriverConfig{})
+}
+
+func BenchmarkStringStore_LookupNonExist1KLong(b *testing.B) {
+	stringStoreBenchmarker.LookupNonExist1KLong(b, &store.DriverConfig{})
+}
+
+func BenchmarkStringStore_RemoveNonExist1KShort(b *testing.B) {
+	stringStoreBenchmarker.RemoveNonExist1KShort(b, &store.DriverConfig{})
+}
+
+func BenchmarkStringStore_RemoveNonExist1KLong(b *testing.B) {
+	stringStoreBenchmarker.RemoveNonExist1KLong(b, &store.DriverConfig{})
 }

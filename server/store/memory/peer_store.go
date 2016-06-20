@@ -35,6 +35,7 @@ func (d *peerStoreDriver) New(storecfg *store.DriverConfig) (store.PeerStore, er
 	}
 	return &peerStore{
 		shards: shards,
+		closed: make(chan struct{}),
 	}, nil
 }
 
@@ -72,6 +73,7 @@ type peerShard struct {
 
 type peerStore struct {
 	shards []*peerShard
+	closed chan struct{}
 }
 
 var _ store.PeerStore = &peerStore{}
@@ -100,6 +102,12 @@ func (s *peerStore) PutSeeder(infoHash chihaya.InfoHash, p chihaya.Peer) error {
 	shard.Lock()
 	defer shard.Unlock()
 
+	select {
+	case <-s.closed:
+		panic("attempted to interact with stopped store")
+	default:
+	}
+
 	if shard.peers[key] == nil {
 		shard.peers[key] = make(map[string]peer)
 	}
@@ -117,6 +125,12 @@ func (s *peerStore) DeleteSeeder(infoHash chihaya.InfoHash, p chihaya.Peer) erro
 	shard := s.shards[s.shardIndex(infoHash)]
 	shard.Lock()
 	defer shard.Unlock()
+
+	select {
+	case <-s.closed:
+		panic("attempted to interact with stopped store")
+	default:
+	}
 
 	if shard.peers[key] == nil {
 		return store.ErrResourceDoesNotExist
@@ -143,6 +157,12 @@ func (s *peerStore) PutLeecher(infoHash chihaya.InfoHash, p chihaya.Peer) error 
 	shard.Lock()
 	defer shard.Unlock()
 
+	select {
+	case <-s.closed:
+		panic("attempted to interact with stopped store")
+	default:
+	}
+
 	if shard.peers[key] == nil {
 		shard.peers[key] = make(map[string]peer)
 	}
@@ -160,6 +180,12 @@ func (s *peerStore) DeleteLeecher(infoHash chihaya.InfoHash, p chihaya.Peer) err
 	shard := s.shards[s.shardIndex(infoHash)]
 	shard.Lock()
 	defer shard.Unlock()
+
+	select {
+	case <-s.closed:
+		panic("attempted to interact with stopped store")
+	default:
+	}
 
 	if shard.peers[key] == nil {
 		return store.ErrResourceDoesNotExist
@@ -186,6 +212,12 @@ func (s *peerStore) GraduateLeecher(infoHash chihaya.InfoHash, p chihaya.Peer) e
 	shard := s.shards[s.shardIndex(infoHash)]
 	shard.Lock()
 	defer shard.Unlock()
+
+	select {
+	case <-s.closed:
+		panic("attempted to interact with stopped store")
+	default:
+	}
 
 	if shard.peers[lkey] != nil {
 		delete(shard.peers[lkey], peerKey(p))
@@ -242,6 +274,12 @@ func (s *peerStore) AnnouncePeers(infoHash chihaya.InfoHash, seeder bool, numWan
 	shard := s.shards[s.shardIndex(infoHash)]
 	shard.RLock()
 	defer shard.RUnlock()
+
+	select {
+	case <-s.closed:
+		panic("attempted to interact with stopped store")
+	default:
+	}
 
 	if seeder {
 		// Append leechers as possible.
@@ -307,6 +345,12 @@ func (s *peerStore) GetSeeders(infoHash chihaya.InfoHash) (peers, peers6 []chiha
 	shard.RLock()
 	defer shard.RUnlock()
 
+	select {
+	case <-s.closed:
+		panic("attempted to interact with stopped store")
+	default:
+	}
+
 	seeders := shard.peers[key]
 	for _, p := range seeders {
 		if p.IP.To4() == nil {
@@ -323,6 +367,12 @@ func (s *peerStore) GetLeechers(infoHash chihaya.InfoHash) (peers, peers6 []chih
 	shard := s.shards[s.shardIndex(infoHash)]
 	shard.RLock()
 	defer shard.RUnlock()
+
+	select {
+	case <-s.closed:
+		panic("attempted to interact with stopped store")
+	default:
+	}
 
 	leechers := shard.peers[key]
 	for _, p := range leechers {
@@ -341,6 +391,12 @@ func (s *peerStore) NumSeeders(infoHash chihaya.InfoHash) int {
 	shard.RLock()
 	defer shard.RUnlock()
 
+	select {
+	case <-s.closed:
+		panic("attempted to interact with stopped store")
+	default:
+	}
+
 	return len(shard.peers[key])
 }
 
@@ -350,5 +406,33 @@ func (s *peerStore) NumLeechers(infoHash chihaya.InfoHash) int {
 	shard.RLock()
 	defer shard.RUnlock()
 
+	select {
+	case <-s.closed:
+		panic("attempted to interact with stopped store")
+	default:
+	}
+
 	return len(shard.peers[key])
+}
+
+func (s *peerStore) Stop() <-chan error {
+	toReturn := make(chan error)
+	go func() {
+		oldshards := s.shards
+		for _, shard := range oldshards {
+			shard.Lock()
+		}
+		shards := make([]*peerShard, len(oldshards))
+		for i := 0; i < len(oldshards); i++ {
+			shards[i] = &peerShard{}
+			shards[i].peers = make(map[string]map[string]peer)
+		}
+		s.shards = shards
+		close(s.closed)
+		for _, shard := range oldshards {
+			shard.Unlock()
+		}
+		close(toReturn)
+	}()
+	return toReturn
 }

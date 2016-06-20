@@ -4,7 +4,11 @@
 
 package store
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/chihaya/chihaya/pkg/stopper"
+)
 
 var stringStoreDrivers = make(map[string]StringStoreDriver)
 
@@ -21,6 +25,12 @@ type StringStore interface {
 	// Returns ErrResourceDoesNotExist if the given string is not contained
 	// in the store.
 	RemoveString(s string) error
+
+	// Stopper provides the Stop method that stops the StringStore.
+	// Stop should shut down the StringStore in a separate goroutine and send
+	// an error to the channel if the shutdown failed. If the shutdown
+	// was successful, the channel is to be closed.
+	stopper.Stopper
 }
 
 // StringStoreDriver represents an interface for creating a handle to the

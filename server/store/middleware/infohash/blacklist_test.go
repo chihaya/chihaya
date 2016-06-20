@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/chihaya/chihaya"
+	"github.com/chihaya/chihaya/pkg/stopper"
 	"github.com/chihaya/chihaya/server/store"
 	"github.com/chihaya/chihaya/tracker"
 )
@@ -34,6 +35,10 @@ func (ss *storeMock) RemoveString(s string) error {
 	delete(ss.strings, s)
 
 	return nil
+}
+
+func (ss *storeMock) Stop() <-chan error {
+	return stopper.AlreadyStopped
 }
 
 var mock store.StringStore = &storeMock{

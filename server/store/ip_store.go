@@ -7,6 +7,8 @@ package store
 import (
 	"fmt"
 	"net"
+
+	"github.com/chihaya/chihaya/pkg/stopper"
 )
 
 var ipStoreDrivers = make(map[string]IPStoreDriver)
@@ -52,6 +54,12 @@ type IPStore interface {
 	// Returns ErrResourceDoesNotExist if the given network is not
 	// contained in the store.
 	RemoveNetwork(network string) error
+
+	// Stopper provides the Stop method that stops the IPStore.
+	// Stop should shut down the IPStore in a separate goroutine and send
+	// an error to the channel if the shutdown failed. If the shutdown
+	// was successful, the channel is to be closed.
+	stopper.Stopper
 }
 
 // IPStoreDriver represents an interface for creating a handle to the
