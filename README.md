@@ -44,8 +44,8 @@ This is particularly useful behavior for private tracker use-cases.
 Copy [`example_config.json`] to your choice of location, and update the values as required.
 An explanation of the available keys can be found in [CONFIGURATION.md].
 
-[`example_config.json`]: https://github.com/chihaya/chihaya/blob/master/example_config.json
-[CONFIGURATION.md]: https://github.com/chihaya/chihaya/blob/master/CONFIGURATION.md
+[`example_config.json`]: ./example_config.json
+[CONFIGURATION.md]: ./CONFIGURATION.md
 
 ### Docker
 
