@@ -359,26 +359,37 @@ func (s *ipStoreTester) TestHasAllHasAnyNetworks(t *testing.T, cfg *DriverConfig
 // Every benchmark expects a new, clean storage. Every benchmark should be
 // called with a DriverConfig that ensures this.
 type PeerStoreTester interface {
+	// CompareEndpoints sets the function used to compare peers to a
+	// comparison that only compares endpoints and omits PeerIDs.
+	CompareEndpoints()
+
 	TestPeerStore(*testing.T, *DriverConfig)
 }
 
 var _ PeerStoreTester = &peerStoreTester{}
 
 type peerStoreTester struct {
-	driver PeerStoreDriver
+	driver       PeerStoreDriver
+	equalityFunc func(a, b chihaya.Peer) bool
 }
 
 // PreparePeerStoreTester prepares a reusable suite for PeerStore driver
 // tests.
+// The tester will use PeerIDs and endpoints to compare peers.
 func PreparePeerStoreTester(driver PeerStoreDriver) PeerStoreTester {
 	return &peerStoreTester{
-		driver: driver,
+		driver:       driver,
+		equalityFunc: func(a, b chihaya.Peer) bool { return a.Equal(b) },
 	}
 }
 
-func peerInSlice(peer chihaya.Peer, peers []chihaya.Peer) bool {
+func (pt *peerStoreTester) CompareEndpoints() {
+	pt.equalityFunc = func(a, b chihaya.Peer) bool { return a.EqualEndpoint(b) }
+}
+
+func (pt *peerStoreTester) peerInSlice(peer chihaya.Peer, peers []chihaya.Peer) bool {
 	for _, v := range peers {
-		if v.Equal(peer) {
+		if pt.equalityFunc(peer, v) {
 			return true
 		}
 	}
@@ -453,9 +464,9 @@ func (pt *peerStoreTester) TestPeerStore(t *testing.T, cfg *DriverConfig) {
 		}
 
 		if p.seeder {
-			require.True(t, peerInSlice(peer, seeders))
+			require.True(t, pt.peerInSlice(peer, seeders))
 		} else {
-			require.True(t, peerInSlice(peer, leechers))
+			require.True(t, pt.peerInSlice(peer, leechers))
 		}
 
 		if p.seeder {
@@ -506,8 +517,8 @@ func (pt *peerStoreTester) TestPeerStore(t *testing.T, cfg *DriverConfig) {
 
 	err = s.CollectGarbage(time.Now())
 	require.Nil(t, err)
-	require.Equal(t, s.NumLeechers(hash), 0)
-	require.Equal(t, s.NumSeeders(hash), 0)
+	require.Equal(t, 0, s.NumLeechers(hash))
+	require.Equal(t, 0, s.NumSeeders(hash))
 
 	errChan := s.Stop()
 	err = <-errChan

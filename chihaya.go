@@ -145,12 +145,17 @@ type Peer struct {
 	Port uint16
 }
 
+// Equal reports whether p and x are the same.
+func (p Peer) Equal(x Peer) bool {
+	return p.EqualEndpoint(x) && p.ID == x.ID
+}
+
+// EqualEndpoint reports whether p and x have the same endpoint.
+func (p Peer) EqualEndpoint(x Peer) bool {
+	return p.Port == x.Port && p.IP.Equal(x.IP)
+}
+
 // Params is used to fetch request parameters.
 type Params interface {
 	String(key string) (string, error)
-}
-
-// Equal reports whether peer and x are the same.
-func (peer Peer) Equal(x Peer) bool {
-	return peer.ID == x.ID && peer.Port == x.Port && peer.IP.Equal(x.IP)
 }
