@@ -856,7 +856,9 @@ func generatePeers() (a [num1KElements]chihaya.Peer) {
 // benchmarks.
 func PreparePeerStoreBenchmarker(driver PeerStoreDriver) PeerStoreBenchmarker {
 	return peerStoreBench{
-		driver: driver,
+		driver:     driver,
+		infohashes: generateInfohashes(),
+		peers:      generatePeers(),
 	}
 }
 
