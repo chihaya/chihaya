@@ -14,7 +14,17 @@ chihaya:
 #      - name: infohash_blacklist
 #      - name: infohash_whitelist
 #      - name: varinterval
+#        config:
+#         modify_response_probability: 0.2
+#         max_increase_delta: 60
+#         modify_min_interval: true
 #      - name: deniability
+#        config:
+#          modify_response_probability: 0.05
+#          max_random_peers: 5
+#          prefix: -AZ2060-
+#          min_port: 30000
+#          max_port: 65000
       - name: store_swarm_interaction
       - name: store_response
     scrape_middleware:
