@@ -28,6 +28,7 @@ func responseAnnounceClient(next tracker.AnnounceHandler) tracker.AnnounceHandle
 	return func(cfg *chihaya.TrackerConfig, req *chihaya.AnnounceRequest, resp *chihaya.AnnounceResponse) (err error) {
 		storage := store.MustGetStore()
 
+		resp.Interval = cfg.AnnounceInterval
 		resp.MinInterval = cfg.MinAnnounceInterval
 		resp.Compact = req.Compact
 		resp.Complete = int32(storage.NumSeeders(req.InfoHash))
