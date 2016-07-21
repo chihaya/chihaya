@@ -510,10 +510,10 @@ func (pt *peerStoreTester) TestPeerStore(t *testing.T, cfg *DriverConfig) {
 	require.Equal(t, 7, s.NumSeeders(hash))
 	require.Equal(t, 3, s.NumLeechers(hash))
 
-	peers1, peers61, err := s.AnnouncePeers(hash, true, 5, peer, chihaya.Peer{})
+	_, _, err = s.AnnouncePeers(hash, true, 5, peer, chihaya.Peer{})
+	// Only test if it works, do not test the slices returned. They change
+	// depending on the driver.
 	require.Nil(t, err)
-	require.NotNil(t, peers1)
-	require.NotNil(t, peers61)
 
 	err = s.CollectGarbage(time.Now())
 	require.Nil(t, err)
