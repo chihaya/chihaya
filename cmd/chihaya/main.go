@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"runtime/pprof"
 	"syscall"
 
 	"github.com/chihaya/chihaya"
@@ -31,14 +32,28 @@ import (
 	_ "github.com/chihaya/chihaya/server/store/middleware/swarm"
 )
 
-var configPath string
+var (
+	configPath string
+	cpuprofile string
+)
 
 func init() {
 	flag.StringVar(&configPath, "config", "", "path to the configuration file")
+	flag.StringVar(&cpuprofile, "cpuprofile", "", "path to cpu profile output")
 }
 
 func main() {
 	flag.Parse()
+
+	if cpuprofile != "" {
+		log.Println("profiling...")
+		f, err := os.Create(cpuprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
 
 	cfg, err := chihaya.OpenConfigFile(configPath)
 	if err != nil {
