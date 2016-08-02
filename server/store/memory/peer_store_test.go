@@ -6,23 +6,51 @@ package memory
 
 import (
 	"testing"
+	"time"
 
 	"github.com/chihaya/chihaya/server/store"
+	"github.com/stretchr/testify/require"
 )
 
 var (
 	peerStoreTester      = store.PreparePeerStoreTester(&peerStoreDriver{})
 	peerStoreBenchmarker = store.PreparePeerStoreBenchmarker(&peerStoreDriver{})
-	peerStoreTestConfig  = &store.DriverConfig{}
+	peerStoreTestConfig  = &store.DriverConfig{Config: peerStoreConfig{Shards: 1, GCCutoff: time.Duration(100000000000), GCInterval: time.Duration(100000000000)}}
 )
 
-func init() {
-	unmarshalledConfig := struct {
-		Shards int
-	}{
-		1,
-	}
-	peerStoreTestConfig.Config = unmarshalledConfig
+func TestNewPeerStoreConfig(t *testing.T) {
+	cfg, err := newPeerStoreConfig(peerStoreTestConfig)
+	require.Nil(t, err)
+	require.NotNil(t, cfg)
+
+	cfg, err = newPeerStoreConfig(nil)
+	require.Equal(t, ErrMissingConfig, err)
+	require.Nil(t, cfg)
+
+	cfg, err = newPeerStoreConfig(&store.DriverConfig{})
+	require.Equal(t, ErrMissingConfig, err)
+	require.Nil(t, cfg)
+
+	cfg, err = newPeerStoreConfig(&store.DriverConfig{Config: nil})
+	require.Equal(t, ErrMissingConfig, err)
+	require.Nil(t, cfg)
+
+	cfg, err = newPeerStoreConfig(&store.DriverConfig{Config: peerStoreConfig{GCCutoff: time.Duration(50)}})
+	require.Equal(t, ErrInvalidGCInterval, err)
+	require.Nil(t, cfg)
+
+	cfg, err = newPeerStoreConfig(&store.DriverConfig{Config: peerStoreConfig{GCInterval: time.Duration(50)}})
+	require.Equal(t, ErrInvalidGCCutoff, err)
+	require.Nil(t, cfg)
+
+	bogus := struct {
+		GCInterval string `yaml:"gc_interval"`
+		GCCutoff   string `yaml:"gc_cutoff"`
+	}{"invalid", "values"}
+
+	cfg, err = newPeerStoreConfig(&store.DriverConfig{Config: bogus})
+	require.NotNil(t, err)
+	require.Nil(t, cfg)
 }
 
 func TestPeerStore(t *testing.T) {
