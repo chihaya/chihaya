@@ -11,91 +11,91 @@ import (
 )
 
 var (
-	driver                 = &stringStoreDriver{}
-	stringStoreTester      = store.PrepareStringStoreTester(driver)
+	stringStoreTester      = store.PrepareStringStoreTester(&stringStoreDriver{})
 	stringStoreBenchmarker = store.PrepareStringStoreBenchmarker(&stringStoreDriver{})
+	stringStoreTestConfig  = &store.DriverConfig{}
 )
 
 func TestStringStore(t *testing.T) {
-	stringStoreTester.TestStringStore(t, &store.DriverConfig{})
+	stringStoreTester.TestStringStore(t, stringStoreTestConfig)
 }
 
 func BenchmarkStringStore_AddShort(b *testing.B) {
-	stringStoreBenchmarker.AddShort(b, &store.DriverConfig{})
+	stringStoreBenchmarker.AddShort(b, stringStoreTestConfig)
 }
 
 func BenchmarkStringStore_AddLong(b *testing.B) {
-	stringStoreBenchmarker.AddLong(b, &store.DriverConfig{})
+	stringStoreBenchmarker.AddLong(b, stringStoreTestConfig)
 }
 
 func BenchmarkStringStore_LookupShort(b *testing.B) {
-	stringStoreBenchmarker.LookupShort(b, &store.DriverConfig{})
+	stringStoreBenchmarker.LookupShort(b, stringStoreTestConfig)
 }
 
 func BenchmarkStringStore_LookupLong(b *testing.B) {
-	stringStoreBenchmarker.LookupLong(b, &store.DriverConfig{})
+	stringStoreBenchmarker.LookupLong(b, stringStoreTestConfig)
 }
 
 func BenchmarkStringStore_AddRemoveShort(b *testing.B) {
-	stringStoreBenchmarker.AddRemoveShort(b, &store.DriverConfig{})
+	stringStoreBenchmarker.AddRemoveShort(b, stringStoreTestConfig)
 }
 
 func BenchmarkStringStore_AddRemoveLong(b *testing.B) {
-	stringStoreBenchmarker.AddRemoveLong(b, &store.DriverConfig{})
+	stringStoreBenchmarker.AddRemoveLong(b, stringStoreTestConfig)
 }
 
 func BenchmarkStringStore_LookupNonExistShort(b *testing.B) {
-	stringStoreBenchmarker.LookupNonExistShort(b, &store.DriverConfig{})
+	stringStoreBenchmarker.LookupNonExistShort(b, stringStoreTestConfig)
 }
 
 func BenchmarkStringStore_LookupNonExistLong(b *testing.B) {
-	stringStoreBenchmarker.LookupNonExistLong(b, &store.DriverConfig{})
+	stringStoreBenchmarker.LookupNonExistLong(b, stringStoreTestConfig)
 }
 
 func BenchmarkStringStore_RemoveNonExistShort(b *testing.B) {
-	stringStoreBenchmarker.RemoveNonExistShort(b, &store.DriverConfig{})
+	stringStoreBenchmarker.RemoveNonExistShort(b, stringStoreTestConfig)
 }
 
 func BenchmarkStringStore_RemoveNonExistLong(b *testing.B) {
-	stringStoreBenchmarker.RemoveNonExistLong(b, &store.DriverConfig{})
+	stringStoreBenchmarker.RemoveNonExistLong(b, stringStoreTestConfig)
 }
 
 func BenchmarkStringStore_Add1KShort(b *testing.B) {
-	stringStoreBenchmarker.Add1KShort(b, &store.DriverConfig{})
+	stringStoreBenchmarker.Add1KShort(b, stringStoreTestConfig)
 }
 
 func BenchmarkStringStore_Add1KLong(b *testing.B) {
-	stringStoreBenchmarker.Add1KLong(b, &store.DriverConfig{})
+	stringStoreBenchmarker.Add1KLong(b, stringStoreTestConfig)
 }
 
 func BenchmarkStringStore_Lookup1KShort(b *testing.B) {
-	stringStoreBenchmarker.Lookup1KShort(b, &store.DriverConfig{})
+	stringStoreBenchmarker.Lookup1KShort(b, stringStoreTestConfig)
 }
 
 func BenchmarkStringStore_Lookup1KLong(b *testing.B) {
-	stringStoreBenchmarker.Lookup1KLong(b, &store.DriverConfig{})
+	stringStoreBenchmarker.Lookup1KLong(b, stringStoreTestConfig)
 }
 
 func BenchmarkStringStore_AddRemove1KShort(b *testing.B) {
-	stringStoreBenchmarker.AddRemove1KShort(b, &store.DriverConfig{})
+	stringStoreBenchmarker.AddRemove1KShort(b, stringStoreTestConfig)
 }
 
 func BenchmarkStringStore_AddRemove1KLong(b *testing.B) {
-	stringStoreBenchmarker.AddRemove1KLong(b, &store.DriverConfig{})
+	stringStoreBenchmarker.AddRemove1KLong(b, stringStoreTestConfig)
 }
 
 func BenchmarkStringStore_LookupNonExist1KShort(b *testing.B) {
-	stringStoreBenchmarker.LookupNonExist1KShort(b, &store.DriverConfig{})
+	stringStoreBenchmarker.LookupNonExist1KShort(b, stringStoreTestConfig)
 }
 
 func BenchmarkStringStore_LookupNonExist1KLong(b *testing.B) {
-	stringStoreBenchmarker.LookupNonExist1KLong(b, &store.DriverConfig{})
+	stringStoreBenchmarker.LookupNonExist1KLong(b, stringStoreTestConfig)
 }
 
 func BenchmarkStringStore_RemoveNonExist1KShort(b *testing.B) {
-	stringStoreBenchmarker.RemoveNonExist1KShort(b, &store.DriverConfig{})
+	stringStoreBenchmarker.RemoveNonExist1KShort(b, stringStoreTestConfig)
 }
 
 func BenchmarkStringStore_RemoveNonExist1KLong(b *testing.B) {
-	stringStoreBenchmarker.RemoveNonExist1KLong(b, &store.DriverConfig{})
+	stringStoreBenchmarker.RemoveNonExist1KLong(b, stringStoreTestConfig)
 }

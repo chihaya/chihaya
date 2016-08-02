@@ -20,6 +20,7 @@ var (
 
 	ipStoreTester      = store.PrepareIPStoreTester(&ipStoreDriver{})
 	ipStoreBenchmarker = store.PrepareIPStoreBenchmarker(&ipStoreDriver{})
+	ipStoreTestConfig  = &store.DriverConfig{}
 )
 
 func TestKey(t *testing.T) {
@@ -39,161 +40,161 @@ func TestKey(t *testing.T) {
 }
 
 func TestIPStore(t *testing.T) {
-	ipStoreTester.TestIPStore(t, &store.DriverConfig{})
+	ipStoreTester.TestIPStore(t, ipStoreTestConfig)
 }
 
 func TestHasAllHasAny(t *testing.T) {
-	ipStoreTester.TestHasAllHasAny(t, &store.DriverConfig{})
+	ipStoreTester.TestHasAllHasAny(t, ipStoreTestConfig)
 }
 
 func TestNetworks(t *testing.T) {
-	ipStoreTester.TestNetworks(t, &store.DriverConfig{})
+	ipStoreTester.TestNetworks(t, ipStoreTestConfig)
 }
 
 func TestHasAllHasAnyNetworks(t *testing.T) {
-	ipStoreTester.TestHasAllHasAnyNetworks(t, &store.DriverConfig{})
+	ipStoreTester.TestHasAllHasAnyNetworks(t, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_AddV4(b *testing.B) {
-	ipStoreBenchmarker.AddV4(b, &store.DriverConfig{})
+	ipStoreBenchmarker.AddV4(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_AddV6(b *testing.B) {
-	ipStoreBenchmarker.AddV6(b, &store.DriverConfig{})
+	ipStoreBenchmarker.AddV6(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_LookupV4(b *testing.B) {
-	ipStoreBenchmarker.LookupV4(b, &store.DriverConfig{})
+	ipStoreBenchmarker.LookupV4(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_LookupV6(b *testing.B) {
-	ipStoreBenchmarker.LookupV6(b, &store.DriverConfig{})
+	ipStoreBenchmarker.LookupV6(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_AddRemoveV4(b *testing.B) {
-	ipStoreBenchmarker.AddRemoveV4(b, &store.DriverConfig{})
+	ipStoreBenchmarker.AddRemoveV4(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_AddRemoveV6(b *testing.B) {
-	ipStoreBenchmarker.AddRemoveV6(b, &store.DriverConfig{})
+	ipStoreBenchmarker.AddRemoveV6(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_LookupNonExistV4(b *testing.B) {
-	ipStoreBenchmarker.LookupNonExistV4(b, &store.DriverConfig{})
+	ipStoreBenchmarker.LookupNonExistV4(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_LookupNonExistV6(b *testing.B) {
-	ipStoreBenchmarker.LookupNonExistV6(b, &store.DriverConfig{})
+	ipStoreBenchmarker.LookupNonExistV6(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_RemoveNonExistV4(b *testing.B) {
-	ipStoreBenchmarker.RemoveNonExistV4(b, &store.DriverConfig{})
+	ipStoreBenchmarker.RemoveNonExistV4(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_RemoveNonExistV6(b *testing.B) {
-	ipStoreBenchmarker.RemoveNonExistV6(b, &store.DriverConfig{})
+	ipStoreBenchmarker.RemoveNonExistV6(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_AddV4Network(b *testing.B) {
-	ipStoreBenchmarker.AddV4Network(b, &store.DriverConfig{})
+	ipStoreBenchmarker.AddV4Network(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_AddV6Network(b *testing.B) {
-	ipStoreBenchmarker.AddV6Network(b, &store.DriverConfig{})
+	ipStoreBenchmarker.AddV6Network(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_LookupV4Network(b *testing.B) {
-	ipStoreBenchmarker.LookupV4Network(b, &store.DriverConfig{})
+	ipStoreBenchmarker.LookupV4Network(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_LookupV6Network(b *testing.B) {
-	ipStoreBenchmarker.LookupV6Network(b, &store.DriverConfig{})
+	ipStoreBenchmarker.LookupV6Network(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_AddRemoveV4Network(b *testing.B) {
-	ipStoreBenchmarker.AddRemoveV4Network(b, &store.DriverConfig{})
+	ipStoreBenchmarker.AddRemoveV4Network(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_AddRemoveV6Network(b *testing.B) {
-	ipStoreBenchmarker.AddRemoveV6Network(b, &store.DriverConfig{})
+	ipStoreBenchmarker.AddRemoveV6Network(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_RemoveNonExistV4Network(b *testing.B) {
-	ipStoreBenchmarker.RemoveNonExistV4Network(b, &store.DriverConfig{})
+	ipStoreBenchmarker.RemoveNonExistV4Network(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_RemoveNonExistV6Network(b *testing.B) {
-	ipStoreBenchmarker.RemoveNonExistV6Network(b, &store.DriverConfig{})
+	ipStoreBenchmarker.RemoveNonExistV6Network(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_Add1KV4(b *testing.B) {
-	ipStoreBenchmarker.Add1KV4(b, &store.DriverConfig{})
+	ipStoreBenchmarker.Add1KV4(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_Add1KV6(b *testing.B) {
-	ipStoreBenchmarker.Add1KV6(b, &store.DriverConfig{})
+	ipStoreBenchmarker.Add1KV6(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_Lookup1KV4(b *testing.B) {
-	ipStoreBenchmarker.Lookup1KV4(b, &store.DriverConfig{})
+	ipStoreBenchmarker.Lookup1KV4(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_Lookup1KV6(b *testing.B) {
-	ipStoreBenchmarker.Lookup1KV6(b, &store.DriverConfig{})
+	ipStoreBenchmarker.Lookup1KV6(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_AddRemove1KV4(b *testing.B) {
-	ipStoreBenchmarker.AddRemove1KV4(b, &store.DriverConfig{})
+	ipStoreBenchmarker.AddRemove1KV4(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_AddRemove1KV6(b *testing.B) {
-	ipStoreBenchmarker.AddRemove1KV6(b, &store.DriverConfig{})
+	ipStoreBenchmarker.AddRemove1KV6(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_LookupNonExist1KV4(b *testing.B) {
-	ipStoreBenchmarker.LookupNonExist1KV4(b, &store.DriverConfig{})
+	ipStoreBenchmarker.LookupNonExist1KV4(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_LookupNonExist1KV6(b *testing.B) {
-	ipStoreBenchmarker.LookupNonExist1KV6(b, &store.DriverConfig{})
+	ipStoreBenchmarker.LookupNonExist1KV6(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_RemoveNonExist1KV4(b *testing.B) {
-	ipStoreBenchmarker.RemoveNonExist1KV4(b, &store.DriverConfig{})
+	ipStoreBenchmarker.RemoveNonExist1KV4(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_RemoveNonExist1KV6(b *testing.B) {
-	ipStoreBenchmarker.RemoveNonExist1KV6(b, &store.DriverConfig{})
+	ipStoreBenchmarker.RemoveNonExist1KV6(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_Add1KV4Network(b *testing.B) {
-	ipStoreBenchmarker.Add1KV4Network(b, &store.DriverConfig{})
+	ipStoreBenchmarker.Add1KV4Network(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_Add1KV6Network(b *testing.B) {
-	ipStoreBenchmarker.Add1KV6Network(b, &store.DriverConfig{})
+	ipStoreBenchmarker.Add1KV6Network(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_Lookup1KV4Network(b *testing.B) {
-	ipStoreBenchmarker.Lookup1KV4Network(b, &store.DriverConfig{})
+	ipStoreBenchmarker.Lookup1KV4Network(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_Lookup1KV6Network(b *testing.B) {
-	ipStoreBenchmarker.Lookup1KV6Network(b, &store.DriverConfig{})
+	ipStoreBenchmarker.Lookup1KV6Network(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_AddRemove1KV4Network(b *testing.B) {
-	ipStoreBenchmarker.AddRemove1KV4Network(b, &store.DriverConfig{})
+	ipStoreBenchmarker.AddRemove1KV4Network(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_AddRemove1KV6Network(b *testing.B) {
-	ipStoreBenchmarker.AddRemove1KV6Network(b, &store.DriverConfig{})
+	ipStoreBenchmarker.AddRemove1KV6Network(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_RemoveNonExist1KV4Network(b *testing.B) {
-	ipStoreBenchmarker.RemoveNonExist1KV4Network(b, &store.DriverConfig{})
+	ipStoreBenchmarker.RemoveNonExist1KV4Network(b, ipStoreTestConfig)
 }
 
 func BenchmarkIPStore_RemoveNonExist1KV6Network(b *testing.B) {
-	ipStoreBenchmarker.RemoveNonExist1KV6Network(b, &store.DriverConfig{})
+	ipStoreBenchmarker.RemoveNonExist1KV6Network(b, ipStoreTestConfig)
 }
