@@ -113,7 +113,6 @@ func (s *peerStore) PutSeeder(infoHash chihaya.InfoHash, p chihaya.Peer) error {
 
 	shard := s.shards[s.shardIndex(infoHash)]
 	shard.Lock()
-	defer shard.Unlock()
 
 	if _, ok := shard.swarms[infoHash]; !ok {
 		shard.swarms[infoHash] = swarm{
@@ -124,6 +123,7 @@ func (s *peerStore) PutSeeder(infoHash chihaya.InfoHash, p chihaya.Peer) error {
 
 	shard.swarms[infoHash].seeders[peerKey(p)] = time.Now().UnixNano()
 
+	shard.Unlock()
 	return nil
 }
 
@@ -137,13 +137,14 @@ func (s *peerStore) DeleteSeeder(infoHash chihaya.InfoHash, p chihaya.Peer) erro
 	shard := s.shards[s.shardIndex(infoHash)]
 	pk := peerKey(p)
 	shard.Lock()
-	defer shard.Unlock()
 
 	if _, ok := shard.swarms[infoHash]; !ok {
+		shard.Unlock()
 		return store.ErrResourceDoesNotExist
 	}
 
 	if _, ok := shard.swarms[infoHash].seeders[pk]; !ok {
+		shard.Unlock()
 		return store.ErrResourceDoesNotExist
 	}
 
@@ -153,6 +154,7 @@ func (s *peerStore) DeleteSeeder(infoHash chihaya.InfoHash, p chihaya.Peer) erro
 		delete(shard.swarms, infoHash)
 	}
 
+	shard.Unlock()
 	return nil
 }
 
@@ -165,7 +167,6 @@ func (s *peerStore) PutLeecher(infoHash chihaya.InfoHash, p chihaya.Peer) error 
 
 	shard := s.shards[s.shardIndex(infoHash)]
 	shard.Lock()
-	defer shard.Unlock()
 
 	if _, ok := shard.swarms[infoHash]; !ok {
 		shard.swarms[infoHash] = swarm{
@@ -176,6 +177,7 @@ func (s *peerStore) PutLeecher(infoHash chihaya.InfoHash, p chihaya.Peer) error 
 
 	shard.swarms[infoHash].leechers[peerKey(p)] = time.Now().UnixNano()
 
+	shard.Unlock()
 	return nil
 }
 
@@ -189,13 +191,14 @@ func (s *peerStore) DeleteLeecher(infoHash chihaya.InfoHash, p chihaya.Peer) err
 	shard := s.shards[s.shardIndex(infoHash)]
 	pk := peerKey(p)
 	shard.Lock()
-	defer shard.Unlock()
 
 	if _, ok := shard.swarms[infoHash]; !ok {
+		shard.Unlock()
 		return store.ErrResourceDoesNotExist
 	}
 
 	if _, ok := shard.swarms[infoHash].leechers[pk]; !ok {
+		shard.Unlock()
 		return store.ErrResourceDoesNotExist
 	}
 
@@ -205,6 +208,7 @@ func (s *peerStore) DeleteLeecher(infoHash chihaya.InfoHash, p chihaya.Peer) err
 		delete(shard.swarms, infoHash)
 	}
 
+	shard.Unlock()
 	return nil
 }
 
@@ -218,7 +222,6 @@ func (s *peerStore) GraduateLeecher(infoHash chihaya.InfoHash, p chihaya.Peer) e
 	key := peerKey(p)
 	shard := s.shards[s.shardIndex(infoHash)]
 	shard.Lock()
-	defer shard.Unlock()
 
 	if _, ok := shard.swarms[infoHash]; !ok {
 		shard.swarms[infoHash] = swarm{
@@ -231,6 +234,7 @@ func (s *peerStore) GraduateLeecher(infoHash chihaya.InfoHash, p chihaya.Peer) e
 
 	shard.swarms[infoHash].seeders[key] = time.Now().UnixNano()
 
+	shard.Unlock()
 	return nil
 }
 
@@ -290,9 +294,9 @@ func (s *peerStore) AnnouncePeers(infoHash chihaya.InfoHash, seeder bool, numWan
 
 	shard := s.shards[s.shardIndex(infoHash)]
 	shard.RLock()
-	defer shard.RUnlock()
 
 	if _, ok := shard.swarms[infoHash]; !ok {
+		shard.RUnlock()
 		return nil, nil, store.ErrResourceDoesNotExist
 	}
 
@@ -354,6 +358,7 @@ func (s *peerStore) AnnouncePeers(infoHash chihaya.InfoHash, seeder bool, numWan
 		}
 	}
 
+	shard.RUnlock()
 	return
 }
 
@@ -366,9 +371,9 @@ func (s *peerStore) GetSeeders(infoHash chihaya.InfoHash) (peers, peers6 []chiha
 
 	shard := s.shards[s.shardIndex(infoHash)]
 	shard.RLock()
-	defer shard.RUnlock()
 
 	if _, ok := shard.swarms[infoHash]; !ok {
+		shard.RUnlock()
 		return nil, nil, store.ErrResourceDoesNotExist
 	}
 
@@ -381,6 +386,8 @@ func (s *peerStore) GetSeeders(infoHash chihaya.InfoHash) (peers, peers6 []chiha
 			peers = append(peers, decodedPeer)
 		}
 	}
+
+	shard.RUnlock()
 	return
 }
 
@@ -393,9 +400,9 @@ func (s *peerStore) GetLeechers(infoHash chihaya.InfoHash) (peers, peers6 []chih
 
 	shard := s.shards[s.shardIndex(infoHash)]
 	shard.RLock()
-	defer shard.RUnlock()
 
 	if _, ok := shard.swarms[infoHash]; !ok {
+		shard.RUnlock()
 		return nil, nil, store.ErrResourceDoesNotExist
 	}
 
@@ -408,6 +415,8 @@ func (s *peerStore) GetLeechers(infoHash chihaya.InfoHash) (peers, peers6 []chih
 			peers = append(peers, decodedPeer)
 		}
 	}
+
+	shard.RUnlock()
 	return
 }
 
@@ -420,13 +429,16 @@ func (s *peerStore) NumSeeders(infoHash chihaya.InfoHash) int {
 
 	shard := s.shards[s.shardIndex(infoHash)]
 	shard.RLock()
-	defer shard.RUnlock()
 
 	if _, ok := shard.swarms[infoHash]; !ok {
+		shard.RUnlock()
 		return 0
 	}
 
-	return len(shard.swarms[infoHash].seeders)
+	numSeeders := len(shard.swarms[infoHash].seeders)
+
+	shard.RUnlock()
+	return numSeeders
 }
 
 func (s *peerStore) NumLeechers(infoHash chihaya.InfoHash) int {
@@ -438,13 +450,16 @@ func (s *peerStore) NumLeechers(infoHash chihaya.InfoHash) int {
 
 	shard := s.shards[s.shardIndex(infoHash)]
 	shard.RLock()
-	defer shard.RUnlock()
 
 	if _, ok := shard.swarms[infoHash]; !ok {
+		shard.RUnlock()
 		return 0
 	}
 
-	return len(shard.swarms[infoHash].leechers)
+	numLeechers := len(shard.swarms[infoHash].leechers)
+
+	shard.RUnlock()
+	return numLeechers
 }
 
 func (s *peerStore) Stop() <-chan error {
