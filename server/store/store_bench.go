@@ -6,19 +6,30 @@ package store
 
 import (
 	"fmt"
+	"math/rand"
 	"net"
-	"strings"
+	"runtime"
+	"sync/atomic"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/chihaya/chihaya"
-	"github.com/stretchr/testify/require"
+	"github.com/chihaya/chihaya/pkg/random"
 )
 
 const num1KElements = 1000
 
 // StringStoreBenchmarker is a collection of benchmarks for StringStore drivers.
-// Every benchmark expects a new, clean storage. Every benchmark should be
-// called with a DriverConfig that ensures this.
+//
+// All benchmarks can be run in parallel. Parallelism can be controlled using
+// the -cpu flag.
+//
+// Every run of every benchmark expects a new, clean storage. Every benchmark
+// should be called with a DriverConfig that ensures this and, if necessary,
+// clean up after calling the benchmark. Clean-up time is not considered in the
+// benchmark result.
 type StringStoreBenchmarker interface {
 	AddShort(*testing.B, *DriverConfig)
 	AddLong(*testing.B, *DriverConfig)
@@ -51,26 +62,39 @@ type stringStoreBench struct {
 	// sLong holds differentStrings unique strings of length 1000.
 	sLong [num1KElements]string
 
-	driver StringStoreDriver
+	driver         StringStoreDriver
+	goroutineShift int
 }
 
 func generateLongStrings() (a [num1KElements]string) {
-	b := make([]byte, 2)
-	for i := range a {
-		b[0] = byte(i)
-		b[1] = byte(i >> 8)
-		a[i] = strings.Repeat(fmt.Sprintf("%x", b), 250)
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	strings := make(map[string]struct{})
+	for len(strings) < num1KElements {
+		strings[random.AlphaNumericString(r, 1000)] = struct{}{}
+	}
+
+	i := 0
+	for s := range strings {
+		a[i] = s
+		i++
 	}
 
 	return
 }
 
 func generateShortStrings() (a [num1KElements]string) {
-	b := make([]byte, 2)
-	for i := range a {
-		b[0] = byte(i)
-		b[1] = byte(i >> 8)
-		a[i] = strings.Repeat(fmt.Sprintf("%x", b), 3)[:10]
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	strings := make(map[string]struct{})
+	for len(strings) < num1KElements {
+		strings[random.AlphaNumericString(r, 10)] = struct{}{}
+	}
+
+	i := 0
+	for s := range strings {
+		a[i] = s
+		i++
 	}
 
 	return
@@ -79,10 +103,11 @@ func generateShortStrings() (a [num1KElements]string) {
 // PrepareStringStoreBenchmarker prepares a reusable suite for StringStore driver
 // benchmarks.
 func PrepareStringStoreBenchmarker(driver StringStoreDriver) StringStoreBenchmarker {
-	return stringStoreBench{
-		sShort: generateShortStrings(),
-		sLong:  generateLongStrings(),
-		driver: driver,
+	return &stringStoreBench{
+		sShort:         generateShortStrings(),
+		sLong:          generateLongStrings(),
+		driver:         driver,
+		goroutineShift: num1KElements / runtime.NumCPU(),
 	}
 }
 
@@ -90,20 +115,40 @@ type stringStoreSetupFunc func(StringStore) error
 
 func stringStoreSetupNOP(StringStore) error { return nil }
 
+func (sb *stringStoreBench) setupStrings(ss StringStore) error {
+	for i := 0; i < num1KElements; i++ {
+		err := ss.PutString(sb.sShort[i])
+		if err != nil {
+			return err
+		}
+
+		err = ss.PutString(sb.sLong[i])
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type stringStoreBenchFunc func(StringStore, int) error
 
-func (sb stringStoreBench) runBenchmark(b *testing.B, cfg *DriverConfig, setup stringStoreSetupFunc, execute stringStoreBenchFunc) {
+func (sb *stringStoreBench) runBenchmark(b *testing.B, cfg *DriverConfig, setup stringStoreSetupFunc, execute stringStoreBenchFunc) {
 	ss, err := sb.driver.New(cfg)
 	require.Nil(b, err, "Constructor error must be nil")
-	require.NotNil(b, ss, "String store must not be nil")
+	require.NotNil(b, ss, "StringStore must not be nil")
 
 	err = setup(ss)
 	require.Nil(b, err, "Benchmark setup must not fail")
 
+	numGoroutine := int32(0)
+
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		execute(ss, i)
-	}
+	b.RunParallel(func(ppb *testing.PB) {
+		g := int(atomic.AddInt32(&numGoroutine, 1)) * sb.goroutineShift
+		for i := g; ppb.Next(); i++ {
+			execute(ss, i)
+		}
+	})
 	b.StopTimer()
 
 	errChan := ss.Stop()
@@ -111,7 +156,7 @@ func (sb stringStoreBench) runBenchmark(b *testing.B, cfg *DriverConfig, setup s
 	require.Nil(b, err, "StringStore shutdown must not fail")
 }
 
-func (sb stringStoreBench) AddShort(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) AddShort(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.PutString(sb.sShort[0])
@@ -119,7 +164,7 @@ func (sb stringStoreBench) AddShort(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (sb stringStoreBench) AddLong(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) AddLong(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.PutString(sb.sLong[0])
@@ -127,7 +172,7 @@ func (sb stringStoreBench) AddLong(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (sb stringStoreBench) Add1KShort(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) Add1KShort(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.PutString(sb.sShort[i%num1KElements])
@@ -135,7 +180,7 @@ func (sb stringStoreBench) Add1KShort(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (sb stringStoreBench) Add1KLong(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) Add1KLong(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.PutString(sb.sLong[i%num1KElements])
@@ -143,63 +188,39 @@ func (sb stringStoreBench) Add1KLong(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (sb stringStoreBench) LookupShort(b *testing.B, cfg *DriverConfig) {
-	sb.runBenchmark(b, cfg,
-		func(ss StringStore) error {
-			return ss.PutString(sb.sShort[0])
-		},
+func (sb *stringStoreBench) LookupShort(b *testing.B, cfg *DriverConfig) {
+	sb.runBenchmark(b, cfg, sb.setupStrings,
 		func(ss StringStore, i int) error {
 			ss.HasString(sb.sShort[0])
 			return nil
 		})
 }
 
-func (sb stringStoreBench) LookupLong(b *testing.B, cfg *DriverConfig) {
-	sb.runBenchmark(b, cfg,
-		func(ss StringStore) error {
-			return ss.PutString(sb.sLong[0])
-		},
+func (sb *stringStoreBench) LookupLong(b *testing.B, cfg *DriverConfig) {
+	sb.runBenchmark(b, cfg, sb.setupStrings,
 		func(ss StringStore, i int) error {
 			ss.HasString(sb.sLong[0])
 			return nil
 		})
 }
 
-func (sb stringStoreBench) Lookup1KShort(b *testing.B, cfg *DriverConfig) {
-	sb.runBenchmark(b, cfg,
-		func(ss StringStore) error {
-			for i := 0; i < num1KElements; i++ {
-				err := ss.PutString(sb.sShort[i])
-				if err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+func (sb *stringStoreBench) Lookup1KShort(b *testing.B, cfg *DriverConfig) {
+	sb.runBenchmark(b, cfg, sb.setupStrings,
 		func(ss StringStore, i int) error {
 			ss.HasString(sb.sShort[i%num1KElements])
 			return nil
 		})
 }
 
-func (sb stringStoreBench) Lookup1KLong(b *testing.B, cfg *DriverConfig) {
-	sb.runBenchmark(b, cfg,
-		func(ss StringStore) error {
-			for i := 0; i < num1KElements; i++ {
-				err := ss.PutString(sb.sLong[i])
-				if err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+func (sb *stringStoreBench) Lookup1KLong(b *testing.B, cfg *DriverConfig) {
+	sb.runBenchmark(b, cfg, sb.setupStrings,
 		func(ss StringStore, i int) error {
 			ss.HasString(sb.sLong[i%num1KElements])
 			return nil
 		})
 }
 
-func (sb stringStoreBench) AddRemoveShort(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) AddRemoveShort(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.PutString(sb.sShort[0])
@@ -208,7 +229,7 @@ func (sb stringStoreBench) AddRemoveShort(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (sb stringStoreBench) AddRemoveLong(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) AddRemoveLong(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.PutString(sb.sLong[0])
@@ -217,7 +238,7 @@ func (sb stringStoreBench) AddRemoveLong(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (sb stringStoreBench) AddRemove1KShort(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) AddRemove1KShort(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.PutString(sb.sShort[i%num1KElements])
@@ -226,7 +247,7 @@ func (sb stringStoreBench) AddRemove1KShort(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (sb stringStoreBench) AddRemove1KLong(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) AddRemove1KLong(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.PutString(sb.sLong[i%num1KElements])
@@ -235,7 +256,7 @@ func (sb stringStoreBench) AddRemove1KLong(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (sb stringStoreBench) LookupNonExistShort(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) LookupNonExistShort(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.HasString(sb.sShort[0])
@@ -243,7 +264,7 @@ func (sb stringStoreBench) LookupNonExistShort(b *testing.B, cfg *DriverConfig) 
 		})
 }
 
-func (sb stringStoreBench) LookupNonExistLong(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) LookupNonExistLong(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.HasString(sb.sLong[0])
@@ -251,7 +272,7 @@ func (sb stringStoreBench) LookupNonExistLong(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (sb stringStoreBench) LookupNonExist1KShort(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) LookupNonExist1KShort(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.HasString(sb.sShort[i%num1KElements])
@@ -259,7 +280,7 @@ func (sb stringStoreBench) LookupNonExist1KShort(b *testing.B, cfg *DriverConfig
 		})
 }
 
-func (sb stringStoreBench) LookupNonExist1KLong(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) LookupNonExist1KLong(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.HasString(sb.sLong[i%num1KElements])
@@ -267,7 +288,7 @@ func (sb stringStoreBench) LookupNonExist1KLong(b *testing.B, cfg *DriverConfig)
 		})
 }
 
-func (sb stringStoreBench) RemoveNonExistShort(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) RemoveNonExistShort(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.RemoveString(sb.sShort[0])
@@ -275,7 +296,7 @@ func (sb stringStoreBench) RemoveNonExistShort(b *testing.B, cfg *DriverConfig) 
 		})
 }
 
-func (sb stringStoreBench) RemoveNonExistLong(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) RemoveNonExistLong(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.RemoveString(sb.sLong[0])
@@ -283,7 +304,7 @@ func (sb stringStoreBench) RemoveNonExistLong(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (sb stringStoreBench) RemoveNonExist1KShort(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) RemoveNonExist1KShort(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.RemoveString(sb.sShort[i%num1KElements])
@@ -291,7 +312,7 @@ func (sb stringStoreBench) RemoveNonExist1KShort(b *testing.B, cfg *DriverConfig
 		})
 }
 
-func (sb stringStoreBench) RemoveNonExist1KLong(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) RemoveNonExist1KLong(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.RemoveString(sb.sLong[i%num1KElements])
@@ -300,8 +321,14 @@ func (sb stringStoreBench) RemoveNonExist1KLong(b *testing.B, cfg *DriverConfig)
 }
 
 // IPStoreBenchmarker is a collection of benchmarks for IPStore drivers.
-// Every benchmark expects a new, clean storage. Every benchmark should be
-// called with a DriverConfig that ensures this.
+//
+// All benchmarks can be run in parallel. Parallelism can be controlled using
+// the -cpu flag.
+//
+// Every run of every benchmark expects a new, clean storage. Every benchmark
+// should be called with a DriverConfig that ensures this and, if necessary,
+// clean up after calling the benchmark. Clean-up time is not considered in the
+// benchmark result.
 type IPStoreBenchmarker interface {
 	AddV4(*testing.B, *DriverConfig)
 	AddV6(*testing.B, *DriverConfig)
@@ -395,18 +422,20 @@ type ipStoreBench struct {
 	v4Networks [num1KElements]string
 	v6Networks [num1KElements]string
 
-	driver IPStoreDriver
+	driver         IPStoreDriver
+	goroutineShift int
 }
 
 // PrepareIPStoreBenchmarker prepares a reusable suite for StringStore driver
 // benchmarks.
 func PrepareIPStoreBenchmarker(driver IPStoreDriver) IPStoreBenchmarker {
-	return ipStoreBench{
-		v4IPs:      generateV4IPs(),
-		v6IPs:      generateV6IPs(),
-		v4Networks: generateV4Networks(),
-		v6Networks: generateV6Networks(),
-		driver:     driver,
+	return &ipStoreBench{
+		v4IPs:          generateV4IPs(),
+		v6IPs:          generateV6IPs(),
+		v4Networks:     generateV4Networks(),
+		v6Networks:     generateV6Networks(),
+		driver:         driver,
+		goroutineShift: num1KElements / runtime.NumCPU(),
 	}
 }
 
@@ -414,20 +443,55 @@ type ipStoreSetupFunc func(IPStore) error
 
 func ipStoreSetupNOP(IPStore) error { return nil }
 
+func (ib *ipStoreBench) setupIPs(is IPStore) error {
+	for i := 0; i < num1KElements; i++ {
+		err := is.AddIP(ib.v4IPs[i])
+		if err != nil {
+			return err
+		}
+
+		err = is.AddIP(ib.v6IPs[i])
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (ib *ipStoreBench) setupNetworks(is IPStore) error {
+	for i := 0; i < num1KElements; i++ {
+		err := is.AddNetwork(ib.v4Networks[i])
+		if err != nil {
+			return err
+		}
+
+		err = is.AddNetwork(ib.v6Networks[i])
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type ipStoreBenchFunc func(IPStore, int) error
 
-func (ib ipStoreBench) runBenchmark(b *testing.B, cfg *DriverConfig, setup ipStoreSetupFunc, execute ipStoreBenchFunc) {
+func (ib *ipStoreBench) runBenchmark(b *testing.B, cfg *DriverConfig, setup ipStoreSetupFunc, execute ipStoreBenchFunc) {
 	is, err := ib.driver.New(cfg)
 	require.Nil(b, err, "Constructor error must be nil")
-	require.NotNil(b, is, "IP store must not be nil")
+	require.NotNil(b, is, "IPStore must not be nil")
 
 	err = setup(is)
 	require.Nil(b, err, "Benchmark setup must not fail")
 
+	numGoroutine := int32(0)
+
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		execute(is, i)
-	}
+	b.RunParallel(func(ppb *testing.PB) {
+		g := int(atomic.AddInt32(&numGoroutine, 1)) * ib.goroutineShift
+		for i := g; ppb.Next(); i++ {
+			execute(is, i)
+		}
+	})
 	b.StopTimer()
 
 	errChan := is.Stop()
@@ -435,7 +499,7 @@ func (ib ipStoreBench) runBenchmark(b *testing.B, cfg *DriverConfig, setup ipSto
 	require.Nil(b, err, "IPStore shutdown must not fail")
 }
 
-func (ib ipStoreBench) AddV4(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) AddV4(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddIP(ib.v4IPs[0])
@@ -443,7 +507,7 @@ func (ib ipStoreBench) AddV4(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) AddV6(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) AddV6(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddIP(ib.v6IPs[0])
@@ -451,29 +515,23 @@ func (ib ipStoreBench) AddV6(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) LookupV4(b *testing.B, cfg *DriverConfig) {
-	ib.runBenchmark(b, cfg,
-		func(is IPStore) error {
-			return is.AddIP(ib.v4IPs[0])
-		},
+func (ib *ipStoreBench) LookupV4(b *testing.B, cfg *DriverConfig) {
+	ib.runBenchmark(b, cfg, ib.setupIPs,
 		func(is IPStore, i int) error {
 			is.HasIP(ib.v4IPs[0])
 			return nil
 		})
 }
 
-func (ib ipStoreBench) LookupV6(b *testing.B, cfg *DriverConfig) {
-	ib.runBenchmark(b, cfg,
-		func(is IPStore) error {
-			return is.AddIP(ib.v6IPs[0])
-		},
+func (ib *ipStoreBench) LookupV6(b *testing.B, cfg *DriverConfig) {
+	ib.runBenchmark(b, cfg, ib.setupIPs,
 		func(is IPStore, i int) error {
 			is.HasIP(ib.v6IPs[0])
 			return nil
 		})
 }
 
-func (ib ipStoreBench) AddRemoveV4(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) AddRemoveV4(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddIP(ib.v4IPs[0])
@@ -482,7 +540,7 @@ func (ib ipStoreBench) AddRemoveV4(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) AddRemoveV6(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) AddRemoveV6(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddIP(ib.v6IPs[0])
@@ -491,7 +549,7 @@ func (ib ipStoreBench) AddRemoveV6(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) LookupNonExistV4(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) LookupNonExistV4(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.HasIP(ib.v4IPs[0])
@@ -499,7 +557,7 @@ func (ib ipStoreBench) LookupNonExistV4(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) LookupNonExistV6(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) LookupNonExistV6(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.HasIP(ib.v6IPs[0])
@@ -507,7 +565,7 @@ func (ib ipStoreBench) LookupNonExistV6(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) RemoveNonExistV4(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) RemoveNonExistV4(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.RemoveIP(ib.v4IPs[0])
@@ -515,7 +573,7 @@ func (ib ipStoreBench) RemoveNonExistV4(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) RemoveNonExistV6(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) RemoveNonExistV6(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.RemoveIP(ib.v6IPs[0])
@@ -523,7 +581,7 @@ func (ib ipStoreBench) RemoveNonExistV6(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) AddV4Network(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) AddV4Network(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddNetwork(ib.v4Networks[0])
@@ -531,7 +589,7 @@ func (ib ipStoreBench) AddV4Network(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) AddV6Network(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) AddV6Network(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddNetwork(ib.v6Networks[0])
@@ -539,29 +597,23 @@ func (ib ipStoreBench) AddV6Network(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) LookupV4Network(b *testing.B, cfg *DriverConfig) {
-	ib.runBenchmark(b, cfg,
-		func(is IPStore) error {
-			return is.AddNetwork(ib.v4Networks[0])
-		},
+func (ib *ipStoreBench) LookupV4Network(b *testing.B, cfg *DriverConfig) {
+	ib.runBenchmark(b, cfg, ib.setupNetworks,
 		func(is IPStore, i int) error {
 			is.HasIP(ib.v4IPs[0])
 			return nil
 		})
 }
 
-func (ib ipStoreBench) LookupV6Network(b *testing.B, cfg *DriverConfig) {
-	ib.runBenchmark(b, cfg,
-		func(is IPStore) error {
-			return is.AddNetwork(ib.v6Networks[0])
-		},
+func (ib *ipStoreBench) LookupV6Network(b *testing.B, cfg *DriverConfig) {
+	ib.runBenchmark(b, cfg, ib.setupNetworks,
 		func(is IPStore, i int) error {
 			is.HasIP(ib.v6IPs[0])
 			return nil
 		})
 }
 
-func (ib ipStoreBench) AddRemoveV4Network(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) AddRemoveV4Network(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddNetwork(ib.v4Networks[0])
@@ -570,7 +622,7 @@ func (ib ipStoreBench) AddRemoveV4Network(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) AddRemoveV6Network(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) AddRemoveV6Network(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddNetwork(ib.v6Networks[0])
@@ -579,7 +631,7 @@ func (ib ipStoreBench) AddRemoveV6Network(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) RemoveNonExistV4Network(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) RemoveNonExistV4Network(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.RemoveNetwork(ib.v4Networks[0])
@@ -587,7 +639,7 @@ func (ib ipStoreBench) RemoveNonExistV4Network(b *testing.B, cfg *DriverConfig) 
 		})
 }
 
-func (ib ipStoreBench) RemoveNonExistV6Network(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) RemoveNonExistV6Network(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.RemoveNetwork(ib.v6Networks[0])
@@ -595,7 +647,7 @@ func (ib ipStoreBench) RemoveNonExistV6Network(b *testing.B, cfg *DriverConfig) 
 		})
 }
 
-func (ib ipStoreBench) Add1KV4(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) Add1KV4(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddIP(ib.v4IPs[i%num1KElements])
@@ -603,7 +655,7 @@ func (ib ipStoreBench) Add1KV4(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) Add1KV6(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) Add1KV6(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddIP(ib.v6IPs[i%num1KElements])
@@ -611,41 +663,23 @@ func (ib ipStoreBench) Add1KV6(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) Lookup1KV4(b *testing.B, cfg *DriverConfig) {
-	ib.runBenchmark(b, cfg,
-		func(is IPStore) error {
-			for i := 0; i < num1KElements; i++ {
-				err := is.AddIP(ib.v4IPs[i%num1KElements])
-				if err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+func (ib *ipStoreBench) Lookup1KV4(b *testing.B, cfg *DriverConfig) {
+	ib.runBenchmark(b, cfg, ib.setupIPs,
 		func(is IPStore, i int) error {
 			is.HasIP(ib.v4IPs[i%num1KElements])
 			return nil
 		})
 }
 
-func (ib ipStoreBench) Lookup1KV6(b *testing.B, cfg *DriverConfig) {
-	ib.runBenchmark(b, cfg,
-		func(is IPStore) error {
-			for i := 0; i < num1KElements; i++ {
-				err := is.AddIP(ib.v6IPs[i%num1KElements])
-				if err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+func (ib *ipStoreBench) Lookup1KV6(b *testing.B, cfg *DriverConfig) {
+	ib.runBenchmark(b, cfg, ib.setupIPs,
 		func(is IPStore, i int) error {
 			is.HasIP(ib.v6IPs[i%num1KElements])
 			return nil
 		})
 }
 
-func (ib ipStoreBench) AddRemove1KV4(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) AddRemove1KV4(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddIP(ib.v4IPs[i%num1KElements])
@@ -654,7 +688,7 @@ func (ib ipStoreBench) AddRemove1KV4(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) AddRemove1KV6(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) AddRemove1KV6(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddIP(ib.v6IPs[i%num1KElements])
@@ -663,7 +697,7 @@ func (ib ipStoreBench) AddRemove1KV6(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) LookupNonExist1KV4(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) LookupNonExist1KV4(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.HasIP(ib.v4IPs[i%num1KElements])
@@ -671,7 +705,7 @@ func (ib ipStoreBench) LookupNonExist1KV4(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) LookupNonExist1KV6(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) LookupNonExist1KV6(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.HasIP(ib.v6IPs[i%num1KElements])
@@ -679,7 +713,7 @@ func (ib ipStoreBench) LookupNonExist1KV6(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) RemoveNonExist1KV4(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) RemoveNonExist1KV4(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.RemoveIP(ib.v4IPs[i%num1KElements])
@@ -687,7 +721,7 @@ func (ib ipStoreBench) RemoveNonExist1KV4(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) RemoveNonExist1KV6(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) RemoveNonExist1KV6(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.RemoveIP(ib.v6IPs[i%num1KElements])
@@ -695,7 +729,7 @@ func (ib ipStoreBench) RemoveNonExist1KV6(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) Add1KV4Network(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) Add1KV4Network(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddNetwork(ib.v4Networks[i%num1KElements])
@@ -703,7 +737,7 @@ func (ib ipStoreBench) Add1KV4Network(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) Add1KV6Network(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) Add1KV6Network(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddNetwork(ib.v6Networks[i%num1KElements])
@@ -711,41 +745,23 @@ func (ib ipStoreBench) Add1KV6Network(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) Lookup1KV4Network(b *testing.B, cfg *DriverConfig) {
-	ib.runBenchmark(b, cfg,
-		func(is IPStore) error {
-			for i := 0; i < num1KElements; i++ {
-				err := is.AddNetwork(ib.v4Networks[i%num1KElements])
-				if err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+func (ib *ipStoreBench) Lookup1KV4Network(b *testing.B, cfg *DriverConfig) {
+	ib.runBenchmark(b, cfg, ib.setupNetworks,
 		func(is IPStore, i int) error {
 			is.HasIP(ib.v4IPs[i%num1KElements])
 			return nil
 		})
 }
 
-func (ib ipStoreBench) Lookup1KV6Network(b *testing.B, cfg *DriverConfig) {
-	ib.runBenchmark(b, cfg,
-		func(is IPStore) error {
-			for i := 0; i < num1KElements; i++ {
-				err := is.AddNetwork(ib.v6Networks[i%num1KElements])
-				if err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+func (ib *ipStoreBench) Lookup1KV6Network(b *testing.B, cfg *DriverConfig) {
+	ib.runBenchmark(b, cfg, ib.setupNetworks,
 		func(is IPStore, i int) error {
 			is.HasIP(ib.v6IPs[i%num1KElements])
 			return nil
 		})
 }
 
-func (ib ipStoreBench) AddRemove1KV4Network(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) AddRemove1KV4Network(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddNetwork(ib.v4Networks[i%num1KElements])
@@ -754,7 +770,7 @@ func (ib ipStoreBench) AddRemove1KV4Network(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) AddRemove1KV6Network(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) AddRemove1KV6Network(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddNetwork(ib.v6Networks[i%num1KElements])
@@ -763,7 +779,7 @@ func (ib ipStoreBench) AddRemove1KV6Network(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) RemoveNonExist1KV4Network(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) RemoveNonExist1KV4Network(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.RemoveNetwork(ib.v4Networks[i%num1KElements])
@@ -771,7 +787,7 @@ func (ib ipStoreBench) RemoveNonExist1KV4Network(b *testing.B, cfg *DriverConfig
 		})
 }
 
-func (ib ipStoreBench) RemoveNonExist1KV6Network(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) RemoveNonExist1KV6Network(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.RemoveNetwork(ib.v6Networks[i%num1KElements])
@@ -780,8 +796,14 @@ func (ib ipStoreBench) RemoveNonExist1KV6Network(b *testing.B, cfg *DriverConfig
 }
 
 // PeerStoreBenchmarker is a collection of benchmarks for PeerStore drivers.
-// Every benchmark expects a new, clean storage. Every benchmark should be
-// called with a DriverConfig that ensures this.
+//
+// All benchmarks can be run in parallel. Parallelism can be controlled using
+// the -cpu flag.
+//
+// Every run of every benchmark expects a new, clean storage. Every benchmark
+// should be called with a DriverConfig that ensures this and, if necessary,
+// clean up after calling the benchmark. Clean-up time is not considered in the
+// benchmark result.
 type PeerStoreBenchmarker interface {
 	PutSeeder(*testing.B, *DriverConfig)
 	PutSeeder1KInfohash(*testing.B, *DriverConfig)
@@ -821,32 +843,78 @@ type PeerStoreBenchmarker interface {
 }
 
 type peerStoreBench struct {
-	infohashes [num1KElements]chihaya.InfoHash
-	peers      [num1KElements]chihaya.Peer
-	driver     PeerStoreDriver
+	infohashes     [num1KElements]chihaya.InfoHash
+	peers          [num1KElements]chihaya.Peer
+	driver         PeerStoreDriver
+	goroutineShift int
 }
 
 func generateInfohashes() (a [num1KElements]chihaya.InfoHash) {
-	b := make([]byte, 2)
-	for i := range a {
-		b[0] = byte(i)
-		b[1] = byte(i >> 8)
-		a[i] = chihaya.InfoHash([20]byte{b[0], b[1]})
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	strings := make(map[string]struct{})
+
+	for len(strings) < num1KElements {
+		strings[random.AlphaNumericString(r, 20)] = struct{}{}
+	}
+
+	i := 0
+	for s := range strings {
+		a[i] = chihaya.InfoHashFromString(s)
+		i++
 	}
 
 	return
 }
 
 func generatePeers() (a [num1KElements]chihaya.Peer) {
-	b := make([]byte, 2)
-	for i := range a {
-		b[0] = byte(i)
-		b[1] = byte(i >> 8)
-		a[i] = chihaya.Peer{
-			ID:   chihaya.PeerID([20]byte{b[0], b[1]}),
-			IP:   net.ParseIP(fmt.Sprintf("64.%d.%d.64", b[0], b[1])),
-			Port: uint16(i),
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	minPort := 20000
+	maxPort := 60000
+
+	strings := make(map[string]struct{})
+	ips := make(map[string]struct{})
+	ports := make(map[uint16]struct{})
+
+	for len(strings) < num1KElements {
+		strings[random.AlphaNumericString(r, 20)] = struct{}{}
+	}
+
+	for len(ips) < num1KElements {
+		b := make([]byte, 4)
+		ip := net.IP(b)
+
+		for i := range ip {
+			b := r.Intn(254) + 1
+			ip[i] = byte(b)
 		}
+
+		ips[ip.String()] = struct{}{}
+	}
+
+	for len(ports) < num1KElements {
+		ports[uint16(r.Int63()%int64(maxPort-minPort))+uint16(minPort)] = struct{}{}
+	}
+
+	i := 0
+	for s := range strings {
+		a[i] = chihaya.Peer{
+			ID: chihaya.PeerIDFromString(s),
+		}
+		i++
+	}
+
+	i = 0
+	for ip := range ips {
+		a[i].IP = net.ParseIP(ip)
+		i++
+	}
+
+	i = 0
+	for p := range ports {
+		a[i].Port = p
+		i++
 	}
 
 	return
@@ -855,10 +923,11 @@ func generatePeers() (a [num1KElements]chihaya.Peer) {
 // PreparePeerStoreBenchmarker prepares a reusable suite for PeerStore driver
 // benchmarks.
 func PreparePeerStoreBenchmarker(driver PeerStoreDriver) PeerStoreBenchmarker {
-	return peerStoreBench{
-		driver:     driver,
-		infohashes: generateInfohashes(),
-		peers:      generatePeers(),
+	return &peerStoreBench{
+		driver:         driver,
+		infohashes:     generateInfohashes(),
+		peers:          generatePeers(),
+		goroutineShift: num1KElements / runtime.NumCPU(),
 	}
 }
 
@@ -866,20 +935,42 @@ type peerStoreSetupFunc func(PeerStore) error
 
 func peerStoreSetupNOP(PeerStore) error { return nil }
 
+func (pb *peerStoreBench) setupPeers(ps PeerStore) error {
+	for i := 0; i < num1KElements; i++ {
+		for j := 0; j < num1KElements; j++ {
+			var err error
+			if j < num1KElements/2 {
+				err = ps.PutLeecher(pb.infohashes[i], pb.peers[j])
+			} else {
+				err = ps.PutSeeder(pb.infohashes[i], pb.peers[j])
+			}
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 type peerStoreBenchFunc func(PeerStore, int) error
 
-func (pb peerStoreBench) runBenchmark(b *testing.B, cfg *DriverConfig, setup peerStoreSetupFunc, execute peerStoreBenchFunc) {
+func (pb *peerStoreBench) runBenchmark(b *testing.B, cfg *DriverConfig, setup peerStoreSetupFunc, execute peerStoreBenchFunc) {
 	ps, err := pb.driver.New(cfg)
 	require.Nil(b, err, "Constructor error must be nil")
-	require.NotNil(b, ps, "Peer store must not be nil")
+	require.NotNil(b, ps, "PeerStore must not be nil")
 
 	err = setup(ps)
 	require.Nil(b, err, "Benchmark setup must not fail")
 
+	numGoroutine := int32(0)
+
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		execute(ps, i)
-	}
+	b.RunParallel(func(ppb *testing.PB) {
+		g := int(atomic.AddInt32(&numGoroutine, 1)) * pb.goroutineShift
+		for i := g; ppb.Next(); i++ {
+			execute(ps, i)
+		}
+	})
 	b.StopTimer()
 
 	errChan := ps.Stop()
@@ -887,7 +978,7 @@ func (pb peerStoreBench) runBenchmark(b *testing.B, cfg *DriverConfig, setup pee
 	require.Nil(b, err, "PeerStore shutdown must not fail")
 }
 
-func (pb peerStoreBench) PutSeeder(b *testing.B, cfg *DriverConfig) {
+func (pb *peerStoreBench) PutSeeder(b *testing.B, cfg *DriverConfig) {
 	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
 		func(ps PeerStore, i int) error {
 			ps.PutSeeder(pb.infohashes[0], pb.peers[0])
@@ -895,7 +986,7 @@ func (pb peerStoreBench) PutSeeder(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (pb peerStoreBench) PutSeeder1KInfohash(b *testing.B, cfg *DriverConfig) {
+func (pb *peerStoreBench) PutSeeder1KInfohash(b *testing.B, cfg *DriverConfig) {
 	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
 		func(ps PeerStore, i int) error {
 			ps.PutSeeder(pb.infohashes[i%num1KElements], pb.peers[0])
@@ -903,7 +994,7 @@ func (pb peerStoreBench) PutSeeder1KInfohash(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (pb peerStoreBench) PutSeeder1KSeeders(b *testing.B, cfg *DriverConfig) {
+func (pb *peerStoreBench) PutSeeder1KSeeders(b *testing.B, cfg *DriverConfig) {
 	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
 		func(ps PeerStore, i int) error {
 			ps.PutSeeder(pb.infohashes[0], pb.peers[i%num1KElements])
@@ -911,17 +1002,15 @@ func (pb peerStoreBench) PutSeeder1KSeeders(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (pb peerStoreBench) PutSeeder1KInfohash1KSeeders(b *testing.B, cfg *DriverConfig) {
-	j := 0
+func (pb *peerStoreBench) PutSeeder1KInfohash1KSeeders(b *testing.B, cfg *DriverConfig) {
 	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
 		func(ps PeerStore, i int) error {
-			ps.PutSeeder(pb.infohashes[i%num1KElements], pb.peers[j%num1KElements])
-			j += 3
+			ps.PutSeeder(pb.infohashes[i%num1KElements], pb.peers[(i*3)%num1KElements])
 			return nil
 		})
 }
 
-func (pb peerStoreBench) PutDeleteSeeder(b *testing.B, cfg *DriverConfig) {
+func (pb *peerStoreBench) PutDeleteSeeder(b *testing.B, cfg *DriverConfig) {
 	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
 		func(ps PeerStore, i int) error {
 			ps.PutSeeder(pb.infohashes[0], pb.peers[0])
@@ -930,7 +1019,7 @@ func (pb peerStoreBench) PutDeleteSeeder(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (pb peerStoreBench) PutDeleteSeeder1KInfohash(b *testing.B, cfg *DriverConfig) {
+func (pb *peerStoreBench) PutDeleteSeeder1KInfohash(b *testing.B, cfg *DriverConfig) {
 	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
 		func(ps PeerStore, i int) error {
 			ps.PutSeeder(pb.infohashes[i%num1KElements], pb.peers[0])
@@ -939,7 +1028,7 @@ func (pb peerStoreBench) PutDeleteSeeder1KInfohash(b *testing.B, cfg *DriverConf
 		})
 }
 
-func (pb peerStoreBench) PutDeleteSeeder1KSeeders(b *testing.B, cfg *DriverConfig) {
+func (pb *peerStoreBench) PutDeleteSeeder1KSeeders(b *testing.B, cfg *DriverConfig) {
 	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
 		func(ps PeerStore, i int) error {
 			ps.PutSeeder(pb.infohashes[0], pb.peers[i%num1KElements])
@@ -948,18 +1037,16 @@ func (pb peerStoreBench) PutDeleteSeeder1KSeeders(b *testing.B, cfg *DriverConfi
 		})
 }
 
-func (pb peerStoreBench) PutDeleteSeeder1KInfohash1KSeeders(b *testing.B, cfg *DriverConfig) {
-	j := 0
+func (pb *peerStoreBench) PutDeleteSeeder1KInfohash1KSeeders(b *testing.B, cfg *DriverConfig) {
 	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
 		func(ps PeerStore, i int) error {
-			ps.PutSeeder(pb.infohashes[i%num1KElements], pb.peers[j%num1KElements])
-			ps.DeleteSeeder(pb.infohashes[i%num1KElements], pb.peers[j%num1KElements])
-			j += 3
+			ps.PutSeeder(pb.infohashes[i%num1KElements], pb.peers[(i*3)%num1KElements])
+			ps.DeleteSeeder(pb.infohashes[i%num1KElements], pb.peers[(i*3)%num1KElements])
 			return nil
 		})
 }
 
-func (pb peerStoreBench) DeleteSeederNonExist(b *testing.B, cfg *DriverConfig) {
+func (pb *peerStoreBench) DeleteSeederNonExist(b *testing.B, cfg *DriverConfig) {
 	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
 		func(ps PeerStore, i int) error {
 			ps.DeleteSeeder(pb.infohashes[0], pb.peers[0])
@@ -967,7 +1054,7 @@ func (pb peerStoreBench) DeleteSeederNonExist(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (pb peerStoreBench) DeleteSeederNonExist1KInfohash(b *testing.B, cfg *DriverConfig) {
+func (pb *peerStoreBench) DeleteSeederNonExist1KInfohash(b *testing.B, cfg *DriverConfig) {
 	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
 		func(ps PeerStore, i int) error {
 			ps.DeleteSeeder(pb.infohashes[i%num1KElements], pb.peers[0])
@@ -975,7 +1062,7 @@ func (pb peerStoreBench) DeleteSeederNonExist1KInfohash(b *testing.B, cfg *Drive
 		})
 }
 
-func (pb peerStoreBench) DeleteSeederNonExist1KSeeders(b *testing.B, cfg *DriverConfig) {
+func (pb *peerStoreBench) DeleteSeederNonExist1KSeeders(b *testing.B, cfg *DriverConfig) {
 	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
 		func(ps PeerStore, i int) error {
 			ps.DeleteSeeder(pb.infohashes[0], pb.peers[i%num1KElements])
@@ -983,17 +1070,15 @@ func (pb peerStoreBench) DeleteSeederNonExist1KSeeders(b *testing.B, cfg *Driver
 		})
 }
 
-func (pb peerStoreBench) DeleteSeederNonExist1KInfohash1KSeeders(b *testing.B, cfg *DriverConfig) {
-	j := 0
+func (pb *peerStoreBench) DeleteSeederNonExist1KInfohash1KSeeders(b *testing.B, cfg *DriverConfig) {
 	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
 		func(ps PeerStore, i int) error {
-			ps.DeleteSeeder(pb.infohashes[i%num1KElements], pb.peers[j%num1KElements])
-			j += 3
+			ps.DeleteSeeder(pb.infohashes[i%num1KElements], pb.peers[(i*3)%num1KElements])
 			return nil
 		})
 }
 
-func (pb peerStoreBench) GraduateLeecherNonExist(b *testing.B, cfg *DriverConfig) {
+func (pb *peerStoreBench) GraduateLeecherNonExist(b *testing.B, cfg *DriverConfig) {
 	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
 		func(ps PeerStore, i int) error {
 			ps.GraduateLeecher(pb.infohashes[0], pb.peers[0])
@@ -1001,7 +1086,7 @@ func (pb peerStoreBench) GraduateLeecherNonExist(b *testing.B, cfg *DriverConfig
 		})
 }
 
-func (pb peerStoreBench) GraduateLeecherNonExist1KInfohash(b *testing.B, cfg *DriverConfig) {
+func (pb *peerStoreBench) GraduateLeecherNonExist1KInfohash(b *testing.B, cfg *DriverConfig) {
 	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
 		func(ps PeerStore, i int) error {
 			ps.GraduateLeecher(pb.infohashes[i%num1KElements], pb.peers[0])
@@ -1009,7 +1094,7 @@ func (pb peerStoreBench) GraduateLeecherNonExist1KInfohash(b *testing.B, cfg *Dr
 		})
 }
 
-func (pb peerStoreBench) GraduateLeecherNonExist1KLeechers(b *testing.B, cfg *DriverConfig) {
+func (pb *peerStoreBench) GraduateLeecherNonExist1KLeechers(b *testing.B, cfg *DriverConfig) {
 	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
 		func(ps PeerStore, i int) error {
 			ps.GraduateLeecher(pb.infohashes[0], pb.peers[i%num1KElements])
@@ -1017,17 +1102,15 @@ func (pb peerStoreBench) GraduateLeecherNonExist1KLeechers(b *testing.B, cfg *Dr
 		})
 }
 
-func (pb peerStoreBench) GraduateLeecherNonExist1KInfohash1KLeechers(b *testing.B, cfg *DriverConfig) {
-	j := 0
+func (pb *peerStoreBench) GraduateLeecherNonExist1KInfohash1KLeechers(b *testing.B, cfg *DriverConfig) {
 	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
 		func(ps PeerStore, i int) error {
-			ps.GraduateLeecher(pb.infohashes[i%num1KElements], pb.peers[j%num1KElements])
-			j += 3
+			ps.GraduateLeecher(pb.infohashes[i%num1KElements], pb.peers[(i*3)%num1KElements])
 			return nil
 		})
 }
 
-func (pb peerStoreBench) PutGraduateDeleteLeecher(b *testing.B, cfg *DriverConfig) {
+func (pb *peerStoreBench) PutGraduateDeleteLeecher(b *testing.B, cfg *DriverConfig) {
 	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
 		func(ps PeerStore, i int) error {
 			ps.PutLeecher(pb.infohashes[0], pb.peers[0])
@@ -1037,7 +1120,7 @@ func (pb peerStoreBench) PutGraduateDeleteLeecher(b *testing.B, cfg *DriverConfi
 		})
 }
 
-func (pb peerStoreBench) PutGraduateDeleteLeecher1KInfohash(b *testing.B, cfg *DriverConfig) {
+func (pb *peerStoreBench) PutGraduateDeleteLeecher1KInfohash(b *testing.B, cfg *DriverConfig) {
 	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
 		func(ps PeerStore, i int) error {
 			ps.PutLeecher(pb.infohashes[i%num1KElements], pb.peers[0])
@@ -1047,7 +1130,7 @@ func (pb peerStoreBench) PutGraduateDeleteLeecher1KInfohash(b *testing.B, cfg *D
 		})
 }
 
-func (pb peerStoreBench) PutGraduateDeleteLeecher1KLeechers(b *testing.B, cfg *DriverConfig) {
+func (pb *peerStoreBench) PutGraduateDeleteLeecher1KLeechers(b *testing.B, cfg *DriverConfig) {
 	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
 		func(ps PeerStore, i int) error {
 			ps.PutLeecher(pb.infohashes[0], pb.peers[i%num1KElements])
@@ -1057,204 +1140,74 @@ func (pb peerStoreBench) PutGraduateDeleteLeecher1KLeechers(b *testing.B, cfg *D
 		})
 }
 
-func (pb peerStoreBench) PutGraduateDeleteLeecher1KInfohash1KLeechers(b *testing.B, cfg *DriverConfig) {
-	j := 0
+func (pb *peerStoreBench) PutGraduateDeleteLeecher1KInfohash1KLeechers(b *testing.B, cfg *DriverConfig) {
 	pb.runBenchmark(b, cfg, peerStoreSetupNOP,
 		func(ps PeerStore, i int) error {
-			ps.PutLeecher(pb.infohashes[i%num1KElements], pb.peers[j%num1KElements])
-			ps.GraduateLeecher(pb.infohashes[i%num1KElements], pb.peers[j%num1KElements])
-			ps.DeleteSeeder(pb.infohashes[i%num1KElements], pb.peers[j%num1KElements])
-			j += 3
+			ps.PutLeecher(pb.infohashes[i%num1KElements], pb.peers[(i*3)%num1KElements])
+			ps.GraduateLeecher(pb.infohashes[i%num1KElements], pb.peers[(i*3)%num1KElements])
+			ps.DeleteSeeder(pb.infohashes[i%num1KElements], pb.peers[(i*3)%num1KElements])
 			return nil
 		})
 }
 
-func (pb peerStoreBench) AnnouncePeers(b *testing.B, cfg *DriverConfig) {
-	pb.runBenchmark(b, cfg,
-		func(ps PeerStore) error {
-			for i := 0; i < num1KElements; i++ {
-				for j := 0; j < num1KElements; j++ {
-					var err error
-					if j < num1KElements/2 {
-						err = ps.PutLeecher(pb.infohashes[i], pb.peers[j])
-					} else {
-						err = ps.PutSeeder(pb.infohashes[i], pb.peers[j])
-					}
-					if err != nil {
-						return err
-					}
-				}
-			}
-			return nil
-		},
+func (pb *peerStoreBench) AnnouncePeers(b *testing.B, cfg *DriverConfig) {
+	pb.runBenchmark(b, cfg, pb.setupPeers,
 		func(ps PeerStore, i int) error {
 			ps.AnnouncePeers(pb.infohashes[0], false, 50, pb.peers[0], chihaya.Peer{})
 			return nil
 		})
 }
 
-func (pb peerStoreBench) AnnouncePeers1KInfohash(b *testing.B, cfg *DriverConfig) {
-	pb.runBenchmark(b, cfg,
-		func(ps PeerStore) error {
-			for i := 0; i < num1KElements; i++ {
-				for j := 0; j < num1KElements; j++ {
-					var err error
-					if j < num1KElements/2 {
-						err = ps.PutLeecher(pb.infohashes[i], pb.peers[j])
-					} else {
-						err = ps.PutSeeder(pb.infohashes[i], pb.peers[j])
-					}
-					if err != nil {
-						return err
-					}
-				}
-			}
-			return nil
-		},
+func (pb *peerStoreBench) AnnouncePeers1KInfohash(b *testing.B, cfg *DriverConfig) {
+	pb.runBenchmark(b, cfg, pb.setupPeers,
 		func(ps PeerStore, i int) error {
 			ps.AnnouncePeers(pb.infohashes[i%num1KElements], false, 50, pb.peers[0], chihaya.Peer{})
 			return nil
 		})
 }
 
-func (pb peerStoreBench) AnnouncePeersSeeder(b *testing.B, cfg *DriverConfig) {
-	pb.runBenchmark(b, cfg,
-		func(ps PeerStore) error {
-			for i := 0; i < num1KElements; i++ {
-				for j := 0; j < num1KElements; j++ {
-					var err error
-					if j < num1KElements/2 {
-						err = ps.PutLeecher(pb.infohashes[i], pb.peers[j])
-					} else {
-						err = ps.PutSeeder(pb.infohashes[i], pb.peers[j])
-					}
-					if err != nil {
-						return err
-					}
-				}
-			}
-			return nil
-		},
+func (pb *peerStoreBench) AnnouncePeersSeeder(b *testing.B, cfg *DriverConfig) {
+	pb.runBenchmark(b, cfg, pb.setupPeers,
 		func(ps PeerStore, i int) error {
 			ps.AnnouncePeers(pb.infohashes[0], true, 50, pb.peers[0], chihaya.Peer{})
 			return nil
 		})
 }
 
-func (pb peerStoreBench) AnnouncePeersSeeder1KInfohash(b *testing.B, cfg *DriverConfig) {
-	pb.runBenchmark(b, cfg,
-		func(ps PeerStore) error {
-			for i := 0; i < num1KElements; i++ {
-				for j := 0; j < num1KElements; j++ {
-					var err error
-					if j < num1KElements/2 {
-						err = ps.PutLeecher(pb.infohashes[i], pb.peers[j])
-					} else {
-						err = ps.PutSeeder(pb.infohashes[i], pb.peers[j])
-					}
-					if err != nil {
-						return err
-					}
-				}
-			}
-			return nil
-		},
+func (pb *peerStoreBench) AnnouncePeersSeeder1KInfohash(b *testing.B, cfg *DriverConfig) {
+	pb.runBenchmark(b, cfg, pb.setupPeers,
 		func(ps PeerStore, i int) error {
 			ps.AnnouncePeers(pb.infohashes[i%num1KElements], true, 50, pb.peers[0], chihaya.Peer{})
 			return nil
 		})
 }
 
-func (pb peerStoreBench) GetSeeders(b *testing.B, cfg *DriverConfig) {
-	pb.runBenchmark(b, cfg,
-		func(ps PeerStore) error {
-			for i := 0; i < num1KElements; i++ {
-				for j := 0; j < num1KElements; j++ {
-					var err error
-					if j < num1KElements/2 {
-						err = ps.PutLeecher(pb.infohashes[i], pb.peers[j])
-					} else {
-						err = ps.PutSeeder(pb.infohashes[i], pb.peers[j])
-					}
-					if err != nil {
-						return err
-					}
-				}
-			}
-			return nil
-		},
+func (pb *peerStoreBench) GetSeeders(b *testing.B, cfg *DriverConfig) {
+	pb.runBenchmark(b, cfg, pb.setupPeers,
 		func(ps PeerStore, i int) error {
 			ps.GetSeeders(pb.infohashes[0])
 			return nil
 		})
 }
 
-func (pb peerStoreBench) GetSeeders1KInfohash(b *testing.B, cfg *DriverConfig) {
-	pb.runBenchmark(b, cfg,
-		func(ps PeerStore) error {
-			for i := 0; i < num1KElements; i++ {
-				for j := 0; j < num1KElements; j++ {
-					var err error
-					if j < num1KElements/2 {
-						err = ps.PutLeecher(pb.infohashes[i], pb.peers[j])
-					} else {
-						err = ps.PutSeeder(pb.infohashes[i], pb.peers[j])
-					}
-					if err != nil {
-						return err
-					}
-				}
-			}
-			return nil
-		},
+func (pb *peerStoreBench) GetSeeders1KInfohash(b *testing.B, cfg *DriverConfig) {
+	pb.runBenchmark(b, cfg, pb.setupPeers,
 		func(ps PeerStore, i int) error {
 			ps.GetSeeders(pb.infohashes[i%num1KElements])
 			return nil
 		})
 }
 
-func (pb peerStoreBench) NumSeeders(b *testing.B, cfg *DriverConfig) {
-	pb.runBenchmark(b, cfg,
-		func(ps PeerStore) error {
-			for i := 0; i < num1KElements; i++ {
-				for j := 0; j < num1KElements; j++ {
-					var err error
-					if j < num1KElements/2 {
-						err = ps.PutLeecher(pb.infohashes[i], pb.peers[j])
-					} else {
-						err = ps.PutSeeder(pb.infohashes[i], pb.peers[j])
-					}
-					if err != nil {
-						return err
-					}
-				}
-			}
-			return nil
-		},
+func (pb *peerStoreBench) NumSeeders(b *testing.B, cfg *DriverConfig) {
+	pb.runBenchmark(b, cfg, pb.setupPeers,
 		func(ps PeerStore, i int) error {
 			ps.NumSeeders(pb.infohashes[0])
 			return nil
 		})
 }
 
-func (pb peerStoreBench) NumSeeders1KInfohash(b *testing.B, cfg *DriverConfig) {
-	pb.runBenchmark(b, cfg,
-		func(ps PeerStore) error {
-			for i := 0; i < num1KElements; i++ {
-				for j := 0; j < num1KElements; j++ {
-					var err error
-					if j < num1KElements/2 {
-						err = ps.PutLeecher(pb.infohashes[i], pb.peers[j])
-					} else {
-						err = ps.PutSeeder(pb.infohashes[i], pb.peers[j])
-					}
-					if err != nil {
-						return err
-					}
-				}
-			}
-			return nil
-		},
+func (pb *peerStoreBench) NumSeeders1KInfohash(b *testing.B, cfg *DriverConfig) {
+	pb.runBenchmark(b, cfg, pb.setupPeers,
 		func(ps PeerStore, i int) error {
 			ps.NumSeeders(pb.infohashes[i%num1KElements])
 			return nil
