@@ -13,17 +13,8 @@ import (
 var (
 	peerStoreTester      = store.PreparePeerStoreTester(&peerStoreDriver{})
 	peerStoreBenchmarker = store.PreparePeerStoreBenchmarker(&peerStoreDriver{})
-	peerStoreTestConfig  = &store.DriverConfig{}
+	peerStoreTestConfig  = &store.DriverConfig{Config: peerStoreConfig{Shards: 1024}}
 )
-
-func init() {
-	unmarshalledConfig := struct {
-		Shards int
-	}{
-		1,
-	}
-	peerStoreTestConfig.Config = unmarshalledConfig
-}
 
 func TestPeerStore(t *testing.T) {
 	peerStoreTester.TestPeerStore(t, peerStoreTestConfig)
