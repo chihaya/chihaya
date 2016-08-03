@@ -1,0 +1,34 @@
+trakr:
+  announce_interval: 15m
+  allow_ip_spoofing: true
+  default_num_want: 50
+  
+  http:
+    addr: 0.0.0.0:6881
+    real_ip_header: x-real-ip
+    read_timeout: 5s
+    write_timeout: 5s
+    request_timeout: 5s
+    
+  udp:
+    addr: 0.0.0.0:6881
+    
+  storage:
+    name: memory
+    config:
+      shards: 1
+      
+  prehooks:
+  - name: jwt
+    config:
+      jwk_set_uri: ""
+      jwk_set_update_interval: 5m
+      jwt_audience: ""
+  - name: approved_client
+    config:
+      type: whitelist
+      clients:
+      - OP1011
+      
+  posthooks:
+  - name: gossip
