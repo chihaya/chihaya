@@ -9,7 +9,6 @@ import (
 	"math/rand"
 	"net"
 	"runtime"
-	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -23,8 +22,14 @@ import (
 const num1KElements = 1000
 
 // StringStoreBenchmarker is a collection of benchmarks for StringStore drivers.
-// Every benchmark expects a new, clean storage. Every benchmark should be
-// called with a DriverConfig that ensures this.
+//
+// All benchmarks can be run in parallel. Parallelism can be controlled using
+// the -cpu flag.
+//
+// Every run of every benchmark expects a new, clean storage. Every benchmark
+// should be called with a DriverConfig that ensures this and, if necessary,
+// clean up after calling the benchmark. Clean-up time is not considered in the
+// benchmark result.
 type StringStoreBenchmarker interface {
 	AddShort(*testing.B, *DriverConfig)
 	AddLong(*testing.B, *DriverConfig)
@@ -57,26 +62,39 @@ type stringStoreBench struct {
 	// sLong holds differentStrings unique strings of length 1000.
 	sLong [num1KElements]string
 
-	driver StringStoreDriver
+	driver         StringStoreDriver
+	goroutineShift int
 }
 
 func generateLongStrings() (a [num1KElements]string) {
-	b := make([]byte, 2)
-	for i := range a {
-		b[0] = byte(i)
-		b[1] = byte(i >> 8)
-		a[i] = strings.Repeat(fmt.Sprintf("%x", b), 250)
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	strings := make(map[string]struct{})
+	for len(strings) < num1KElements {
+		strings[random.AlphaNumericString(r, 1000)] = struct{}{}
+	}
+
+	i := 0
+	for s := range strings {
+		a[i] = s
+		i++
 	}
 
 	return
 }
 
 func generateShortStrings() (a [num1KElements]string) {
-	b := make([]byte, 2)
-	for i := range a {
-		b[0] = byte(i)
-		b[1] = byte(i >> 8)
-		a[i] = strings.Repeat(fmt.Sprintf("%x", b), 3)[:10]
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	strings := make(map[string]struct{})
+	for len(strings) < num1KElements {
+		strings[random.AlphaNumericString(r, 10)] = struct{}{}
+	}
+
+	i := 0
+	for s := range strings {
+		a[i] = s
+		i++
 	}
 
 	return
@@ -85,10 +103,11 @@ func generateShortStrings() (a [num1KElements]string) {
 // PrepareStringStoreBenchmarker prepares a reusable suite for StringStore driver
 // benchmarks.
 func PrepareStringStoreBenchmarker(driver StringStoreDriver) StringStoreBenchmarker {
-	return stringStoreBench{
-		sShort: generateShortStrings(),
-		sLong:  generateLongStrings(),
-		driver: driver,
+	return &stringStoreBench{
+		sShort:         generateShortStrings(),
+		sLong:          generateLongStrings(),
+		driver:         driver,
+		goroutineShift: num1KElements / runtime.NumCPU(),
 	}
 }
 
@@ -96,20 +115,40 @@ type stringStoreSetupFunc func(StringStore) error
 
 func stringStoreSetupNOP(StringStore) error { return nil }
 
+func (sb *stringStoreBench) setupStrings(ss StringStore) error {
+	for i := 0; i < num1KElements; i++ {
+		err := ss.PutString(sb.sShort[i])
+		if err != nil {
+			return err
+		}
+
+		err = ss.PutString(sb.sLong[i])
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type stringStoreBenchFunc func(StringStore, int) error
 
-func (sb stringStoreBench) runBenchmark(b *testing.B, cfg *DriverConfig, setup stringStoreSetupFunc, execute stringStoreBenchFunc) {
+func (sb *stringStoreBench) runBenchmark(b *testing.B, cfg *DriverConfig, setup stringStoreSetupFunc, execute stringStoreBenchFunc) {
 	ss, err := sb.driver.New(cfg)
 	require.Nil(b, err, "Constructor error must be nil")
-	require.NotNil(b, ss, "String store must not be nil")
+	require.NotNil(b, ss, "StringStore must not be nil")
 
 	err = setup(ss)
 	require.Nil(b, err, "Benchmark setup must not fail")
 
+	numGoroutine := int32(0)
+
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		execute(ss, i)
-	}
+	b.RunParallel(func(ppb *testing.PB) {
+		g := int(atomic.AddInt32(&numGoroutine, 1)) * sb.goroutineShift
+		for i := g; ppb.Next(); i++ {
+			execute(ss, i)
+		}
+	})
 	b.StopTimer()
 
 	errChan := ss.Stop()
@@ -117,7 +156,7 @@ func (sb stringStoreBench) runBenchmark(b *testing.B, cfg *DriverConfig, setup s
 	require.Nil(b, err, "StringStore shutdown must not fail")
 }
 
-func (sb stringStoreBench) AddShort(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) AddShort(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.PutString(sb.sShort[0])
@@ -125,7 +164,7 @@ func (sb stringStoreBench) AddShort(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (sb stringStoreBench) AddLong(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) AddLong(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.PutString(sb.sLong[0])
@@ -133,7 +172,7 @@ func (sb stringStoreBench) AddLong(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (sb stringStoreBench) Add1KShort(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) Add1KShort(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.PutString(sb.sShort[i%num1KElements])
@@ -141,7 +180,7 @@ func (sb stringStoreBench) Add1KShort(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (sb stringStoreBench) Add1KLong(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) Add1KLong(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.PutString(sb.sLong[i%num1KElements])
@@ -149,63 +188,39 @@ func (sb stringStoreBench) Add1KLong(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (sb stringStoreBench) LookupShort(b *testing.B, cfg *DriverConfig) {
-	sb.runBenchmark(b, cfg,
-		func(ss StringStore) error {
-			return ss.PutString(sb.sShort[0])
-		},
+func (sb *stringStoreBench) LookupShort(b *testing.B, cfg *DriverConfig) {
+	sb.runBenchmark(b, cfg, sb.setupStrings,
 		func(ss StringStore, i int) error {
 			ss.HasString(sb.sShort[0])
 			return nil
 		})
 }
 
-func (sb stringStoreBench) LookupLong(b *testing.B, cfg *DriverConfig) {
-	sb.runBenchmark(b, cfg,
-		func(ss StringStore) error {
-			return ss.PutString(sb.sLong[0])
-		},
+func (sb *stringStoreBench) LookupLong(b *testing.B, cfg *DriverConfig) {
+	sb.runBenchmark(b, cfg, sb.setupStrings,
 		func(ss StringStore, i int) error {
 			ss.HasString(sb.sLong[0])
 			return nil
 		})
 }
 
-func (sb stringStoreBench) Lookup1KShort(b *testing.B, cfg *DriverConfig) {
-	sb.runBenchmark(b, cfg,
-		func(ss StringStore) error {
-			for i := 0; i < num1KElements; i++ {
-				err := ss.PutString(sb.sShort[i])
-				if err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+func (sb *stringStoreBench) Lookup1KShort(b *testing.B, cfg *DriverConfig) {
+	sb.runBenchmark(b, cfg, sb.setupStrings,
 		func(ss StringStore, i int) error {
 			ss.HasString(sb.sShort[i%num1KElements])
 			return nil
 		})
 }
 
-func (sb stringStoreBench) Lookup1KLong(b *testing.B, cfg *DriverConfig) {
-	sb.runBenchmark(b, cfg,
-		func(ss StringStore) error {
-			for i := 0; i < num1KElements; i++ {
-				err := ss.PutString(sb.sLong[i])
-				if err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+func (sb *stringStoreBench) Lookup1KLong(b *testing.B, cfg *DriverConfig) {
+	sb.runBenchmark(b, cfg, sb.setupStrings,
 		func(ss StringStore, i int) error {
 			ss.HasString(sb.sLong[i%num1KElements])
 			return nil
 		})
 }
 
-func (sb stringStoreBench) AddRemoveShort(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) AddRemoveShort(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.PutString(sb.sShort[0])
@@ -214,7 +229,7 @@ func (sb stringStoreBench) AddRemoveShort(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (sb stringStoreBench) AddRemoveLong(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) AddRemoveLong(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.PutString(sb.sLong[0])
@@ -223,7 +238,7 @@ func (sb stringStoreBench) AddRemoveLong(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (sb stringStoreBench) AddRemove1KShort(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) AddRemove1KShort(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.PutString(sb.sShort[i%num1KElements])
@@ -232,7 +247,7 @@ func (sb stringStoreBench) AddRemove1KShort(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (sb stringStoreBench) AddRemove1KLong(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) AddRemove1KLong(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.PutString(sb.sLong[i%num1KElements])
@@ -241,7 +256,7 @@ func (sb stringStoreBench) AddRemove1KLong(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (sb stringStoreBench) LookupNonExistShort(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) LookupNonExistShort(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.HasString(sb.sShort[0])
@@ -249,7 +264,7 @@ func (sb stringStoreBench) LookupNonExistShort(b *testing.B, cfg *DriverConfig) 
 		})
 }
 
-func (sb stringStoreBench) LookupNonExistLong(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) LookupNonExistLong(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.HasString(sb.sLong[0])
@@ -257,7 +272,7 @@ func (sb stringStoreBench) LookupNonExistLong(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (sb stringStoreBench) LookupNonExist1KShort(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) LookupNonExist1KShort(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.HasString(sb.sShort[i%num1KElements])
@@ -265,7 +280,7 @@ func (sb stringStoreBench) LookupNonExist1KShort(b *testing.B, cfg *DriverConfig
 		})
 }
 
-func (sb stringStoreBench) LookupNonExist1KLong(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) LookupNonExist1KLong(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.HasString(sb.sLong[i%num1KElements])
@@ -273,7 +288,7 @@ func (sb stringStoreBench) LookupNonExist1KLong(b *testing.B, cfg *DriverConfig)
 		})
 }
 
-func (sb stringStoreBench) RemoveNonExistShort(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) RemoveNonExistShort(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.RemoveString(sb.sShort[0])
@@ -281,7 +296,7 @@ func (sb stringStoreBench) RemoveNonExistShort(b *testing.B, cfg *DriverConfig) 
 		})
 }
 
-func (sb stringStoreBench) RemoveNonExistLong(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) RemoveNonExistLong(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.RemoveString(sb.sLong[0])
@@ -289,7 +304,7 @@ func (sb stringStoreBench) RemoveNonExistLong(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (sb stringStoreBench) RemoveNonExist1KShort(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) RemoveNonExist1KShort(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.RemoveString(sb.sShort[i%num1KElements])
@@ -297,7 +312,7 @@ func (sb stringStoreBench) RemoveNonExist1KShort(b *testing.B, cfg *DriverConfig
 		})
 }
 
-func (sb stringStoreBench) RemoveNonExist1KLong(b *testing.B, cfg *DriverConfig) {
+func (sb *stringStoreBench) RemoveNonExist1KLong(b *testing.B, cfg *DriverConfig) {
 	sb.runBenchmark(b, cfg, stringStoreSetupNOP,
 		func(ss StringStore, i int) error {
 			ss.RemoveString(sb.sLong[i%num1KElements])
