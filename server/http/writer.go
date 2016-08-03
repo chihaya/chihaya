@@ -83,6 +83,9 @@ func writeScrapeResponse(w http.ResponseWriter, resp *chihaya.ScrapeResponse) er
 }
 
 func compact(peer chihaya.Peer) (buf []byte) {
+	if ip := peer.IP.To4(); len(ip) == 4 {
+		peer.IP = ip
+	}
 	buf = []byte(peer.IP)
 	buf = append(buf, byte(peer.Port>>8))
 	buf = append(buf, byte(peer.Port&0xff))
