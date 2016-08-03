@@ -5,6 +5,8 @@
 package infohash
 
 import (
+	"net/http"
+
 	"github.com/chihaya/chihaya"
 	"github.com/chihaya/chihaya/server/store"
 	"github.com/chihaya/chihaya/tracker"
@@ -16,6 +18,10 @@ func init() {
 	mustGetStore = func() store.StringStore {
 		return store.MustGetStore().StringStore
 	}
+
+	store.RegisterHandler(http.MethodPut, pathInfohash, handlePutInfohash)
+	store.RegisterHandler(http.MethodDelete, pathInfohash, handleDeleteInfohash)
+	store.RegisterHandler(http.MethodGet, pathInfohash, handleGetInfohash)
 }
 
 // ErrBlockedInfohash is returned by a middleware if any of the infohashes
@@ -27,6 +33,8 @@ var mustGetStore func() store.StringStore
 // blacklistAnnounceInfohash provides a middleware that only allows announces
 // for infohashes that are not stored in a StringStore.
 func blacklistAnnounceInfohash(next tracker.AnnounceHandler) tracker.AnnounceHandler {
+	routesActivated.Do(activateRoutes)
+
 	return func(cfg *chihaya.TrackerConfig, req *chihaya.AnnounceRequest, resp *chihaya.AnnounceResponse) (err error) {
 		blacklisted, err := mustGetStore().HasString(PrefixInfohash + string(req.InfoHash[:]))
 		if err != nil {
@@ -50,6 +58,8 @@ func blacklistAnnounceInfohash(next tracker.AnnounceHandler) tracker.AnnounceHan
 //
 // ErrUnknownMode is returned if the Mode specified in the config is unknown.
 func blacklistScrapeInfohash(c chihaya.MiddlewareConfig) (tracker.ScrapeMiddleware, error) {
+	routesActivated.Do(activateRoutes)
+
 	cfg, err := newConfig(c)
 	if err != nil {
 		return nil, err

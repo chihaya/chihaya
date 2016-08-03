@@ -27,6 +27,7 @@ chihaya:
     - name: store
       config:
         addr: localhost:6880
+#        api_key: <your-api-key>
         request_timeout: 10s
         read_timeout: 10s
         write_timeout: 10s

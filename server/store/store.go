@@ -9,6 +9,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/tylerb/graceful"
 	"gopkg.in/yaml.v2"
 
 	"github.com/chihaya/chihaya"
@@ -21,6 +22,8 @@ var theStore *Store
 
 func init() {
 	server.Register("store", constructor)
+	registeredRoutes = make(map[string]map[string]ResponseFunc)
+	activatedRoutes = make(map[string]map[string]ResponseFunc)
 }
 
 // ErrResourceDoesNotExist is the error returned by all delete methods in the
@@ -69,6 +72,7 @@ func constructor(srvcfg *chihaya.ServerConfig, tkr *tracker.Tracker) (server.Ser
 // Config represents the configuration for the store.
 type Config struct {
 	Addr           string        `yaml:"addr"`
+	APIKey         string        `yaml:"api_key"`
 	RequestTimeout time.Duration `yaml:"request_timeout"`
 	ReadTimeout    time.Duration `yaml:"read_timeout"`
 	WriteTimeout   time.Duration `yaml:"write_timeout"`
@@ -116,27 +120,9 @@ type Store struct {
 	tkr      *tracker.Tracker
 	shutdown chan struct{}
 	sg       *stopper.StopGroup
+	grace    *graceful.Server
 
 	PeerStore
 	IPStore
 	StringStore
-}
-
-// Start starts the store drivers and blocks until all of them exit.
-func (s *Store) Start() {
-	<-s.shutdown
-}
-
-// Stop stops the store drivers and waits for them to exit.
-func (s *Store) Stop() {
-	errors := s.sg.Stop()
-	if len(errors) == 0 {
-		log.Println("Store server shut down cleanly")
-	} else {
-		log.Println("Store server: failed to shutdown drivers")
-		for _, err := range errors {
-			log.Println(err.Error())
-		}
-	}
-	close(s.shutdown)
 }
