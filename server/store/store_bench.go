@@ -321,8 +321,14 @@ func (sb *stringStoreBench) RemoveNonExist1KLong(b *testing.B, cfg *DriverConfig
 }
 
 // IPStoreBenchmarker is a collection of benchmarks for IPStore drivers.
-// Every benchmark expects a new, clean storage. Every benchmark should be
-// called with a DriverConfig that ensures this.
+//
+// All benchmarks can be run in parallel. Parallelism can be controlled using
+// the -cpu flag.
+//
+// Every run of every benchmark expects a new, clean storage. Every benchmark
+// should be called with a DriverConfig that ensures this and, if necessary,
+// clean up after calling the benchmark. Clean-up time is not considered in the
+// benchmark result.
 type IPStoreBenchmarker interface {
 	AddV4(*testing.B, *DriverConfig)
 	AddV6(*testing.B, *DriverConfig)
@@ -416,18 +422,20 @@ type ipStoreBench struct {
 	v4Networks [num1KElements]string
 	v6Networks [num1KElements]string
 
-	driver IPStoreDriver
+	driver         IPStoreDriver
+	goroutineShift int
 }
 
 // PrepareIPStoreBenchmarker prepares a reusable suite for StringStore driver
 // benchmarks.
 func PrepareIPStoreBenchmarker(driver IPStoreDriver) IPStoreBenchmarker {
-	return ipStoreBench{
-		v4IPs:      generateV4IPs(),
-		v6IPs:      generateV6IPs(),
-		v4Networks: generateV4Networks(),
-		v6Networks: generateV6Networks(),
-		driver:     driver,
+	return &ipStoreBench{
+		v4IPs:          generateV4IPs(),
+		v6IPs:          generateV6IPs(),
+		v4Networks:     generateV4Networks(),
+		v6Networks:     generateV6Networks(),
+		driver:         driver,
+		goroutineShift: num1KElements / runtime.NumCPU(),
 	}
 }
 
@@ -435,20 +443,55 @@ type ipStoreSetupFunc func(IPStore) error
 
 func ipStoreSetupNOP(IPStore) error { return nil }
 
+func (ib *ipStoreBench) setupIPs(is IPStore) error {
+	for i := 0; i < num1KElements; i++ {
+		err := is.AddIP(ib.v4IPs[i])
+		if err != nil {
+			return err
+		}
+
+		err = is.AddIP(ib.v6IPs[i])
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (ib *ipStoreBench) setupNetworks(is IPStore) error {
+	for i := 0; i < num1KElements; i++ {
+		err := is.AddNetwork(ib.v4Networks[i])
+		if err != nil {
+			return err
+		}
+
+		err = is.AddNetwork(ib.v6Networks[i])
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 type ipStoreBenchFunc func(IPStore, int) error
 
-func (ib ipStoreBench) runBenchmark(b *testing.B, cfg *DriverConfig, setup ipStoreSetupFunc, execute ipStoreBenchFunc) {
+func (ib *ipStoreBench) runBenchmark(b *testing.B, cfg *DriverConfig, setup ipStoreSetupFunc, execute ipStoreBenchFunc) {
 	is, err := ib.driver.New(cfg)
 	require.Nil(b, err, "Constructor error must be nil")
-	require.NotNil(b, is, "IP store must not be nil")
+	require.NotNil(b, is, "IPStore must not be nil")
 
 	err = setup(is)
 	require.Nil(b, err, "Benchmark setup must not fail")
 
+	numGoroutine := int32(0)
+
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		execute(is, i)
-	}
+	b.RunParallel(func(ppb *testing.PB) {
+		g := int(atomic.AddInt32(&numGoroutine, 1)) * ib.goroutineShift
+		for i := g; ppb.Next(); i++ {
+			execute(is, i)
+		}
+	})
 	b.StopTimer()
 
 	errChan := is.Stop()
@@ -456,7 +499,7 @@ func (ib ipStoreBench) runBenchmark(b *testing.B, cfg *DriverConfig, setup ipSto
 	require.Nil(b, err, "IPStore shutdown must not fail")
 }
 
-func (ib ipStoreBench) AddV4(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) AddV4(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddIP(ib.v4IPs[0])
@@ -464,7 +507,7 @@ func (ib ipStoreBench) AddV4(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) AddV6(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) AddV6(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddIP(ib.v6IPs[0])
@@ -472,29 +515,23 @@ func (ib ipStoreBench) AddV6(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) LookupV4(b *testing.B, cfg *DriverConfig) {
-	ib.runBenchmark(b, cfg,
-		func(is IPStore) error {
-			return is.AddIP(ib.v4IPs[0])
-		},
+func (ib *ipStoreBench) LookupV4(b *testing.B, cfg *DriverConfig) {
+	ib.runBenchmark(b, cfg, ib.setupIPs,
 		func(is IPStore, i int) error {
 			is.HasIP(ib.v4IPs[0])
 			return nil
 		})
 }
 
-func (ib ipStoreBench) LookupV6(b *testing.B, cfg *DriverConfig) {
-	ib.runBenchmark(b, cfg,
-		func(is IPStore) error {
-			return is.AddIP(ib.v6IPs[0])
-		},
+func (ib *ipStoreBench) LookupV6(b *testing.B, cfg *DriverConfig) {
+	ib.runBenchmark(b, cfg, ib.setupIPs,
 		func(is IPStore, i int) error {
 			is.HasIP(ib.v6IPs[0])
 			return nil
 		})
 }
 
-func (ib ipStoreBench) AddRemoveV4(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) AddRemoveV4(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddIP(ib.v4IPs[0])
@@ -503,7 +540,7 @@ func (ib ipStoreBench) AddRemoveV4(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) AddRemoveV6(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) AddRemoveV6(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddIP(ib.v6IPs[0])
@@ -512,7 +549,7 @@ func (ib ipStoreBench) AddRemoveV6(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) LookupNonExistV4(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) LookupNonExistV4(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.HasIP(ib.v4IPs[0])
@@ -520,7 +557,7 @@ func (ib ipStoreBench) LookupNonExistV4(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) LookupNonExistV6(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) LookupNonExistV6(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.HasIP(ib.v6IPs[0])
@@ -528,7 +565,7 @@ func (ib ipStoreBench) LookupNonExistV6(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) RemoveNonExistV4(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) RemoveNonExistV4(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.RemoveIP(ib.v4IPs[0])
@@ -536,7 +573,7 @@ func (ib ipStoreBench) RemoveNonExistV4(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) RemoveNonExistV6(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) RemoveNonExistV6(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.RemoveIP(ib.v6IPs[0])
@@ -544,7 +581,7 @@ func (ib ipStoreBench) RemoveNonExistV6(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) AddV4Network(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) AddV4Network(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddNetwork(ib.v4Networks[0])
@@ -552,7 +589,7 @@ func (ib ipStoreBench) AddV4Network(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) AddV6Network(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) AddV6Network(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddNetwork(ib.v6Networks[0])
@@ -560,29 +597,23 @@ func (ib ipStoreBench) AddV6Network(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) LookupV4Network(b *testing.B, cfg *DriverConfig) {
-	ib.runBenchmark(b, cfg,
-		func(is IPStore) error {
-			return is.AddNetwork(ib.v4Networks[0])
-		},
+func (ib *ipStoreBench) LookupV4Network(b *testing.B, cfg *DriverConfig) {
+	ib.runBenchmark(b, cfg, ib.setupNetworks,
 		func(is IPStore, i int) error {
 			is.HasIP(ib.v4IPs[0])
 			return nil
 		})
 }
 
-func (ib ipStoreBench) LookupV6Network(b *testing.B, cfg *DriverConfig) {
-	ib.runBenchmark(b, cfg,
-		func(is IPStore) error {
-			return is.AddNetwork(ib.v6Networks[0])
-		},
+func (ib *ipStoreBench) LookupV6Network(b *testing.B, cfg *DriverConfig) {
+	ib.runBenchmark(b, cfg, ib.setupNetworks,
 		func(is IPStore, i int) error {
 			is.HasIP(ib.v6IPs[0])
 			return nil
 		})
 }
 
-func (ib ipStoreBench) AddRemoveV4Network(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) AddRemoveV4Network(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddNetwork(ib.v4Networks[0])
@@ -591,7 +622,7 @@ func (ib ipStoreBench) AddRemoveV4Network(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) AddRemoveV6Network(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) AddRemoveV6Network(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddNetwork(ib.v6Networks[0])
@@ -600,7 +631,7 @@ func (ib ipStoreBench) AddRemoveV6Network(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) RemoveNonExistV4Network(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) RemoveNonExistV4Network(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.RemoveNetwork(ib.v4Networks[0])
@@ -608,7 +639,7 @@ func (ib ipStoreBench) RemoveNonExistV4Network(b *testing.B, cfg *DriverConfig) 
 		})
 }
 
-func (ib ipStoreBench) RemoveNonExistV6Network(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) RemoveNonExistV6Network(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.RemoveNetwork(ib.v6Networks[0])
@@ -616,7 +647,7 @@ func (ib ipStoreBench) RemoveNonExistV6Network(b *testing.B, cfg *DriverConfig) 
 		})
 }
 
-func (ib ipStoreBench) Add1KV4(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) Add1KV4(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddIP(ib.v4IPs[i%num1KElements])
@@ -624,7 +655,7 @@ func (ib ipStoreBench) Add1KV4(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) Add1KV6(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) Add1KV6(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddIP(ib.v6IPs[i%num1KElements])
@@ -632,41 +663,23 @@ func (ib ipStoreBench) Add1KV6(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) Lookup1KV4(b *testing.B, cfg *DriverConfig) {
-	ib.runBenchmark(b, cfg,
-		func(is IPStore) error {
-			for i := 0; i < num1KElements; i++ {
-				err := is.AddIP(ib.v4IPs[i%num1KElements])
-				if err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+func (ib *ipStoreBench) Lookup1KV4(b *testing.B, cfg *DriverConfig) {
+	ib.runBenchmark(b, cfg, ib.setupIPs,
 		func(is IPStore, i int) error {
 			is.HasIP(ib.v4IPs[i%num1KElements])
 			return nil
 		})
 }
 
-func (ib ipStoreBench) Lookup1KV6(b *testing.B, cfg *DriverConfig) {
-	ib.runBenchmark(b, cfg,
-		func(is IPStore) error {
-			for i := 0; i < num1KElements; i++ {
-				err := is.AddIP(ib.v6IPs[i%num1KElements])
-				if err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+func (ib *ipStoreBench) Lookup1KV6(b *testing.B, cfg *DriverConfig) {
+	ib.runBenchmark(b, cfg, ib.setupIPs,
 		func(is IPStore, i int) error {
 			is.HasIP(ib.v6IPs[i%num1KElements])
 			return nil
 		})
 }
 
-func (ib ipStoreBench) AddRemove1KV4(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) AddRemove1KV4(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddIP(ib.v4IPs[i%num1KElements])
@@ -675,7 +688,7 @@ func (ib ipStoreBench) AddRemove1KV4(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) AddRemove1KV6(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) AddRemove1KV6(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddIP(ib.v6IPs[i%num1KElements])
@@ -684,7 +697,7 @@ func (ib ipStoreBench) AddRemove1KV6(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) LookupNonExist1KV4(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) LookupNonExist1KV4(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.HasIP(ib.v4IPs[i%num1KElements])
@@ -692,7 +705,7 @@ func (ib ipStoreBench) LookupNonExist1KV4(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) LookupNonExist1KV6(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) LookupNonExist1KV6(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.HasIP(ib.v6IPs[i%num1KElements])
@@ -700,7 +713,7 @@ func (ib ipStoreBench) LookupNonExist1KV6(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) RemoveNonExist1KV4(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) RemoveNonExist1KV4(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.RemoveIP(ib.v4IPs[i%num1KElements])
@@ -708,7 +721,7 @@ func (ib ipStoreBench) RemoveNonExist1KV4(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) RemoveNonExist1KV6(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) RemoveNonExist1KV6(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.RemoveIP(ib.v6IPs[i%num1KElements])
@@ -716,7 +729,7 @@ func (ib ipStoreBench) RemoveNonExist1KV6(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) Add1KV4Network(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) Add1KV4Network(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddNetwork(ib.v4Networks[i%num1KElements])
@@ -724,7 +737,7 @@ func (ib ipStoreBench) Add1KV4Network(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) Add1KV6Network(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) Add1KV6Network(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddNetwork(ib.v6Networks[i%num1KElements])
@@ -732,41 +745,23 @@ func (ib ipStoreBench) Add1KV6Network(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) Lookup1KV4Network(b *testing.B, cfg *DriverConfig) {
-	ib.runBenchmark(b, cfg,
-		func(is IPStore) error {
-			for i := 0; i < num1KElements; i++ {
-				err := is.AddNetwork(ib.v4Networks[i%num1KElements])
-				if err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+func (ib *ipStoreBench) Lookup1KV4Network(b *testing.B, cfg *DriverConfig) {
+	ib.runBenchmark(b, cfg, ib.setupNetworks,
 		func(is IPStore, i int) error {
 			is.HasIP(ib.v4IPs[i%num1KElements])
 			return nil
 		})
 }
 
-func (ib ipStoreBench) Lookup1KV6Network(b *testing.B, cfg *DriverConfig) {
-	ib.runBenchmark(b, cfg,
-		func(is IPStore) error {
-			for i := 0; i < num1KElements; i++ {
-				err := is.AddNetwork(ib.v6Networks[i%num1KElements])
-				if err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+func (ib *ipStoreBench) Lookup1KV6Network(b *testing.B, cfg *DriverConfig) {
+	ib.runBenchmark(b, cfg, ib.setupNetworks,
 		func(is IPStore, i int) error {
 			is.HasIP(ib.v6IPs[i%num1KElements])
 			return nil
 		})
 }
 
-func (ib ipStoreBench) AddRemove1KV4Network(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) AddRemove1KV4Network(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddNetwork(ib.v4Networks[i%num1KElements])
@@ -775,7 +770,7 @@ func (ib ipStoreBench) AddRemove1KV4Network(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) AddRemove1KV6Network(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) AddRemove1KV6Network(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.AddNetwork(ib.v6Networks[i%num1KElements])
@@ -784,7 +779,7 @@ func (ib ipStoreBench) AddRemove1KV6Network(b *testing.B, cfg *DriverConfig) {
 		})
 }
 
-func (ib ipStoreBench) RemoveNonExist1KV4Network(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) RemoveNonExist1KV4Network(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.RemoveNetwork(ib.v4Networks[i%num1KElements])
@@ -792,7 +787,7 @@ func (ib ipStoreBench) RemoveNonExist1KV4Network(b *testing.B, cfg *DriverConfig
 		})
 }
 
-func (ib ipStoreBench) RemoveNonExist1KV6Network(b *testing.B, cfg *DriverConfig) {
+func (ib *ipStoreBench) RemoveNonExist1KV6Network(b *testing.B, cfg *DriverConfig) {
 	ib.runBenchmark(b, cfg, ipStoreSetupNOP,
 		func(is IPStore, i int) error {
 			is.RemoveNetwork(ib.v6Networks[i%num1KElements])
