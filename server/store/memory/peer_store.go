@@ -6,6 +6,7 @@ package memory
 
 import (
 	"encoding/binary"
+	"errors"
 	"log"
 	"net"
 	"runtime"
@@ -22,6 +23,19 @@ func init() {
 	store.RegisterPeerStoreDriver("memory", &peerStoreDriver{})
 }
 
+var (
+	// ErrInvalidGCCutoff is returned for a config with an invalid
+	// gc_cutoff.
+	ErrInvalidGCCutoff = errors.New("invalid gc_cutoff")
+
+	// ErrInvalidGCInterval is returned for a config with an invalid
+	// gc_interval.
+	ErrInvalidGCInterval = errors.New("invalid gc_interval")
+
+	// ErrMissingConfig is returned for a missing config.
+	ErrMissingConfig = errors.New("missing config")
+)
+
 type peerStoreDriver struct{}
 
 func (d *peerStoreDriver) New(storecfg *store.DriverConfig) (store.PeerStore, error) {
@@ -35,17 +49,40 @@ func (d *peerStoreDriver) New(storecfg *store.DriverConfig) (store.PeerStore, er
 		shards[i] = &peerShard{}
 		shards[i].swarms = make(map[chihaya.InfoHash]swarm)
 	}
-	return &peerStore{
+
+	ps := &peerStore{
 		shards: shards,
 		closed: make(chan struct{}),
-	}, nil
+	}
+
+	go func() {
+		next := time.Now().Add(cfg.GCInterval)
+		for {
+			select {
+			case <-ps.closed:
+				return
+			case <-time.After(next.Sub(time.Now())):
+				next = time.Now().Add(cfg.GCInterval)
+				cutoffTime := time.Now().Add(cfg.GCCutoff * -1)
+				ps.collectGarbage(cutoffTime)
+			}
+		}
+	}()
+
+	return ps, nil
 }
 
 type peerStoreConfig struct {
-	Shards int `yaml:"shards"`
+	Shards     int           `yaml:"shards"`
+	GCInterval time.Duration `yaml:"gc_interval"`
+	GCCutoff   time.Duration `yaml:"gc_cutoff"`
 }
 
 func newPeerStoreConfig(storecfg *store.DriverConfig) (*peerStoreConfig, error) {
+	if storecfg == nil || storecfg.Config == nil {
+		return nil, ErrMissingConfig
+	}
+
 	bytes, err := yaml.Marshal(storecfg.Config)
 	if err != nil {
 		return nil, err
@@ -55,6 +92,14 @@ func newPeerStoreConfig(storecfg *store.DriverConfig) (*peerStoreConfig, error) 
 	err = yaml.Unmarshal(bytes, &cfg)
 	if err != nil {
 		return nil, err
+	}
+
+	if cfg.GCInterval == 0 {
+		return nil, ErrInvalidGCInterval
+	}
+
+	if cfg.GCCutoff == 0 {
+		return nil, ErrInvalidGCCutoff
 	}
 
 	if cfg.Shards < 1 {
@@ -238,12 +283,14 @@ func (s *peerStore) GraduateLeecher(infoHash chihaya.InfoHash, p chihaya.Peer) e
 	return nil
 }
 
-func (s *peerStore) CollectGarbage(cutoff time.Time) error {
-	select {
-	case <-s.closed:
-		panic("attempted to interact with stopped store")
-	default:
-	}
+func (s *peerStore) collectGarbage(cutoff time.Time) (err error) {
+	defer func() {
+		if err != nil {
+			log.Println("memory: failed to collect garbage: " + err.Error())
+		} else {
+			log.Println("memory: finished collecting garbage")
+		}
+	}()
 
 	log.Printf("memory: collecting garbage. Cutoff time: %s", cutoff.String())
 	cutoffUnix := cutoff.UnixNano()
@@ -283,6 +330,16 @@ func (s *peerStore) CollectGarbage(cutoff time.Time) error {
 	}
 
 	return nil
+}
+
+func (s *peerStore) CollectGarbage(cutoff time.Time) error {
+	select {
+	case <-s.closed:
+		panic("attempted to interact with stopped store")
+	default:
+	}
+
+	return s.collectGarbage(cutoff)
 }
 
 func (s *peerStore) AnnouncePeers(infoHash chihaya.InfoHash, seeder bool, numWant int, peer4, peer6 chihaya.Peer) (peers, peers6 []chihaya.Peer, err error) {

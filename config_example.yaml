@@ -39,7 +39,8 @@ chihaya:
         peer_store:
           name: memory
           config:
-            gcAfter: 30m
+            gc_interval: 5m
+            gc_cutoff: 15m
             shards: 1
 
     - name: prometheus
