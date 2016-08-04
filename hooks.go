@@ -16,15 +16,15 @@ package trakr
 
 import "github.com/jzelinskie/trakr/bittorrent"
 
-// HookConstructor is a function used to create a new instance of a Hook.
-type HookConstructor func(interface{}) (Hook, error)
-
 // Hook abstracts the concept of anything that needs to interact with a
 // BitTorrent client's request and response to a BitTorrent tracker.
 type Hook interface {
 	HandleAnnounce(context.Context, bittorrent.AnnounceRequest, bittorrent.AnnounceResponse) error
 	HandleScrape(context.Context, bittorrent.ScrapeRequest, bittorrent.ScrapeResponse) error
 }
+
+// HookConstructor is a function used to create a new instance of a Hook.
+type HookConstructor func(interface{}) (Hook, error)
 
 var preHooks = make(map[string]HookConstructor)
 
@@ -44,7 +44,7 @@ func RegisterPreHook(name string, con HookConstructor) {
 
 // NewPreHook creates an instance of the given PreHook by name.
 func NewPreHook(name string, config interface{}) (Hook, error) {
-	con := preHooks[name]
+	con, ok := preHooks[name]
 	if !ok {
 		return nil, fmt.Errorf("trakr: unknown PreHook %q (forgotten import?)", name)
 	}
@@ -69,7 +69,7 @@ func RegisterPostHook(name string, con HookConstructor) {
 
 // NewPostHook creates an instance of the given PostHook by name.
 func NewPostHook(name string, config interface{}) (Hook, error) {
-	con := preHooks[name]
+	con, ok := preHooks[name]
 	if !ok {
 		return nil, fmt.Errorf("trakr: unknown PostHook %q (forgotten import?)", name)
 	}
