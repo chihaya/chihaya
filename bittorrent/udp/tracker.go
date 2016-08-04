@@ -38,56 +38,56 @@ type Config struct {
 	AllowIPSpoofing bool
 }
 
-type Server struct {
+type Tracker struct {
 	sock    *net.UDPConn
 	closing chan struct{}
 	wg      sync.WaitGroup
 
-	bittorrent.ServerFuncs
+	bittorrent.TrackerFuncs
 	Config
 }
 
-func NewServer(funcs bittorrent.ServerFuncs, cfg Config) {
-	return &Server{
-		closing:     make(chan struct{}),
-		ServerFuncs: funcs,
-		Config:      cfg,
+func NewTracker(funcs bittorrent.TrackerFuncs, cfg Config) {
+	return &Tracker{
+		closing:      make(chan struct{}),
+		TrackerFuncs: funcs,
+		Config:       cfg,
 	}
 }
 
-func (s *udpServer) Stop() {
-	close(s.closing)
-	s.sock.SetReadDeadline(time.Now())
-	s.wg.Wait()
+func (t *Tracker) Stop() {
+	close(t.closing)
+	t.sock.SetReadDeadline(time.Now())
+	t.wg.Wait()
 }
 
-func (s *Server) ListenAndServe() error {
-	udpAddr, err := net.ResolveUDPAddr("udp", s.Addr)
+func (t *Tracker) ListenAndServe() error {
+	udpAddr, err := net.ResolveUDPAddr("udp", t.Addr)
 	if err != nil {
 		return err
 	}
 
-	s.sock, err = net.ListenUDP("udp", udpAddr)
+	t.sock, err = net.ListenUDP("udp", udpAddr)
 	if err != nil {
 		return err
 	}
-	defer s.sock.Close()
+	defer t.sock.Close()
 
 	pool := bytepool.New(256, 2048)
 
 	for {
 		// Check to see if we need to shutdown.
 		select {
-		case <-s.closing:
-			s.wg.Wait()
+		case <-t.closing:
+			t.wg.Wait()
 			return nil
 		default:
 		}
 
 		// Read a UDP packet into a reusable buffer.
 		buffer := pool.Get()
-		s.sock.SetReadDeadline(time.Now().Add(time.Second))
-		n, addr, err := s.sock.ReadFromUDP(buffer)
+		t.sock.SetReadDeadline(time.Now().Add(time.Second))
+		n, addr, err := t.sock.ReadFromUDP(buffer)
 		if err != nil {
 			pool.Put(buffer)
 			if netErr, ok := err.(net.Error); ok && netErr.Temporary() {
@@ -105,13 +105,13 @@ func (s *Server) ListenAndServe() error {
 
 		log.Println("Got UDP packet")
 		start := time.Now()
-		s.wg.Add(1)
+		t.wg.Add(1)
 		go func(start time.Time) {
-			defer s.wg.Done()
+			defer t.wg.Done()
 			defer pool.Put(buffer)
 
 			// Handle the response.
-			response, action, err := s.handlePacket(buffer[:n], addr)
+			response, action, err := t.handlePacket(buffer[:n], addr)
 			log.Printf("Handled UDP packet: %s, %s, %s\n", response, action, err)
 
 			// Record to Prometheus the time in milliseconds to receive, handle, and
@@ -141,7 +141,7 @@ func (w *ResponseWriter) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
-func (s *Server) handlePacket(r *Request, w *ResponseWriter) (response []byte, actionName string, err error) {
+func (t *Tracker) handlePacket(r *Request, w *ResponseWriter) (response []byte, actionName string, err error) {
 	if len(r.packet) < 16 {
 		// Malformed, no client packets are less than 16 bytes.
 		// We explicitly return nothing in case this is a DoS attempt.
@@ -156,7 +156,7 @@ func (s *Server) handlePacket(r *Request, w *ResponseWriter) (response []byte, a
 
 	// If this isn't requesting a new connection ID and the connection ID is
 	// invalid, then fail.
-	if actionID != connectActionID && !ValidConnectionID(connID, r.IP, time.Now(), s.PrivateKey) {
+	if actionID != connectActionID && !ValidConnectionID(connID, r.IP, time.Now(), t.PrivateKey) {
 		err = errBadConnectionID
 		WriteError(w, txID, err)
 		return
@@ -172,21 +172,21 @@ func (s *Server) handlePacket(r *Request, w *ResponseWriter) (response []byte, a
 			return
 		}
 
-		WriteConnectionID(w, txID, NewConnectionID(r.IP, time.Now(), s.PrivateKey))
+		WriteConnectionID(w, txID, NewConnectionID(r.IP, time.Now(), t.PrivateKey))
 		return
 
 	case announceActionID:
 		actionName = "announce"
 
 		var req *bittorrent.AnnounceRequest
-		req, err = ParseAnnounce(r, s.AllowIPSpoofing)
+		req, err = ParseAnnounce(r, t.AllowIPSpoofing)
 		if err != nil {
 			WriteError(w, txID, err)
 			return
 		}
 
 		var resp *bittorrent.AnnounceResponse
-		resp, err = s.HandleAnnounce(req)
+		resp, err = t.HandleAnnounce(req)
 		if err != nil {
 			WriteError(w, txID, err)
 			return
@@ -194,8 +194,8 @@ func (s *Server) handlePacket(r *Request, w *ResponseWriter) (response []byte, a
 
 		WriteAnnounce(w, txID, resp)
 
-		if s.AfterAnnounce != nil {
-			s.AfterAnnounce(req, resp)
+		if t.AfterAnnounce != nil {
+			t.AfterAnnounce(req, resp)
 		}
 
 		return
@@ -212,7 +212,7 @@ func (s *Server) handlePacket(r *Request, w *ResponseWriter) (response []byte, a
 
 		var resp *bittorrent.ScrapeResponse
 		ctx := context.TODO()
-		resp, err = s.HandleScrape(ctx, req)
+		resp, err = t.HandleScrape(ctx, req)
 		if err != nil {
 			WriteError(w, txID, err)
 			return
@@ -220,8 +220,8 @@ func (s *Server) handlePacket(r *Request, w *ResponseWriter) (response []byte, a
 
 		WriteScrape(w, txID, resp)
 
-		if s.AfterScrape != nil {
-			s.AfterScrape(req, resp)
+		if t.AfterScrape != nil {
+			t.AfterScrape(req, resp)
 		}
 
 		return

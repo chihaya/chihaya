@@ -23,41 +23,41 @@ type Config struct {
 	RealIPHeader    string
 }
 
-type Server struct {
+type Tracker struct {
 	grace *graceful.Server
 
-	bittorrent.ServerFuncs
+	bittorrent.TrackerFuncs
 	Config
 }
 
-func NewServer(funcs bittorrent.ServerFuncs, cfg Config) {
+func NewTracker(funcs bittorrent.TrackerFuncs, cfg Config) {
 	return &Server{
-		ServerFuncs: funcs,
-		Config:      cfg,
+		TrackerFuncs: funcs,
+		Config:       cfg,
 	}
 }
 
-func (s *Server) Stop() {
-	s.grace.Stop(s.grace.Timeout)
-	<-s.grace.StopChan()
+func (t *Tracker) Stop() {
+	t.grace.Stop(t.grace.Timeout)
+	<-t.grace.StopChan()
 }
 
-func (s *Server) handler() {
+func (t *Tracker) handler() {
 	router := httprouter.New()
-	router.GET("/announce", s.announceRoute)
-	router.GET("/scrape", s.scrapeRoute)
+	router.GET("/announce", t.announceRoute)
+	router.GET("/scrape", t.scrapeRoute)
 	return server
 }
 
-func (s *Server) ListenAndServe() error {
-	s.grace = &graceful.Server{
+func (t *Tracker) ListenAndServe() error {
+	t.grace = &graceful.Server{
 		Server: &http.Server{
-			Addr:         s.Addr,
-			Handler:      s.handler(),
-			ReadTimeout:  s.ReadTimeout,
-			WriteTimeout: s.WriteTimeout,
+			Addr:         t.Addr,
+			Handler:      t.handler(),
+			ReadTimeout:  t.ReadTimeout,
+			WriteTimeout: t.WriteTimeout,
 		},
-		Timeout:          s.RequestTimeout,
+		Timeout:          t.RequestTimeout,
 		NoSignalHandling: true,
 		ConnState: func(conn net.Conn, state http.ConnState) {
 			switch state {
@@ -78,23 +78,23 @@ func (s *Server) ListenAndServe() error {
 			}
 		},
 	}
-	s.grace.SetKeepAlivesEnabled(false)
+	t.grace.SetKeepAlivesEnabled(false)
 
-	if err := s.grace.ListenAndServe(); err != nil {
+	if err := t.grace.ListenAndServe(); err != nil {
 		if opErr, ok := err.(*net.OpError); !ok || (ok && opErr.Op != "accept") {
 			panic("http: failed to gracefully run HTTP server: " + err.Error())
 		}
 	}
 }
 
-func (s *Server) announceRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	req, err := ParseAnnounce(r, s.RealIPHeader, s.AllowIPSpoofing)
+func (t *Tracker) announceRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	req, err := ParseAnnounce(r, t.RealIPHeader, t.AllowIPSpoofing)
 	if err != nil {
 		WriteError(w, err)
 		return
 	}
 
-	resp, err := s.HandleAnnounce(req)
+	resp, err := t.HandleAnnounce(req)
 	if err != nil {
 		WriteError(w, err)
 		return
@@ -106,19 +106,19 @@ func (s *Server) announceRoute(w http.ResponseWriter, r *http.Request, _ httprou
 		return
 	}
 
-	if s.AfterAnnounce != nil {
-		s.AfterAnnounce(req, resp)
+	if t.AfterAnnounce != nil {
+		t.AfterAnnounce(req, resp)
 	}
 }
 
-func (s *Server) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func (t *Tracker) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	req, err := ParseScrape(r)
 	if err != nil {
 		WriteError(w, err)
 		return
 	}
 
-	resp, err := s.HandleScrape(req)
+	resp, err := t.HandleScrape(req)
 	if err != nil {
 		WriteError(w, err)
 		return
@@ -130,7 +130,7 @@ func (s *Server) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httproute
 		return
 	}
 
-	if s.AfterScrape != nil {
-		s.AfterScrape(req, resp)
+	if t.AfterScrape != nil {
+		t.AfterScrape(req, resp)
 	}
 }

@@ -161,15 +161,16 @@ type ClientError string
 // Error implements the error interface for ClientError.
 func (c ClientError) Error() string { return string(c) }
 
-// Server represents an implementation of the BitTorrent tracker protocol.
-type Server interface {
+// Tracker represents an implementation of the BitTorrent tracker protocol.
+type Tracker interface {
 	ListenAndServe() error
 	Stop()
 }
 
-// ServerFuncs are the collection of protocol-agnostic functions used to handle
-// requests in a Server.
-type ServerFuncs struct {
+// TrackerFuncs is the collection of callback functions provided to a Tracker
+// to (1) generate a response from a parsed request, and (2) observe anything
+// after the response has been delivered to the client.
+type TrackerFuncs struct {
 	HandleAnnounce AnnounceHandler
 	HandleScrape   ScrapeHandler
 	AfterAnnounce  AnnounceCallback
