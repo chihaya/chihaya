@@ -14,9 +14,13 @@
 
 package bittorrent
 
-// NewClientID returns the part of a PeerID that identifies a peer's client
+// ClientID represents the part of a PeerID that identifies a Peer's client
 // software.
-func NewClientID(peerID string) (clientID string) {
+type ClientID string
+
+// NewClientID parses a ClientID from a PeerID.
+func NewClientID(peerID string) ClientID {
+	var clientID string
 	length := len(peerID)
 	if length >= 6 {
 		if peerID[0] == '-' {
@@ -28,5 +32,5 @@ func NewClientID(peerID string) (clientID string) {
 		}
 	}
 
-	return
+	return ClientID(clientID)
 }

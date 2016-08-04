@@ -17,10 +17,7 @@ package bittorrent
 import "testing"
 
 func TestClientID(t *testing.T) {
-	var clientTable = []struct {
-		peerID   string
-		clientID string
-	}{
+	var clientTable = []struct{ peerID, clientID string }{
 		{"-AZ3034-6wfG2wk6wWLc", "AZ3034"},
 		{"-AZ3042-6ozMq5q6Q3NX", "AZ3042"},
 		{"-BS5820-oy4La2MWGEFj", "BS5820"},
@@ -65,7 +62,7 @@ func TestClientID(t *testing.T) {
 	}
 
 	for _, tt := range clientTable {
-		if parsedID := NewClientID(tt.peerID); parsedID != tt.clientID {
+		if parsedID := NewClientID(tt.peerID); parsedID != ClientID(tt.clientID) {
 			t.Error("Incorrectly parsed peer ID", tt.peerID, "as", parsedID)
 		}
 	}
