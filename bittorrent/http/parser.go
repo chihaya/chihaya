@@ -81,7 +81,10 @@ func ParseAnnounce(r *http.Request, realIPHeader string, allowIPSpoofing bool) (
 		return nil, bittorrent.ClientError("failed to parse parameter: uploaded")
 	}
 
-	numwant, _ := qp.Uint64("numwant")
+	numwant, err := qp.Uint64("numwant")
+	if err != nil {
+		return nil, bittorrent.ClientError("failed to parse parameter: numwant")
+	}
 	request.NumWant = int32(numwant)
 
 	port, err := qp.Uint64("port")
