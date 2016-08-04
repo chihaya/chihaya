@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package bittorrent implements all of the abstractions used to decouple the
+// protocol of a BitTorrent tracker from the logic of handling Announces and
+// Scrapes.
 package bittorrent
 
 import (

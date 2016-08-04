@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package udp implements a BitTorrent tracker via the UDP protocol as
+// described in BEP 15.
 package udp
 
 import (
@@ -38,6 +40,7 @@ type Config struct {
 	AllowIPSpoofing bool
 }
 
+// Tracker holds the state of a UDP BitTorrent Tracker.
 type Tracker struct {
 	sock    *net.UDPConn
 	closing chan struct{}
@@ -47,6 +50,7 @@ type Tracker struct {
 	Config
 }
 
+// NewTracker allocates a new instance of a Tracker.
 func NewTracker(funcs bittorrent.TrackerFuncs, cfg Config) {
 	return &Tracker{
 		closing:      make(chan struct{}),
@@ -55,12 +59,15 @@ func NewTracker(funcs bittorrent.TrackerFuncs, cfg Config) {
 	}
 }
 
+// Stop provides a thread-safe way to shutdown a currently running Tracker.
 func (t *Tracker) Stop() {
 	close(t.closing)
 	t.sock.SetReadDeadline(time.Now())
 	t.wg.Wait()
 }
 
+// ListenAndServe listens on the UDP network address t.Addr and blocks serving
+// BitTorrent requests until t.Stop() is called or an error is returned.
 func (t *Tracker) ListenAndServe() error {
 	udpAddr, err := net.ResolveUDPAddr("udp", t.Addr)
 	if err != nil {
@@ -126,22 +133,27 @@ func (t *Tracker) ListenAndServe() error {
 	}
 }
 
+// Request represents a UDP payload received by a Tracker.
 type Request struct {
 	Packet []byte
 	IP     net.IP
 }
 
+// ResponseWriter implements the ability to respond to a Request via the
+// io.Writer interface.
 type ResponseWriter struct {
 	socket net.UDPConn
 	addr   net.UDPAddr
 }
 
+// Write implements the io.Writer interface for a ResponseWriter.
 func (w *ResponseWriter) Write(b []byte) (int, error) {
 	w.socket.WriteToUDP(b, w.addr)
 	return len(b), nil
 }
 
-func (t *Tracker) handlePacket(r *Request, w *ResponseWriter) (response []byte, actionName string, err error) {
+// handleRequest parses and responds to a UDP Request.
+func (t *Tracker) handleRequest(r *Request, w *ResponseWriter) (response []byte, actionName string, err error) {
 	if len(r.packet) < 16 {
 		// Malformed, no client packets are less than 16 bytes.
 		// We explicitly return nothing in case this is a DoS attempt.

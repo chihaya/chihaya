@@ -12,8 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package http implements a BitTorrent tracker via the HTTP protocol as
+// described in BEP 3 and BEP 23.
 package http
 
+// Config represents all of the configurable options for an HTTP BitTorrent
+// Tracker.
 type Config struct {
 	Addr            string
 	ReadTimeout     time.Duration
@@ -23,6 +27,7 @@ type Config struct {
 	RealIPHeader    string
 }
 
+// Tracker holds the state of an HTTP BitTorrent Tracker.
 type Tracker struct {
 	grace *graceful.Server
 
@@ -30,6 +35,7 @@ type Tracker struct {
 	Config
 }
 
+// NewTracker allocates a new instance of a Tracker.
 func NewTracker(funcs bittorrent.TrackerFuncs, cfg Config) {
 	return &Server{
 		TrackerFuncs: funcs,
@@ -37,6 +43,7 @@ func NewTracker(funcs bittorrent.TrackerFuncs, cfg Config) {
 	}
 }
 
+// Stop provides a thread-safe way to shutdown a currently running Tracker.
 func (t *Tracker) Stop() {
 	t.grace.Stop(t.grace.Timeout)
 	<-t.grace.StopChan()
@@ -49,6 +56,8 @@ func (t *Tracker) handler() {
 	return server
 }
 
+// ListenAndServe listens on the TCP network address t.Addr and blocks serving
+// BitTorrent requests until t.Stop() is called or an error is returned.
 func (t *Tracker) ListenAndServe() error {
 	t.grace = &graceful.Server{
 		Server: &http.Server{
@@ -87,6 +96,7 @@ func (t *Tracker) ListenAndServe() error {
 	}
 }
 
+// announceRoute parses and responds to an Announce by using t.TrackerFuncs.
 func (t *Tracker) announceRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	req, err := ParseAnnounce(r, t.RealIPHeader, t.AllowIPSpoofing)
 	if err != nil {
@@ -111,6 +121,7 @@ func (t *Tracker) announceRoute(w http.ResponseWriter, r *http.Request, _ httpro
 	}
 }
 
+// scrapeRoute parses and responds to a Scrape by using t.TrackerFuncs.
 func (t *Tracker) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	req, err := ParseScrape(r)
 	if err != nil {
