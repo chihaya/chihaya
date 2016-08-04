@@ -34,6 +34,16 @@ var promResponseDurationMilliseconds = prometheus.NewHistogramVec(
 	[]string{"action", "error"},
 )
 
+// recordResponseDuration records the duration of time to respond to a UDP
+// Request in milliseconds .
+func recordResponseDuration(action, err error, duration time.Duration) {
+	promResponseDurationMilliseconds.
+		WithLabelValues(action, err.Error()).
+		Observe(float64(duration.Nanoseconds()) / float64(time.Millisecond))
+}
+
+// Config represents all of the configurable options for a UDP BitTorrent
+// Tracker.
 type Config struct {
 	Addr            string
 	PrivateKey      string
@@ -110,26 +120,24 @@ func (t *Tracker) ListenAndServe() error {
 			continue
 		}
 
-		log.Println("Got UDP packet")
-		start := time.Now()
+		log.Println("Got UDP Request")
 		t.wg.Add(1)
 		go func(start time.Time) {
 			defer t.wg.Done()
 			defer pool.Put(buffer)
 
-			// Handle the response.
-			response, action, err := t.handlePacket(buffer[:n], addr)
-			log.Printf("Handled UDP packet: %s, %s, %s\n", response, action, err)
+			// Handle the request.
+			start := time.Now()
+			response, action, err := t.handleRequest(&Request{buffer[:n], addr.IP})
+			log.Printf("Handled UDP Request: %s, %s, %s\n", response, action, err)
 
-			// Record to Prometheus the time in milliseconds to receive, handle, and
-			// respond to the request.
-			duration := time.Since(start)
+			// Record to the duration of time used to respond to the request.
+			var errString string
 			if err != nil {
-				promResponseDurationMilliseconds.WithLabelValues(action, err.Error()).Observe(float64(duration.Nanoseconds()) / float64(time.Millisecond))
-			} else {
-				promResponseDurationMilliseconds.WithLabelValues(action, "").Observe(float64(duration.Nanoseconds()) / float64(time.Millisecond))
+				errString = err.Error()
 			}
-		}(start)
+			recordResponseDuration(action, errString, time.Since(start))
+		}()
 	}
 }
 
@@ -207,7 +215,7 @@ func (t *Tracker) handleRequest(r *Request, w *ResponseWriter) (response []byte,
 		WriteAnnounce(w, txID, resp)
 
 		if t.AfterAnnounce != nil {
-			t.AfterAnnounce(req, resp)
+			go t.AfterAnnounce(req, resp)
 		}
 
 		return
@@ -233,7 +241,7 @@ func (t *Tracker) handleRequest(r *Request, w *ResponseWriter) (response []byte,
 		WriteScrape(w, txID, resp)
 
 		if t.AfterScrape != nil {
-			t.AfterScrape(req, resp)
+			go t.AfterScrape(req, resp)
 		}
 
 		return

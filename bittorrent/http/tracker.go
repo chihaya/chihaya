@@ -16,6 +16,23 @@
 // described in BEP 3 and BEP 23.
 package http
 
+var promResponseDurationMilliseconds = prometheus.NewHistogramVec(
+	prometheus.HistogramOpts{
+		Name:    "trakr_http_response_duration_milliseconds",
+		Help:    "The duration of time it takes to receive and write a response to an API request",
+		Buckets: prometheus.ExponentialBuckets(9.375, 2, 10),
+	},
+	[]string{"action", "error"},
+)
+
+// recordResponseDuration records the duration of time to respond to a UDP
+// Request in milliseconds .
+func recordResponseDuration(action, err error, duration time.Duration) {
+	promResponseDurationMilliseconds.
+		WithLabelValues(action, err.Error()).
+		Observe(float64(duration.Nanoseconds()) / float64(time.Millisecond))
+}
+
 // Config represents all of the configurable options for an HTTP BitTorrent
 // Tracker.
 type Config struct {
@@ -98,6 +115,15 @@ func (t *Tracker) ListenAndServe() error {
 
 // announceRoute parses and responds to an Announce by using t.TrackerFuncs.
 func (t *Tracker) announceRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	start := time.Now()
+	defer func() {
+		var errString string
+		if err != nil {
+			errString = err.Error()
+		}
+		recordResponseDuration("announce", errString, time.Since(start))
+	}()
+
 	req, err := ParseAnnounce(r, t.RealIPHeader, t.AllowIPSpoofing)
 	if err != nil {
 		WriteError(w, err)
@@ -117,12 +143,22 @@ func (t *Tracker) announceRoute(w http.ResponseWriter, r *http.Request, _ httpro
 	}
 
 	if t.AfterAnnounce != nil {
-		t.AfterAnnounce(req, resp)
+		go t.AfterAnnounce(req, resp)
 	}
+	recordResponseDuration("announce")
 }
 
 // scrapeRoute parses and responds to a Scrape by using t.TrackerFuncs.
 func (t *Tracker) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	start := time.Now()
+	defer func() {
+		var errString string
+		if err != nil {
+			errString = err.Error()
+		}
+		recordResponseDuration("scrape", errString, time.Since(start))
+	}()
+
 	req, err := ParseScrape(r)
 	if err != nil {
 		WriteError(w, err)
@@ -142,6 +178,6 @@ func (t *Tracker) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprout
 	}
 
 	if t.AfterScrape != nil {
-		t.AfterScrape(req, resp)
+		go t.AfterScrape(req, resp)
 	}
 }
