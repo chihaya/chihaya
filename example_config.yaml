@@ -1,7 +1,10 @@
 trakr:
   announce_interval: 15m
+  gc_interval: 15m
+  gc_expiration: 15m
   allow_ip_spoofing: true
   default_num_want: 50
+  prometheus_addr: localhost:6880
 
   http:
     addr: 0.0.0.0:6881

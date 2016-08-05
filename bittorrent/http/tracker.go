@@ -29,6 +29,11 @@ import (
 	"github.com/jzelinskie/trakr/bittorrent"
 )
 
+func init() {
+	prometheus.MustRegister(promResponseDurationMilliseconds)
+	recordResponseDuration("action", nil, time.Second)
+}
+
 var promResponseDurationMilliseconds = prometheus.NewHistogramVec(
 	prometheus.HistogramOpts{
 		Name:    "trakr_http_response_duration_milliseconds",

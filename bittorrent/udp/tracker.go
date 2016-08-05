@@ -31,6 +31,11 @@ import (
 	"github.com/jzelinskie/trakr/bittorrent/udp/bytepool"
 )
 
+func init() {
+	prometheus.MustRegister(promResponseDurationMilliseconds)
+	recordResponseDuration("action", nil, time.Second)
+}
+
 var promResponseDurationMilliseconds = prometheus.NewHistogramVec(
 	prometheus.HistogramOpts{
 		Name:    "trakr_udp_response_duration_milliseconds",
