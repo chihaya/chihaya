@@ -19,10 +19,16 @@ package udp
 import (
 	"bytes"
 	"encoding/binary"
+	"log"
 	"net"
+	"sync"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"golang.org/x/net/context"
+
 	"github.com/jzelinskie/trakr/bittorrent"
+	"github.com/jzelinskie/trakr/bittorrent/udp/bytepool"
 )
 
 var promResponseDurationMilliseconds = prometheus.NewHistogramVec(
@@ -36,9 +42,14 @@ var promResponseDurationMilliseconds = prometheus.NewHistogramVec(
 
 // recordResponseDuration records the duration of time to respond to a UDP
 // Request in milliseconds .
-func recordResponseDuration(action, err error, duration time.Duration) {
+func recordResponseDuration(action string, err error, duration time.Duration) {
+	var errString string
+	if err != nil {
+		errString = err.Error()
+	}
+
 	promResponseDurationMilliseconds.
-		WithLabelValues(action, err.Error()).
+		WithLabelValues(action, errString).
 		Observe(float64(duration.Nanoseconds()) / float64(time.Millisecond))
 }
 
@@ -47,12 +58,13 @@ func recordResponseDuration(action, err error, duration time.Duration) {
 type Config struct {
 	Addr            string
 	PrivateKey      string
+	MaxClockSkew    time.Duration
 	AllowIPSpoofing bool
 }
 
 // Tracker holds the state of a UDP BitTorrent Tracker.
 type Tracker struct {
-	sock    *net.UDPConn
+	socket  *net.UDPConn
 	closing chan struct{}
 	wg      sync.WaitGroup
 
@@ -61,7 +73,7 @@ type Tracker struct {
 }
 
 // NewTracker allocates a new instance of a Tracker.
-func NewTracker(funcs bittorrent.TrackerFuncs, cfg Config) {
+func NewTracker(funcs bittorrent.TrackerFuncs, cfg Config) *Tracker {
 	return &Tracker{
 		closing:      make(chan struct{}),
 		TrackerFuncs: funcs,
@@ -72,7 +84,7 @@ func NewTracker(funcs bittorrent.TrackerFuncs, cfg Config) {
 // Stop provides a thread-safe way to shutdown a currently running Tracker.
 func (t *Tracker) Stop() {
 	close(t.closing)
-	t.sock.SetReadDeadline(time.Now())
+	t.socket.SetReadDeadline(time.Now())
 	t.wg.Wait()
 }
 
@@ -84,11 +96,11 @@ func (t *Tracker) ListenAndServe() error {
 		return err
 	}
 
-	t.sock, err = net.ListenUDP("udp", udpAddr)
+	t.socket, err = net.ListenUDP("udp", udpAddr)
 	if err != nil {
 		return err
 	}
-	defer t.sock.Close()
+	defer t.socket.Close()
 
 	pool := bytepool.New(256, 2048)
 
@@ -103,8 +115,8 @@ func (t *Tracker) ListenAndServe() error {
 
 		// Read a UDP packet into a reusable buffer.
 		buffer := pool.Get()
-		t.sock.SetReadDeadline(time.Now().Add(time.Second))
-		n, addr, err := t.sock.ReadFromUDP(buffer)
+		t.socket.SetReadDeadline(time.Now().Add(time.Second))
+		n, addr, err := t.socket.ReadFromUDP(buffer)
 		if err != nil {
 			pool.Put(buffer)
 			if netErr, ok := err.(net.Error); ok && netErr.Temporary() {
@@ -122,21 +134,18 @@ func (t *Tracker) ListenAndServe() error {
 
 		log.Println("Got UDP Request")
 		t.wg.Add(1)
-		go func(start time.Time) {
+		go func() {
 			defer t.wg.Done()
 			defer pool.Put(buffer)
 
 			// Handle the request.
 			start := time.Now()
-			response, action, err := t.handleRequest(&Request{buffer[:n], addr.IP})
+			response, action, err := t.handleRequest(
+				Request{buffer[:n], addr.IP},
+				ResponseWriter{t.socket, addr},
+			)
 			log.Printf("Handled UDP Request: %s, %s, %s\n", response, action, err)
-
-			// Record to the duration of time used to respond to the request.
-			var errString string
-			if err != nil {
-				errString = err.Error()
-			}
-			recordResponseDuration(action, errString, time.Since(start))
+			recordResponseDuration(action, err, time.Since(start))
 		}()
 	}
 }
@@ -150,19 +159,19 @@ type Request struct {
 // ResponseWriter implements the ability to respond to a Request via the
 // io.Writer interface.
 type ResponseWriter struct {
-	socket net.UDPConn
-	addr   net.UDPAddr
+	socket *net.UDPConn
+	addr   *net.UDPAddr
 }
 
 // Write implements the io.Writer interface for a ResponseWriter.
-func (w *ResponseWriter) Write(b []byte) (int, error) {
+func (w ResponseWriter) Write(b []byte) (int, error) {
 	w.socket.WriteToUDP(b, w.addr)
 	return len(b), nil
 }
 
 // handleRequest parses and responds to a UDP Request.
-func (t *Tracker) handleRequest(r *Request, w *ResponseWriter) (response []byte, actionName string, err error) {
-	if len(r.packet) < 16 {
+func (t *Tracker) handleRequest(r Request, w ResponseWriter) (response []byte, actionName string, err error) {
+	if len(r.Packet) < 16 {
 		// Malformed, no client packets are less than 16 bytes.
 		// We explicitly return nothing in case this is a DoS attempt.
 		err = errMalformedPacket
@@ -170,13 +179,13 @@ func (t *Tracker) handleRequest(r *Request, w *ResponseWriter) (response []byte,
 	}
 
 	// Parse the headers of the UDP packet.
-	connID := r.packet[0:8]
-	actionID := binary.BigEndian.Uint32(r.packet[8:12])
-	txID := r.packet[12:16]
+	connID := r.Packet[0:8]
+	actionID := binary.BigEndian.Uint32(r.Packet[8:12])
+	txID := r.Packet[12:16]
 
 	// If this isn't requesting a new connection ID and the connection ID is
 	// invalid, then fail.
-	if actionID != connectActionID && !ValidConnectionID(connID, r.IP, time.Now(), t.PrivateKey) {
+	if actionID != connectActionID && !ValidConnectionID(connID, r.IP, time.Now(), t.MaxClockSkew, t.PrivateKey) {
 		err = errBadConnectionID
 		WriteError(w, txID, err)
 		return
@@ -206,7 +215,7 @@ func (t *Tracker) handleRequest(r *Request, w *ResponseWriter) (response []byte,
 		}
 
 		var resp *bittorrent.AnnounceResponse
-		resp, err = t.HandleAnnounce(req)
+		resp, err = t.HandleAnnounce(context.TODO(), req)
 		if err != nil {
 			WriteError(w, txID, err)
 			return
@@ -231,8 +240,7 @@ func (t *Tracker) handleRequest(r *Request, w *ResponseWriter) (response []byte,
 		}
 
 		var resp *bittorrent.ScrapeResponse
-		ctx := context.TODO()
-		resp, err = t.HandleScrape(ctx, req)
+		resp, err = t.HandleScrape(context.TODO(), req)
 		if err != nil {
 			WriteError(w, txID, err)
 			return

@@ -18,8 +18,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/jzelinskie/trakr/bittorrent"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/jzelinskie/trakr/bittorrent"
 )
 
 func TestWriteError(t *testing.T) {

@@ -18,6 +18,7 @@ import (
 	"net/http"
 
 	"github.com/jzelinskie/trakr/bittorrent"
+	"github.com/jzelinskie/trakr/bittorrent/http/bencode"
 )
 
 // WriteError communicates an error to a BitTorrent client over HTTP.

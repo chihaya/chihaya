@@ -20,6 +20,8 @@ package bittorrent
 import (
 	"net"
 	"time"
+
+	"golang.org/x/net/context"
 )
 
 // PeerID represents a peer ID.
@@ -107,7 +109,7 @@ type AnnounceResponse struct {
 }
 
 // AnnounceHandler is a function that generates a response for an Announce.
-type AnnounceHandler func(*AnnounceRequest) *AnnounceResponse
+type AnnounceHandler func(context.Context, *AnnounceRequest) (*AnnounceResponse, error)
 
 // AnnounceCallback is a function that does something with the results of an
 // Announce after it has been completed.
@@ -132,7 +134,7 @@ type Scrape struct {
 }
 
 // ScrapeHandler is a function that generates a response for a Scrape.
-type ScrapeHandler func(*ScrapeRequest) *ScrapeResponse
+type ScrapeHandler func(context.Context, *ScrapeRequest) (*ScrapeResponse, error)
 
 // ScrapeCallback is a function that does something with the results of a
 // Scrape after it has been completed.
@@ -152,9 +154,9 @@ func (p Peer) Equal(x Peer) bool { return p.EqualEndpoint(x) && p.ID == x.ID }
 // EqualEndpoint reports whether p and x have the same endpoint.
 func (p Peer) EqualEndpoint(x Peer) bool { return p.Port == x.Port && p.IP.Equal(x.IP) }
 
-// Params is used to fetch request optional parameters.
+// Params is used to fetch request optional parameters from an Announce.
 type Params interface {
-	String(key string) (string, error)
+	String(key string) (string, bool)
 }
 
 // ClientError represents an error that should be exposed to the client over

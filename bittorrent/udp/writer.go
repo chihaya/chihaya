@@ -18,58 +18,59 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/jzelinskie/trakr/bittorrent"
 )
 
 // WriteError writes the failure reason as a null-terminated string.
-func WriteError(writer io.Writer, txID []byte, err error) {
+func WriteError(w io.Writer, txID []byte, err error) {
 	// If the client wasn't at fault, acknowledge it.
 	if _, ok := err.(bittorrent.ClientError); !ok {
 		err = fmt.Errorf("internal error occurred: %s", err.Error())
 	}
 
 	var buf bytes.Buffer
-	writeHeader(buf, txID, errorActionID)
+	writeHeader(&buf, txID, errorActionID)
 	buf.WriteString(err.Error())
 	buf.WriteRune('\000')
-	writer.Write(buf.Bytes())
+	w.Write(buf.Bytes())
 }
 
 // WriteAnnounce encodes an announce response according to BEP 15.
-func WriteAnnounce(respBuf *bytes.Buffer, txID []byte, resp *bittorrent.AnnounceResponse) {
-	writeHeader(respBuf, txID, announceActionID)
-	binary.Write(respBuf, binary.BigEndian, uint32(resp.Interval/time.Second))
-	binary.Write(respBuf, binary.BigEndian, uint32(resp.Incomplete))
-	binary.Write(respBuf, binary.BigEndian, uint32(resp.Complete))
+func WriteAnnounce(w io.Writer, txID []byte, resp *bittorrent.AnnounceResponse) {
+	writeHeader(w, txID, announceActionID)
+	binary.Write(w, binary.BigEndian, uint32(resp.Interval/time.Second))
+	binary.Write(w, binary.BigEndian, uint32(resp.Incomplete))
+	binary.Write(w, binary.BigEndian, uint32(resp.Complete))
 
 	for _, peer := range resp.IPv4Peers {
-		respBuf.Write(peer.IP)
-		binary.Write(respBuf, binary.BigEndian, peer.Port)
+		w.Write(peer.IP)
+		binary.Write(w, binary.BigEndian, peer.Port)
 	}
 }
 
 // WriteScrape encodes a scrape response according to BEP 15.
-func WriteScrape(respBuf *bytes.Buffer, txID []byte, resp *bittorrent.ScrapeResponse) {
-	writeHeader(respBuf, txID, scrapeActionID)
+func WriteScrape(w io.Writer, txID []byte, resp *bittorrent.ScrapeResponse) {
+	writeHeader(w, txID, scrapeActionID)
 
 	for _, scrape := range resp.Files {
-		binary.Write(respBuf, binary.BigEndian, scrape.Complete)
-		binary.Write(respBuf, binary.BigEndian, scrape.Snatches)
-		binary.Write(respBuf, binary.BigEndian, scrape.Incomplete)
+		binary.Write(w, binary.BigEndian, scrape.Complete)
+		binary.Write(w, binary.BigEndian, scrape.Snatches)
+		binary.Write(w, binary.BigEndian, scrape.Incomplete)
 	}
 }
 
 // WriteConnectionID encodes a new connection response according to BEP 15.
-func WriteConnectionID(respBuf *bytes.Buffer, txID, connID []byte) {
-	writeHeader(respBuf, txID, connectActionID)
-	respBuf.Write(connID)
+func WriteConnectionID(w io.Writer, txID, connID []byte) {
+	writeHeader(w, txID, connectActionID)
+	w.Write(connID)
 }
 
 // writeHeader writes the action and transaction ID to the provided response
 // buffer.
-func writeHeader(respBuf *bytes.Buffer, txID []byte, action uint32) {
-	binary.Write(respBuf, binary.BigEndian, action)
-	respBuf.Write(txID)
+func writeHeader(w io.Writer, txID []byte, action uint32) {
+	binary.Write(w, binary.BigEndian, action)
+	w.Write(txID)
 }

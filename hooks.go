@@ -14,13 +14,19 @@
 
 package trakr
 
-import "github.com/jzelinskie/trakr/bittorrent"
+import (
+	"fmt"
+
+	"golang.org/x/net/context"
+
+	"github.com/jzelinskie/trakr/bittorrent"
+)
 
 // Hook abstracts the concept of anything that needs to interact with a
 // BitTorrent client's request and response to a BitTorrent tracker.
 type Hook interface {
-	HandleAnnounce(context.Context, bittorrent.AnnounceRequest, bittorrent.AnnounceResponse) error
-	HandleScrape(context.Context, bittorrent.ScrapeRequest, bittorrent.ScrapeResponse) error
+	HandleAnnounce(context.Context, *bittorrent.AnnounceRequest, *bittorrent.AnnounceResponse) error
+	HandleScrape(context.Context, *bittorrent.ScrapeRequest, *bittorrent.ScrapeResponse) error
 }
 
 // HookConstructor is a function used to create a new instance of a Hook.
@@ -36,7 +42,7 @@ func RegisterPreHook(name string, con HookConstructor) {
 	if con == nil {
 		panic("trakr: could not register nil HookConstructor")
 	}
-	if _, dup := constructors[name]; dup {
+	if _, dup := preHooks[name]; dup {
 		panic("trakr: could not register duplicate HookConstructor: " + name)
 	}
 	preHooks[name] = con
@@ -61,7 +67,7 @@ func RegisterPostHook(name string, con HookConstructor) {
 	if con == nil {
 		panic("trakr: could not register nil HookConstructor")
 	}
-	if _, dup := constructors[name]; dup {
+	if _, dup := postHooks[name]; dup {
 		panic("trakr: could not register duplicate HookConstructor: " + name)
 	}
 	preHooks[name] = con

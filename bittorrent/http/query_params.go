@@ -40,14 +40,14 @@ type QueryParams struct {
 }
 
 // NewQueryParams parses a raw URL query.
-func NewQueryParams(query string) (*Query, error) {
+func NewQueryParams(query string) (*QueryParams, error) {
 	var (
 		keyStart, keyEnd int
 		valStart, valEnd int
 
 		onKey = true
 
-		q = &Query{
+		q = &QueryParams{
 			query:      query,
 			infoHashes: nil,
 			params:     make(map[string]string),
@@ -111,18 +111,15 @@ func NewQueryParams(query string) (*Query, error) {
 
 // String returns a string parsed from a query. Every key can be returned as a
 // string because they are encoded in the URL as strings.
-func (q *Query) String(key string) (string, error) {
-	val, exists := q.params[key]
-	if !exists {
-		return "", ErrKeyNotFound
-	}
-	return val, nil
+func (qp *QueryParams) String(key string) (string, bool) {
+	value, ok := qp.params[key]
+	return value, ok
 }
 
 // Uint64 returns a uint parsed from a query. After being called, it is safe to
 // cast the uint64 to your desired length.
-func (q *Query) Uint64(key string) (uint64, error) {
-	str, exists := q.params[key]
+func (qp *QueryParams) Uint64(key string) (uint64, error) {
+	str, exists := qp.params[key]
 	if !exists {
 		return 0, ErrKeyNotFound
 	}
@@ -136,6 +133,6 @@ func (q *Query) Uint64(key string) (uint64, error) {
 }
 
 // InfoHashes returns a list of requested infohashes.
-func (q *Query) InfoHashes() []bittorrent.InfoHash {
-	return q.infoHashes
+func (qp *QueryParams) InfoHashes() []bittorrent.InfoHash {
+	return qp.infoHashes
 }

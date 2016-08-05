@@ -63,35 +63,35 @@ var (
 //
 // If allowIPSpoofing is true, IPs provided via params will be used.
 func ParseAnnounce(r Request, allowIPSpoofing bool) (*bittorrent.AnnounceRequest, error) {
-	if len(r.packet) < 98 {
+	if len(r.Packet) < 98 {
 		return nil, errMalformedPacket
 	}
 
-	infohash := r.packet[16:36]
-	peerID := r.packet[36:56]
-	downloaded := binary.BigEndian.Uint64(r.packet[56:64])
-	left := binary.BigEndian.Uint64(r.packet[64:72])
-	uploaded := binary.BigEndian.Uint64(r.packet[72:80])
+	infohash := r.Packet[16:36]
+	peerID := r.Packet[36:56]
+	downloaded := binary.BigEndian.Uint64(r.Packet[56:64])
+	left := binary.BigEndian.Uint64(r.Packet[64:72])
+	uploaded := binary.BigEndian.Uint64(r.Packet[72:80])
 
-	eventID := int(r.packet[83])
+	eventID := int(r.Packet[83])
 	if eventID >= len(eventIDs) {
 		return nil, errMalformedEvent
 	}
 
 	ip := r.IP
-	ipbytes := r.packet[84:88]
+	ipbytes := r.Packet[84:88]
 	if allowIPSpoofing {
 		ip = net.IP(ipbytes)
 	}
-	if !allowIPSpoofing && r.ip == nil {
+	if !allowIPSpoofing && r.IP == nil {
 		// We have no IP address to fallback on.
 		return nil, errMalformedIP
 	}
 
-	numWant := binary.BigEndian.Uint32(r.packet[92:96])
-	port := binary.BigEndian.Uint16(r.packet[96:98])
+	numWant := binary.BigEndian.Uint32(r.Packet[92:96])
+	port := binary.BigEndian.Uint16(r.Packet[96:98])
 
-	params, err := handleOptionalParameters(r.packet)
+	params, err := handleOptionalParameters(r.Packet)
 	if err != nil {
 		return nil, err
 	}
@@ -152,24 +152,24 @@ func handleOptionalParameters(packet []byte) (params bittorrent.Params, err erro
 }
 
 // ParseScrape parses a ScrapeRequest from a UDP request.
-func parseScrape(r Request) (*bittorrent.ScrapeRequest, error) {
+func ParseScrape(r Request) (*bittorrent.ScrapeRequest, error) {
 	// If a scrape isn't at least 36 bytes long, it's malformed.
-	if len(r.packet) < 36 {
+	if len(r.Packet) < 36 {
 		return nil, errMalformedPacket
 	}
 
 	// Skip past the initial headers and check that the bytes left equal the
 	// length of a valid list of infohashes.
-	r.packet = r.packet[16:]
-	if len(r.packet)%20 != 0 {
+	r.Packet = r.Packet[16:]
+	if len(r.Packet)%20 != 0 {
 		return nil, errMalformedPacket
 	}
 
 	// Allocate a list of infohashes and append it to the list until we're out.
 	var infohashes []bittorrent.InfoHash
-	for len(r.packet) >= 20 {
-		infohashes = append(infohashes, bittorrent.InfoHashFromBytes(r.packet[:20]))
-		r.packet = r.packet[20:]
+	for len(r.Packet) >= 20 {
+		infohashes = append(infohashes, bittorrent.InfoHashFromBytes(r.Packet[:20]))
+		r.Packet = r.Packet[20:]
 	}
 
 	return &bittorrent.ScrapeRequest{

@@ -16,6 +16,19 @@
 // described in BEP 3 and BEP 23.
 package http
 
+import (
+	"net"
+	"net/http"
+	"time"
+
+	"github.com/julienschmidt/httprouter"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/tylerb/graceful"
+	"golang.org/x/net/context"
+
+	"github.com/jzelinskie/trakr/bittorrent"
+)
+
 var promResponseDurationMilliseconds = prometheus.NewHistogramVec(
 	prometheus.HistogramOpts{
 		Name:    "trakr_http_response_duration_milliseconds",
@@ -27,9 +40,14 @@ var promResponseDurationMilliseconds = prometheus.NewHistogramVec(
 
 // recordResponseDuration records the duration of time to respond to a UDP
 // Request in milliseconds .
-func recordResponseDuration(action, err error, duration time.Duration) {
+func recordResponseDuration(action string, err error, duration time.Duration) {
+	var errString string
+	if err != nil {
+		errString = err.Error()
+	}
+
 	promResponseDurationMilliseconds.
-		WithLabelValues(action, err.Error()).
+		WithLabelValues(action, errString).
 		Observe(float64(duration.Nanoseconds()) / float64(time.Millisecond))
 }
 
@@ -53,8 +71,8 @@ type Tracker struct {
 }
 
 // NewTracker allocates a new instance of a Tracker.
-func NewTracker(funcs bittorrent.TrackerFuncs, cfg Config) {
-	return &Server{
+func NewTracker(funcs bittorrent.TrackerFuncs, cfg Config) *Tracker {
+	return &Tracker{
 		TrackerFuncs: funcs,
 		Config:       cfg,
 	}
@@ -66,11 +84,11 @@ func (t *Tracker) Stop() {
 	<-t.grace.StopChan()
 }
 
-func (t *Tracker) handler() {
+func (t *Tracker) handler() http.Handler {
 	router := httprouter.New()
 	router.GET("/announce", t.announceRoute)
 	router.GET("/scrape", t.scrapeRoute)
-	return server
+	return router
 }
 
 // ListenAndServe listens on the TCP network address t.Addr and blocks serving
@@ -111,18 +129,15 @@ func (t *Tracker) ListenAndServe() error {
 			panic("http: failed to gracefully run HTTP server: " + err.Error())
 		}
 	}
+
+	return nil
 }
 
 // announceRoute parses and responds to an Announce by using t.TrackerFuncs.
 func (t *Tracker) announceRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	var err error
 	start := time.Now()
-	defer func() {
-		var errString string
-		if err != nil {
-			errString = err.Error()
-		}
-		recordResponseDuration("announce", errString, time.Since(start))
-	}()
+	defer recordResponseDuration("announce", err, time.Since(start))
 
 	req, err := ParseAnnounce(r, t.RealIPHeader, t.AllowIPSpoofing)
 	if err != nil {
@@ -130,7 +145,7 @@ func (t *Tracker) announceRoute(w http.ResponseWriter, r *http.Request, _ httpro
 		return
 	}
 
-	resp, err := t.HandleAnnounce(req)
+	resp, err := t.HandleAnnounce(context.TODO(), req)
 	if err != nil {
 		WriteError(w, err)
 		return
@@ -145,19 +160,13 @@ func (t *Tracker) announceRoute(w http.ResponseWriter, r *http.Request, _ httpro
 	if t.AfterAnnounce != nil {
 		go t.AfterAnnounce(req, resp)
 	}
-	recordResponseDuration("announce")
 }
 
 // scrapeRoute parses and responds to a Scrape by using t.TrackerFuncs.
 func (t *Tracker) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+	var err error
 	start := time.Now()
-	defer func() {
-		var errString string
-		if err != nil {
-			errString = err.Error()
-		}
-		recordResponseDuration("scrape", errString, time.Since(start))
-	}()
+	defer recordResponseDuration("scrape", err, time.Since(start))
 
 	req, err := ParseScrape(r)
 	if err != nil {
@@ -165,7 +174,7 @@ func (t *Tracker) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprout
 		return
 	}
 
-	resp, err := t.HandleScrape(req)
+	resp, err := t.HandleScrape(context.TODO(), req)
 	if err != nil {
 		WriteError(w, err)
 		return

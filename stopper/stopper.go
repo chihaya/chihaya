@@ -4,11 +4,11 @@ import (
 	"sync"
 )
 
-// AlreadyStopped is a closed error channel to be used by StopperFuncs when
+// AlreadyStopped is a closed error channel to be used by Funcs when
 // an element was already stopped.
 var AlreadyStopped <-chan error
 
-// AlreadyStoppedFunc is a StopperFunc that returns AlreadyStopped.
+// AlreadyStoppedFunc is a Func that returns AlreadyStopped.
 var AlreadyStoppedFunc = func() <-chan error { return AlreadyStopped }
 
 func init() {
@@ -30,7 +30,7 @@ type Stopper interface {
 
 // StopGroup is a group that can be stopped.
 type StopGroup struct {
-	stoppables     []StopperFunc
+	stoppables     []Func
 	stoppablesLock sync.Mutex
 }
 
@@ -40,7 +40,7 @@ type Func func() <-chan error
 // NewStopGroup creates a new StopGroup.
 func NewStopGroup() *StopGroup {
 	return &StopGroup{
-		stoppables: make([]StopperFunc, 0),
+		stoppables: make([]Func, 0),
 	}
 }
 
@@ -53,9 +53,9 @@ func (cg *StopGroup) Add(toAdd Stopper) {
 	cg.stoppables = append(cg.stoppables, toAdd.Stop)
 }
 
-// AddFunc adds a StopperFunc to the StopGroup.
-// On the next call to Stop(), the StopperFunc will be called.
-func (cg *StopGroup) AddFunc(toAddFunc StopperFunc) {
+// AddFunc adds a Func to the StopGroup.
+// On the next call to Stop(), the Func will be called.
+func (cg *StopGroup) AddFunc(toAddFunc Func) {
 	cg.stoppablesLock.Lock()
 	defer cg.stoppablesLock.Unlock()
 

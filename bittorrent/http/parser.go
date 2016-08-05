@@ -32,14 +32,9 @@ func ParseAnnounce(r *http.Request, realIPHeader string, allowIPSpoofing bool) (
 		return nil, err
 	}
 
-	request := &bittorrent.AnnounceRequest{Params: q}
+	request := &bittorrent.AnnounceRequest{Params: qp}
 
-	eventStr, err := qp.String("event")
-	if err == query.ErrKeyNotFound {
-		eventStr = ""
-	} else if err != nil {
-		return nil, bittorrent.ClientError("failed to parse parameter: event")
-	}
+	eventStr, _ := qp.String("event")
 	request.Event, err = bittorrent.NewEvent(eventStr)
 	if err != nil {
 		return nil, bittorrent.ClientError("failed to provide valid client event")
@@ -57,14 +52,14 @@ func ParseAnnounce(r *http.Request, realIPHeader string, allowIPSpoofing bool) (
 	}
 	request.InfoHash = infoHashes[0]
 
-	peerID, err := qp.String("peer_id")
-	if err != nil {
+	peerID, ok := qp.String("peer_id")
+	if !ok {
 		return nil, bittorrent.ClientError("failed to parse parameter: peer_id")
 	}
 	if len(peerID) != 20 {
 		return nil, bittorrent.ClientError("failed to provide valid peer_id")
 	}
-	request.PeerID = bittorrent.PeerIDFromString(peerID)
+	request.Peer.ID = bittorrent.PeerIDFromString(peerID)
 
 	request.Left, err = qp.Uint64("left")
 	if err != nil {
@@ -85,24 +80,24 @@ func ParseAnnounce(r *http.Request, realIPHeader string, allowIPSpoofing bool) (
 	if err != nil {
 		return nil, bittorrent.ClientError("failed to parse parameter: numwant")
 	}
-	request.NumWant = int32(numwant)
+	request.NumWant = uint32(numwant)
 
 	port, err := qp.Uint64("port")
 	if err != nil {
 		return nil, bittorrent.ClientError("failed to parse parameter: port")
 	}
-	request.Port = uint16(port)
+	request.Peer.Port = uint16(port)
 
-	request.IP, err = requestedIP(q, r, realIPHeader, allowIPSpoofing)
-	if err != nil {
-		return nil, bittorrent.ClientError("failed to parse peer IP address: " + err.Error())
+	request.Peer.IP = requestedIP(r, qp, realIPHeader, allowIPSpoofing)
+	if request.Peer.IP == nil {
+		return nil, bittorrent.ClientError("failed to parse peer IP address")
 	}
 
 	return request, nil
 }
 
 // ParseScrape parses an bittorrent.ScrapeRequest from an http.Request.
-func ParseScrape(r *http.Request) (*bittorent.ScrapeRequest, error) {
+func ParseScrape(r *http.Request) (*bittorrent.ScrapeRequest, error) {
 	qp, err := NewQueryParams(r.URL.RawQuery)
 	if err != nil {
 		return nil, err
@@ -115,7 +110,7 @@ func ParseScrape(r *http.Request) (*bittorent.ScrapeRequest, error) {
 
 	request := &bittorrent.ScrapeRequest{
 		InfoHashes: infoHashes,
-		Params:     q,
+		Params:     qp,
 	}
 
 	return request, nil
@@ -126,46 +121,31 @@ func ParseScrape(r *http.Request) (*bittorent.ScrapeRequest, error) {
 // If allowIPSpoofing is true, IPs provided via params will be used.
 // If realIPHeader is not empty string, the first value of the HTTP Header with
 // that name will be used.
-func requestedIP(r *http.Request, p bittorent.Params, realIPHeader string, allowIPSpoofing bool) (net.IP, error) {
+func requestedIP(r *http.Request, p bittorrent.Params, realIPHeader string, allowIPSpoofing bool) net.IP {
 	if allowIPSpoofing {
-		if ipstr, err := p.String("ip"); err == nil {
-			ip, err := net.ParseIP(str)
-			if err != nil {
-				return nil, err
-			}
-
-			return ip, nil
+		if ipstr, ok := p.String("ip"); ok {
+			ip := net.ParseIP(ipstr)
+			return ip
 		}
 
-		if ipstr, err := p.String("ipv4"); err == nil {
-			ip, err := net.ParseIP(str)
-			if err != nil {
-				return nil, err
-			}
-
-			return ip, nil
+		if ipstr, ok := p.String("ipv4"); ok {
+			ip := net.ParseIP(ipstr)
+			return ip
 		}
 
-		if ipstr, err := p.String("ipv6"); err == nil {
-			ip, err := net.ParseIP(str)
-			if err != nil {
-				return nil, err
-			}
-
-			return ip, nil
+		if ipstr, ok := p.String("ipv6"); ok {
+			ip := net.ParseIP(ipstr)
+			return ip
 		}
 	}
 
 	if realIPHeader != "" {
 		if ips, ok := r.Header[realIPHeader]; ok && len(ips) > 0 {
-			ip, err := net.ParseIP(ips[0])
-			if err != nil {
-				return nil, err
-			}
-
-			return ip, nil
+			ip := net.ParseIP(ips[0])
+			return ip
 		}
 	}
 
-	return r.RemoteAddr
+	host, _, _ := net.SplitHostPort(r.RemoteAddr)
+	return net.ParseIP(host)
 }

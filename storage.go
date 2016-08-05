@@ -10,7 +10,7 @@ import (
 
 // ErrResourceDoesNotExist is the error returned by all delete methods in the
 // store if the requested resource does not exist.
-var ErrResourceDoesNotExist = bittorrent.ClientError(errors.New("resource does not exist"))
+var ErrResourceDoesNotExist = bittorrent.ClientError("resource does not exist")
 
 // PeerStore is an interface that abstracts the interactions of storing and
 // manipulating Peers such that it can be implemented for various data stores.
@@ -68,7 +68,7 @@ type PeerStore interface {
 // PeerStore.
 type PeerStoreConstructor func(interface{}) (PeerStore, error)
 
-var peerStores = make(map[string]PeerStoreConstructors)
+var peerStores = make(map[string]PeerStoreConstructor)
 
 // RegisterPeerStore makes a PeerStoreConstructor available by the provided
 // name.
@@ -80,7 +80,7 @@ func RegisterPeerStore(name string, con PeerStoreConstructor) {
 		panic("trakr: could not register nil PeerStoreConstructor")
 	}
 
-	if _, dup := peerStore[name]; dup {
+	if _, dup := peerStores[name]; dup {
 		panic("trakr: could not register duplicate PeerStoreConstructor: " + name)
 	}
 
@@ -88,7 +88,7 @@ func RegisterPeerStore(name string, con PeerStoreConstructor) {
 }
 
 // NewPeerStore creates an instance of the given PeerStore by name.
-func NewPeerStore(name, config interface{}) (PeerStore, error) {
+func NewPeerStore(name string, config interface{}) (PeerStore, error) {
 	con, ok := peerStores[name]
 	if !ok {
 		return nil, fmt.Errorf("trakr: unknown PeerStore %q (forgotten import?)", name)
