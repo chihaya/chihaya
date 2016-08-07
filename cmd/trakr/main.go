@@ -14,13 +14,18 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
-	"github.com/jzelinskie/trakr"
+	"github.com/jzelinskie/trakr/backend"
+
+	httpfrontend "github.com/jzelinskie/trakr/frontends/http"
+	udpfrontend "github.com/jzelinskie/trakr/frontends/udp"
 )
 
 type ConfigFile struct {
 	Config struct {
 		PrometheusAddr string `yaml:"prometheus_addr"`
-		trakr.MultiTracker
+		backend.Backend
+		HTTPConfig httpfrontend.Config `yaml:"http"`
+		UDPConfig  udpfrontend.Config  `yaml:"udp"`
 	} `yaml:"trakr"`
 }
 
@@ -89,15 +94,66 @@ func main() {
 					}
 				}()
 
+				errChan := make(chan error)
+				closedChan := make(chan struct{})
+
 				go func() {
-					shutdown := make(chan os.Signal)
-					signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
-					<-shutdown
-					configFile.Config.MultiTracker.Stop()
+					if err := configFile.Config.Backend.Start(); err != nil {
+						errChan <- errors.New("failed to cleanly shutdown: " + err.Error())
+					}
 				}()
 
-				if err := configFile.Config.MultiTracker.ListenAndServe(); err != nil {
-					return errors.New("failed to cleanly shutdown: " + err.Error())
+				var hFrontend *httpfrontend.Frontend
+				var uFrontend *udpfrontend.Frontend
+
+				if configFile.Config.HTTPConfig.Addr != "" {
+					// TODO get the real TrackerFuncs
+					hFrontend = httpfrontend.NewFrontend(backend.TrackerFuncs{}, configFile.Config.HTTPConfig)
+
+					go func() {
+						log.Println("started serving HTTP on", configFile.Config.HTTPConfig.Addr)
+						if err := hFrontend.ListenAndServe(); err != nil {
+							errChan <- errors.New("failed to cleanly shutdown HTTP frontend: " + err.Error())
+						}
+					}()
+				}
+
+				if configFile.Config.UDPConfig.Addr != "" {
+					// TODO get the real TrackerFuncs
+					uFrontend = udpfrontend.NewFrontend(backend.TrackerFuncs{}, configFile.Config.UDPConfig)
+
+					go func() {
+						log.Println("started serving UDP on", configFile.Config.UDPConfig.Addr)
+						if err := uFrontend.ListenAndServe(); err != nil {
+							errChan <- errors.New("failed to cleanly shutdown UDP frontend: " + err.Error())
+						}
+					}()
+				}
+
+				shutdown := make(chan os.Signal)
+				signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
+				go func() {
+					<-shutdown
+
+					if uFrontend != nil {
+						uFrontend.Stop()
+					}
+
+					if hFrontend != nil {
+						hFrontend.Stop()
+					}
+
+					configFile.Config.Backend.Stop()
+
+					close(errChan)
+					close(closedChan)
+				}()
+
+				err = <-errChan
+				if err != nil {
+					close(shutdown)
+					<-closedChan
+					return err
 				}
 
 				return nil

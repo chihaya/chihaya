@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package http implements a BitTorrent tracker via the HTTP protocol as
+// Package http implements a BitTorrent frontend via the HTTP protocol as
 // described in BEP 3 and BEP 23.
 package http
 
@@ -26,7 +26,7 @@ import (
 	"github.com/tylerb/graceful"
 	"golang.org/x/net/context"
 
-	"github.com/jzelinskie/trakr/bittorrent"
+	"github.com/jzelinskie/trakr/backend"
 )
 
 func init() {
@@ -43,8 +43,8 @@ var promResponseDurationMilliseconds = prometheus.NewHistogramVec(
 	[]string{"action", "error"},
 )
 
-// recordResponseDuration records the duration of time to respond to a UDP
-// Request in milliseconds .
+// recordResponseDuration records the duration of time to respond to a Request
+// in milliseconds .
 func recordResponseDuration(action string, err error, duration time.Duration) {
 	var errString string
 	if err != nil {
@@ -57,7 +57,7 @@ func recordResponseDuration(action string, err error, duration time.Duration) {
 }
 
 // Config represents all of the configurable options for an HTTP BitTorrent
-// Tracker.
+// Frontend.
 type Config struct {
 	Addr            string
 	ReadTimeout     time.Duration
@@ -67,29 +67,29 @@ type Config struct {
 	RealIPHeader    string
 }
 
-// Tracker holds the state of an HTTP BitTorrent Tracker.
-type Tracker struct {
+// Frontend holds the state of an HTTP BitTorrent Frontend.
+type Frontend struct {
 	grace *graceful.Server
 
-	bittorrent.TrackerFuncs
+	backend.TrackerFuncs
 	Config
 }
 
-// NewTracker allocates a new instance of a Tracker.
-func NewTracker(funcs bittorrent.TrackerFuncs, cfg Config) *Tracker {
-	return &Tracker{
+// NewFrontend allocates a new instance of a Frontend.
+func NewFrontend(funcs backend.TrackerFuncs, cfg Config) *Frontend {
+	return &Frontend{
 		TrackerFuncs: funcs,
 		Config:       cfg,
 	}
 }
 
 // Stop provides a thread-safe way to shutdown a currently running Tracker.
-func (t *Tracker) Stop() {
+func (t *Frontend) Stop() {
 	t.grace.Stop(t.grace.Timeout)
 	<-t.grace.StopChan()
 }
 
-func (t *Tracker) handler() http.Handler {
+func (t *Frontend) handler() http.Handler {
 	router := httprouter.New()
 	router.GET("/announce", t.announceRoute)
 	router.GET("/scrape", t.scrapeRoute)
@@ -98,7 +98,7 @@ func (t *Tracker) handler() http.Handler {
 
 // ListenAndServe listens on the TCP network address t.Addr and blocks serving
 // BitTorrent requests until t.Stop() is called or an error is returned.
-func (t *Tracker) ListenAndServe() error {
+func (t *Frontend) ListenAndServe() error {
 	t.grace = &graceful.Server{
 		Server: &http.Server{
 			Addr:         t.Addr,
@@ -139,7 +139,7 @@ func (t *Tracker) ListenAndServe() error {
 }
 
 // announceRoute parses and responds to an Announce by using t.TrackerFuncs.
-func (t *Tracker) announceRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func (t *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	var err error
 	start := time.Now()
 	defer recordResponseDuration("announce", err, time.Since(start))
@@ -168,7 +168,7 @@ func (t *Tracker) announceRoute(w http.ResponseWriter, r *http.Request, _ httpro
 }
 
 // scrapeRoute parses and responds to a Scrape by using t.TrackerFuncs.
-func (t *Tracker) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func (t *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	var err error
 	start := time.Now()
 	defer recordResponseDuration("scrape", err, time.Since(start))

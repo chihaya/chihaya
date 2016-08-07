@@ -27,8 +27,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/net/context"
 
+	"github.com/jzelinskie/trakr/backend"
 	"github.com/jzelinskie/trakr/bittorrent"
-	"github.com/jzelinskie/trakr/bittorrent/udp/bytepool"
+	"github.com/jzelinskie/trakr/frontends/udp/bytepool"
 )
 
 func init() {
@@ -67,27 +68,27 @@ type Config struct {
 	AllowIPSpoofing bool
 }
 
-// Tracker holds the state of a UDP BitTorrent Tracker.
-type Tracker struct {
+// Frontend holds the state of a UDP BitTorrent Frontend.
+type Frontend struct {
 	socket  *net.UDPConn
 	closing chan struct{}
 	wg      sync.WaitGroup
 
-	bittorrent.TrackerFuncs
+	backend.TrackerFuncs
 	Config
 }
 
-// NewTracker allocates a new instance of a Tracker.
-func NewTracker(funcs bittorrent.TrackerFuncs, cfg Config) *Tracker {
-	return &Tracker{
+// NewFrontend allocates a new instance of a Frontend.
+func NewFrontend(funcs backend.TrackerFuncs, cfg Config) *Frontend {
+	return &Frontend{
 		closing:      make(chan struct{}),
 		TrackerFuncs: funcs,
 		Config:       cfg,
 	}
 }
 
-// Stop provides a thread-safe way to shutdown a currently running Tracker.
-func (t *Tracker) Stop() {
+// Stop provides a thread-safe way to shutdown a currently running Frontend.
+func (t *Frontend) Stop() {
 	close(t.closing)
 	t.socket.SetReadDeadline(time.Now())
 	t.wg.Wait()
@@ -95,7 +96,7 @@ func (t *Tracker) Stop() {
 
 // ListenAndServe listens on the UDP network address t.Addr and blocks serving
 // BitTorrent requests until t.Stop() is called or an error is returned.
-func (t *Tracker) ListenAndServe() error {
+func (t *Frontend) ListenAndServe() error {
 	udpAddr, err := net.ResolveUDPAddr("udp", t.Addr)
 	if err != nil {
 		return err
@@ -175,7 +176,7 @@ func (w ResponseWriter) Write(b []byte) (int, error) {
 }
 
 // handleRequest parses and responds to a UDP Request.
-func (t *Tracker) handleRequest(r Request, w ResponseWriter) (response []byte, actionName string, err error) {
+func (t *Frontend) handleRequest(r Request, w ResponseWriter) (response []byte, actionName string, err error) {
 	if len(r.Packet) < 16 {
 		// Malformed, no client packets are less than 16 bytes.
 		// We explicitly return nothing in case this is a DoS attempt.

@@ -20,8 +20,6 @@ package bittorrent
 import (
 	"net"
 	"time"
-
-	"golang.org/x/net/context"
 )
 
 // PeerID represents a peer ID.
@@ -108,13 +106,6 @@ type AnnounceResponse struct {
 	IPv6Peers   []Peer
 }
 
-// AnnounceHandler is a function that generates a response for an Announce.
-type AnnounceHandler func(context.Context, *AnnounceRequest) (*AnnounceResponse, error)
-
-// AnnounceCallback is a function that does something with the results of an
-// Announce after it has been completed.
-type AnnounceCallback func(*AnnounceRequest, *AnnounceResponse)
-
 // ScrapeRequest represents the parsed parameters from a scrape request.
 type ScrapeRequest struct {
 	InfoHashes []InfoHash
@@ -132,13 +123,6 @@ type Scrape struct {
 	Complete   uint32
 	Incomplete uint32
 }
-
-// ScrapeHandler is a function that generates a response for a Scrape.
-type ScrapeHandler func(context.Context, *ScrapeRequest) (*ScrapeResponse, error)
-
-// ScrapeCallback is a function that does something with the results of a
-// Scrape after it has been completed.
-type ScrapeCallback func(*ScrapeRequest, *ScrapeResponse)
 
 // Peer represents the connection details of a peer that is returned in an
 // announce response.
@@ -170,14 +154,4 @@ func (c ClientError) Error() string { return string(c) }
 type Tracker interface {
 	ListenAndServe() error
 	Stop()
-}
-
-// TrackerFuncs is the collection of callback functions provided to a Tracker
-// to (1) generate a response from a parsed request, and (2) observe anything
-// after the response has been delivered to the client.
-type TrackerFuncs struct {
-	HandleAnnounce AnnounceHandler
-	HandleScrape   ScrapeHandler
-	AfterAnnounce  AnnounceCallback
-	AfterScrape    ScrapeCallback
 }
