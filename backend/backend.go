@@ -44,23 +44,4 @@ func New(config BackendConfig, peerStore PeerStore) (*Backend, error) {
 type Backend struct {
 	TrackerFuncs frontends.TrackerFuncs
 	peerStore    PeerStore
-	closing      chan struct{}
-}
-
-// Stop provides a thread-safe way to shutdown a currently running
-// Backend.
-func (t *Backend) Stop() {
-	close(t.closing)
-}
-
-// Start starts the Backend.
-// It blocks until t.Stop() is called or an error is returned.
-func (t *Backend) Start() error {
-	t.closing = make(chan struct{})
-	select {
-	case <-t.closing:
-		return nil
-	}
-
-	return nil
 }

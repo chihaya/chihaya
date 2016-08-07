@@ -103,12 +103,6 @@ func main() {
 				errChan := make(chan error)
 				closedChan := make(chan struct{})
 
-				go func() {
-					if err := trackerBackend.Start(); err != nil {
-						errChan <- errors.New("failed to cleanly shutdown: " + err.Error())
-					}
-				}()
-
 				var hFrontend *httpfrontend.Frontend
 				var uFrontend *udpfrontend.Frontend
 
@@ -149,17 +143,18 @@ func main() {
 						hFrontend.Stop()
 					}
 
-					trackerBackend.Stop()
+					// TODO: stop PeerStore
 
 					close(errChan)
 					close(closedChan)
 				}()
 
-				err = <-errChan
-				if err != nil {
-					close(shutdown)
-					<-closedChan
-					return err
+				for err := range errChan {
+					if err != nil {
+						close(shutdown)
+						<-closedChan
+						return err
+					}
 				}
 
 				return nil
