@@ -27,9 +27,12 @@ func (bp *BytePool) Get() []byte {
 
 // Put returns a byte slice to the pool.
 func (bp *BytePool) Put(b []byte) {
+	b = b[:cap(b)]
 	// Zero out the bytes.
-	for i := 0; i < cap(b); i++ {
-		b[i] = 0x0
+	// Apparently this specific expression is optimized by the compiler, see
+	// github.com/golang/go/issues/5373.
+	for i := range b {
+		b[i] = 0
 	}
 	bp.Pool.Put(b)
 }
