@@ -1,7 +1,6 @@
 package backend
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/jzelinskie/trakr/bittorrent"
@@ -62,36 +61,4 @@ type PeerStore interface {
 	// Stopper is an interface that expects a Stop method to stops the PeerStore.
 	// For more details see the documentation in the stopper package.
 	stopper.Stopper
-}
-
-// PeerStoreConstructor is a function used to create a new instance of a
-// PeerStore.
-type PeerStoreConstructor func(interface{}) (PeerStore, error)
-
-var peerStores = make(map[string]PeerStoreConstructor)
-
-// RegisterPeerStore makes a PeerStoreConstructor available by the provided
-// name.
-//
-// If this function is called twice with the same name or if the
-// PeerStoreConstructor is nil, it panics.
-func RegisterPeerStore(name string, con PeerStoreConstructor) {
-	if con == nil {
-		panic("trakr: could not register nil PeerStoreConstructor")
-	}
-
-	if _, dup := peerStores[name]; dup {
-		panic("trakr: could not register duplicate PeerStoreConstructor: " + name)
-	}
-
-	peerStores[name] = con
-}
-
-// NewPeerStore creates an instance of the given PeerStore by name.
-func NewPeerStore(name string, config interface{}) (PeerStore, error) {
-	con, ok := peerStores[name]
-	if !ok {
-		return nil, fmt.Errorf("trakr: unknown PeerStore %q (forgotten import?)", name)
-	}
-	return con(config)
 }

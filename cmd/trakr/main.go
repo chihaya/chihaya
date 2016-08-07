@@ -23,7 +23,7 @@ import (
 type ConfigFile struct {
 	Config struct {
 		PrometheusAddr string `yaml:"prometheus_addr"`
-		backend.Backend
+		backend.BackendConfig
 		HTTPConfig httpfrontend.Config `yaml:"http"`
 		UDPConfig  udpfrontend.Config  `yaml:"udp"`
 	} `yaml:"trakr"`
@@ -94,11 +94,17 @@ func main() {
 					}
 				}()
 
+				// TODO create PeerStore
+				trackerBackend, err := backend.New(configFile.Config.BackendConfig, nil)
+				if err != nil {
+					return err
+				}
+
 				errChan := make(chan error)
 				closedChan := make(chan struct{})
 
 				go func() {
-					if err := configFile.Config.Backend.Start(); err != nil {
+					if err := trackerBackend.Start(); err != nil {
 						errChan <- errors.New("failed to cleanly shutdown: " + err.Error())
 					}
 				}()
@@ -108,7 +114,7 @@ func main() {
 
 				if configFile.Config.HTTPConfig.Addr != "" {
 					// TODO get the real TrackerFuncs
-					hFrontend = httpfrontend.NewFrontend(backend.TrackerFuncs{}, configFile.Config.HTTPConfig)
+					hFrontend = httpfrontend.NewFrontend(trackerBackend.TrackerFuncs, configFile.Config.HTTPConfig)
 
 					go func() {
 						log.Println("started serving HTTP on", configFile.Config.HTTPConfig.Addr)
@@ -120,7 +126,7 @@ func main() {
 
 				if configFile.Config.UDPConfig.Addr != "" {
 					// TODO get the real TrackerFuncs
-					uFrontend = udpfrontend.NewFrontend(backend.TrackerFuncs{}, configFile.Config.UDPConfig)
+					uFrontend = udpfrontend.NewFrontend(trackerBackend.TrackerFuncs, configFile.Config.UDPConfig)
 
 					go func() {
 						log.Println("started serving UDP on", configFile.Config.UDPConfig.Addr)
@@ -143,7 +149,7 @@ func main() {
 						hFrontend.Stop()
 					}
 
-					configFile.Config.Backend.Stop()
+					trackerBackend.Stop()
 
 					close(errChan)
 					close(closedChan)

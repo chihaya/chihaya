@@ -20,8 +20,7 @@ package backend
 import (
 	"time"
 
-	"github.com/jzelinskie/trakr/bittorrent"
-	"golang.org/x/net/context"
+	"github.com/jzelinskie/trakr/frontends"
 )
 
 // GenericConfig is a block of configuration who's structure is unknown.
@@ -30,17 +29,22 @@ type GenericConfig struct {
 	config interface{} `yaml:"config"`
 }
 
-// Backend is a multi-protocol, customizable BitTorrent Tracker.
-type Backend struct {
+type BackendConfig struct {
 	AnnounceInterval time.Duration   `yaml:"announce_interval"`
-	GCInterval       time.Duration   `yaml:"gc_interval"`
-	GCExpiration     time.Duration   `yaml:"gc_expiration"`
-	PeerStoreConfig  []GenericConfig `yaml:"storage"`
 	PreHooks         []GenericConfig `yaml:"prehooks"`
 	PostHooks        []GenericConfig `yaml:"posthooks"`
+}
 
-	peerStore PeerStore
-	closing   chan struct{}
+func New(config BackendConfig, peerStore PeerStore) (*Backend, error) {
+	// Build TrackerFuncs from the PreHooks and PostHooks
+	return &Backend{peerStore: peerStore}, nil
+}
+
+// Backend is a multi-protocol, customizable BitTorrent Tracker.
+type Backend struct {
+	TrackerFuncs frontends.TrackerFuncs
+	peerStore    PeerStore
+	closing      chan struct{}
 }
 
 // Stop provides a thread-safe way to shutdown a currently running
@@ -53,9 +57,6 @@ func (t *Backend) Stop() {
 // It blocks until t.Stop() is called or an error is returned.
 func (t *Backend) Start() error {
 	t.closing = make(chan struct{})
-	// Build an TrackerFuncs from the PreHooks and PostHooks.
-	// Create a PeerStore instance.
-	// Make TrackerFuncs available to be used by frontends.
 	select {
 	case <-t.closing:
 		return nil
@@ -63,27 +64,3 @@ func (t *Backend) Start() error {
 
 	return nil
 }
-
-// TrackerFuncs is the collection of callback functions provided by the Backend
-// to (1) generate a response from a parsed request, and (2) observe anything
-// after the response has been delivered to the client.
-type TrackerFuncs struct {
-	HandleAnnounce AnnounceHandler
-	HandleScrape   ScrapeHandler
-	AfterAnnounce  AnnounceCallback
-	AfterScrape    ScrapeCallback
-}
-
-// AnnounceHandler is a function that generates a response for an Announce.
-type AnnounceHandler func(context.Context, *bittorrent.AnnounceRequest) (*bittorrent.AnnounceResponse, error)
-
-// AnnounceCallback is a function that does something with the results of an
-// Announce after it has been completed.
-type AnnounceCallback func(*bittorrent.AnnounceRequest, *bittorrent.AnnounceResponse)
-
-// ScrapeHandler is a function that generates a response for a Scrape.
-type ScrapeHandler func(context.Context, *bittorrent.ScrapeRequest) (*bittorrent.ScrapeResponse, error)
-
-// ScrapeCallback is a function that does something with the results of a
-// Scrape after it has been completed.
-type ScrapeCallback func(*bittorrent.ScrapeRequest, *bittorrent.ScrapeResponse)

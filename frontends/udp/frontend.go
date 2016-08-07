@@ -27,8 +27,8 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/net/context"
 
-	"github.com/jzelinskie/trakr/backend"
 	"github.com/jzelinskie/trakr/bittorrent"
+	"github.com/jzelinskie/trakr/frontends"
 	"github.com/jzelinskie/trakr/frontends/udp/bytepool"
 )
 
@@ -74,12 +74,12 @@ type Frontend struct {
 	closing chan struct{}
 	wg      sync.WaitGroup
 
-	backend.TrackerFuncs
+	frontends.TrackerFuncs
 	Config
 }
 
 // NewFrontend allocates a new instance of a Frontend.
-func NewFrontend(funcs backend.TrackerFuncs, cfg Config) *Frontend {
+func NewFrontend(funcs frontends.TrackerFuncs, cfg Config) *Frontend {
 	return &Frontend{
 		closing:      make(chan struct{}),
 		TrackerFuncs: funcs,
