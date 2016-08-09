@@ -15,8 +15,6 @@
 package backend
 
 import (
-	"fmt"
-
 	"golang.org/x/net/context"
 
 	"github.com/jzelinskie/trakr/bittorrent"
@@ -29,55 +27,12 @@ type Hook interface {
 	HandleScrape(context.Context, *bittorrent.ScrapeRequest, *bittorrent.ScrapeResponse) error
 }
 
-// HookConstructor is a function used to create a new instance of a Hook.
-type HookConstructor func(interface{}) (Hook, error)
+type nopHook struct{}
 
-var preHooks = make(map[string]HookConstructor)
-
-// RegisterPreHook makes a HookConstructor available by the provided name.
-//
-// If this function is called twice with the same name or if the
-// HookConstructor is nil, it panics.
-func RegisterPreHook(name string, con HookConstructor) {
-	if con == nil {
-		panic("trakr: could not register nil HookConstructor")
-	}
-	if _, dup := preHooks[name]; dup {
-		panic("trakr: could not register duplicate HookConstructor: " + name)
-	}
-	preHooks[name] = con
+func (nopHook) HandleAnnounce(context.Context, *bittorrent.AnnounceRequest, *bittorrent.AnnounceResponse) error {
+	return nil
 }
 
-// NewPreHook creates an instance of the given PreHook by name.
-func NewPreHook(name string, config interface{}) (Hook, error) {
-	con, ok := preHooks[name]
-	if !ok {
-		return nil, fmt.Errorf("trakr: unknown PreHook %q (forgotten import?)", name)
-	}
-	return con(config)
-}
-
-var postHooks = make(map[string]HookConstructor)
-
-// RegisterPostHook makes a HookConstructor available by the provided name.
-//
-// If this function is called twice with the same name or if the
-// HookConstructor is nil, it panics.
-func RegisterPostHook(name string, con HookConstructor) {
-	if con == nil {
-		panic("trakr: could not register nil HookConstructor")
-	}
-	if _, dup := postHooks[name]; dup {
-		panic("trakr: could not register duplicate HookConstructor: " + name)
-	}
-	preHooks[name] = con
-}
-
-// NewPostHook creates an instance of the given PostHook by name.
-func NewPostHook(name string, config interface{}) (Hook, error) {
-	con, ok := preHooks[name]
-	if !ok {
-		return nil, fmt.Errorf("trakr: unknown PostHook %q (forgotten import?)", name)
-	}
-	return con(config)
+func (nopHook) HandleScrape(context.Context, *bittorrent.ScrapeRequest, *bittorrent.ScrapeResponse) error {
+	return nil
 }

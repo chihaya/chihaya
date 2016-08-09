@@ -15,7 +15,6 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/jzelinskie/trakr/backend"
-
 	httpfrontend "github.com/jzelinskie/trakr/frontend/http"
 	udpfrontend "github.com/jzelinskie/trakr/frontend/udp"
 )
@@ -95,7 +94,8 @@ func main() {
 				}()
 
 				// TODO create PeerStore
-				trackerBackend, err := backend.New(configFile.Config.BackendConfig, nil)
+				// TODO create Hooks
+				trackerBackend, err := backend.New(configFile.Config.BackendConfig, nil, nil, nil, nil, nil)
 				if err != nil {
 					return err
 				}
@@ -108,7 +108,7 @@ func main() {
 
 				if configFile.Config.HTTPConfig.Addr != "" {
 					// TODO get the real TrackerFuncs
-					hFrontend = httpfrontend.NewFrontend(trackerBackend.TrackerFuncs, configFile.Config.HTTPConfig)
+					hFrontend = httpfrontend.NewFrontend(trackerBackend, configFile.Config.HTTPConfig)
 
 					go func() {
 						log.Println("started serving HTTP on", configFile.Config.HTTPConfig.Addr)
@@ -120,7 +120,7 @@ func main() {
 
 				if configFile.Config.UDPConfig.Addr != "" {
 					// TODO get the real TrackerFuncs
-					uFrontend = udpfrontend.NewFrontend(trackerBackend.TrackerFuncs, configFile.Config.UDPConfig)
+					uFrontend = udpfrontend.NewFrontend(trackerBackend, configFile.Config.UDPConfig)
 
 					go func() {
 						log.Println("started serving UDP on", configFile.Config.UDPConfig.Addr)
