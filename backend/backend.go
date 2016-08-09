@@ -20,7 +20,7 @@ package backend
 import (
 	"time"
 
-	"github.com/jzelinskie/trakr/frontends"
+	"github.com/jzelinskie/trakr/frontend"
 )
 
 // GenericConfig is a block of configuration who's structure is unknown.
@@ -42,6 +42,6 @@ func New(config BackendConfig, peerStore PeerStore) (*Backend, error) {
 
 // Backend is a multi-protocol, customizable BitTorrent Tracker.
 type Backend struct {
-	TrackerFuncs frontends.TrackerFuncs
+	TrackerFuncs frontend.TrackerFuncs
 	peerStore    PeerStore
 }

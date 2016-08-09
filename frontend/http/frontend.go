@@ -26,7 +26,7 @@ import (
 	"github.com/tylerb/graceful"
 	"golang.org/x/net/context"
 
-	"github.com/jzelinskie/trakr/frontends"
+	"github.com/jzelinskie/trakr/frontend"
 )
 
 func init() {
@@ -71,12 +71,12 @@ type Config struct {
 type Frontend struct {
 	grace *graceful.Server
 
-	frontends.TrackerFuncs
+	frontend.TrackerFuncs
 	Config
 }
 
 // NewFrontend allocates a new instance of a Frontend.
-func NewFrontend(funcs frontends.TrackerFuncs, cfg Config) *Frontend {
+func NewFrontend(funcs frontend.TrackerFuncs, cfg Config) *Frontend {
 	return &Frontend{
 		TrackerFuncs: funcs,
 		Config:       cfg,

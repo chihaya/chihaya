@@ -16,8 +16,8 @@ import (
 
 	"github.com/jzelinskie/trakr/backend"
 
-	httpfrontend "github.com/jzelinskie/trakr/frontends/http"
-	udpfrontend "github.com/jzelinskie/trakr/frontends/udp"
+	httpfrontend "github.com/jzelinskie/trakr/frontend/http"
+	udpfrontend "github.com/jzelinskie/trakr/frontend/udp"
 )
 
 type ConfigFile struct {

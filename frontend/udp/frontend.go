@@ -28,8 +28,8 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/jzelinskie/trakr/bittorrent"
-	"github.com/jzelinskie/trakr/frontends"
-	"github.com/jzelinskie/trakr/frontends/udp/bytepool"
+	"github.com/jzelinskie/trakr/frontend"
+	"github.com/jzelinskie/trakr/frontend/udp/bytepool"
 )
 
 func init() {
@@ -74,12 +74,12 @@ type Frontend struct {
 	closing chan struct{}
 	wg      sync.WaitGroup
 
-	frontends.TrackerFuncs
+	frontend.TrackerFuncs
 	Config
 }
 
 // NewFrontend allocates a new instance of a Frontend.
-func NewFrontend(funcs frontends.TrackerFuncs, cfg Config) *Frontend {
+func NewFrontend(funcs frontend.TrackerFuncs, cfg Config) *Frontend {
 	return &Frontend{
 		closing:      make(chan struct{}),
 		TrackerFuncs: funcs,

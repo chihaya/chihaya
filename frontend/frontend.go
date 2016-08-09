@@ -1,4 +1,4 @@
-package frontends
+package frontend
 
 import (
 	"github.com/jzelinskie/trakr/bittorrent"
