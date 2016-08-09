@@ -74,12 +74,12 @@ type Frontend struct {
 	closing chan struct{}
 	wg      sync.WaitGroup
 
-	backend frontend.TrackerFuncs
+	backend frontend.TrackerLogic
 	Config
 }
 
 // NewFrontend allocates a new instance of a Frontend.
-func NewFrontend(backend frontend.TrackerFuncs, cfg Config) *Frontend {
+func NewFrontend(backend frontend.TrackerLogic, cfg Config) *Frontend {
 	return &Frontend{
 		closing: make(chan struct{}),
 		backend: backend,

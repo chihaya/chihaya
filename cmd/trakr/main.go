@@ -107,7 +107,7 @@ func main() {
 				var uFrontend *udpfrontend.Frontend
 
 				if configFile.Config.HTTPConfig.Addr != "" {
-					// TODO get the real TrackerFuncs
+					// TODO get the real TrackerLogic
 					hFrontend = httpfrontend.NewFrontend(trackerBackend, configFile.Config.HTTPConfig)
 
 					go func() {
@@ -119,7 +119,7 @@ func main() {
 				}
 
 				if configFile.Config.UDPConfig.Addr != "" {
-					// TODO get the real TrackerFuncs
+					// TODO get the real TrackerLogic
 					uFrontend = udpfrontend.NewFrontend(trackerBackend, configFile.Config.UDPConfig)
 
 					go func() {

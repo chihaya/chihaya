@@ -6,10 +6,10 @@ import (
 	"github.com/jzelinskie/trakr/bittorrent"
 )
 
-// TrackerFuncs is the collection of callback functions provided by the Backend
-// to (1) generate a response from a parsed request, and (2) observe anything
+// TrackerLogic is the interface used by a frontend in order to: (1) generate a
+// response from a parsed request, and (2) asynchronously observe anything
 // after the response has been delivered to the client.
-type TrackerFuncs interface {
+type TrackerLogic interface {
 	// HandleAnnounce generates a response for an Announce.
 	HandleAnnounce(context.Context, *bittorrent.AnnounceRequest) (*bittorrent.AnnounceResponse, error)
 

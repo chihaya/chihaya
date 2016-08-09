@@ -71,12 +71,12 @@ type Config struct {
 type Frontend struct {
 	grace *graceful.Server
 
-	backend frontend.TrackerFuncs
+	backend frontend.TrackerLogic
 	Config
 }
 
 // NewFrontend allocates a new instance of a Frontend.
-func NewFrontend(backend frontend.TrackerFuncs, cfg Config) *Frontend {
+func NewFrontend(backend frontend.TrackerLogic, cfg Config) *Frontend {
 	return &Frontend{
 		backend: backend,
 		Config:  cfg,
@@ -138,7 +138,7 @@ func (t *Frontend) ListenAndServe() error {
 	return nil
 }
 
-// announceRoute parses and responds to an Announce by using t.TrackerFuncs.
+// announceRoute parses and responds to an Announce by using t.TrackerLogic.
 func (t *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	var err error
 	start := time.Now()
@@ -165,7 +165,7 @@ func (t *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, _ httpr
 	go t.backend.AfterAnnounce(context.TODO(), req, resp)
 }
 
-// scrapeRoute parses and responds to a Scrape by using t.TrackerFuncs.
+// scrapeRoute parses and responds to a Scrape by using t.TrackerLogic.
 func (t *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	var err error
 	start := time.Now()

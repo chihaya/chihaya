@@ -12,9 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package trakr implements a BitTorrent Tracker that supports multiple
-// protocols and configurable Hooks that execute before and after a Response
-// has been delivered to a BitTorrent client.
+// Package backend implements the TrackerLogic interface by executing
+// a series of middleware hooks.
 package backend
 
 import (
@@ -31,7 +30,7 @@ type BackendConfig struct {
 	AnnounceInterval time.Duration `yaml:"announce_interval"`
 }
 
-var _ frontend.TrackerFuncs = &Backend{}
+var _ frontend.TrackerLogic = &Backend{}
 
 func New(config BackendConfig, peerStore PeerStore, announcePreHooks, announcePostHooks, scrapePreHooks, scrapePostHooks []Hook) (*Backend, error) {
 	toReturn := &Backend{
@@ -86,8 +85,8 @@ func (b *Backend) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRe
 	return resp, nil
 }
 
-// AfterAnnounce does something with the results of an Announce after it
-// has been completed.
+// AfterAnnounce does something with the results of an Announce after it has
+// been completed.
 func (b *Backend) AfterAnnounce(ctx context.Context, req *bittorrent.AnnounceRequest, resp *bittorrent.AnnounceResponse) {
 	for _, h := range b.announcePostHooks {
 		if err := h.HandleAnnounce(ctx, req, resp); err != nil {
@@ -111,7 +110,8 @@ func (b *Backend) HandleScrape(ctx context.Context, req *bittorrent.ScrapeReques
 	return resp, nil
 }
 
-// AfterScrape does something with the results of a Scrape after it has been completed.
+// AfterScrape does something with the results of a Scrape after it has been
+// completed.
 func (b *Backend) AfterScrape(ctx context.Context, req *bittorrent.ScrapeRequest, resp *bittorrent.ScrapeResponse) {
 	for _, h := range b.scrapePostHooks {
 		if err := h.HandleScrape(ctx, req, resp); err != nil {
