@@ -20,7 +20,11 @@ package backend
 import (
 	"time"
 
+	"log"
+
+	"github.com/jzelinskie/trakr/bittorrent"
 	"github.com/jzelinskie/trakr/frontend"
+	"golang.org/x/net/context"
 )
 
 // GenericConfig is a block of configuration who's structure is unknown.
@@ -35,6 +39,8 @@ type BackendConfig struct {
 	PostHooks        []GenericConfig `yaml:"posthooks"`
 }
 
+var _ frontend.TrackerFuncs = &Backend{}
+
 func New(config BackendConfig, peerStore PeerStore) (*Backend, error) {
 	// Build TrackerFuncs from the PreHooks and PostHooks
 	return &Backend{peerStore: peerStore}, nil
@@ -42,6 +48,36 @@ func New(config BackendConfig, peerStore PeerStore) (*Backend, error) {
 
 // Backend is a multi-protocol, customizable BitTorrent Tracker.
 type Backend struct {
-	TrackerFuncs frontend.TrackerFuncs
-	peerStore    PeerStore
+	peerStore      PeerStore
+	handleAnnounce func(context.Context, *bittorrent.AnnounceRequest) (*bittorrent.AnnounceResponse, error)
+	afterAnnounce  func(context.Context, *bittorrent.AnnounceRequest, *bittorrent.AnnounceResponse) error
+	handleScrape   func(context.Context, *bittorrent.ScrapeRequest) (*bittorrent.ScrapeResponse, error)
+	afterScrape    func(context.Context, *bittorrent.ScrapeRequest, *bittorrent.ScrapeResponse) error
+}
+
+// HandleAnnounce generates a response for an Announce.
+func (b *Backend) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequest) (*bittorrent.AnnounceResponse, error) {
+	return b.handleAnnounce(ctx, req)
+}
+
+// AfterAnnounce does something with the results of an Announce after it
+// has been completed.
+func (b *Backend) AfterAnnounce(ctx context.Context, req *bittorrent.AnnounceRequest, resp *bittorrent.AnnounceResponse) {
+	err := b.afterAnnounce(ctx, req, resp)
+	if err != nil {
+		log.Println("trakr: post-announce hooks failed:", err.Error())
+	}
+}
+
+// HandleScrape generates a response for a Scrape.
+func (b *Backend) HandleScrape(ctx context.Context, req *bittorrent.ScrapeRequest) (*bittorrent.ScrapeResponse, error) {
+	return b.handleScrape(ctx, req)
+}
+
+// AfterScrape does something with the results of a Scrape after it has been completed.
+func (b *Backend) AfterScrape(ctx context.Context, req *bittorrent.ScrapeRequest, resp *bittorrent.ScrapeResponse) {
+	err := b.afterScrape(ctx, req, resp)
+	if err != nil {
+		log.Println("trakr: post-scrape hooks failed:", err.Error())
+	}
 }

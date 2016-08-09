@@ -74,16 +74,16 @@ type Frontend struct {
 	closing chan struct{}
 	wg      sync.WaitGroup
 
-	frontend.TrackerFuncs
+	backend frontend.TrackerFuncs
 	Config
 }
 
 // NewFrontend allocates a new instance of a Frontend.
-func NewFrontend(funcs frontend.TrackerFuncs, cfg Config) *Frontend {
+func NewFrontend(backend frontend.TrackerFuncs, cfg Config) *Frontend {
 	return &Frontend{
-		closing:      make(chan struct{}),
-		TrackerFuncs: funcs,
-		Config:       cfg,
+		closing: make(chan struct{}),
+		backend: backend,
+		Config:  cfg,
 	}
 }
 
@@ -221,7 +221,7 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (response []byte, 
 		}
 
 		var resp *bittorrent.AnnounceResponse
-		resp, err = t.HandleAnnounce(context.TODO(), req)
+		resp, err = t.backend.HandleAnnounce(context.TODO(), req)
 		if err != nil {
 			WriteError(w, txID, err)
 			return
@@ -229,9 +229,8 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (response []byte, 
 
 		WriteAnnounce(w, txID, resp)
 
-		if t.AfterAnnounce != nil {
-			go t.AfterAnnounce(req, resp)
-		}
+		// TODO(mrd0ll4r): evaluate if it's worth spawning another goroutine.
+		go t.backend.AfterAnnounce(context.TODO(), req, resp)
 
 		return
 
@@ -246,7 +245,7 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (response []byte, 
 		}
 
 		var resp *bittorrent.ScrapeResponse
-		resp, err = t.HandleScrape(context.TODO(), req)
+		resp, err = t.backend.HandleScrape(context.TODO(), req)
 		if err != nil {
 			WriteError(w, txID, err)
 			return
@@ -254,9 +253,7 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (response []byte, 
 
 		WriteScrape(w, txID, resp)
 
-		if t.AfterScrape != nil {
-			go t.AfterScrape(req, resp)
-		}
+		go t.backend.AfterScrape(context.TODO(), req, resp)
 
 		return
 
