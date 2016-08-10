@@ -1,13 +1,10 @@
 trakr:
   announce_interval: 15m
-  gc_interval: 15m
-  gc_expiration: 15m
-  allow_ip_spoofing: true
-  default_num_want: 50
   prometheus_addr: localhost:6880
 
   http:
     addr: 0.0.0.0:6881
+    allow_ip_spoofing: false
     real_ip_header: x-real-ip
     read_timeout: 5s
     write_timeout: 5s
@@ -15,11 +12,14 @@ trakr:
 
   udp:
     addr: 0.0.0.0:6881
+    allow_ip_spoofing: false
 
   storage:
     name: memory
     config:
       shards: 1
+      gc_interval: 15m
+      gc_expiration: 15m
 
   prehooks:
   - name: jwt
@@ -35,3 +35,5 @@ trakr:
 
   posthooks:
   - name: gossip
+    config:
+      boostrap_node: 127.0.0.1:6881
