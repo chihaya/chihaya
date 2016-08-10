@@ -10,6 +10,7 @@ import (
 
 	"github.com/jzelinskie/trakr/bittorrent"
 	"github.com/jzelinskie/trakr/frontend"
+	"github.com/jzelinskie/trakr/storage"
 )
 
 type Config struct {
@@ -18,7 +19,7 @@ type Config struct {
 
 var _ frontend.TrackerLogic = &Logic{}
 
-func NewLogic(config Config, peerStore PeerStore, announcePreHooks, announcePostHooks, scrapePreHooks, scrapePostHooks []Hook) *Logic {
+func NewLogic(config Config, peerStore storage.PeerStore, announcePreHooks, announcePostHooks, scrapePreHooks, scrapePostHooks []Hook) *Logic {
 	l := &Logic{
 		announceInterval:  config.AnnounceInterval,
 		peerStore:         peerStore,
@@ -51,7 +52,7 @@ func NewLogic(config Config, peerStore PeerStore, announcePreHooks, announcePost
 // executing a series of middleware hooks.
 type Logic struct {
 	announceInterval  time.Duration
-	peerStore         PeerStore
+	peerStore         storage.PeerStore
 	announcePreHooks  []Hook
 	announcePostHooks []Hook
 	scrapePreHooks    []Hook

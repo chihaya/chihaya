@@ -17,6 +17,7 @@ import (
 	httpfrontend "github.com/jzelinskie/trakr/frontend/http"
 	udpfrontend "github.com/jzelinskie/trakr/frontend/udp"
 	"github.com/jzelinskie/trakr/middleware"
+	"github.com/jzelinskie/trakr/storage/memory"
 )
 
 type ConfigFile struct {
@@ -100,6 +101,9 @@ func main() {
 				if err != nil {
 					return err
 				}
+
+				// Force the compiler to enforce memory against the storage interface.
+				_, _ = memory.New(memory.Config{1})
 
 				errChan := make(chan error)
 				closedChan := make(chan struct{})
