@@ -71,15 +71,15 @@ type Config struct {
 type Frontend struct {
 	grace *graceful.Server
 
-	backend frontend.TrackerLogic
+	logic frontend.TrackerLogic
 	Config
 }
 
 // NewFrontend allocates a new instance of a Frontend.
-func NewFrontend(backend frontend.TrackerLogic, cfg Config) *Frontend {
+func NewFrontend(logic frontend.TrackerLogic, cfg Config) *Frontend {
 	return &Frontend{
-		backend: backend,
-		Config:  cfg,
+		logic:  logic,
+		Config: cfg,
 	}
 }
 
@@ -150,7 +150,7 @@ func (t *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, _ httpr
 		return
 	}
 
-	resp, err := t.backend.HandleAnnounce(context.TODO(), req)
+	resp, err := t.logic.HandleAnnounce(context.TODO(), req)
 	if err != nil {
 		WriteError(w, err)
 		return
@@ -162,7 +162,7 @@ func (t *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, _ httpr
 		return
 	}
 
-	go t.backend.AfterAnnounce(context.TODO(), req, resp)
+	go t.logic.AfterAnnounce(context.TODO(), req, resp)
 }
 
 // scrapeRoute parses and responds to a Scrape by using t.TrackerLogic.
@@ -177,7 +177,7 @@ func (t *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprou
 		return
 	}
 
-	resp, err := t.backend.HandleScrape(context.TODO(), req)
+	resp, err := t.logic.HandleScrape(context.TODO(), req)
 	if err != nil {
 		WriteError(w, err)
 		return
@@ -189,5 +189,5 @@ func (t *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprou
 		return
 	}
 
-	go t.backend.AfterScrape(context.TODO(), req, resp)
+	go t.logic.AfterScrape(context.TODO(), req, resp)
 }

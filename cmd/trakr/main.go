@@ -14,17 +14,17 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
-	"github.com/jzelinskie/trakr/backend"
 	httpfrontend "github.com/jzelinskie/trakr/frontend/http"
 	udpfrontend "github.com/jzelinskie/trakr/frontend/udp"
+	"github.com/jzelinskie/trakr/middleware"
 )
 
 type ConfigFile struct {
-	Config struct {
-		PrometheusAddr string `yaml:"prometheus_addr"`
-		backend.BackendConfig
-		HTTPConfig httpfrontend.Config `yaml:"http"`
-		UDPConfig  udpfrontend.Config  `yaml:"udp"`
+	MainConfigBlock struct {
+		PrometheusAddr string              `yaml:"prometheus_addr"`
+		HTTPConfig     httpfrontend.Config `yaml:"http"`
+		UDPConfig      udpfrontend.Config  `yaml:"udp"`
+		middleware.Config
 	} `yaml:"trakr"`
 }
 
@@ -81,13 +81,14 @@ func main() {
 				if err != nil {
 					return errors.New("failed to read config: " + err.Error())
 				}
+				cfg := configFile.MainConfigBlock
 
 				go func() {
 					promServer := http.Server{
-						Addr:    configFile.Config.PrometheusAddr,
+						Addr:    cfg.PrometheusAddr,
 						Handler: prometheus.Handler(),
 					}
-					log.Println("started serving prometheus stats on", configFile.Config.PrometheusAddr)
+					log.Println("started serving prometheus stats on", cfg.PrometheusAddr)
 					if err := promServer.ListenAndServe(); err != nil {
 						log.Fatal(err)
 					}
@@ -95,7 +96,7 @@ func main() {
 
 				// TODO create PeerStore
 				// TODO create Hooks
-				trackerBackend, err := backend.New(configFile.Config.BackendConfig, nil, nil, nil, nil, nil)
+				logic := middleware.NewLogic(cfg.Config, nil, nil, nil, nil, nil)
 				if err != nil {
 					return err
 				}
@@ -106,24 +107,24 @@ func main() {
 				var hFrontend *httpfrontend.Frontend
 				var uFrontend *udpfrontend.Frontend
 
-				if configFile.Config.HTTPConfig.Addr != "" {
+				if cfg.HTTPConfig.Addr != "" {
 					// TODO get the real TrackerLogic
-					hFrontend = httpfrontend.NewFrontend(trackerBackend, configFile.Config.HTTPConfig)
+					hFrontend = httpfrontend.NewFrontend(logic, cfg.HTTPConfig)
 
 					go func() {
-						log.Println("started serving HTTP on", configFile.Config.HTTPConfig.Addr)
+						log.Println("started serving HTTP on", cfg.HTTPConfig.Addr)
 						if err := hFrontend.ListenAndServe(); err != nil {
 							errChan <- errors.New("failed to cleanly shutdown HTTP frontend: " + err.Error())
 						}
 					}()
 				}
 
-				if configFile.Config.UDPConfig.Addr != "" {
+				if cfg.UDPConfig.Addr != "" {
 					// TODO get the real TrackerLogic
-					uFrontend = udpfrontend.NewFrontend(trackerBackend, configFile.Config.UDPConfig)
+					uFrontend = udpfrontend.NewFrontend(logic, cfg.UDPConfig)
 
 					go func() {
-						log.Println("started serving UDP on", configFile.Config.UDPConfig.Addr)
+						log.Println("started serving UDP on", cfg.UDPConfig.Addr)
 						if err := uFrontend.ListenAndServe(); err != nil {
 							errChan <- errors.New("failed to cleanly shutdown UDP frontend: " + err.Error())
 						}
