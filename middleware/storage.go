@@ -48,10 +48,10 @@ type PeerStore interface {
 	//
 	// The returned Peers should strive be:
 	// - as close to length equal to numWant as possible without going over
-	// - all IPv4 or all IPv6 depending on the provided ipv6 boolean
+	// - all IPv4 or all IPv6 depending on the provided peer
 	// - if seeder is true, should ideally return more leechers than seeders
 	// - if seeder is false, should ideally return more seeders than leechers
-	AnnouncePeers(infoHash bittorrent.InfoHash, seeder bool, numWant int, ipv6 bool) (peers []bittorrent.Peer, err error)
+	AnnouncePeers(infoHash bittorrent.InfoHash, seeder bool, numWant int, p bittorrent.Peer) (peers []bittorrent.Peer, err error)
 
 	// CollectGarbage deletes all Peers from the PeerStore which are older than
 	// the cutoff time. This function must be able to execute while other methods
