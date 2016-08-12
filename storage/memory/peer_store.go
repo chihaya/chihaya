@@ -14,10 +14,14 @@ import (
 
 // TODO(jzelinskie): separate ipv4 and ipv6 swarms
 
+// Config holds the configuration of a memory PeerStore.
 type Config struct {
 	ShardCount int `yaml:"shard_count"`
 }
 
+// New creates a new memory PeerStore.
+//
+// The PeerStore will have at least one shard.
 func New(cfg Config) (storage.PeerStore, error) {
 	shardCount := 1
 	if cfg.ShardCount > 0 {
