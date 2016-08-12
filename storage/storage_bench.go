@@ -88,6 +88,11 @@ func runBenchmark(b *testing.B, ps PeerStore, parallel bool, sf setupFunc, ef ex
 		}
 	}
 	b.StopTimer()
+
+	errChan := ps.Stop()
+	for err := range errChan {
+		b.Fatal(err)
+	}
 }
 
 func Put(b *testing.B, ps PeerStore) {
