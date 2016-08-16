@@ -22,10 +22,11 @@ import (
 
 type ConfigFile struct {
 	MainConfigBlock struct {
+		middleware.Config
 		PrometheusAddr string              `yaml:"prometheus_addr"`
 		HTTPConfig     httpfrontend.Config `yaml:"http"`
 		UDPConfig      udpfrontend.Config  `yaml:"udp"`
-		middleware.Config
+		Storage        memory.Config       `yaml:"storage"`
 	} `yaml:"trakr"`
 }
 
@@ -95,15 +96,18 @@ func main() {
 					}
 				}()
 
-				// TODO create PeerStore
-				// TODO create Hooks
-				logic := middleware.NewLogic(cfg.Config, nil, nil, nil, nil, nil)
+				// Force the compiler to enforce memory against the storage interface.
+				peerStore, err := memory.New(cfg.Storage)
 				if err != nil {
 					return err
 				}
 
-				// Force the compiler to enforce memory against the storage interface.
-				_, _ = memory.New(memory.Config{1})
+				// TODO create PeerStore
+				// TODO create Hooks
+				logic := middleware.NewLogic(cfg.Config, peerStore, nil, nil, nil, nil)
+				if err != nil {
+					return err
+				}
 
 				errChan := make(chan error)
 				closedChan := make(chan struct{})

@@ -1,8 +1,6 @@
 package storage
 
 import (
-	"time"
-
 	"github.com/jzelinskie/trakr/bittorrent"
 	"github.com/jzelinskie/trakr/stopper"
 )
@@ -52,11 +50,6 @@ type PeerStore interface {
 	// - if seeder is true, should ideally return more leechers than seeders
 	// - if seeder is false, should ideally return more seeders than leechers
 	AnnouncePeers(infoHash bittorrent.InfoHash, seeder bool, numWant int, p bittorrent.Peer) (peers []bittorrent.Peer, err error)
-
-	// CollectGarbage deletes all Peers from the PeerStore which are older than
-	// the cutoff time. This function must be able to execute while other methods
-	// on this interface are being executed in parallel.
-	CollectGarbage(cutoff time.Time) error
 
 	// Stopper is an interface that expects a Stop method to stops the PeerStore.
 	// For more details see the documentation in the stopper package.

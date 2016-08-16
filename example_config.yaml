@@ -18,8 +18,8 @@ trakr:
     name: memory
     config:
       shards: 1
-      gc_interval: 15m
-      gc_expiration: 15m
+      gc_interval: 14m
+      peer_lifetime: 15m
 
   prehooks:
   - name: jwt

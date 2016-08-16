@@ -16,27 +16,41 @@ import (
 
 // Config holds the configuration of a memory PeerStore.
 type Config struct {
-	ShardCount int `yaml:"shard_count"`
+	GarbageCollectionInterval time.Duration `yaml:"gc_interval"`
+	PeerLifetime              time.Duration `yaml:"peer_lifetime"`
+	ShardCount                int           `yaml:"shard_count"`
 }
 
-// New creates a new memory PeerStore.
-//
-// The PeerStore will have at least one shard.
+// New creates a new PeerStore backed by memory.
 func New(cfg Config) (storage.PeerStore, error) {
 	shardCount := 1
 	if cfg.ShardCount > 0 {
 		shardCount = cfg.ShardCount
 	}
 
-	shards := make([]*peerShard, shardCount*2)
-	for i := 0; i < shardCount*2; i++ {
-		shards[i] = &peerShard{swarms: make(map[bittorrent.InfoHash]swarm)}
+	ps := &peerStore{
+		shards: make([]*peerShard, shardCount*2),
+		closed: make(chan struct{}),
 	}
 
-	return &peerStore{
-		shards: shards,
-		closed: make(chan struct{}),
-	}, nil
+	for i := 0; i < shardCount*2; i++ {
+		ps.shards[i] = &peerShard{swarms: make(map[bittorrent.InfoHash]swarm)}
+	}
+
+	go func() {
+		for {
+			select {
+			case <-ps.closed:
+				return
+			case <-time.After(cfg.GarbageCollectionInterval):
+				before := time.Now().Add(-cfg.GarbageCollectionInterval)
+				log.Println("memory: purging peers with no announces since ", before)
+				ps.collectGarbage(before)
+			}
+		}
+	}()
+
+	return ps, nil
 }
 
 type serializedPeer string
@@ -225,59 +239,6 @@ func (s *peerStore) GraduateLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) e
 	return nil
 }
 
-func (s *peerStore) CollectGarbage(cutoff time.Time) error {
-	select {
-	case <-s.closed:
-		panic("attempted to interact with stopped memory store")
-	default:
-	}
-
-	log.Printf("memory: collecting garbage. Cutoff time: %s", cutoff.String())
-	cutoffUnix := cutoff.UnixNano()
-	for _, shard := range s.shards {
-		shard.RLock()
-		var infohashes []bittorrent.InfoHash
-		for ih := range shard.swarms {
-			infohashes = append(infohashes, ih)
-		}
-		shard.RUnlock()
-		runtime.Gosched()
-
-		for _, ih := range infohashes {
-			shard.Lock()
-
-			if _, stillExists := shard.swarms[ih]; !stillExists {
-				shard.Unlock()
-				runtime.Gosched()
-				continue
-			}
-
-			for pk, mtime := range shard.swarms[ih].leechers {
-				if mtime <= cutoffUnix {
-					delete(shard.swarms[ih].leechers, pk)
-				}
-			}
-
-			for pk, mtime := range shard.swarms[ih].seeders {
-				if mtime <= cutoffUnix {
-					delete(shard.swarms[ih].seeders, pk)
-				}
-			}
-
-			if len(shard.swarms[ih].seeders)|len(shard.swarms[ih].leechers) == 0 {
-				delete(shard.swarms, ih)
-			}
-
-			shard.Unlock()
-			runtime.Gosched()
-		}
-
-		runtime.Gosched()
-	}
-
-	return nil
-}
-
 func (s *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant int, announcer bittorrent.Peer) (peers []bittorrent.Peer, err error) {
 	select {
 	case <-s.closed:
@@ -338,6 +299,64 @@ func (s *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant i
 
 	shard.RUnlock()
 	return
+}
+
+// collectGarbage deletes all Peers from the PeerStore which are older than the
+// cutoff time.
+//
+// This function must be able to execute while other methods on this interface
+// are being executed in parallel.
+func (s *peerStore) collectGarbage(cutoff time.Time) error {
+	select {
+	case <-s.closed:
+		panic("attempted to interact with stopped memory store")
+	default:
+	}
+
+	log.Printf("memory: collecting garbage. Cutoff time: %s", cutoff.String())
+	cutoffUnix := cutoff.UnixNano()
+	for _, shard := range s.shards {
+		shard.RLock()
+		var infohashes []bittorrent.InfoHash
+		for ih := range shard.swarms {
+			infohashes = append(infohashes, ih)
+		}
+		shard.RUnlock()
+		runtime.Gosched()
+
+		for _, ih := range infohashes {
+			shard.Lock()
+
+			if _, stillExists := shard.swarms[ih]; !stillExists {
+				shard.Unlock()
+				runtime.Gosched()
+				continue
+			}
+
+			for pk, mtime := range shard.swarms[ih].leechers {
+				if mtime <= cutoffUnix {
+					delete(shard.swarms[ih].leechers, pk)
+				}
+			}
+
+			for pk, mtime := range shard.swarms[ih].seeders {
+				if mtime <= cutoffUnix {
+					delete(shard.swarms[ih].seeders, pk)
+				}
+			}
+
+			if len(shard.swarms[ih].seeders)|len(shard.swarms[ih].leechers) == 0 {
+				delete(shard.swarms, ih)
+			}
+
+			shard.Unlock()
+			runtime.Gosched()
+		}
+
+		runtime.Gosched()
+	}
+
+	return nil
 }
 
 func (s *peerStore) Stop() <-chan error {
