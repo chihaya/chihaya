@@ -1,7 +1,6 @@
 package bittorrent
 
 import (
-	"bytes"
 	"testing"
 )
 
@@ -44,9 +43,10 @@ func TestClientID(t *testing.T) {
 	}
 
 	for _, tt := range clientTable {
-		clientID := ClientID([]byte(tt.clientID))
-		parsedID := NewClientID(PeerIDFromBytes([]byte(tt.peerID)))
-		if !bytes.Equal([]byte(parsedID), []byte(clientID)) {
+		var clientID ClientID
+		copy(clientID[:], []byte(tt.clientID))
+		parsedID := NewClientID(PeerIDFromString(tt.peerID))
+		if parsedID != clientID {
 			t.Error("Incorrectly parsed peer ID", tt.peerID, "as", parsedID)
 		}
 	}
