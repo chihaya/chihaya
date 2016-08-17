@@ -15,10 +15,10 @@ type Hook interface {
 
 type nopHook struct{}
 
-func (nopHook) HandleAnnounce(context.Context, *bittorrent.AnnounceRequest, *bittorrent.AnnounceResponse) error {
+func (nopHook) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequest, resp *bittorrent.AnnounceResponse) error {
 	return nil
 }
 
-func (nopHook) HandleScrape(context.Context, *bittorrent.ScrapeRequest, *bittorrent.ScrapeResponse) error {
+func (nopHook) HandleScrape(ctx context.Context, req *bittorrent.ScrapeRequest, resp *bittorrent.ScrapeResponse) error {
 	return nil
 }
