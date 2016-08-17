@@ -4,6 +4,7 @@ package clientwhitelist
 
 import (
 	"context"
+	"errors"
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/middleware"
@@ -17,16 +18,22 @@ type hook struct {
 	approved map[bittorrent.ClientID]struct{}
 }
 
-func NewHook(approved []string) middleware.Hook {
+func NewHook(approved []string) (middleware.Hook, error) {
 	h := &hook{
 		approved: make(map[bittorrent.ClientID]struct{}),
 	}
 
-	for _, clientID := range approved {
-		h.approved[bittorrent.NewClientID(clientID)] = struct{}{}
+	for _, cidString := range approved {
+		cidBytes := []byte(cidString)
+		if len(cidBytes) != 6 {
+			return nil, errors.New("clientID " + cidString + " must be 6 bytes")
+		}
+		var cid bittorrent.ClientID
+		copy(cid[:], cidBytes)
+		h.approved[cid] = struct{}{}
 	}
 
-	return h
+	return h, nil
 }
 
 func (h *hook) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequest, resp *bittorrent.AnnounceResponse) error {
