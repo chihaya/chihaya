@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"net"
 
-	"github.com/jzelinskie/trakr/bittorrent"
+	"github.com/chihaya/chihaya/bittorrent"
 )
 
 const (
@@ -125,7 +125,7 @@ func handleOptionalParameters(packet []byte) (params bittorrent.Params, err erro
 				return params, errMalformedPacket
 			}
 
-			// TODO(jzelinskie): Actually parse the URL Data as described in BEP 41
+			// TODO(chihaya): Actually parse the URL Data as described in BEP 41
 			// into something that fulfills the bittorrent.Params interface.
 
 			optionStartIndex += 1 + length

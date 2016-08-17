@@ -3,7 +3,7 @@ package memory
 import (
 	"testing"
 
-	s "github.com/jzelinskie/trakr/storage"
+	s "github.com/chihaya/chihaya/storage"
 )
 
 func createNew() s.PeerStore {

@@ -1,8 +1,8 @@
 package storage
 
 import (
-	"github.com/jzelinskie/trakr/bittorrent"
-	"github.com/jzelinskie/trakr/stopper"
+	"github.com/chihaya/chihaya/bittorrent"
+	"github.com/chihaya/chihaya/stopper"
 )
 
 // ErrResourceDoesNotExist is the error returned by all delete methods in the

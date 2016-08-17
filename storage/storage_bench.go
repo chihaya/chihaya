@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/jzelinskie/trakr/bittorrent"
+	"github.com/chihaya/chihaya/bittorrent"
 )
 
 type benchData struct {

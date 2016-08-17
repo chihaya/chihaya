@@ -14,10 +14,10 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
-	httpfrontend "github.com/jzelinskie/trakr/frontend/http"
-	udpfrontend "github.com/jzelinskie/trakr/frontend/udp"
-	"github.com/jzelinskie/trakr/middleware"
-	"github.com/jzelinskie/trakr/storage/memory"
+	httpfrontend "github.com/chihaya/chihaya/frontend/http"
+	udpfrontend "github.com/chihaya/chihaya/frontend/udp"
+	"github.com/chihaya/chihaya/middleware"
+	"github.com/chihaya/chihaya/storage/memory"
 )
 
 type ConfigFile struct {
@@ -27,7 +27,7 @@ type ConfigFile struct {
 		HTTPConfig     httpfrontend.Config `yaml:"http"`
 		UDPConfig      udpfrontend.Config  `yaml:"udp"`
 		Storage        memory.Config       `yaml:"storage"`
-	} `yaml:"trakr"`
+	} `yaml:"chihaya"`
 }
 
 // ParseConfigFile returns a new ConfigFile given the path to a YAML
@@ -64,7 +64,7 @@ func main() {
 	var cpuProfilePath string
 
 	var rootCmd = &cobra.Command{
-		Use:   "trakr",
+		Use:   "chihaya",
 		Short: "BitTorrent Tracker",
 		Long:  "A customizible, multi-protocol BitTorrent Tracker",
 		Run: func(cmd *cobra.Command, args []string) {
@@ -173,7 +173,7 @@ func main() {
 		},
 	}
 
-	rootCmd.Flags().StringVar(&configFilePath, "config", "/etc/trakr.yaml", "location of configuration file")
+	rootCmd.Flags().StringVar(&configFilePath, "config", "/etc/chihaya.yaml", "location of configuration file")
 	rootCmd.Flags().StringVarP(&cpuProfilePath, "cpuprofile", "", "", "location to save a CPU profile")
 
 	if err := rootCmd.Execute(); err != nil {

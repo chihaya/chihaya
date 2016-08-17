@@ -3,7 +3,7 @@ package frontend
 import (
 	"golang.org/x/net/context"
 
-	"github.com/jzelinskie/trakr/bittorrent"
+	"github.com/chihaya/chihaya/bittorrent"
 )
 
 // TrackerLogic is the interface used by a frontend in order to: (1) generate a

@@ -8,9 +8,9 @@ import (
 
 	"golang.org/x/net/context"
 
-	"github.com/jzelinskie/trakr/bittorrent"
-	"github.com/jzelinskie/trakr/frontend"
-	"github.com/jzelinskie/trakr/storage"
+	"github.com/chihaya/chihaya/bittorrent"
+	"github.com/chihaya/chihaya/frontend"
+	"github.com/chihaya/chihaya/storage"
 )
 
 type Config struct {
@@ -78,7 +78,7 @@ func (l *Logic) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequ
 func (l *Logic) AfterAnnounce(ctx context.Context, req *bittorrent.AnnounceRequest, resp *bittorrent.AnnounceResponse) {
 	for _, h := range l.announcePostHooks {
 		if err := h.HandleAnnounce(ctx, req, resp); err != nil {
-			log.Println("trakr: post-announce hooks failed:", err.Error())
+			log.Println("chihaya: post-announce hooks failed:", err.Error())
 			return
 		}
 	}
@@ -103,7 +103,7 @@ func (l *Logic) HandleScrape(ctx context.Context, req *bittorrent.ScrapeRequest)
 func (l *Logic) AfterScrape(ctx context.Context, req *bittorrent.ScrapeRequest, resp *bittorrent.ScrapeResponse) {
 	for _, h := range l.scrapePostHooks {
 		if err := h.HandleScrape(ctx, req, resp); err != nil {
-			log.Println("trakr: post-scrape hooks failed:", err.Error())
+			log.Println("chihaya: post-scrape hooks failed:", err.Error())
 			return
 		}
 	}

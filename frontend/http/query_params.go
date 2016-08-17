@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/jzelinskie/trakr/bittorrent"
+	"github.com/chihaya/chihaya/bittorrent"
 )
 
 // ErrKeyNotFound is returned when a provided key has no value associated with

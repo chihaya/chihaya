@@ -7,7 +7,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/jzelinskie/trakr/bittorrent"
+	"github.com/chihaya/chihaya/bittorrent"
 )
 
 // WriteError writes the failure reason as a null-terminated string.

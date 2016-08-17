@@ -3,7 +3,7 @@ package middleware
 import (
 	"golang.org/x/net/context"
 
-	"github.com/jzelinskie/trakr/bittorrent"
+	"github.com/chihaya/chihaya/bittorrent"
 )
 
 // Hook abstracts the concept of anything that needs to interact with a

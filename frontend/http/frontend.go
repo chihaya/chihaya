@@ -12,7 +12,7 @@ import (
 	"github.com/tylerb/graceful"
 	"golang.org/x/net/context"
 
-	"github.com/jzelinskie/trakr/frontend"
+	"github.com/chihaya/chihaya/frontend"
 )
 
 func init() {
@@ -22,7 +22,7 @@ func init() {
 
 var promResponseDurationMilliseconds = prometheus.NewHistogramVec(
 	prometheus.HistogramOpts{
-		Name:    "trakr_http_response_duration_milliseconds",
+		Name:    "chihaya_http_response_duration_milliseconds",
 		Help:    "The duration of time it takes to receive and write a response to an API request",
 		Buckets: prometheus.ExponentialBuckets(9.375, 2, 10),
 	},

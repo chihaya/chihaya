@@ -1,4 +1,4 @@
-trakr:
+chihaya:
   announce_interval: 15m
   prometheus_addr: localhost:6880
 

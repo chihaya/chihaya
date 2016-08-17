@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/jzelinskie/trakr/bittorrent"
-	"github.com/jzelinskie/trakr/storage"
+	"github.com/chihaya/chihaya/bittorrent"
+	"github.com/chihaya/chihaya/storage"
 )
 
 // Config holds the configuration of a memory PeerStore.

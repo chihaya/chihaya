@@ -13,9 +13,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/net/context"
 
-	"github.com/jzelinskie/trakr/bittorrent"
-	"github.com/jzelinskie/trakr/frontend"
-	"github.com/jzelinskie/trakr/frontend/udp/bytepool"
+	"github.com/chihaya/chihaya/bittorrent"
+	"github.com/chihaya/chihaya/frontend"
+	"github.com/chihaya/chihaya/frontend/udp/bytepool"
 )
 
 func init() {
@@ -25,7 +25,7 @@ func init() {
 
 var promResponseDurationMilliseconds = prometheus.NewHistogramVec(
 	prometheus.HistogramOpts{
-		Name:    "trakr_udp_response_duration_milliseconds",
+		Name:    "chihaya_udp_response_duration_milliseconds",
 		Help:    "The duration of time it takes to receive and write a response to an API request",
 		Buckets: prometheus.ExponentialBuckets(9.375, 2, 10),
 	},
