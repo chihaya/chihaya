@@ -15,11 +15,10 @@ trakr:
     allow_ip_spoofing: false
 
   storage:
-    name: memory
-    config:
-      shards: 1
-      gc_interval: 14m
-      peer_lifetime: 15m
+    gc_interval: 14m
+    peer_lifetime: 15m
+    shards: 1
+    max_numwant: 100
 
   prehooks:
   - name: jwt

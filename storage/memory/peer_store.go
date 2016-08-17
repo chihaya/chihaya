@@ -12,13 +12,12 @@ import (
 	"github.com/jzelinskie/trakr/storage"
 )
 
-// TODO(jzelinskie): separate ipv4 and ipv6 swarms
-
 // Config holds the configuration of a memory PeerStore.
 type Config struct {
 	GarbageCollectionInterval time.Duration `yaml:"gc_interval"`
 	PeerLifetime              time.Duration `yaml:"peer_lifetime"`
 	ShardCount                int           `yaml:"shard_count"`
+	MaxNumWant                int           `yaml:"max_numwant"`
 }
 
 // New creates a new PeerStore backed by memory.
@@ -29,8 +28,9 @@ func New(cfg Config) (storage.PeerStore, error) {
 	}
 
 	ps := &peerStore{
-		shards: make([]*peerShard, shardCount*2),
-		closed: make(chan struct{}),
+		shards:     make([]*peerShard, shardCount*2),
+		closed:     make(chan struct{}),
+		maxNumWant: cfg.MaxNumWant,
 	}
 
 	for i := 0; i < shardCount*2; i++ {
@@ -67,8 +67,9 @@ type swarm struct {
 }
 
 type peerStore struct {
-	shards []*peerShard
-	closed chan struct{}
+	shards     []*peerShard
+	closed     chan struct{}
+	maxNumWant int
 }
 
 var _ storage.PeerStore = &peerStore{}
@@ -244,6 +245,10 @@ func (s *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant i
 	case <-s.closed:
 		panic("attempted to interact with stopped memory store")
 	default:
+	}
+
+	if numWant > s.maxNumWant {
+		numWant = s.maxNumWant
 	}
 
 	shard := s.shards[s.shardIndex(ih, announcer)]
