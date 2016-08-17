@@ -3,10 +3,9 @@
 package middleware
 
 import (
+	"context"
 	"log"
 	"time"
-
-	"golang.org/x/net/context"
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/frontend"

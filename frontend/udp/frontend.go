@@ -4,6 +4,7 @@ package udp
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"log"
 	"net"
@@ -11,7 +12,6 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"golang.org/x/net/context"
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/frontend"

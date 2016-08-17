@@ -3,6 +3,7 @@
 package http
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"time"
@@ -10,7 +11,6 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tylerb/graceful"
-	"golang.org/x/net/context"
 
 	"github.com/chihaya/chihaya/frontend"
 )
