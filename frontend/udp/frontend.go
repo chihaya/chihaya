@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"log"
 	"net"
 	"sync"
 	"time"
@@ -94,13 +93,12 @@ func (t *Frontend) ListenAndServe() error {
 	}
 	defer t.socket.Close()
 
-	pool := bytepool.New(256, 2048)
+	pool := bytepool.New(2048, 2048)
 
 	for {
 		// Check to see if we need to shutdown.
 		select {
 		case <-t.closing:
-			t.wg.Wait()
 			return nil
 		default:
 		}
@@ -124,7 +122,6 @@ func (t *Frontend) ListenAndServe() error {
 			continue
 		}
 
-		log.Println("Got UDP Request")
 		t.wg.Add(1)
 		go func() {
 			defer t.wg.Done()
@@ -132,11 +129,10 @@ func (t *Frontend) ListenAndServe() error {
 
 			// Handle the request.
 			start := time.Now()
-			response, action, err := t.handleRequest(
+			action, err := t.handleRequest(
 				Request{buffer[:n], addr.IP},
 				ResponseWriter{t.socket, addr},
 			)
-			log.Printf("Handled UDP Request: %s, %s, %s\n", response, action, err)
 			recordResponseDuration(action, err, time.Since(start))
 		}()
 	}
@@ -162,7 +158,7 @@ func (w ResponseWriter) Write(b []byte) (int, error) {
 }
 
 // handleRequest parses and responds to a UDP Request.
-func (t *Frontend) handleRequest(r Request, w ResponseWriter) (response []byte, actionName string, err error) {
+func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string, err error) {
 	if len(r.Packet) < 16 {
 		// Malformed, no client packets are less than 16 bytes.
 		// We explicitly return nothing in case this is a DoS attempt.
