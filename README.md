@@ -13,18 +13,36 @@ Chihaya is an open source [BitTorrent tracker] written in [Go].
 
 Differentiating features include:
 
-- Protocol-agnostic, middleware-composed logic
-- Low resource consumption and fast, asynchronous request processing
-- Unified IPv4 and IPv6 [swarms]
+- Protocol-agnostic middleware
+- HTTP and UDP frontends
+- IPv4 and IPv6 support
 - [YAML] configuration
-- Optional metrics via [Prometheus]
+- Metrics via [Prometheus]
 
 [releases]: https://github.com/chihaya/chihaya/releases
 [BitTorrent tracker]: http://en.wikipedia.org/wiki/BitTorrent_tracker
 [Go]: https://golang.org
-[swarms]: https://en.wikipedia.org/wiki/Glossary_of_BitTorrent_terms#Swarm
 [YAML]: http://yaml.org
 [Prometheus]: http://prometheus.io
+
+## Production Use
+
+### Facebook
+
+[Facebook] uses BitTorrent to deploy new versions of their software.
+In order to optimize the flow of traffic within their datacenters, Chihaya is configured to prefer peers within the same subnet.
+Because Facebook organizes their network such that server racks are allocated IP addresses in the same subnet, the vast majority of deployment traffic never impacts the congested areas of their network.
+
+[Facebook]: https://facebook.com
+
+### CoreOS
+
+[Quay] is a container registry that offers the ability to download containers via BitTorrent in order to speed up large or geographically distant deployments.
+Announce URLs from Quay's torrent files contain a [JWT] in order to allow Chihaya to verify that an infohash was approved by the registry.
+By verifying the infohash, Quay can be sure that only their content is being shared by their tracker.
+
+[Quay]: https://quay.io
+[JWT]: https://jwt.io
 
 ## Development
 
@@ -53,30 +71,9 @@ For more information read [CONTRIBUTING.md].
 [freenode IRC]: http://webchat.freenode.net/?channels=chihaya
 [CONTRIBUTING.md]: https://github.com/chihaya/chihaya/blob/master/CONTRIBUTING.md
 
-## Production Use
-
-### Facebook
-
-[Facebook] uses BitTorrent to deploy new versions of their software.
-In order to optimize the flow of traffic within their datacenters, Chihaya is configured to prefer peers within the same subnet.
-Because Facebook organizes their network such that server racks are allocated IP addresses in the same subnet, the vast majority of deployment traffic never impacts the congested areas of their network.
-
-[Facebook]: https://facebook.com
-
-### CoreOS
-
-[Quay] is a container registry that offers the ability to download containers via BitTorrent in order to speed up large or geographically distant deployments.
-Announce URLs from Quay's torrent files contain a [JWT] in order to allow Chihaya to verify that an infohash was approved by the registry.
-By verifying the infohash, Quay can be sure that only their content is being shared by their tracker.
-
-[Quay]: https://quay.io
-[JWT]: https://jwt.io
-
 ## Related projects
 
+- [BitTorrent.org](https://github.com/bittorrent/bittorrent.org): a static website containing the BitTorrent spec and all BEPs
 - [OpenTracker](http://erdgeist.org/arts/software/opentracker): a popular BitTorrent tracker written in C
 - [Ocelot](https://github.com/WhatCD/Ocelot): a private BitTorrent tracker written in C++
 
-## License
-
-Chihaya is distributed under the 2-Clause BSD license that can be found in the `LICENSE` file.
