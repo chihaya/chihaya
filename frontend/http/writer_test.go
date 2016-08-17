@@ -19,7 +19,7 @@ func TestWriteError(t *testing.T) {
 
 	for _, tt := range table {
 		r := httptest.NewRecorder()
-		err := writeError(r, bittorrent.ClientError(tt.reason))
+		err := WriteError(r, bittorrent.ClientError(tt.reason))
 		assert.Nil(t, err)
 		assert.Equal(t, r.Body.String(), tt.expected)
 	}
@@ -27,7 +27,7 @@ func TestWriteError(t *testing.T) {
 
 func TestWriteStatus(t *testing.T) {
 	r := httptest.NewRecorder()
-	err := writeError(r, bittorrent.ClientError("something is missing"))
+	err := WriteError(r, bittorrent.ClientError("something is missing"))
 	assert.Nil(t, err)
 	assert.Equal(t, r.Body.String(), "d14:failure reason20:something is missinge")
 }
