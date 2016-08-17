@@ -13,11 +13,11 @@ import (
 // begin with an approved prefix.
 var ClientUnapproved = bittorrent.ClientError("unapproved client")
 
-type Hook struct {
+type hook struct {
 	approved map[bittorrent.ClientID]struct{}
 }
 
-func NewHook(approved []string) {
+func NewHook(approved []string) middleware.Hook {
 	h := &hook{
 		approved: make(map[bittorrent.ClientID]struct{}),
 	}
@@ -29,9 +29,7 @@ func NewHook(approved []string) {
 	return h
 }
 
-var _ middleware.Hook = &Hook{}
-
-func (h *Hook) HandleAnnounce(context.Context, *bittorrent.AnnounceRequest, *bittorrent.AnnounceResponse) error {
+func (h *hook) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequest, resp *bittorrent.AnnounceResponse) error {
 	if _, found := h.approved[bittorrent.NewClientID(req.Peer.ID)]; !found {
 		return ClientUnapproved
 	}
@@ -39,6 +37,6 @@ func (h *Hook) HandleAnnounce(context.Context, *bittorrent.AnnounceRequest, *bit
 	return nil
 }
 
-func (h *Hook) HandleScrape(context.Context, *bittorrent.ScrapeRequest, *bittorrent.ScrapeResponse) error {
+func (h *hook) HandleScrape(ctx context.Context, req *bittorrent.ScrapeRequest, resp *bittorrent.ScrapeResponse) error {
 	return nil
 }
