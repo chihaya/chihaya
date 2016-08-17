@@ -2,6 +2,7 @@ package memory
 
 import (
 	"encoding/binary"
+	"errors"
 	"log"
 	"net"
 	"runtime"
@@ -11,6 +12,10 @@ import (
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/storage"
 )
+
+// ErrInvalidGCInterval is returned for a GarbageCollectionInterval that is
+// less than or equal to zero.
+var ErrInvalidGCInterval = errors.New("invalid garbage collection interval")
 
 // Config holds the configuration of a memory PeerStore.
 type Config struct {
@@ -25,6 +30,10 @@ func New(cfg Config) (storage.PeerStore, error) {
 	shardCount := 1
 	if cfg.ShardCount > 0 {
 		shardCount = cfg.ShardCount
+	}
+
+	if cfg.GarbageCollectionInterval <= 0 {
+		return nil, ErrInvalidGCInterval
 	}
 
 	ps := &peerStore{
@@ -43,7 +52,7 @@ func New(cfg Config) (storage.PeerStore, error) {
 			case <-ps.closed:
 				return
 			case <-time.After(cfg.GarbageCollectionInterval):
-				before := time.Now().Add(-cfg.GarbageCollectionInterval)
+				before := time.Now().Add(-cfg.PeerLifetime)
 				log.Println("memory: purging peers with no announces since ", before)
 				ps.collectGarbage(before)
 			}
