@@ -26,32 +26,44 @@ func WriteError(w io.Writer, txID []byte, err error) {
 
 // WriteAnnounce encodes an announce response according to BEP 15.
 func WriteAnnounce(w io.Writer, txID []byte, resp *bittorrent.AnnounceResponse) {
-	writeHeader(w, txID, announceActionID)
-	binary.Write(w, binary.BigEndian, uint32(resp.Interval/time.Second))
-	binary.Write(w, binary.BigEndian, uint32(resp.Incomplete))
-	binary.Write(w, binary.BigEndian, uint32(resp.Complete))
+	var buf bytes.Buffer
+
+	writeHeader(&buf, txID, announceActionID)
+	binary.Write(&buf, binary.BigEndian, uint32(resp.Interval/time.Second))
+	binary.Write(&buf, binary.BigEndian, uint32(resp.Incomplete))
+	binary.Write(&buf, binary.BigEndian, uint32(resp.Complete))
 
 	for _, peer := range resp.IPv4Peers {
-		w.Write(peer.IP)
-		binary.Write(w, binary.BigEndian, peer.Port)
+		buf.Write(peer.IP)
+		binary.Write(&buf, binary.BigEndian, peer.Port)
 	}
+
+	w.Write(buf.Bytes())
 }
 
 // WriteScrape encodes a scrape response according to BEP 15.
 func WriteScrape(w io.Writer, txID []byte, resp *bittorrent.ScrapeResponse) {
-	writeHeader(w, txID, scrapeActionID)
+	var buf bytes.Buffer
+
+	writeHeader(&buf, txID, scrapeActionID)
 
 	for _, scrape := range resp.Files {
-		binary.Write(w, binary.BigEndian, scrape.Complete)
-		binary.Write(w, binary.BigEndian, scrape.Snatches)
-		binary.Write(w, binary.BigEndian, scrape.Incomplete)
+		binary.Write(&buf, binary.BigEndian, scrape.Complete)
+		binary.Write(&buf, binary.BigEndian, scrape.Snatches)
+		binary.Write(&buf, binary.BigEndian, scrape.Incomplete)
 	}
+
+	w.Write(buf.Bytes())
 }
 
 // WriteConnectionID encodes a new connection response according to BEP 15.
 func WriteConnectionID(w io.Writer, txID, connID []byte) {
-	writeHeader(w, txID, connectActionID)
-	w.Write(connID)
+	var buf bytes.Buffer
+
+	writeHeader(&buf, txID, connectActionID)
+	buf.Write(connID)
+
+	w.Write(buf.Bytes())
 }
 
 // writeHeader writes the action and transaction ID to the provided response
