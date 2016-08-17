@@ -1,9 +1,0 @@
-package: github.com/chihaya/chihaya
-import:
-- package: github.com/julienschmidt/httprouter
-- package: github.com/mrd0ll4r/netmatch
-- package: github.com/prometheus/client_golang
-  subpackages:
-  - prometheus
-- package: github.com/tylerb/graceful
-- package: gopkg.in/yaml.v2
