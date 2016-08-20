@@ -12,7 +12,6 @@ const (
 	announceActionID
 	scrapeActionID
 	errorActionID
-	announceDualStackActionID
 )
 
 // Option-Types as described in BEP 41 and BEP 45.
