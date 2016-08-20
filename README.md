@@ -25,6 +25,23 @@ Differentiating features include:
 [YAML]: http://yaml.org
 [Prometheus]: http://prometheus.io
 
+## Architecture
+
+### Diagram
+
+Coming Soon
+
+### Description
+
+BitTorrent clients send announce and scrape requests to a _Frontend_.
+Frontends parse requests and write responses for the particular protocol they implement.
+The _TrackerLogic_ interface to is used to generate responses for their requests and optionally perform a task after responding to a client.
+A configurable chain of _PreHook_ and _PostHook_ middleware is used to construct an instance of TrackerLogic.
+PreHooks are middleware that are executed before the response has been written.
+The final middleware in a chain of PreHooks ensures the existance of any required response fields by reading out of the configured implementation of the _Storage_ interface.
+PostHooks are asynchronous tasks that occur after a response has been delivered to the client.
+Request data is written to storage asynchronously in one of these PostHooks.
+
 ## Production Use
 
 ### Facebook
