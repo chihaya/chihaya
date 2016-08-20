@@ -102,71 +102,80 @@ func main() {
 					return err
 				}
 
-				// TODO create PeerStore
 				// TODO create Hooks
 				logic := middleware.NewLogic(cfg.Config, peerStore, nil, nil, nil, nil)
 				if err != nil {
 					return err
 				}
 
+				shutdown := make(chan struct{})
 				errChan := make(chan error)
-				closedChan := make(chan struct{})
 
-				var hFrontend *httpfrontend.Frontend
-				var uFrontend *udpfrontend.Frontend
+				var httpFrontend *httpfrontend.Frontend
+				var udpFrontend *udpfrontend.Frontend
 
 				if cfg.HTTPConfig.Addr != "" {
-					// TODO get the real TrackerLogic
-					hFrontend = httpfrontend.NewFrontend(logic, cfg.HTTPConfig)
+					httpFrontend = httpfrontend.NewFrontend(logic, cfg.HTTPConfig)
 
 					go func() {
 						log.Println("started serving HTTP on", cfg.HTTPConfig.Addr)
-						if err := hFrontend.ListenAndServe(); err != nil {
+						if err := httpFrontend.ListenAndServe(); err != nil {
 							errChan <- errors.New("failed to cleanly shutdown HTTP frontend: " + err.Error())
 						}
 					}()
 				}
 
 				if cfg.UDPConfig.Addr != "" {
-					// TODO get the real TrackerLogic
-					uFrontend = udpfrontend.NewFrontend(logic, cfg.UDPConfig)
+					udpFrontend = udpfrontend.NewFrontend(logic, cfg.UDPConfig)
 
 					go func() {
 						log.Println("started serving UDP on", cfg.UDPConfig.Addr)
-						if err := uFrontend.ListenAndServe(); err != nil {
+						if err := udpFrontend.ListenAndServe(); err != nil {
 							errChan <- errors.New("failed to cleanly shutdown UDP frontend: " + err.Error())
 						}
 					}()
 				}
 
-				shutdown := make(chan os.Signal)
-				signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
+				sigChan := make(chan os.Signal)
+				signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 				go func() {
-					<-shutdown
-
-					if uFrontend != nil {
-						uFrontend.Stop()
+					select {
+					case <-sigChan:
+					case <-shutdown:
 					}
 
-					if hFrontend != nil {
-						hFrontend.Stop()
+					if udpFrontend != nil {
+						udpFrontend.Stop()
 					}
 
-					// TODO: stop PeerStore
+					if httpFrontend != nil {
+						httpFrontend.Stop()
+					}
+
+					for err := range peerStore.Stop() {
+						if err != nil {
+							errChan <- err
+						}
+					}
 
 					close(errChan)
-					close(closedChan)
 				}()
 
-				for err := range errChan {
+				closed := false
+				var bufErr error
+				for err = range errChan {
 					if err != nil {
-						close(shutdown)
-						<-closedChan
-						return err
+						if !closed {
+							close(shutdown)
+							closed = true
+						} else {
+							log.Println(bufErr)
+						}
+						bufErr = err
 					}
 				}
 
-				return nil
+				return bufErr
 			}(); err != nil {
 				log.Fatal(err)
 			}
