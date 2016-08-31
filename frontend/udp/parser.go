@@ -1,8 +1,11 @@
 package udp
 
 import (
+	"bytes"
 	"encoding/binary"
+	"fmt"
 	"net"
+	"sync"
 
 	"github.com/chihaya/chihaya/bittorrent"
 )
@@ -37,11 +40,12 @@ var (
 		bittorrent.Stopped,
 	}
 
-	errMalformedPacket = bittorrent.ClientError("malformed packet")
-	errMalformedIP     = bittorrent.ClientError("malformed IP address")
-	errMalformedEvent  = bittorrent.ClientError("malformed event ID")
-	errUnknownAction   = bittorrent.ClientError("unknown action ID")
-	errBadConnectionID = bittorrent.ClientError("bad connection ID")
+	errMalformedPacket   = bittorrent.ClientError("malformed packet")
+	errMalformedIP       = bittorrent.ClientError("malformed IP address")
+	errMalformedEvent    = bittorrent.ClientError("malformed event ID")
+	errUnknownAction     = bittorrent.ClientError("unknown action ID")
+	errBadConnectionID   = bittorrent.ClientError("bad connection ID")
+	errUnknownOptionType = bittorrent.ClientError("unknown option type")
 )
 
 // ParseAnnounce parses an AnnounceRequest from a UDP request.
@@ -76,7 +80,7 @@ func ParseAnnounce(r Request, allowIPSpoofing bool) (*bittorrent.AnnounceRequest
 	numWant := binary.BigEndian.Uint32(r.Packet[92:96])
 	port := binary.BigEndian.Uint16(r.Packet[96:98])
 
-	params, err := handleOptionalParameters(r.Packet)
+	params, err := handleOptionalParameters(r.Packet[98:])
 	if err != nil {
 		return nil, err
 	}
@@ -97,43 +101,65 @@ func ParseAnnounce(r Request, allowIPSpoofing bool) (*bittorrent.AnnounceRequest
 	}, nil
 }
 
+type buffer struct {
+	bytes.Buffer
+}
+
+var bufferFree = sync.Pool{
+	New: func() interface{} { return new(buffer) },
+}
+
+func newBuffer() *buffer {
+	return bufferFree.Get().(*buffer)
+}
+
+func (b *buffer) free() {
+	b.Reset()
+	bufferFree.Put(b)
+}
+
 // handleOptionalParameters parses the optional parameters as described in BEP
 // 41 and updates an announce with the values parsed.
-func handleOptionalParameters(packet []byte) (params bittorrent.Params, err error) {
-	if len(packet) <= 98 {
-		return
+func handleOptionalParameters(packet []byte) (bittorrent.Params, error) {
+	if len(packet) == 0 {
+		return bittorrent.ParseURLData("")
 	}
 
-	optionStartIndex := 98
-	for optionStartIndex < len(packet)-1 {
-		option := packet[optionStartIndex]
+	var buf = newBuffer()
+	defer buf.free()
+
+	for i := 0; i < len(packet); {
+		option := packet[i]
 		switch option {
 		case optionEndOfOptions:
-			return
-
+			return bittorrent.ParseURLData(buf.String())
 		case optionNOP:
-			optionStartIndex++
-
+			i++
 		case optionURLData:
-			if optionStartIndex+1 > len(packet)-1 {
-				return params, errMalformedPacket
+			if i+1 >= len(packet) {
+				return nil, errMalformedPacket
 			}
 
-			length := int(packet[optionStartIndex+1])
-			if optionStartIndex+1+length > len(packet)-1 {
-				return params, errMalformedPacket
+			length := int(packet[i+1])
+			if i+2+length > len(packet) {
+				return nil, errMalformedPacket
 			}
 
-			// TODO(chihaya): Actually parse the URL Data as described in BEP 41
-			// into something that fulfills the bittorrent.Params interface.
+			n, err := buf.Write(packet[i+2 : i+2+length])
+			if err != nil {
+				return nil, err
+			}
+			if n != length {
+				return nil, fmt.Errorf("expected to write %d bytes, wrote %d", length, n)
+			}
 
-			optionStartIndex += 1 + length
+			i += 2 + length
 		default:
-			return
+			return nil, errUnknownOptionType
 		}
 	}
 
-	return
+	return bittorrent.ParseURLData(buf.String())
 }
 
 // ParseScrape parses a ScrapeRequest from a UDP request.
