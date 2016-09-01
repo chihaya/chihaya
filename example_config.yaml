@@ -23,9 +23,10 @@ chihaya:
   prehooks:
   - name: jwt
     config:
-      jwk_set_uri: ""
+      issuer: https://issuer.com
+      audience: https://chihaya.issuer.com
+      jwk_set_uri: https://issuer.com/keys
       jwk_set_update_interval: 5m
-      jwt_audience: ""
   - name: approved_client
     config:
       type: whitelist
