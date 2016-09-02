@@ -13,7 +13,7 @@ import (
 // If realIPHeader is not empty string, the first value of the HTTP Header with
 // that name will be used.
 func ParseAnnounce(r *http.Request, realIPHeader string, allowIPSpoofing bool) (*bittorrent.AnnounceRequest, error) {
-	qp, err := NewQueryParams(r.URL.RawQuery)
+	qp, err := bittorrent.ParseURLData(r.RequestURI)
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func ParseAnnounce(r *http.Request, realIPHeader string, allowIPSpoofing bool) (
 
 // ParseScrape parses an bittorrent.ScrapeRequest from an http.Request.
 func ParseScrape(r *http.Request) (*bittorrent.ScrapeRequest, error) {
-	qp, err := NewQueryParams(r.URL.RawQuery)
+	qp, err := bittorrent.ParseURLData(r.RequestURI)
 	if err != nil {
 		return nil, err
 	}

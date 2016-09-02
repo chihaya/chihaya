@@ -1,4 +1,4 @@
-package http
+package bittorrent
 
 import (
 	"net/url"
@@ -6,11 +6,10 @@ import (
 )
 
 var (
-	baseAddr     = "https://www.subdomain.tracker.com:80/"
-	testInfoHash = "01234567890123456789"
-	testPeerID   = "-TEST01-6wfG2wk6wWLc"
+	testPeerID = "-TEST01-6wfG2wk6wWLc"
 
 	ValidAnnounceArguments = []url.Values{
+		{},
 		{"peer_id": {testPeerID}, "port": {"6881"}, "downloaded": {"1234"}, "left": {"4321"}},
 		{"peer_id": {testPeerID}, "ip": {"192.168.0.1"}, "port": {"6881"}, "downloaded": {"1234"}, "left": {"4321"}},
 		{"peer_id": {testPeerID}, "ip": {"192.168.0.1"}, "port": {"6881"}, "downloaded": {"1234"}, "left": {"4321"}, "numwant": {"28"}},
@@ -26,7 +25,7 @@ var (
 	}
 
 	InvalidQueries = []string{
-		baseAddr + "announce/?" + "info_hash=%0%a",
+		"/announce?" + "info_hash=%0%a",
 	}
 )
 
@@ -45,28 +44,42 @@ func mapArrayEqual(boxed map[string][]string, unboxed map[string]string) bool {
 	return true
 }
 
-func TestValidQueries(t *testing.T) {
+func TestParseEmptyURLData(t *testing.T) {
+	parsedQuery, err := ParseURLData("")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if parsedQuery == nil {
+		t.Fatal("Parsed query must not be nil")
+	}
+}
+
+func TestParseValidURLData(t *testing.T) {
 	for parseIndex, parseVal := range ValidAnnounceArguments {
-		parsedQueryObj, err := NewQueryParams(baseAddr + "announce/?" + parseVal.Encode())
+		parsedQueryObj, err := ParseURLData("/announce?" + parseVal.Encode())
 		if err != nil {
-			t.Error(err)
+			t.Fatal(err)
 		}
 
 		if !mapArrayEqual(parseVal, parsedQueryObj.params) {
-			t.Errorf("Incorrect parse at item %d.\n Expected=%v\n Recieved=%v\n", parseIndex, parseVal, parsedQueryObj.params)
+			t.Fatalf("Incorrect parse at item %d.\n Expected=%v\n Recieved=%v\n", parseIndex, parseVal, parsedQueryObj.params)
+		}
+
+		if parsedQueryObj.path != "/announce" {
+			t.Fatalf("Incorrect path, expected %q, got %q", "/announce", parsedQueryObj.path)
 		}
 	}
 }
 
-func TestInvalidQueries(t *testing.T) {
+func TestParseInvalidURLData(t *testing.T) {
 	for parseIndex, parseStr := range InvalidQueries {
-		parsedQueryObj, err := NewQueryParams(parseStr)
+		parsedQueryObj, err := ParseURLData(parseStr)
 		if err == nil {
-			t.Error("Should have produced error", parseIndex)
+			t.Fatal("Should have produced error", parseIndex)
 		}
 
 		if parsedQueryObj != nil {
-			t.Error("Should be nil after error", parsedQueryObj, parseIndex)
+			t.Fatal("Should be nil after error", parsedQueryObj, parseIndex)
 		}
 	}
 }
@@ -74,7 +87,7 @@ func TestInvalidQueries(t *testing.T) {
 func BenchmarkParseQuery(b *testing.B) {
 	for bCount := 0; bCount < b.N; bCount++ {
 		for parseIndex, parseStr := range ValidAnnounceArguments {
-			parsedQueryObj, err := NewQueryParams(baseAddr + "announce/?" + parseStr.Encode())
+			parsedQueryObj, err := parseQuery(parseStr.Encode())
 			if err != nil {
 				b.Error(err, parseIndex)
 				b.Log(parsedQueryObj)
@@ -86,7 +99,7 @@ func BenchmarkParseQuery(b *testing.B) {
 func BenchmarkURLParseQuery(b *testing.B) {
 	for bCount := 0; bCount < b.N; bCount++ {
 		for parseIndex, parseStr := range ValidAnnounceArguments {
-			parsedQueryObj, err := url.ParseQuery(baseAddr + "announce/?" + parseStr.Encode())
+			parsedQueryObj, err := url.ParseQuery(parseStr.Encode())
 			if err != nil {
 				b.Error(err, parseIndex)
 				b.Log(parsedQueryObj)
