@@ -54,8 +54,12 @@ func rootCmdRun(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// TODO create Hooks
-	logic := middleware.NewLogic(cfg.Config, peerStore, nil, nil, nil, nil)
+	preHooks, postHooks, err := configFile.CreateHooks()
+	if err != nil {
+		return err
+	}
+
+	logic := middleware.NewLogic(cfg.Config, peerStore, preHooks, postHooks)
 	if err != nil {
 		return err
 	}
