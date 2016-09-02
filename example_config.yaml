@@ -27,11 +27,12 @@ chihaya:
       audience: https://chihaya.issuer.com
       jwk_set_uri: https://issuer.com/keys
       jwk_set_update_interval: 5m
-  - name: approved_client
+  - name: client approval
     config:
-      type: whitelist
-      clients:
+      whitelist:
       - OP1011
+      blacklist:
+      - OP1012
 
   posthooks:
   - name: gossip
