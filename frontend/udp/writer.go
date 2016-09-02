@@ -25,15 +25,27 @@ func WriteError(w io.Writer, txID []byte, err error) {
 }
 
 // WriteAnnounce encodes an announce response according to BEP 15.
-func WriteAnnounce(w io.Writer, txID []byte, resp *bittorrent.AnnounceResponse) {
+// The peers returned will be resp.IPv6Peers or resp.IPv4Peers, depending on
+// whether v6 is set. The action ID will be 4, according to
+// http://opentracker.blog.h3q.com/2007/12/28/the-ipv6-situation/.
+func WriteAnnounce(w io.Writer, txID []byte, resp *bittorrent.AnnounceResponse, v6 bool) {
 	var buf bytes.Buffer
 
-	writeHeader(&buf, txID, announceActionID)
+	if v6 {
+		writeHeader(&buf, txID, announceV6ActionID)
+	} else {
+		writeHeader(&buf, txID, announceActionID)
+	}
 	binary.Write(&buf, binary.BigEndian, uint32(resp.Interval/time.Second))
 	binary.Write(&buf, binary.BigEndian, uint32(resp.Incomplete))
 	binary.Write(&buf, binary.BigEndian, uint32(resp.Complete))
 
-	for _, peer := range resp.IPv4Peers {
+	peers := resp.IPv4Peers
+	if v6 {
+		peers = resp.IPv6Peers
+	}
+
+	for _, peer := range peers {
 		buf.Write(peer.IP)
 		binary.Write(&buf, binary.BigEndian, peer.Port)
 	}
