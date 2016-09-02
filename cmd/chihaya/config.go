@@ -10,6 +10,7 @@ import (
 	httpfrontend "github.com/chihaya/chihaya/frontend/http"
 	udpfrontend "github.com/chihaya/chihaya/frontend/udp"
 	"github.com/chihaya/chihaya/middleware"
+	"github.com/chihaya/chihaya/middleware/clientapproval"
 	"github.com/chihaya/chihaya/middleware/jwt"
 	"github.com/chihaya/chihaya/storage/memory"
 )
@@ -75,9 +76,20 @@ func (cfg ConfigFile) CreateHooks() (preHooks, postHooks []middleware.Hook, err 
 			var jwtCfg jwt.Config
 			err := yaml.Unmarshal(cfgBytes, &jwtCfg)
 			if err != nil {
-				return nil, nil, errors.New("invalid JWT middleware config" + err.Error())
+				return nil, nil, errors.New("invalid JWT middleware config: " + err.Error())
 			}
 			preHooks = append(preHooks, jwt.NewHook(jwtCfg))
+		case "client approval":
+			var caCfg clientapproval.Config
+			err := yaml.Unmarshal(cfgBytes, &caCfg)
+			if err != nil {
+				return nil, nil, errors.New("invalid client approval middleware config: " + err.Error())
+			}
+			hook, err := clientapproval.NewHook(caCfg)
+			if err != nil {
+				return nil, nil, errors.New("invalid client approval middleware config: " + err.Error())
+			}
+			preHooks = append(preHooks, hook)
 		}
 	}
 
