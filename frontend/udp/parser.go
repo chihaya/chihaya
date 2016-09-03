@@ -15,6 +15,7 @@ const (
 	announceActionID
 	scrapeActionID
 	errorActionID
+	announceV6ActionID
 )
 
 // Option-Types as described in BEP 41 and BEP 45.
@@ -51,8 +52,17 @@ var (
 // ParseAnnounce parses an AnnounceRequest from a UDP request.
 //
 // If allowIPSpoofing is true, IPs provided via params will be used.
-func ParseAnnounce(r Request, allowIPSpoofing bool) (*bittorrent.AnnounceRequest, error) {
-	if len(r.Packet) < 98 {
+//
+// If v6 is true the announce will be parsed as an IPv6 announce "the
+// opentracker way", see
+// http://opentracker.blog.h3q.com/2007/12/28/the-ipv6-situation/
+func ParseAnnounce(r Request, allowIPSpoofing, v6 bool) (*bittorrent.AnnounceRequest, error) {
+	ipEnd := 84 + net.IPv4len
+	if v6 {
+		ipEnd = 84 + net.IPv6len
+	}
+
+	if len(r.Packet) < ipEnd+10 {
 		return nil, errMalformedPacket
 	}
 
@@ -68,7 +78,7 @@ func ParseAnnounce(r Request, allowIPSpoofing bool) (*bittorrent.AnnounceRequest
 	}
 
 	ip := r.IP
-	ipbytes := r.Packet[84:88]
+	ipbytes := r.Packet[84:ipEnd]
 	if allowIPSpoofing {
 		ip = net.IP(ipbytes)
 	}
@@ -77,10 +87,10 @@ func ParseAnnounce(r Request, allowIPSpoofing bool) (*bittorrent.AnnounceRequest
 		return nil, errMalformedIP
 	}
 
-	numWant := binary.BigEndian.Uint32(r.Packet[92:96])
-	port := binary.BigEndian.Uint16(r.Packet[96:98])
+	numWant := binary.BigEndian.Uint32(r.Packet[ipEnd+4 : ipEnd+8])
+	port := binary.BigEndian.Uint16(r.Packet[ipEnd+8 : ipEnd+10])
 
-	params, err := handleOptionalParameters(r.Packet[98:])
+	params, err := handleOptionalParameters(r.Packet[ipEnd+10:])
 	if err != nil {
 		return nil, err
 	}

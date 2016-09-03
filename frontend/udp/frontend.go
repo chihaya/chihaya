@@ -192,11 +192,11 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 		WriteConnectionID(w, txID, NewConnectionID(r.IP, time.Now(), t.PrivateKey))
 		return
 
-	case announceActionID:
+	case announceActionID, announceV6ActionID:
 		actionName = "announce"
 
 		var req *bittorrent.AnnounceRequest
-		req, err = ParseAnnounce(r, t.AllowIPSpoofing)
+		req, err = ParseAnnounce(r, t.AllowIPSpoofing, actionID == announceV6ActionID)
 		if err != nil {
 			WriteError(w, txID, err)
 			return
@@ -209,7 +209,7 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 			return
 		}
 
-		WriteAnnounce(w, txID, resp)
+		WriteAnnounce(w, txID, resp, actionID == announceV6ActionID)
 
 		go t.logic.AfterAnnounce(context.TODO(), req, resp)
 
