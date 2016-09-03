@@ -124,11 +124,6 @@ func (p Peer) Equal(x Peer) bool { return p.EqualEndpoint(x) && p.ID == x.ID }
 // EqualEndpoint reports whether p and x have the same endpoint.
 func (p Peer) EqualEndpoint(x Peer) bool { return p.Port == x.Port && p.IP.Equal(x.IP) }
 
-// Params is used to fetch request optional parameters from an Announce.
-type Params interface {
-	String(key string) (string, bool)
-}
-
 // ClientError represents an error that should be exposed to the client over
 // the BitTorrent protocol implementation.
 type ClientError string
