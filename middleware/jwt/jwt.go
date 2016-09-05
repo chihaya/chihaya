@@ -98,26 +98,26 @@ func (h *hook) Stop() {
 	close(h.closing)
 }
 
-func (h *hook) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequest, resp *bittorrent.AnnounceResponse) error {
+func (h *hook) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequest, resp *bittorrent.AnnounceResponse) (context.Context, error) {
 	if req.Params == nil {
-		return ErrMissingJWT
+		return ctx, ErrMissingJWT
 	}
 
 	jwtParam, ok := req.Params.String("jwt")
 	if !ok {
-		return ErrMissingJWT
+		return ctx, ErrMissingJWT
 	}
 
 	if err := validateJWT(req.InfoHash, []byte(jwtParam), h.cfg.Issuer, h.cfg.Audience, h.publicKeys); err != nil {
-		return ErrInvalidJWT
+		return ctx, ErrInvalidJWT
 	}
 
-	return nil
+	return ctx, nil
 }
 
-func (h *hook) HandleScrape(ctx context.Context, req *bittorrent.ScrapeRequest, resp *bittorrent.ScrapeResponse) error {
+func (h *hook) HandleScrape(ctx context.Context, req *bittorrent.ScrapeRequest, resp *bittorrent.ScrapeResponse) (context.Context, error) {
 	// Scrapes don't require any protection.
-	return nil
+	return ctx, nil
 }
 
 func validateJWT(ih bittorrent.InfoHash, jwtBytes []byte, cfgIss, cfgAud string, publicKeys map[string]crypto.PublicKey) error {

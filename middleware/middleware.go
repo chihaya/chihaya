@@ -29,14 +29,6 @@ func NewLogic(cfg Config, peerStore storage.PeerStore, preHooks, postHooks []Hoo
 		postHooks:        postHooks,
 	}
 
-	if len(l.preHooks) == 0 {
-		l.preHooks = []Hook{nopHook{}}
-	}
-
-	if len(l.postHooks) == 0 {
-		l.postHooks = []Hook{nopHook{}}
-	}
-
 	return l
 }
 
@@ -50,12 +42,12 @@ type Logic struct {
 }
 
 // HandleAnnounce generates a response for an Announce.
-func (l *Logic) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequest) (*bittorrent.AnnounceResponse, error) {
-	resp := &bittorrent.AnnounceResponse{
+func (l *Logic) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequest) (resp *bittorrent.AnnounceResponse, err error) {
+	resp = &bittorrent.AnnounceResponse{
 		Interval: l.announceInterval,
 	}
 	for _, h := range l.preHooks {
-		if err := h.HandleAnnounce(ctx, req, resp); err != nil {
+		if ctx, err = h.HandleAnnounce(ctx, req, resp); err != nil {
 			return nil, err
 		}
 	}
@@ -66,8 +58,9 @@ func (l *Logic) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequ
 // AfterAnnounce does something with the results of an Announce after it has
 // been completed.
 func (l *Logic) AfterAnnounce(ctx context.Context, req *bittorrent.AnnounceRequest, resp *bittorrent.AnnounceResponse) {
+	var err error
 	for _, h := range l.postHooks {
-		if err := h.HandleAnnounce(ctx, req, resp); err != nil {
+		if ctx, err = h.HandleAnnounce(ctx, req, resp); err != nil {
 			log.Errorln("chihaya: post-announce hooks failed:", err.Error())
 			return
 		}
@@ -75,12 +68,12 @@ func (l *Logic) AfterAnnounce(ctx context.Context, req *bittorrent.AnnounceReque
 }
 
 // HandleScrape generates a response for a Scrape.
-func (l *Logic) HandleScrape(ctx context.Context, req *bittorrent.ScrapeRequest) (*bittorrent.ScrapeResponse, error) {
-	resp := &bittorrent.ScrapeResponse{
+func (l *Logic) HandleScrape(ctx context.Context, req *bittorrent.ScrapeRequest) (resp *bittorrent.ScrapeResponse, err error) {
+	resp = &bittorrent.ScrapeResponse{
 		Files: make(map[bittorrent.InfoHash]bittorrent.Scrape),
 	}
 	for _, h := range l.preHooks {
-		if err := h.HandleScrape(ctx, req, resp); err != nil {
+		if ctx, err = h.HandleScrape(ctx, req, resp); err != nil {
 			return nil, err
 		}
 	}
@@ -91,8 +84,9 @@ func (l *Logic) HandleScrape(ctx context.Context, req *bittorrent.ScrapeRequest)
 // AfterScrape does something with the results of a Scrape after it has been
 // completed.
 func (l *Logic) AfterScrape(ctx context.Context, req *bittorrent.ScrapeRequest, resp *bittorrent.ScrapeResponse) {
+	var err error
 	for _, h := range l.postHooks {
-		if err := h.HandleScrape(ctx, req, resp); err != nil {
+		if ctx, err = h.HandleScrape(ctx, req, resp); err != nil {
 			log.Errorln("chihaya: post-scrape hooks failed:", err.Error())
 			return
 		}
