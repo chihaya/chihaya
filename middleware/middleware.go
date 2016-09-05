@@ -4,9 +4,9 @@ package middleware
 
 import (
 	"context"
-	"log"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/frontend"
 	"github.com/chihaya/chihaya/storage"
@@ -65,7 +65,7 @@ func (l *Logic) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequ
 func (l *Logic) AfterAnnounce(ctx context.Context, req *bittorrent.AnnounceRequest, resp *bittorrent.AnnounceResponse) {
 	for _, h := range l.postHooks {
 		if err := h.HandleAnnounce(ctx, req, resp); err != nil {
-			log.Println("chihaya: post-announce hooks failed:", err.Error())
+			log.Errorln("chihaya: post-announce hooks failed:", err.Error())
 			return
 		}
 	}
@@ -90,7 +90,7 @@ func (l *Logic) HandleScrape(ctx context.Context, req *bittorrent.ScrapeRequest)
 func (l *Logic) AfterScrape(ctx context.Context, req *bittorrent.ScrapeRequest, resp *bittorrent.ScrapeResponse) {
 	for _, h := range l.postHooks {
 		if err := h.HandleScrape(ctx, req, resp); err != nil {
-			log.Println("chihaya: post-scrape hooks failed:", err.Error())
+			log.Errorln("chihaya: post-scrape hooks failed:", err.Error())
 			return
 		}
 	}

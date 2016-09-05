@@ -3,11 +3,12 @@ package memory
 import (
 	"encoding/binary"
 	"errors"
-	"log"
 	"net"
 	"runtime"
 	"sync"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/storage"
@@ -53,7 +54,7 @@ func New(cfg Config) (storage.PeerStore, error) {
 				return
 			case <-time.After(cfg.GarbageCollectionInterval):
 				before := time.Now().Add(-cfg.PeerLifetime)
-				log.Println("memory: purging peers with no announces since ", before)
+				log.Debugln("memory: purging peers with no announces since", before)
 				ps.collectGarbage(before)
 			}
 		}
@@ -327,7 +328,6 @@ func (s *peerStore) collectGarbage(cutoff time.Time) error {
 	default:
 	}
 
-	log.Printf("memory: collecting garbage. Cutoff time: %s", cutoff.String())
 	cutoffUnix := cutoff.UnixNano()
 	for _, shard := range s.shards {
 		shard.RLock()

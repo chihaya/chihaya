@@ -130,9 +130,3 @@ type ClientError string
 
 // Error implements the error interface for ClientError.
 func (c ClientError) Error() string { return string(c) }
-
-// Tracker represents an implementation of the BitTorrent tracker protocol.
-type Tracker interface {
-	ListenAndServe() error
-	Stop()
-}

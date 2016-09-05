@@ -7,11 +7,11 @@ type BytePool struct {
 	sync.Pool
 }
 
-// New allocates a new BytePool with slices of the provided capacity.
-func New(length, capacity int) *BytePool {
+// New allocates a new BytePool with slices of equal length and capacity.
+func New(length int) *BytePool {
 	var bp BytePool
 	bp.Pool.New = func() interface{} {
-		return make([]byte, length, capacity)
+		return make([]byte, length, length)
 	}
 	return &bp
 }

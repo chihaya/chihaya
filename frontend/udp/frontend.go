@@ -93,7 +93,7 @@ func (t *Frontend) ListenAndServe() error {
 	}
 	defer t.socket.Close()
 
-	pool := bytepool.New(2048, 2048)
+	pool := bytepool.New(2048)
 
 	for {
 		// Check to see if we need to shutdown.
@@ -190,7 +190,6 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 		}
 
 		WriteConnectionID(w, txID, NewConnectionID(r.IP, time.Now(), t.PrivateKey))
-		return
 
 	case announceActionID, announceV6ActionID:
 		actionName = "announce"
@@ -203,7 +202,7 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 		}
 
 		var resp *bittorrent.AnnounceResponse
-		resp, err = t.logic.HandleAnnounce(context.TODO(), req)
+		resp, err = t.logic.HandleAnnounce(context.Background(), req)
 		if err != nil {
 			WriteError(w, txID, err)
 			return
@@ -211,9 +210,7 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 
 		WriteAnnounce(w, txID, resp, actionID == announceV6ActionID)
 
-		go t.logic.AfterAnnounce(context.TODO(), req, resp)
-
-		return
+		go t.logic.AfterAnnounce(context.Background(), req, resp)
 
 	case scrapeActionID:
 		actionName = "scrape"
@@ -226,7 +223,7 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 		}
 
 		var resp *bittorrent.ScrapeResponse
-		resp, err = t.logic.HandleScrape(context.TODO(), req)
+		resp, err = t.logic.HandleScrape(context.Background(), req)
 		if err != nil {
 			WriteError(w, txID, err)
 			return
@@ -234,13 +231,12 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 
 		WriteScrape(w, txID, resp)
 
-		go t.logic.AfterScrape(context.TODO(), req, resp)
-
-		return
+		go t.logic.AfterScrape(context.Background(), req, resp)
 
 	default:
 		err = errUnknownAction
 		WriteError(w, txID, err)
-		return
 	}
+
+	return
 }
