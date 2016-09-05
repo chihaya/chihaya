@@ -36,7 +36,7 @@ func WriteAnnounceResponse(w http.ResponseWriter, resp *bittorrent.AnnounceRespo
 
 		// Add the IPv4 peers to the dictionary.
 		for _, peer := range resp.IPv4Peers {
-			IPv4CompactDict = append(IPv4CompactDict, compact(peer)...)
+			IPv4CompactDict = append(IPv4CompactDict, compact4(peer)...)
 		}
 		if len(IPv4CompactDict) > 0 {
 			bdict["peers"] = IPv4CompactDict
@@ -44,7 +44,7 @@ func WriteAnnounceResponse(w http.ResponseWriter, resp *bittorrent.AnnounceRespo
 
 		// Add the IPv6 peers to the dictionary.
 		for _, peer := range resp.IPv6Peers {
-			IPv6CompactDict = append(IPv6CompactDict, compact(peer)...)
+			IPv6CompactDict = append(IPv6CompactDict, compact6(peer)...)
 		}
 		if len(IPv6CompactDict) > 0 {
 			bdict["peers6"] = IPv6CompactDict
@@ -82,8 +82,23 @@ func WriteScrapeResponse(w http.ResponseWriter, resp *bittorrent.ScrapeResponse)
 	})
 }
 
-func compact(peer bittorrent.Peer) (buf []byte) {
-	buf = []byte(peer.IP)
+func compact4(peer bittorrent.Peer) (buf []byte) {
+	if ip := peer.IP.To4(); ip == nil {
+		panic("non-IPv4 IP for Peer in IPv4Peers")
+	} else {
+		buf = []byte(ip)
+	}
+	buf = append(buf, byte(peer.Port>>8))
+	buf = append(buf, byte(peer.Port&0xff))
+	return
+}
+
+func compact6(peer bittorrent.Peer) (buf []byte) {
+	if ip := peer.IP.To16(); ip == nil {
+		panic("non-IPv6 IP for Peer in IPv6Peers")
+	} else {
+		buf = []byte(ip)
+	}
 	buf = append(buf, byte(peer.Port>>8))
 	buf = append(buf, byte(peer.Port&0xff))
 	return
