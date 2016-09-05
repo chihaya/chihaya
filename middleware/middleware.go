@@ -12,12 +12,15 @@ import (
 	"github.com/chihaya/chihaya/storage"
 )
 
+// Config holds the configuration common across all middleware.
 type Config struct {
 	AnnounceInterval time.Duration `yaml:"announce_interval"`
 }
 
 var _ frontend.TrackerLogic = &Logic{}
 
+// NewLogic creates a new instance of a TrackerLogic that executes the provided
+// middleware hooks.
 func NewLogic(cfg Config, peerStore storage.PeerStore, preHooks, postHooks []Hook) *Logic {
 	l := &Logic{
 		announceInterval: cfg.AnnounceInterval,
