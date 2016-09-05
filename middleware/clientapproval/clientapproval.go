@@ -55,25 +55,25 @@ func NewHook(cfg Config) (middleware.Hook, error) {
 	return h, nil
 }
 
-func (h *hook) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequest, resp *bittorrent.AnnounceResponse) error {
+func (h *hook) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequest, resp *bittorrent.AnnounceResponse) (context.Context, error) {
 	clientID := bittorrent.NewClientID(req.Peer.ID)
 
 	if len(h.approved) > 0 {
 		if _, found := h.approved[clientID]; !found {
-			return ErrClientUnapproved
+			return ctx, ErrClientUnapproved
 		}
 	}
 
 	if len(h.unapproved) > 0 {
 		if _, found := h.unapproved[clientID]; found {
-			return ErrClientUnapproved
+			return ctx, ErrClientUnapproved
 		}
 	}
 
-	return nil
+	return ctx, nil
 }
 
-func (h *hook) HandleScrape(ctx context.Context, req *bittorrent.ScrapeRequest, resp *bittorrent.ScrapeResponse) error {
+func (h *hook) HandleScrape(ctx context.Context, req *bittorrent.ScrapeRequest, resp *bittorrent.ScrapeResponse) (context.Context, error) {
 	// Scrapes don't require any protection.
-	return nil
+	return ctx, nil
 }
