@@ -190,7 +190,6 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 		}
 
 		WriteConnectionID(w, txID, NewConnectionID(r.IP, time.Now(), t.PrivateKey))
-		return
 
 	case announceActionID:
 		actionName = "announce"
@@ -213,8 +212,6 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 
 		go t.logic.AfterAnnounce(context.Background(), req, resp)
 
-		return
-
 	case scrapeActionID:
 		actionName = "scrape"
 
@@ -236,11 +233,10 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 
 		go t.logic.AfterScrape(context.Background(), req, resp)
 
-		return
-
 	default:
 		err = errUnknownAction
 		WriteError(w, txID, err)
-		return
 	}
+
+	return
 }
