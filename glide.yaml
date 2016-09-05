@@ -1,0 +1,26 @@
+package: github.com/chihaya/chihaya
+import:
+- package: github.com/SermoDigital/jose
+  version: ~1.0.0
+  subpackages:
+  - crypto
+  - jws
+  - jwt
+- package: github.com/Sirupsen/logrus
+  version: ~0.10.0
+- package: github.com/julienschmidt/httprouter
+  version: ~1.1.0
+- package: github.com/mendsley/gojwk
+- package: github.com/prometheus/client_golang
+  version: ~0.8.0
+  subpackages:
+  - prometheus
+- package: github.com/spf13/cobra
+- package: github.com/tylerb/graceful
+  version: ~1.2.13
+- package: gopkg.in/yaml.v2
+testImport:
+- package: github.com/stretchr/testify
+  version: ~1.1.3
+  subpackages:
+  - assert
