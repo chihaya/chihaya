@@ -19,6 +19,11 @@ import (
 )
 
 func rootCmdRun(cmd *cobra.Command, args []string) error {
+	debugLog, _ := cmd.Flags().GetBool("debug")
+	if debugLog {
+		log.SetLevel(log.DebugLevel)
+		log.Debugln("debug logging enabled")
+	}
 	cpuProfilePath, _ := cmd.Flags().GetString("cpuprofile")
 	if cpuProfilePath != "" {
 		log.Infoln("enabled CPU profiling to", cpuProfilePath)
@@ -149,6 +154,7 @@ func main() {
 	}
 	rootCmd.Flags().String("config", "/etc/chihaya.yaml", "location of configuration file")
 	rootCmd.Flags().String("cpuprofile", "", "location to save a CPU profile")
+	rootCmd.Flags().Bool("debug", false, "enable debug logging")
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal(err)
