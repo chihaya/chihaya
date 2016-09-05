@@ -1,0 +1,40 @@
+chihaya:
+  announce_interval: 15m
+  prometheus_addr: localhost:6880
+
+  http:
+    addr: 0.0.0.0:6881
+    allow_ip_spoofing: false
+    real_ip_header: x-real-ip
+    read_timeout: 5s
+    write_timeout: 5s
+    request_timeout: 5s
+
+  udp:
+    addr: 0.0.0.0:6881
+    allow_ip_spoofing: false
+
+  storage:
+    gc_interval: 14m
+    peer_lifetime: 15m
+    shards: 1
+    max_numwant: 100
+
+  prehooks:
+  - name: jwt
+    config:
+      issuer: https://issuer.com
+      audience: https://chihaya.issuer.com
+      jwk_set_uri: https://issuer.com/keys
+      jwk_set_update_interval: 5m
+  - name: client approval
+    config:
+      whitelist:
+      - OP1011
+      blacklist:
+      - OP1012
+
+  posthooks:
+  - name: gossip
+    config:
+      boostrap_node: 127.0.0.1:6881

@@ -1,7 +1,6 @@
 language: go
 go:
-- 1.6
-- tip
+- 1.7
 sudo: false
 install:
 - go get -t ./...
