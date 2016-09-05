@@ -95,24 +95,40 @@ func runBenchmark(b *testing.B, ps PeerStore, parallel bool, sf setupFunc, ef ex
 	}
 }
 
+// Put benchmarks the PutSeeder method of a PeerStore by repeatedly Putting the
+// same Peer for the same InfoHash.
+//
+// Put can run in parallel.
 func Put(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, nil, func(i int, ps PeerStore, bd *benchData) error {
 		return ps.PutSeeder(bd.infohashes[0], bd.peers[0])
 	})
 }
 
+// Put1k benchmarks the PutSeeder method of a PeerStore by cycling through 1000
+// Peers and Putting them into the swarm of one infohash.
+//
+// Put1k can run in parallel.
 func Put1k(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, nil, func(i int, ps PeerStore, bd *benchData) error {
 		return ps.PutSeeder(bd.infohashes[0], bd.peers[i%1000])
 	})
 }
 
+// Put1kInfohash benchmarks the PutSeeder method of a PeerStore by cycling
+// through 1000 infohashes and putting the same peer into their swarms.
+//
+// Put1kInfohash can run in parallel.
 func Put1kInfohash(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, nil, func(i int, ps PeerStore, bd *benchData) error {
 		return ps.PutSeeder(bd.infohashes[i%1000], bd.peers[0])
 	})
 }
 
+// Put1kInfohash1k benchmarks the PutSeeder method of a PeerStore by cycling
+// through 1000 infohashes and 1000 Peers and calling Put with them.
+//
+// Put1kInfohash1k can run in parallel.
 func Put1kInfohash1k(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, nil, func(i int, ps PeerStore, bd *benchData) error {
 		err := ps.PutSeeder(bd.infohashes[i%1000], bd.peers[(i*3)%1000])
@@ -120,6 +136,10 @@ func Put1kInfohash1k(b *testing.B, ps PeerStore) {
 	})
 }
 
+// PutDelete benchmarks the PutSeeder and DeleteSeeder methods of a PeerStore by
+// calling PutSeeder followed by DeleteSeeder for one Peer and one infohash.
+//
+// PutDelete can not run in parallel.
 func PutDelete(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, false, nil, func(i int, ps PeerStore, bd *benchData) error {
 		err := ps.PutSeeder(bd.infohashes[0], bd.peers[0])
@@ -130,6 +150,10 @@ func PutDelete(b *testing.B, ps PeerStore) {
 	})
 }
 
+// PutDelete1k benchmarks the PutSeeder and DeleteSeeder methods in the same way
+// PutDelete does, but with one from 1000 Peers per iteration.
+//
+// PutDelete1k can not run in parallel.
 func PutDelete1k(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, false, nil, func(i int, ps PeerStore, bd *benchData) error {
 		err := ps.PutSeeder(bd.infohashes[0], bd.peers[i%1000])
@@ -140,6 +164,10 @@ func PutDelete1k(b *testing.B, ps PeerStore) {
 	})
 }
 
+// PutDelete1kInfohash behaves like PutDelete1k with 1000 infohashes instead of
+// 1000 Peers.
+//
+// PutDelete1kInfohash can not run in parallel.
 func PutDelete1kInfohash(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, false, nil, func(i int, ps PeerStore, bd *benchData) error {
 		err := ps.PutSeeder(bd.infohashes[i%1000], bd.peers[0])
@@ -149,6 +177,10 @@ func PutDelete1kInfohash(b *testing.B, ps PeerStore) {
 	})
 }
 
+// PutDelete1kInfohash1k behaves like PutDelete1k with 1000 infohashes in
+// addition to 1000 Peers.
+//
+// PutDelete1kInfohash1k can not run in parallel.
 func PutDelete1kInfohash1k(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, false, nil, func(i int, ps PeerStore, bd *benchData) error {
 		err := ps.PutSeeder(bd.infohashes[i%1000], bd.peers[(i*3)%1000])
@@ -160,6 +192,10 @@ func PutDelete1kInfohash1k(b *testing.B, ps PeerStore) {
 	})
 }
 
+// DeleteNonexist benchmarks the DeleteSeeder method of a PeerStore by
+// attempting to delete a Peer that is nonexistent.
+//
+// DeleteNonexist can run in parallel.
 func DeleteNonexist(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, nil, func(i int, ps PeerStore, bd *benchData) error {
 		ps.DeleteSeeder(bd.infohashes[0], bd.peers[0])
@@ -167,6 +203,10 @@ func DeleteNonexist(b *testing.B, ps PeerStore) {
 	})
 }
 
+// DeleteNonexist1k benchmarks the DeleteSeeder method of a PeerStore by
+// attempting to delete one of 1000 nonexistent Peers.
+//
+// DeleteNonexist can run in parallel.
 func DeleteNonexist1k(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, nil, func(i int, ps PeerStore, bd *benchData) error {
 		ps.DeleteSeeder(bd.infohashes[0], bd.peers[i%1000])
@@ -174,6 +214,10 @@ func DeleteNonexist1k(b *testing.B, ps PeerStore) {
 	})
 }
 
+// DeleteNonexist1kInfohash benchmarks the DeleteSeeder method of a PeerStore by
+// attempting to delete one Peer from one of 1000 infohashes.
+//
+// DeleteNonexist1kInfohash can run in parallel.
 func DeleteNonexist1kInfohash(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, nil, func(i int, ps PeerStore, bd *benchData) error {
 		ps.DeleteSeeder(bd.infohashes[i%1000], bd.peers[0])
@@ -181,6 +225,10 @@ func DeleteNonexist1kInfohash(b *testing.B, ps PeerStore) {
 	})
 }
 
+// DeleteNonexist1kInfohash1k benchmarks the Delete method of a PeerStore by
+// attempting to delete one of 1000 Peers from one of 1000 Infohashes.
+//
+// DeleteNonexist1kInfohash1k can run in parallel.
 func DeleteNonexist1kInfohash1k(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, nil, func(i int, ps PeerStore, bd *benchData) error {
 		ps.DeleteSeeder(bd.infohashes[i%1000], bd.peers[(i*3)%1000])
@@ -188,6 +236,10 @@ func DeleteNonexist1kInfohash1k(b *testing.B, ps PeerStore) {
 	})
 }
 
+// GradNonexist benchmarks the GraduateLeecher method of a PeerStore by
+// attempting to graduate a nonexistent Peer.
+//
+// GradNonexist can run in parallel.
 func GradNonexist(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, nil, func(i int, ps PeerStore, bd *benchData) error {
 		ps.GraduateLeecher(bd.infohashes[0], bd.peers[0])
@@ -195,6 +247,10 @@ func GradNonexist(b *testing.B, ps PeerStore) {
 	})
 }
 
+// GradNonexist1k benchmarks the GraduateLeecher method of a PeerStore by
+// attempting to graduate one of 1000 nonexistent Peers.
+//
+// GradNonexist1k can run in parallel.
 func GradNonexist1k(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, nil, func(i int, ps PeerStore, bd *benchData) error {
 		ps.GraduateLeecher(bd.infohashes[0], bd.peers[i%1000])
@@ -202,6 +258,10 @@ func GradNonexist1k(b *testing.B, ps PeerStore) {
 	})
 }
 
+// GradNonexist1kInfohash benchmarks the GraduateLeecher method of a PeerStore
+// by attempting to graduate a nonexistent Peer for one of 100 Infohashes.
+//
+// GradNonexist1kInfohash can run in parallel.
 func GradNonexist1kInfohash(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, nil, func(i int, ps PeerStore, bd *benchData) error {
 		ps.GraduateLeecher(bd.infohashes[i%1000], bd.peers[0])
@@ -209,6 +269,11 @@ func GradNonexist1kInfohash(b *testing.B, ps PeerStore) {
 	})
 }
 
+// GradNonexist1kInfohash1k benchmarks the GraduateLeecher method of a PeerStore
+// by attempting to graduate one of 1000 nonexistent Peers for one of 1000
+// infohashes.
+//
+// GradNonexist1kInfohash1k can run in parallel.
 func GradNonexist1kInfohash1k(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, nil, func(i int, ps PeerStore, bd *benchData) error {
 		ps.GraduateLeecher(bd.infohashes[i%1000], bd.peers[(i*3)%1000])
@@ -216,6 +281,11 @@ func GradNonexist1kInfohash1k(b *testing.B, ps PeerStore) {
 	})
 }
 
+// PutGradDelete benchmarks the PutLeecher, GraduateLeecher and DeleteSeeder
+// methods of a PeerStore by adding one leecher to a swarm, promoting it to a
+// seeder and deleting the seeder.
+//
+// PutGradDelete can not run in parallel.
 func PutGradDelete(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, false, nil, func(i int, ps PeerStore, bd *benchData) error {
 		err := ps.PutLeecher(bd.infohashes[0], bd.peers[0])
@@ -230,6 +300,9 @@ func PutGradDelete(b *testing.B, ps PeerStore) {
 	})
 }
 
+// PutGradDelete1k behaves like PutGradDelete with one of 1000 Peers.
+//
+// PutGradDelete1k can not run in parallel.
 func PutGradDelete1k(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, false, nil, func(i int, ps PeerStore, bd *benchData) error {
 		err := ps.PutLeecher(bd.infohashes[0], bd.peers[i%1000])
@@ -244,6 +317,10 @@ func PutGradDelete1k(b *testing.B, ps PeerStore) {
 	})
 }
 
+// PutGradDelete1kInfohash behaves like PutGradDelete with one of 1000
+// infohashes.
+//
+// PutGradDelete1kInfohash can not run in parallel.
 func PutGradDelete1kInfohash(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, false, nil, func(i int, ps PeerStore, bd *benchData) error {
 		err := ps.PutLeecher(bd.infohashes[i%1000], bd.peers[0])
@@ -258,6 +335,10 @@ func PutGradDelete1kInfohash(b *testing.B, ps PeerStore) {
 	})
 }
 
+// PutGradDelete1kInfohash1k behaves like PutGradDelete with one of 1000 Peers
+// and one of 1000 infohashes.
+//
+// PutGradDelete1kInfohash can not run in parallel.
 func PutGradDelete1kInfohash1k(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, false, nil, func(i int, ps PeerStore, bd *benchData) error {
 		err := ps.PutLeecher(bd.infohashes[i%1000], bd.peers[(i*3)%1000])
@@ -290,6 +371,11 @@ func putPeers(ps PeerStore, bd *benchData) error {
 	return nil
 }
 
+// AnnounceLeecher benchmarks the AnnouncePeers method of a PeerStore for
+// announcing a leecher.
+// The swarm announced to has 500 seeders and 500 leechers.
+//
+// AnnounceLeecher can run in parallel.
 func AnnounceLeecher(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, putPeers, func(i int, ps PeerStore, bd *benchData) error {
 		_, err := ps.AnnouncePeers(bd.infohashes[0], false, 50, bd.peers[0])
@@ -297,6 +383,10 @@ func AnnounceLeecher(b *testing.B, ps PeerStore) {
 	})
 }
 
+// AnnounceLeecher1kInfohash behaves like AnnounceLeecher with one of 1000
+// infohashes.
+//
+// AnnounceLeecher1kInfohash can run in parallel.
 func AnnounceLeecher1kInfohash(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, putPeers, func(i int, ps PeerStore, bd *benchData) error {
 		_, err := ps.AnnouncePeers(bd.infohashes[i%1000], false, 50, bd.peers[0])
@@ -304,6 +394,10 @@ func AnnounceLeecher1kInfohash(b *testing.B, ps PeerStore) {
 	})
 }
 
+// AnnounceSeeder behaves like AnnounceLeecher with a seeder instead of a
+// leecher.
+//
+// AnnounceSeeder can run in parallel.
 func AnnounceSeeder(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, putPeers, func(i int, ps PeerStore, bd *benchData) error {
 		_, err := ps.AnnouncePeers(bd.infohashes[0], true, 50, bd.peers[0])
@@ -311,6 +405,10 @@ func AnnounceSeeder(b *testing.B, ps PeerStore) {
 	})
 }
 
+// AnnounceSeeder1kInfohash behaves like AnnounceSeeder with one of 1000
+// infohashes.
+//
+// AnnounceSeeder1kInfohash can run in parallel.
 func AnnounceSeeder1kInfohash(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, putPeers, func(i int, ps PeerStore, bd *benchData) error {
 		_, err := ps.AnnouncePeers(bd.infohashes[i%1000], true, 50, bd.peers[0])
