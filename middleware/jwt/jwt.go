@@ -11,7 +11,6 @@ import (
 	"crypto"
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 	"net/url"
 	"time"
@@ -19,6 +18,7 @@ import (
 	jc "github.com/SermoDigital/jose/crypto"
 	"github.com/SermoDigital/jose/jws"
 	"github.com/SermoDigital/jose/jwt"
+	log "github.com/Sirupsen/logrus"
 	"github.com/mendsley/gojwk"
 
 	"github.com/chihaya/chihaya/bittorrent"
@@ -64,7 +64,7 @@ func NewHook(cfg Config) middleware.Hook {
 			case <-time.After(cfg.JWKUpdateInterval):
 				resp, err := http.Get(cfg.JWKSetURL)
 				if err != nil {
-					log.Println("failed to fetch JWK Set: " + err.Error())
+					log.Errorln("failed to fetch JWK Set: " + err.Error())
 					continue
 				}
 
@@ -72,7 +72,7 @@ func NewHook(cfg Config) middleware.Hook {
 				err = json.NewDecoder(resp.Body).Decode(&parsedJWKs)
 				if err != nil {
 					resp.Body.Close()
-					log.Println("failed to decode JWK JSON: " + err.Error())
+					log.Errorln("failed to decode JWK JSON: " + err.Error())
 					continue
 				}
 				resp.Body.Close()
@@ -81,7 +81,7 @@ func NewHook(cfg Config) middleware.Hook {
 				for kid, parsedJWK := range parsedJWKs {
 					publicKey, err := parsedJWK.DecodePublicKey()
 					if err != nil {
-						log.Println("failed to decode JWK into public key: " + err.Error())
+						log.Errorln("failed to decode JWK into public key: " + err.Error())
 						continue
 					}
 					keys[kid] = publicKey

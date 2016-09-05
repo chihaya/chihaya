@@ -2,13 +2,13 @@ package main
 
 import (
 	"errors"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"runtime/pprof"
 	"syscall"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
 
@@ -21,7 +21,7 @@ import (
 func rootCmdRun(cmd *cobra.Command, args []string) error {
 	cpuProfilePath, _ := cmd.Flags().GetString("cpuprofile")
 	if cpuProfilePath != "" {
-		log.Println("enabled CPU profiling to " + cpuProfilePath)
+		log.Infoln("enabled CPU profiling to", cpuProfilePath)
 		f, err := os.Create(cpuProfilePath)
 		if err != nil {
 			return err
@@ -42,26 +42,26 @@ func rootCmdRun(cmd *cobra.Command, args []string) error {
 			Addr:    cfg.PrometheusAddr,
 			Handler: prometheus.Handler(),
 		}
-		log.Println("started serving prometheus stats on", cfg.PrometheusAddr)
+		log.Infoln("started serving prometheus stats on", cfg.PrometheusAddr)
 		if err := promServer.ListenAndServe(); err != nil {
-			log.Fatal(err)
+			log.Fatalln("failed to start prometheus server:", err.Error())
 		}
 	}()
 
 	// Force the compiler to enforce memory against the storage interface.
 	peerStore, err := memory.New(cfg.Storage)
 	if err != nil {
-		return err
+		return errors.New("failed to create memory storage: " + err.Error())
 	}
 
 	preHooks, postHooks, err := configFile.CreateHooks()
 	if err != nil {
-		return err
+		return errors.New("failed to create hooks: " + err.Error())
 	}
 
 	logic := middleware.NewLogic(cfg.Config, peerStore, preHooks, postHooks)
 	if err != nil {
-		return err
+		return errors.New("failed to create TrackerLogic: " + err.Error())
 	}
 
 	shutdown := make(chan struct{})
@@ -74,7 +74,7 @@ func rootCmdRun(cmd *cobra.Command, args []string) error {
 		httpFrontend = httpfrontend.NewFrontend(logic, cfg.HTTPConfig)
 
 		go func() {
-			log.Println("started serving HTTP on", cfg.HTTPConfig.Addr)
+			log.Infoln("started serving HTTP on", cfg.HTTPConfig.Addr)
 			if err := httpFrontend.ListenAndServe(); err != nil {
 				errChan <- errors.New("failed to cleanly shutdown HTTP frontend: " + err.Error())
 			}
@@ -85,7 +85,7 @@ func rootCmdRun(cmd *cobra.Command, args []string) error {
 		udpFrontend = udpfrontend.NewFrontend(logic, cfg.UDPConfig)
 
 		go func() {
-			log.Println("started serving UDP on", cfg.UDPConfig.Addr)
+			log.Infoln("started serving UDP on", cfg.UDPConfig.Addr)
 			if err := udpFrontend.ListenAndServe(); err != nil {
 				errChan <- errors.New("failed to cleanly shutdown UDP frontend: " + err.Error())
 			}
@@ -114,6 +114,8 @@ func rootCmdRun(cmd *cobra.Command, args []string) error {
 			}
 		}
 
+		// TODO(jzelinskie): stop hooks here
+
 		close(errChan)
 	}()
 
@@ -125,7 +127,7 @@ func rootCmdRun(cmd *cobra.Command, args []string) error {
 				close(shutdown)
 				closed = true
 			} else {
-				log.Println(bufErr)
+				log.Infoln(bufErr)
 			}
 			bufErr = err
 		}
