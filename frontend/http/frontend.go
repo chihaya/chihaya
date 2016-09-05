@@ -136,7 +136,7 @@ func (t *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, _ httpr
 		return
 	}
 
-	resp, err := t.logic.HandleAnnounce(context.TODO(), req)
+	resp, err := t.logic.HandleAnnounce(context.Background(), req)
 	if err != nil {
 		WriteError(w, err)
 		return
@@ -148,7 +148,7 @@ func (t *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, _ httpr
 		return
 	}
 
-	go t.logic.AfterAnnounce(context.TODO(), req, resp)
+	go t.logic.AfterAnnounce(context.Background(), req, resp)
 }
 
 // scrapeRoute parses and responds to a Scrape by using t.TrackerLogic.
@@ -163,7 +163,7 @@ func (t *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprou
 		return
 	}
 
-	resp, err := t.logic.HandleScrape(context.TODO(), req)
+	resp, err := t.logic.HandleScrape(context.Background(), req)
 	if err != nil {
 		WriteError(w, err)
 		return
@@ -175,5 +175,5 @@ func (t *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprou
 		return
 	}
 
-	go t.logic.AfterScrape(context.TODO(), req, resp)
+	go t.logic.AfterScrape(context.Background(), req, resp)
 }
