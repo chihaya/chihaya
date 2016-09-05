@@ -93,7 +93,7 @@ func (t *Frontend) ListenAndServe() error {
 	}
 	defer t.socket.Close()
 
-	pool := bytepool.New(2048, 2048)
+	pool := bytepool.New(2048)
 
 	for {
 		// Check to see if we need to shutdown.
