@@ -24,7 +24,7 @@ type Stopper interface {
 	// The channel can either return one error or be closed. Closing the
 	// channel signals a clean shutdown.
 	// The Stop function should return immediately and perform the actual
-	// shutdown in a seperate goroutine.
+	// shutdown in a separate goroutine.
 	Stop() <-chan error
 }
 
