@@ -24,14 +24,14 @@ type Stopper interface {
 	// The channel can either return one error or be closed. Closing the
 	// channel signals a clean shutdown.
 	// The Stop function should return immediately and perform the actual
-	// shutdown in a seperate goroutine.
+	// shutdown in a separate goroutine.
 	Stop() <-chan error
 }
 
 // StopGroup is a group that can be stopped.
 type StopGroup struct {
-	stoppables     []Func
-	stoppablesLock sync.Mutex
+	stoppables []Func
+	sync.Mutex
 }
 
 // Func is a function that can be used to provide a clean shutdown.
@@ -47,8 +47,8 @@ func NewStopGroup() *StopGroup {
 // Add adds a Stopper to the StopGroup.
 // On the next call to Stop(), the Stopper will be stopped.
 func (cg *StopGroup) Add(toAdd Stopper) {
-	cg.stoppablesLock.Lock()
-	defer cg.stoppablesLock.Unlock()
+	cg.Lock()
+	defer cg.Unlock()
 
 	cg.stoppables = append(cg.stoppables, toAdd.Stop)
 }
@@ -56,8 +56,8 @@ func (cg *StopGroup) Add(toAdd Stopper) {
 // AddFunc adds a Func to the StopGroup.
 // On the next call to Stop(), the Func will be called.
 func (cg *StopGroup) AddFunc(toAddFunc Func) {
-	cg.stoppablesLock.Lock()
-	defer cg.stoppablesLock.Unlock()
+	cg.Lock()
+	defer cg.Unlock()
 
 	cg.stoppables = append(cg.stoppables, toAddFunc)
 }
@@ -67,8 +67,8 @@ func (cg *StopGroup) AddFunc(toAddFunc Func) {
 // The slice of errors returned contains all errors returned by stopping the
 // members.
 func (cg *StopGroup) Stop() []error {
-	cg.stoppablesLock.Lock()
-	defer cg.stoppablesLock.Unlock()
+	cg.Lock()
+	defer cg.Unlock()
 
 	var errors []error
 	whenDone := make(chan struct{})

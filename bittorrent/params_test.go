@@ -62,7 +62,7 @@ func TestParseValidURLData(t *testing.T) {
 		}
 
 		if !mapArrayEqual(parseVal, parsedQueryObj.params) {
-			t.Fatalf("Incorrect parse at item %d.\n Expected=%v\n Recieved=%v\n", parseIndex, parseVal, parsedQueryObj.params)
+			t.Fatalf("Incorrect parse at item %d.\n Expected=%v\n Received=%v\n", parseIndex, parseVal, parsedQueryObj.params)
 		}
 
 		if parsedQueryObj.path != "/announce" {
