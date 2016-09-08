@@ -8,11 +8,13 @@ import (
 	"net/http"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/julienschmidt/httprouter"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/tylerb/graceful"
 
 	"github.com/chihaya/chihaya/frontend"
+	"github.com/chihaya/chihaya/middleware"
 )
 
 func init() {
@@ -163,7 +165,17 @@ func (t *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprou
 		return
 	}
 
-	resp, err := t.logic.HandleScrape(context.Background(), req)
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		log.Errorln("http: unable to determine remote address for scrape:", err)
+		WriteError(w, err)
+		return
+	}
+
+	ip := net.ParseIP(host)
+	ctx := context.WithValue(context.Background(), middleware.ScrapeIsIPv6Key, len(ip) == net.IPv6len)
+
+	resp, err := t.logic.HandleScrape(ctx, req)
 	if err != nil {
 		WriteError(w, err)
 		return
