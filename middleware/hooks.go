@@ -2,6 +2,8 @@ package middleware
 
 import (
 	"context"
+	"errors"
+	"net"
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/storage"
@@ -62,5 +64,64 @@ func (h *swarmInteractionHook) HandleAnnounce(ctx context.Context, req *bittorre
 
 func (h *swarmInteractionHook) HandleScrape(ctx context.Context, _ *bittorrent.ScrapeRequest, _ *bittorrent.ScrapeResponse) (context.Context, error) {
 	// Scrapes have no effect on the swarm.
+	return ctx, nil
+}
+
+// ErrInvalidIP indicates an invalid IP for an Announce.
+var ErrInvalidIP = errors.New("invalid IP")
+
+type skipResponseHook struct{}
+
+// SkipResponseHookKey is a key for the context of an Announce or Scrape to
+// control whether the response middleware should run.
+// Any non-nil value set for this key will cause the response middleware to
+// skip.
+var SkipResponseHookKey = skipResponseHook{}
+
+type scrapeAddressType struct{}
+
+// ScrapeIsIPv6Key is the key under which to store whether or not the
+// address used to request a scrape was an IPv6 address.
+// The value is expected to be of type bool.
+// A missing value or a value that is not a bool for this key is equivalent to
+// it being set to false.
+var ScrapeIsIPv6Key = scrapeAddressType{}
+
+type responseHook struct {
+	store storage.PeerStore
+}
+
+func (h *responseHook) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequest, resp *bittorrent.AnnounceResponse) (_ context.Context, err error) {
+	if ctx.Value(SkipResponseHookKey) != nil {
+		return ctx, nil
+	}
+
+	s := h.store.ScrapeSwarm(req.InfoHash, len(req.IP) == net.IPv6len)
+	resp.Incomplete = s.Incomplete
+	resp.Complete = s.Complete
+
+	switch len(req.IP) {
+	case net.IPv4len:
+		resp.IPv4Peers, err = h.store.AnnouncePeers(req.InfoHash, req.Left == 0, int(req.NumWant), req.Peer)
+	case net.IPv6len:
+		resp.IPv6Peers, err = h.store.AnnouncePeers(req.InfoHash, req.Left == 0, int(req.NumWant), req.Peer)
+	default:
+		return ctx, ErrInvalidIP
+	}
+
+	return ctx, err
+}
+
+func (h *responseHook) HandleScrape(ctx context.Context, req *bittorrent.ScrapeRequest, resp *bittorrent.ScrapeResponse) (context.Context, error) {
+	if ctx.Value(SkipResponseHookKey) != nil {
+		return ctx, nil
+	}
+
+	v6, _ := ctx.Value(ScrapeIsIPv6Key).(bool)
+
+	for _, infoHash := range req.InfoHashes {
+		resp.Files[infoHash] = h.store.ScrapeSwarm(infoHash, v6)
+	}
+
 	return ctx, nil
 }

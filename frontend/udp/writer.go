@@ -37,8 +37,8 @@ func WriteAnnounce(w io.Writer, txID []byte, resp *bittorrent.AnnounceResponse, 
 		writeHeader(buf, txID, announceActionID)
 	}
 	binary.Write(buf, binary.BigEndian, uint32(resp.Interval/time.Second))
-	binary.Write(buf, binary.BigEndian, uint32(resp.Incomplete))
-	binary.Write(buf, binary.BigEndian, uint32(resp.Complete))
+	binary.Write(buf, binary.BigEndian, resp.Incomplete)
+	binary.Write(buf, binary.BigEndian, resp.Complete)
 
 	peers := resp.IPv4Peers
 	if v6 {

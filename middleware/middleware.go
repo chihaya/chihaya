@@ -25,7 +25,7 @@ func NewLogic(cfg Config, peerStore storage.PeerStore, preHooks, postHooks []Hoo
 	l := &Logic{
 		announceInterval: cfg.AnnounceInterval,
 		peerStore:        peerStore,
-		preHooks:         preHooks,
+		preHooks:         append(preHooks, &responseHook{store: peerStore}),
 		postHooks:        append(postHooks, &swarmInteractionHook{store: peerStore}),
 	}
 
@@ -44,7 +44,9 @@ type Logic struct {
 // HandleAnnounce generates a response for an Announce.
 func (l *Logic) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequest) (resp *bittorrent.AnnounceResponse, err error) {
 	resp = &bittorrent.AnnounceResponse{
-		Interval: l.announceInterval,
+		Interval:    l.announceInterval,
+		MinInterval: l.announceInterval,
+		Compact:     req.Compact,
 	}
 	for _, h := range l.preHooks {
 		if ctx, err = h.HandleAnnounce(ctx, req, resp); err != nil {

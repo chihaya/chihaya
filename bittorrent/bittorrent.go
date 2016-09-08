@@ -84,8 +84,8 @@ type AnnounceRequest struct {
 // response.
 type AnnounceResponse struct {
 	Compact     bool
-	Complete    int32
-	Incomplete  int32
+	Complete    uint32
+	Incomplete  uint32
 	Interval    time.Duration
 	MinInterval time.Duration
 	IPv4Peers   []Peer
