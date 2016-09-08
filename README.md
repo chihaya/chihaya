@@ -31,43 +31,40 @@ Differentiating features include:
 ### Diagram
 
 ```
-    ┌──────────────────────┐
-    │  BitTorrent Client   ├┬──┐
-    └┬─────────────────────┘│◀─┘
-     └──────────────────────┘
-                 ▲
-┌────────────────┼────────────────────────────────────────────────────┐
-│                ▼                                             chihaya│
-│    ┌──────────────────────┐                                         │
-│    │       Frontend       ├┐                                        │
-│    └┬─────────────────────┘│                                        │
-│     └──────────────────────┘                                        │
-│                 ▲                                                   │
-│                 │                                                   │
-│                 ▼                                                   │
-│     ┌──────────────────────┐            ┌──────────────────────┐    │
-│     │  PreHook Middleware  ├◀───────────│       Storage        │    │
-│     └┬─────────────────────┘│           └──────────────────────┘    │
-│      └──────────┬───────────┘                       △               │
-│                 │                                   │               │
-│                 ▽                                   │               │
-│     ┌──────────────────────┐                        │               │
-│     │ PostHook Middleware  ├┐                       │               │
-│     └┬─────────────────────┘│───────────────────────┘               │
-│      └──────────────────────┘                                       │
-└─────────────────────────────────────────────────────────────────────┘
+ ┌──────────────────────┐
+ │  BitTorrent Client   │◀──────────────┐
+ └──────────────────────┘               │
+             │                          │
+             │                          │
+             │                          │
+─────────────▼──────────────────────────┴───────────────────┐─────────────────────────┐
+│┌──────────────────────┐   ┌──────────────────────┐frontend│                  chihaya│
+││        Parser        │   │        Writer        │        │                         │
+│└──────────────────────┘   └──────────────────────┘        │                         │
+│            │                          ▲                   │                         │
+─────────────┼──────────────────────────┼───────────────────┘                         │
+┌────────────▼──────────────────────────┴───────────────────┐                         │
+│┌──────────────────────┐   ┌──────────────────────┐   logic│                         │
+││  PreHook Middleware  │──▶│  Response Generator  │◀───────│─────────────┐           │
+│└──────────────────────┘   └──────────────────────┘        │             │           │
+│                                                           │             │           │
+│┌──────────────────────┐                                   │ ┌──────────────────────┐│
+││ PostHook Middleware  │───────────────────────────────────│▷│       Storage        ││
+│└──────────────────────┘                                   │ └──────────────────────┘│
+│                                                           │                         │
+└───────────────────────────────────────────────────────────┘─────────────────────────┘
 ```
 
 ### Description
 
-BitTorrent clients send announce and scrape requests to a _Frontend_.
+BitTorrent clients send Announce and Scrape requests to a _Frontend_.
 Frontends parse requests and write responses for the particular protocol they implement.
 The _TrackerLogic_ interface to is used to generate responses for their requests and optionally perform a task after responding to a client.
 A configurable chain of _PreHook_ and _PostHook_ middleware is used to construct an instance of TrackerLogic.
 PreHooks are middleware that are executed before the response has been written.
-The final middleware in a chain of PreHooks ensures the existance of any required response fields by reading out of the configured implementation of the _Storage_ interface.
+After all PreHooks have executed, any missing response fields that are required are filled by reading out of the configured implementation of the _Storage_ interface.
 PostHooks are asynchronous tasks that occur after a response has been delivered to the client.
-Request data is written to storage asynchronously in one of these PostHooks.
+Request data is written to the storage asynchronously in one of these PostHooks.
 
 ## Production Use
 
@@ -120,4 +117,3 @@ For more information read [CONTRIBUTING.md].
 - [BitTorrent.org](https://github.com/bittorrent/bittorrent.org): a static website containing the BitTorrent spec and all BEPs
 - [OpenTracker](http://erdgeist.org/arts/software/opentracker): a popular BitTorrent tracker written in C
 - [Ocelot](https://github.com/WhatCD/Ocelot): a private BitTorrent tracker written in C++
-
