@@ -26,7 +26,7 @@ func NewLogic(cfg Config, peerStore storage.PeerStore, preHooks, postHooks []Hoo
 		announceInterval: cfg.AnnounceInterval,
 		peerStore:        peerStore,
 		preHooks:         preHooks,
-		postHooks:        postHooks,
+		postHooks:        append(postHooks, &swarmInteractionHook{store: peerStore}),
 	}
 
 	return l
