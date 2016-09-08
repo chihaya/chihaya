@@ -41,49 +41,10 @@ func unmarshal(r *bufio.Reader) (interface{}, error) {
 		return readTerminatedInt(r, 'e')
 
 	case 'l':
-		list := NewList()
-		for {
-			ok, err := readTerminator(r, 'e')
-			if err != nil {
-				return nil, err
-			} else if ok {
-				break
-			}
-
-			v, err := unmarshal(r)
-			if err != nil {
-				return nil, err
-			}
-			list = append(list, v)
-		}
-		return list, nil
+		return readList(r)
 
 	case 'd':
-		dict := NewDict()
-		for {
-			ok, err := readTerminator(r, 'e')
-			if err != nil {
-				return nil, err
-			} else if ok {
-				break
-			}
-
-			v, err := unmarshal(r)
-			if err != nil {
-				return nil, err
-			}
-
-			key, ok := v.(string)
-			if !ok {
-				return nil, errors.New("bencode: non-string map key")
-			}
-
-			dict[key], err = unmarshal(r)
-			if err != nil {
-				return nil, err
-			}
-		}
-		return dict, nil
+		return readDict(r)
 
 	default:
 		err = r.UnreadByte()
@@ -128,4 +89,53 @@ func readTerminatedInt(r *bufio.Reader, term byte) (int64, error) {
 	}
 
 	return strconv.ParseInt(string(buf[:len(buf)-1]), 10, 64)
+}
+
+func readList(r *bufio.Reader) (List, error) {
+	list := NewList()
+	for {
+		ok, err := readTerminator(r, 'e')
+		if err != nil {
+			return nil, err
+		} else if ok {
+			break
+		}
+
+		v, err := unmarshal(r)
+		if err != nil {
+			return nil, err
+		}
+		list = append(list, v)
+	}
+
+	return list, nil
+}
+
+func readDict(r *bufio.Reader) (Dict, error) {
+	dict := NewDict()
+	for {
+		ok, err := readTerminator(r, 'e')
+		if err != nil {
+			return nil, err
+		} else if ok {
+			break
+		}
+
+		v, err := unmarshal(r)
+		if err != nil {
+			return nil, err
+		}
+
+		key, ok := v.(string)
+		if !ok {
+			return nil, errors.New("bencode: non-string map key")
+		}
+
+		dict[key], err = unmarshal(r)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return dict, nil
 }
