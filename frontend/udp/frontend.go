@@ -15,6 +15,7 @@ import (
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/frontend"
 	"github.com/chihaya/chihaya/frontend/udp/bytepool"
+	"github.com/chihaya/chihaya/middleware"
 )
 
 func init() {
@@ -222,8 +223,10 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 			return
 		}
 
+		ctx := context.WithValue(context.Background(), middleware.ScrapeIsIPv6Key, len(r.IP) == net.IPv6len)
+
 		var resp *bittorrent.ScrapeResponse
-		resp, err = t.logic.HandleScrape(context.Background(), req)
+		resp, err = t.logic.HandleScrape(ctx, req)
 		if err != nil {
 			WriteError(w, txID, err)
 			return
