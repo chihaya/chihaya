@@ -26,49 +26,17 @@ Differentiating features include:
 [YAML]: http://yaml.org
 [Prometheus]: http://prometheus.io
 
-## Architecture
+## Why Chihaya?
 
-### Diagram
+Chihaya is built for developers looking to integrate BitTorrent into a preexisting production environment.
+Chihaya's pluggable architecture and middleware framework offers a simple and flexible integration point that abstracts the BitTorrent tracker protocols.
+The most common use case for Chihaya is integration with the deployment of cloud software.
 
-```
- +----------------------+
- |  BitTorrent Client   |<--------------+
- +----------------------+               |
-             |                          |
-             |                          |
-             |                          |
--------------v--------------------------+-------------------+-------------------------+
-|+----------------------+   +----------------------+frontend|                  chihaya|
-||        Parser        |   |        Writer        |        |                         |
-|+----------------------+   +----------------------+        |                         |
-|            |                          ^                   |                         |
--------------+--------------------------+-------------------+                         |
-+------------v--------------------------+-------------------+                         |
-|+----------------------+   +----------------------+   logic|                         |
-||  PreHook Middleware  |-->|  Response Generator  |<-------|-------------+           |
-|+----------------------+   +----------------------+        |             |           |
-|                                                           |             |           |
-|+----------------------+                                   | +----------------------+|
-|| PostHook Middleware  |-----------------------------------|>|       Storage        ||
-|+----------------------+                                   | +----------------------+|
-|                                                           |                         |
-+-----------------------------------------------------------+-------------------------+
-```
+[OpenBittorrent]: https://openbittorrent.com
 
-### Description
+### Production Use
 
-BitTorrent clients send Announce and Scrape requests to a _Frontend_.
-Frontends parse requests and write responses for the particular protocol they implement.
-The _TrackerLogic_ interface to is used to generate responses for their requests and optionally perform a task after responding to a client.
-A configurable chain of _PreHook_ and _PostHook_ middleware is used to construct an instance of TrackerLogic.
-PreHooks are middleware that are executed before the response has been written.
-After all PreHooks have executed, any missing response fields that are required are filled by reading out of the configured implementation of the _Storage_ interface.
-PostHooks are asynchronous tasks that occur after a response has been delivered to the client.
-Request data is written to the storage asynchronously in one of these PostHooks.
-
-## Production Use
-
-### Facebook
+#### Facebook
 
 [Facebook] uses BitTorrent to deploy new versions of their software.
 In order to optimize the flow of traffic within their datacenters, Chihaya is configured to prefer peers within the same subnet.
@@ -76,7 +44,7 @@ Because Facebook organizes their network such that server racks are allocated IP
 
 [Facebook]: https://facebook.com
 
-### CoreOS
+#### CoreOS
 
 [Quay] is a container registry that offers the ability to download containers via BitTorrent in order to speed up large or geographically distant deployments.
 Announce URLs from Quay's torrent files contain a [JWT] in order to allow Chihaya to verify that an infohash was approved by the registry.
@@ -111,6 +79,42 @@ For more information read [CONTRIBUTING.md].
 [GitHub Pull Requests]: https://github.com/chihaya/chihaya/pulls
 [freenode IRC]: http://webchat.freenode.net/?channels=chihaya
 [CONTRIBUTING.md]: https://github.com/chihaya/chihaya/blob/master/CONTRIBUTING.md
+
+### Architecture
+
+```
+ +----------------------+
+ |  BitTorrent Client   |<--------------+
+ +----------------------+               |
+             |                          |
+             |                          |
+             |                          |
++------------v--------------------------+-------------------+-------------------------+
+|+----------------------+   +----------------------+frontend|                  chihaya|
+||        Parser        |   |        Writer        |        |                         |
+|+----------------------+   +----------------------+        |                         |
+|            |                          ^                   |                         |
++------------+--------------------------+-------------------+                         |
++------------v--------------------------+-------------------+                         |
+|+----------------------+   +----------------------+   logic|                         |
+||  PreHook Middleware  |-->|  Response Generator  |<-------|-------------+           |
+|+----------------------+   +----------------------+        |             |           |
+|                                                           |             |           |
+|+----------------------+                                   | +----------------------+|
+|| PostHook Middleware  |-----------------------------------|>|       Storage        ||
+|+----------------------+                                   | +----------------------+|
+|                                                           |                         |
++-----------------------------------------------------------+-------------------------+
+```
+
+BitTorrent clients send Announce and Scrape requests to a _Frontend_.
+Frontends parse requests and write responses for the particular protocol they implement.
+The _TrackerLogic_ interface to is used to generate responses for their requests and optionally perform a task after responding to a client.
+A configurable chain of _PreHook_ and _PostHook_ middleware is used to construct an instance of TrackerLogic.
+PreHooks are middleware that are executed before the response has been written.
+After all PreHooks have executed, any missing response fields that are required are filled by reading out of the configured implementation of the _Storage_ interface.
+PostHooks are asynchronous tasks that occur after a response has been delivered to the client.
+Request data is written to the storage asynchronously in one of these PostHooks.
 
 ## Related projects
 
