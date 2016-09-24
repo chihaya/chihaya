@@ -23,6 +23,7 @@ import (
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/middleware"
+	"github.com/chihaya/chihaya/stopper"
 )
 
 var (
@@ -94,8 +95,18 @@ func NewHook(cfg Config) middleware.Hook {
 	return h
 }
 
-func (h *hook) Stop() {
-	close(h.closing)
+func (h *hook) Stop() <-chan error {
+	select {
+	case <-h.closing:
+		return stopper.AlreadyStopped
+	default:
+	}
+	c := make(chan error)
+	go func() {
+		close(h.closing)
+		close(c)
+	}()
+	return c
 }
 
 func (h *hook) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequest, resp *bittorrent.AnnounceResponse) (context.Context, error) {
