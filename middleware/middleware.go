@@ -9,6 +9,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/frontend"
+	"github.com/chihaya/chihaya/stopper"
 	"github.com/chihaya/chihaya/storage"
 )
 
@@ -93,4 +94,26 @@ func (l *Logic) AfterScrape(ctx context.Context, req *bittorrent.ScrapeRequest, 
 			return
 		}
 	}
+}
+
+// Stop stops the Logic.
+//
+// This stops any hooks that implement stopper.Stopper.
+func (l *Logic) Stop() []error {
+	stopGroup := stopper.NewStopGroup()
+	for _, hook := range l.preHooks {
+		stoppable, ok := hook.(stopper.Stopper)
+		if ok {
+			stopGroup.Add(stoppable)
+		}
+	}
+
+	for _, hook := range l.postHooks {
+		stoppable, ok := hook.(stopper.Stopper)
+		if ok {
+			stopGroup.Add(stoppable)
+		}
+	}
+
+	return stopGroup.Stop()
 }

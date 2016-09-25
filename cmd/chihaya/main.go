@@ -119,7 +119,11 @@ func rootCmdRun(cmd *cobra.Command, args []string) error {
 			}
 		}
 
-		// TODO(jzelinskie): stop hooks here
+		// Stop hooks.
+		errs := logic.Stop()
+		for _, err := range errs {
+			errChan <- err
+		}
 
 		close(errChan)
 	}()
