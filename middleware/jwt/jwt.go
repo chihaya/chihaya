@@ -50,14 +50,18 @@ type hook struct {
 }
 
 // NewHook returns an instance of the JWT middleware.
-func NewHook(cfg Config) middleware.Hook {
+func NewHook(cfg Config) (middleware.Hook, error) {
 	h := &hook{
 		cfg:        cfg,
 		publicKeys: map[string]crypto.PublicKey{},
 		closing:    make(chan struct{}),
 	}
 
-	h.updateKeys()
+	err := h.updateKeys()
+	if err != nil {
+		return nil, errors.New("failed to update initial JWK Set: " + err.Error())
+	}
+
 	go func() {
 		for {
 			select {
@@ -69,14 +73,14 @@ func NewHook(cfg Config) middleware.Hook {
 		}
 	}()
 
-	return h
+	return h, nil
 }
 
-func (h *hook) updateKeys() {
+func (h *hook) updateKeys() error {
 	resp, err := http.Get(h.cfg.JWKSetURL)
 	if err != nil {
 		log.Errorln("failed to fetch JWK Set: " + err.Error())
-		return
+		return err
 	}
 
 	parsedJWKs := map[string]gojwk.Key{}
@@ -84,7 +88,7 @@ func (h *hook) updateKeys() {
 	if err != nil {
 		resp.Body.Close()
 		log.Errorln("failed to decode JWK JSON: " + err.Error())
-		return
+		return err
 	}
 	resp.Body.Close()
 
@@ -93,11 +97,13 @@ func (h *hook) updateKeys() {
 		publicKey, err := parsedJWK.DecodePublicKey()
 		if err != nil {
 			log.Errorln("failed to decode JWK into public key: " + err.Error())
-			return
+			return err
 		}
 		keys[kid] = publicKey
 	}
 	h.publicKeys = keys
+
+	return nil
 }
 
 func (h *hook) Stop() <-chan error {

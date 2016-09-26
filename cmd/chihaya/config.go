@@ -78,7 +78,11 @@ func (cfg ConfigFile) CreateHooks() (preHooks, postHooks []middleware.Hook, err 
 			if err != nil {
 				return nil, nil, errors.New("invalid JWT middleware config: " + err.Error())
 			}
-			preHooks = append(preHooks, jwt.NewHook(jwtCfg))
+			hook, err := jwt.NewHook(jwtCfg)
+			if err != nil {
+				return nil, nil, errors.New("invalid JWT middleware config: " + err.Error())
+			}
+			preHooks = append(preHooks, hook)
 		case "client approval":
 			var caCfg clientapproval.Config
 			err := yaml.Unmarshal(cfgBytes, &caCfg)
