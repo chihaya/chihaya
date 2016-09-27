@@ -50,9 +50,12 @@ An explanation of the available keys can be found in [CONFIGURATION.md].
 ### Docker
 
 ```sh
-$ docker pull quay.io/jzelinskie/chihaya:latest
-$ export CHIHAYA_LOG_LEVEL=5 # most verbose, and the default
-$ docker run -p 6880-6882:6880-6882 -v $PATH_TO_DIR_WITH_CONF_FILE:/config:ro -e quay.io/jzelinskie/chihaya:latest -v=$CHIHAYA_LOG_LEVEL
+# Create a config directory and download the example config
+mkdir $HOME/chihaya-config
+curl -L https://raw.githubusercontent.com/chihaya/chihaya/release-v1.0/example_config.json -o $HOME/chihaya-config/config.json
+
+# Run the container with the config directory mounted
+docker run -p 6880-6882:6880-6882 -v $HOME/chihaya-config:/config:ro quay.io/jzelinskie/chihaya:v1.0.0 -v=5
 ```
 
 ## Developing Chihaya
