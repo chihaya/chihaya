@@ -90,7 +90,7 @@ func marshal(w io.Writer, data interface{}) (err error) {
 		err = marshalList(w, v)
 
 	default:
-		return fmt.Errorf("attempted to marshal unsupported type:\n%t", v)
+		return fmt.Errorf("attempted to marshal unsupported type:\n%T", v)
 	}
 
 	return err
