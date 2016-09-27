@@ -50,12 +50,12 @@ An explanation of the available keys can be found in [CONFIGURATION.md].
 ### Docker
 
 ```sh
-# Create a config directory and download the example config
-mkdir $HOME/chihaya-config
-curl -L https://raw.githubusercontent.com/chihaya/chihaya/release-v1.0/example_config.json -o $HOME/chihaya-config/config.json
+# Download and edit the example config
+curl -L https://raw.githubusercontent.com/chihaya/chihaya/release-v1.0/example_config.json -o config.json
+vi config.json
 
-# Run the container with the config directory mounted
-docker run -p 6880-6882:6880-6882 -v $HOME/chihaya-config:/config:ro quay.io/jzelinskie/chihaya:v1.0.0 -v=5
+# Run the container with the config file mounted
+docker run -p 6880-6882:6880-6882 -v $PWD/config.json:/config.json:ro quay.io/jzelinskie/chihaya:v1.0.1 -v=5
 ```
 
 ## Developing Chihaya
