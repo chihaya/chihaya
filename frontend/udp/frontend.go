@@ -48,10 +48,10 @@ func recordResponseDuration(action string, err error, duration time.Duration) {
 // Config represents all of the configurable options for a UDP BitTorrent
 // Tracker.
 type Config struct {
-	Addr            string
-	PrivateKey      string
-	MaxClockSkew    time.Duration
-	AllowIPSpoofing bool
+	Addr            string        `yaml:"addr"`
+	PrivateKey      string        `yaml:"private_key"`
+	MaxClockSkew    time.Duration `yaml:"max_clock_skew"`
+	AllowIPSpoofing bool          `yaml:"allow_ip_spoofing"`
 }
 
 // Frontend holds the state of a UDP BitTorrent Frontend.
