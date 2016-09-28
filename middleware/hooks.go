@@ -102,14 +102,30 @@ func (h *responseHook) HandleAnnounce(ctx context.Context, req *bittorrent.Annou
 
 	switch len(req.IP) {
 	case net.IPv4len:
-		resp.IPv4Peers, err = h.store.AnnouncePeers(req.InfoHash, req.Left == 0, int(req.NumWant), req.Peer)
+		resp.IPv4Peers, err = h.getPeers(req.InfoHash, req.Left == 0, int(req.NumWant), req.Peer)
 	case net.IPv6len:
-		resp.IPv6Peers, err = h.store.AnnouncePeers(req.InfoHash, req.Left == 0, int(req.NumWant), req.Peer)
+		resp.IPv6Peers, err = h.getPeers(req.InfoHash, req.Left == 0, int(req.NumWant), req.Peer)
 	default:
 		return ctx, ErrInvalidIP
 	}
 
 	return ctx, err
+}
+
+func (h *responseHook) getPeers(ih bittorrent.InfoHash, seeder bool, numWant int, p bittorrent.Peer) ([]bittorrent.Peer, error) {
+	peers, err := h.store.AnnouncePeers(ih, seeder, numWant, p)
+	if err != nil && err != storage.ErrResourceDoesNotExist {
+		return nil, err
+	}
+
+	// Insert announcing peer.
+	// Some clients expect at least themselves in every announce response.
+	if len(peers) < numWant || len(peers) == 0 {
+		return append(peers, p), nil
+	}
+
+	peers[len(peers)-1] = p
+	return peers, nil
 }
 
 func (h *responseHook) HandleScrape(ctx context.Context, req *bittorrent.ScrapeRequest, resp *bittorrent.ScrapeResponse) (context.Context, error) {

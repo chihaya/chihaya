@@ -51,6 +51,8 @@ type PeerStore interface {
 	// - if seeder is true, should ideally return more leechers than seeders
 	// - if seeder is false, should ideally return more seeders than
 	//   leechers
+	//
+	// Returns ErrResourceDoesNotExist if the provided infoHash is not tracked.
 	AnnouncePeers(infoHash bittorrent.InfoHash, seeder bool, numWant int, p bittorrent.Peer) (peers []bittorrent.Peer, err error)
 
 	// ScrapeSwarm returns information required to answer a scrape request
