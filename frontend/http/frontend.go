@@ -47,12 +47,12 @@ func recordResponseDuration(action string, err error, duration time.Duration) {
 // Config represents all of the configurable options for an HTTP BitTorrent
 // Frontend.
 type Config struct {
-	Addr            string
-	ReadTimeout     time.Duration
-	WriteTimeout    time.Duration
-	RequestTimeout  time.Duration
-	AllowIPSpoofing bool
-	RealIPHeader    string
+	Addr            string        `yaml:"addr"`
+	ReadTimeout     time.Duration `yaml:"read_timeout"`
+	WriteTimeout    time.Duration `yaml:"write_timeout"`
+	RequestTimeout  time.Duration `yaml:"request_timeout"`
+	AllowIPSpoofing bool          `yaml:"allow_ip_spoofing"`
+	RealIPHeader    string        `yaml:"real_ip_header"`
 }
 
 // Frontend holds the state of an HTTP BitTorrent Frontend.

@@ -13,6 +13,9 @@ chihaya:
   udp:
     addr: 0.0.0.0:6881
     allow_ip_spoofing: false
+    max_clock_skew: 10s
+    private_key: |
+      paste a random string here that will be used to hmac connection IDs
 
   storage:
     gc_interval: 14m
