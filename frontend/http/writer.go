@@ -3,6 +3,8 @@ package http
 import (
 	"net/http"
 
+	log "github.com/Sirupsen/logrus"
+
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/frontend/http/bencode"
 )
@@ -12,6 +14,8 @@ func WriteError(w http.ResponseWriter, err error) error {
 	message := "internal server error"
 	if _, clientErr := err.(bittorrent.ClientError); clientErr {
 		message = err.Error()
+	} else {
+		log.Errorf("http: internal error: %s", err)
 	}
 
 	w.WriteHeader(http.StatusOK)
