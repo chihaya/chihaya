@@ -7,7 +7,6 @@ package tracker
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
 	"time"
@@ -15,6 +14,8 @@ import (
 	oidchttp "github.com/coreos/go-oidc/http"
 	"github.com/coreos/go-oidc/jose"
 	"github.com/golang/glog"
+
+	"github.com/chihaya/chihaya/tracker/models"
 )
 
 const jwkTTLFallback = 5 * time.Minute
@@ -101,46 +102,46 @@ func validateJWTSignature(jwt *jose.JWT, jwkSet *jwkSet) (bool, error) {
 func (tkr *Tracker) validateJWT(jwtStr, infohash string) error {
 	jwkSet := tkr.jwkSet
 	if time.Now().After(jwkSet.validUntil) {
-		return fmt.Errorf("Failed verify JWT due to stale JWK Set")
+		return errors.New("Failed verify JWT due to stale JWK Set")
 	}
 
 	jwt, err := jose.ParseJWT(jwtStr)
 	if err != nil {
-		return err
+		return models.ClientError("Failed to parse JWT")
 	}
 
 	validated, err := validateJWTSignature(&jwt, &jwkSet)
 	if err != nil {
 		return err
 	} else if !validated {
-		return errors.New("Failed to verify JWT with all available verifiers")
+		return models.ClientError("Failed to verify JWT signature with available verifiers")
 	}
 
 	claims, err := jwt.Claims()
 	if err != nil {
-		return err
+		return models.ClientError("Failed to decode JWT claims")
 	}
 
 	if claimedIssuer, ok, err := claims.StringClaim("iss"); claimedIssuer != jwkSet.Issuer || err != nil || !ok {
-		return errors.New("Failed to validate JWT issuer claim")
+		return models.ClientError("Failed to validate JWT issuer claim")
 	}
 
 	if claimedAudience, ok, err := claims.StringClaim("aud"); claimedAudience != tkr.Config.JWTAudience || err != nil || !ok {
-		return errors.New("Failed to validate JWT audience claim")
+		return models.ClientError("Failed to validate JWT audience claim")
 	}
 
 	claimedInfohash, ok, err := claims.StringClaim("infohash")
 	if err != nil || !ok {
-		return errors.New("Failed to validate JWT infohash claim")
+		return models.ClientError("Failed to validate JWT infohash claim")
 	}
 
 	unescapedInfohash, err := url.QueryUnescape(claimedInfohash)
 	if err != nil {
-		return errors.New("Failed to unescape JWT infohash claim")
+		return models.ClientError("Failed to unescape JWT infohash claim")
 	}
 
 	if unescapedInfohash != infohash {
-		return errors.New("Failed to match infohash claim with requested infohash")
+		return models.ClientError("Failed to match infohash claim with requested infohash")
 	}
 
 	return nil
