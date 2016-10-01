@@ -30,6 +30,8 @@ var marshalTests = []struct {
 
 	{map[string]interface{}{"one": "aa", "two": "bb"}, []string{"d3:one2:aa3:two2:bbe", "d3:two2:bb3:one2:aae"}},
 	{map[string]interface{}{}, []string{"de"}},
+
+	{[]Dict{{"a": "b"}, {"c": "d"}}, []string{"ld1:a1:bed1:c1:dee", "ld1:c1:ded1:a1:bee"}},
 }
 
 func TestMarshal(t *testing.T) {

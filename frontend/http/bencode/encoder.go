@@ -89,6 +89,13 @@ func marshal(w io.Writer, data interface{}) (err error) {
 	case []interface{}:
 		err = marshalList(w, v)
 
+	case []Dict:
+		var interfaceSlice = make([]interface{}, len(v))
+		for i, d := range v {
+			interfaceSlice[i] = d
+		}
+		err = marshalList(w, interfaceSlice)
+
 	default:
 		return fmt.Errorf("attempted to marshal unsupported type:\n%T", v)
 	}
