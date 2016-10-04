@@ -128,10 +128,15 @@ func (t *Frontend) ListenAndServe() error {
 			defer t.wg.Done()
 			defer pool.Put(buffer)
 
+			if ip := addr.IP.To4(); ip != nil {
+				addr.IP = ip
+			}
+
 			// Handle the request.
 			start := time.Now()
 			action, err := t.handleRequest(
-				Request{buffer[:n], addr.IP},
+				// Make sure the IP is copied, not referenced.
+				Request{buffer[:n], append([]byte{}, addr.IP...)},
 				ResponseWriter{t.socket, addr},
 			)
 			recordResponseDuration(action, err, time.Since(start))

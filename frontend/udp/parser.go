@@ -80,7 +80,8 @@ func ParseAnnounce(r Request, allowIPSpoofing, v6 bool) (*bittorrent.AnnounceReq
 	ip := r.IP
 	ipbytes := r.Packet[84:ipEnd]
 	if allowIPSpoofing {
-		ip = net.IP(ipbytes)
+		// Make sure the bytes are copied to a new slice.
+		copy(ip, net.IP(ipbytes))
 	}
 	if !allowIPSpoofing && r.IP == nil {
 		// We have no IP address to fallback on.
