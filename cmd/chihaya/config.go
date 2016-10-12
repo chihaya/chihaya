@@ -23,13 +23,13 @@ type hookConfig struct {
 // ConfigFile represents a namespaced YAML configation file.
 type ConfigFile struct {
 	MainConfigBlock struct {
-		middleware.Config
-		PrometheusAddr string              `yaml:"prometheus_addr"`
-		HTTPConfig     httpfrontend.Config `yaml:"http"`
-		UDPConfig      udpfrontend.Config  `yaml:"udp"`
-		Storage        memory.Config       `yaml:"storage"`
-		PreHooks       []hookConfig        `yaml:"prehooks"`
-		PostHooks      []hookConfig        `yaml:"posthooks"`
+		middleware.Config `yaml:",inline"`
+		PrometheusAddr    string              `yaml:"prometheus_addr"`
+		HTTPConfig        httpfrontend.Config `yaml:"http"`
+		UDPConfig         udpfrontend.Config  `yaml:"udp"`
+		Storage           memory.Config       `yaml:"storage"`
+		PreHooks          []hookConfig        `yaml:"prehooks"`
+		PostHooks         []hookConfig        `yaml:"posthooks"`
 	} `yaml:"chihaya"`
 }
 
