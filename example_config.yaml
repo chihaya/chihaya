@@ -42,6 +42,13 @@ chihaya:
       modify_response_probability: 0.2
       max_increase_delta: 60
       modify_min_interval: true
+  - name: deniability
+    config:
+      modify_response_probability: 0.01
+      max_random_peers: 5
+      prefix: OP1011-
+      min_port: 10000
+      max_port: 60000
 
   posthooks:
   - name: gossip
