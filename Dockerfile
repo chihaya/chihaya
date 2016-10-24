@@ -14,6 +14,10 @@ ADD . /go/src/github.com/chihaya/chihaya
 RUN glide install
 RUN go install github.com/chihaya/chihaya/cmd/chihaya
 
+# Delete the compiler from the container.
+# This makes the container much smaller when using Quay's squashing feature.
+RUN rm -r /usr/local/go
+
 # Expose a docker interface to our binary.
 EXPOSE 6880 6881
 ENTRYPOINT ["chihaya"]
