@@ -51,15 +51,17 @@ type hook struct {
 
 // NewHook returns an instance of the JWT middleware.
 func NewHook(cfg Config) (middleware.Hook, error) {
+	log.Debugf("creating new JWT middleware with config: %#v", cfg)
 	h := &hook{
 		cfg:        cfg,
 		publicKeys: map[string]crypto.PublicKey{},
 		closing:    make(chan struct{}),
 	}
 
+	log.Debug("performing initial fetch of JWKs")
 	err := h.updateKeys()
 	if err != nil {
-		return nil, errors.New("failed to update initial JWK Set: " + err.Error())
+		return nil, errors.New("failed to fetch initial JWK Set: " + err.Error())
 	}
 
 	go func() {
@@ -68,6 +70,7 @@ func NewHook(cfg Config) (middleware.Hook, error) {
 			case <-h.closing:
 				return
 			case <-time.After(cfg.JWKUpdateInterval):
+				log.Debug("performing fetch of JWKs")
 				h.updateKeys()
 			}
 		}
@@ -83,7 +86,7 @@ func (h *hook) updateKeys() error {
 		return err
 	}
 
-	parsedJWKs := map[string]gojwk.Key{}
+	var parsedJWKs gojwk.Key
 	err = json.NewDecoder(resp.Body).Decode(&parsedJWKs)
 	if err != nil {
 		resp.Body.Close()
@@ -93,20 +96,22 @@ func (h *hook) updateKeys() error {
 	resp.Body.Close()
 
 	keys := map[string]crypto.PublicKey{}
-	for kid, parsedJWK := range parsedJWKs {
+	for _, parsedJWK := range parsedJWKs.Keys {
 		publicKey, err := parsedJWK.DecodePublicKey()
 		if err != nil {
 			log.Errorln("failed to decode JWK into public key: " + err.Error())
 			return err
 		}
-		keys[kid] = publicKey
+		keys[parsedJWK.Kid] = publicKey
 	}
 	h.publicKeys = keys
 
+	log.Debug("successfully fetched JWK Set")
 	return nil
 }
 
 func (h *hook) Stop() <-chan error {
+	log.Debug("attempting to shutdown JWT middleware")
 	select {
 	case <-h.closing:
 		return stopper.AlreadyStopped
