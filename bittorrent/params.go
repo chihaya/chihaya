@@ -37,7 +37,7 @@ var ErrKeyNotFound = errors.New("query: value for the provided key does not exis
 
 // ErrInvalidInfohash is returned when parsing a query encounters an infohash
 // with invalid length.
-var ErrInvalidInfohash = errors.New("query: invalid infohash")
+var ErrInvalidInfohash = ClientError("provided invalid infohash")
 
 // QueryParams parses a URL Query and implements the Params interface with some
 // additional helpers.
