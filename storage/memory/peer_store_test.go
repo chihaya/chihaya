@@ -9,12 +9,14 @@ import (
 )
 
 func createNew() s.PeerStore {
-	ps, err := New(Config{ShardCount: 1024, GarbageCollectionInterval: 10 * time.Minute})
+	ps, err := New(Config{ShardCount: 1024, GarbageCollectionInterval: 10 * time.Minute, MaxNumWant: 50})
 	if err != nil {
 		panic(err)
 	}
 	return ps
 }
+
+func TestPeerStore(t *testing.T) { s.TestPeerStore(t, createNew()) }
 
 func BenchmarkPut(b *testing.B)                        { s.Put(b, createNew()) }
 func BenchmarkPut1k(b *testing.B)                      { s.Put1k(b, createNew()) }
