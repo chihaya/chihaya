@@ -15,6 +15,7 @@ import (
 	httpfrontend "github.com/chihaya/chihaya/frontend/http"
 	udpfrontend "github.com/chihaya/chihaya/frontend/udp"
 	"github.com/chihaya/chihaya/middleware"
+	"github.com/chihaya/chihaya/storage"
 	"github.com/chihaya/chihaya/storage/memory"
 )
 
@@ -53,7 +54,6 @@ func rootCmdRun(cmd *cobra.Command, args []string) error {
 		}
 	}()
 
-	// Force the compiler to enforce memory against the storage interface.
 	peerStore, err := memory.New(cfg.Storage)
 	if err != nil {
 		return errors.New("failed to create memory storage: " + err.Error())
@@ -65,67 +65,55 @@ func rootCmdRun(cmd *cobra.Command, args []string) error {
 	}
 
 	logic := middleware.NewLogic(cfg.Config, peerStore, preHooks, postHooks)
-	if err != nil {
-		return errors.New("failed to create TrackerLogic: " + err.Error())
-	}
 
-	shutdown := make(chan struct{})
 	errChan := make(chan error)
 
-	var httpFrontend *httpfrontend.Frontend
-	var udpFrontend *udpfrontend.Frontend
+	httpFrontend, udpFrontend := startFrontends(cfg.HTTPConfig, cfg.UDPConfig, logic, errChan)
 
-	if cfg.HTTPConfig.Addr != "" {
-		httpFrontend = httpfrontend.NewFrontend(logic, cfg.HTTPConfig)
+	shutdown := make(chan struct{})
+	quit := make(chan os.Signal)
+	restart := make(chan os.Signal)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(restart, syscall.SIGUSR1)
 
-		go func() {
-			log.Infoln("started serving HTTP on", cfg.HTTPConfig.Addr)
-			if err := httpFrontend.ListenAndServe(); err != nil {
-				errChan <- errors.New("failed to cleanly shutdown HTTP frontend: " + err.Error())
-			}
-		}()
-	}
-
-	if cfg.UDPConfig.Addr != "" {
-		udpFrontend = udpfrontend.NewFrontend(logic, cfg.UDPConfig)
-
-		go func() {
-			log.Infoln("started serving UDP on", cfg.UDPConfig.Addr)
-			if err := udpFrontend.ListenAndServe(); err != nil {
-				errChan <- errors.New("failed to cleanly shutdown UDP frontend: " + err.Error())
-			}
-		}()
-	}
-
-	sigChan := make(chan os.Signal)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
-		select {
-		case <-sigChan:
-		case <-shutdown:
-		}
+		for {
+			select {
+			case <-restart:
+				log.Info("Got signal to restart")
 
-		if udpFrontend != nil {
-			udpFrontend.Stop()
-		}
+				// Reload config
+				configFile, err = ParseConfigFile(configFilePath)
+				if err != nil {
+					log.Error("failed to read config: " + err.Error())
+				}
+				cfg = configFile.MainConfigBlock
 
-		if httpFrontend != nil {
-			httpFrontend.Stop()
-		}
+				preHooks, postHooks, err = configFile.CreateHooks()
+				if err != nil {
+					log.Error("failed to create hooks: " + err.Error())
+				}
 
-		for err := range peerStore.Stop() {
-			if err != nil {
-				errChan <- err
+				// Stop frontends and logic
+				stopFrontends(udpFrontend, httpFrontend)
+
+				stopLogic(logic, errChan)
+
+				// Restart
+				log.Debug("Restarting logic")
+				logic = middleware.NewLogic(cfg.Config, peerStore, preHooks, postHooks)
+
+				log.Debug("Restarting frontends")
+				httpFrontend, udpFrontend = startFrontends(cfg.HTTPConfig, cfg.UDPConfig, logic, errChan)
+
+				log.Debug("Successfully restarted")
+
+			case <-quit:
+				stop(udpFrontend, httpFrontend, logic, errChan, peerStore)
+			case <-shutdown:
+				stop(udpFrontend, httpFrontend, logic, errChan, peerStore)
 			}
 		}
-
-		// Stop hooks.
-		errs := logic.Stop()
-		for _, err := range errs {
-			errChan <- err
-		}
-
-		close(errChan)
 	}()
 
 	closed := false
@@ -143,6 +131,67 @@ func rootCmdRun(cmd *cobra.Command, args []string) error {
 	}
 
 	return bufErr
+}
+
+func stopFrontends(udpFrontend *udpfrontend.Frontend, httpFrontend *httpfrontend.Frontend) {
+	log.Debug("Stopping frontends")
+	if udpFrontend != nil {
+		udpFrontend.Stop()
+	}
+
+	if httpFrontend != nil {
+		httpFrontend.Stop()
+	}
+}
+
+func stopLogic(logic *middleware.Logic, errChan chan error) {
+	log.Debug("Stopping logic")
+	errs := logic.Stop()
+	for _, err := range errs {
+		errChan <- err
+	}
+}
+
+func stop(udpFrontend *udpfrontend.Frontend, httpFrontend *httpfrontend.Frontend, logic *middleware.Logic, errChan chan error, peerStore storage.PeerStore) {
+	stopFrontends(udpFrontend, httpFrontend)
+
+	stopLogic(logic, errChan)
+
+	// Stop storage
+	log.Debug("Stopping storage")
+	for err := range peerStore.Stop() {
+		if err != nil {
+			errChan <- err
+		}
+	}
+
+	close(errChan)
+}
+
+func startFrontends(httpConfig httpfrontend.Config, udpConfig udpfrontend.Config, logic *middleware.Logic, errChan chan<- error) (httpFrontend *httpfrontend.Frontend, udpFrontend *udpfrontend.Frontend) {
+	if httpConfig.Addr != "" {
+		httpFrontend = httpfrontend.NewFrontend(logic, httpConfig)
+
+		go func() {
+			log.Infoln("started serving HTTP on", httpConfig.Addr)
+			if err := httpFrontend.ListenAndServe(); err != nil {
+				errChan <- errors.New("failed to cleanly shutdown HTTP frontend: " + err.Error())
+			}
+		}()
+	}
+
+	if udpConfig.Addr != "" {
+		udpFrontend = udpfrontend.NewFrontend(logic, udpConfig)
+
+		go func() {
+			log.Infoln("started serving UDP on", udpConfig.Addr)
+			if err := udpFrontend.ListenAndServe(); err != nil {
+				errChan <- errors.New("failed to cleanly shutdown UDP frontend: " + err.Error())
+			}
+		}()
+	}
+
+	return
 }
 
 func main() {
