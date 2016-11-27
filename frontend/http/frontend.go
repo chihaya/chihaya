@@ -71,7 +71,7 @@ func NewFrontend(logic frontend.TrackerLogic, cfg Config) *Frontend {
 	}
 }
 
-// Stop provides a thread-safe way to shutdown a currently running Tracker.
+// Stop provides a thread-safe way to shutdown a currently running Frontend.
 func (t *Frontend) Stop() {
 	t.grace.Stop(t.grace.Timeout)
 	<-t.grace.StopChan()
