@@ -1,6 +1,8 @@
 chihaya:
   announce_interval: 15m
   prometheus_addr: localhost:6880
+  max_numwant: 50
+  default_numwant: 25
 
   http:
     addr: 0.0.0.0:6881
@@ -21,7 +23,6 @@ chihaya:
     gc_interval: 14m
     peer_lifetime: 15m
     shards: 1
-    max_numwant: 100
 
   prehooks:
   - name: jwt

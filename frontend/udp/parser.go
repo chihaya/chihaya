@@ -29,10 +29,6 @@ var (
 	// initialConnectionID is the magic initial connection ID specified by BEP 15.
 	initialConnectionID = []byte{0, 0, 0x04, 0x17, 0x27, 0x10, 0x19, 0x80}
 
-	// emptyIPs are the value of an IP field that has been left blank.
-	emptyIPv4 = []byte{0, 0, 0, 0}
-	emptyIPv6 = []byte{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-
 	// eventIDs map values described in BEP 15 to Events.
 	eventIDs = []bittorrent.Event{
 		bittorrent.None,
@@ -105,7 +101,7 @@ func ParseAnnounce(r Request, allowIPSpoofing, v6 bool) (*bittorrent.AnnounceReq
 		Uploaded:   uploaded,
 		Peer: bittorrent.Peer{
 			ID:   bittorrent.PeerIDFromBytes(peerID),
-			IP:   ip,
+			IP:   bittorrent.IP{IP: ip},
 			Port: port,
 		},
 		Params: params,

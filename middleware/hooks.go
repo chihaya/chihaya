@@ -70,6 +70,48 @@ func (h *swarmInteractionHook) HandleScrape(ctx context.Context, _ *bittorrent.S
 // ErrInvalidIP indicates an invalid IP for an Announce.
 var ErrInvalidIP = errors.New("invalid IP")
 
+// sanitizationHook enforces semantic assumptions about requests that may have
+// not been accounted for in a tracker frontend.
+//
+// The SanitizationHook performs the following checks:
+// - maxNumWant: Checks whether the numWant parameter of an announce is below
+//     a limit. Sets it to the limit if the value is higher.
+// - defaultNumWant: Checks whether the numWant parameter of an announce is
+//     zero. Sets it to the default if it is.
+// - IP sanitization: Checks whether the announcing Peer's IP address is either
+//     IPv4 or IPv6. Returns ErrInvalidIP if the address is neither IPv4 nor
+//     IPv6. Sets the Peer.AddressFamily field accordingly. Truncates IPv4
+//     addresses to have a length of 4 bytes.
+type sanitizationHook struct {
+	maxNumWant     uint32
+	defaultNumWant uint32
+}
+
+func (h *sanitizationHook) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequest, resp *bittorrent.AnnounceResponse) (context.Context, error) {
+	if req.NumWant > h.maxNumWant {
+		req.NumWant = h.maxNumWant
+	}
+
+	if req.NumWant == 0 {
+		req.NumWant = h.defaultNumWant
+	}
+
+	if ip := req.Peer.IP.To4(); ip != nil {
+		req.Peer.IP.IP = ip
+		req.Peer.IP.AddressFamily = bittorrent.IPv4
+	} else if len(req.Peer.IP.IP) == net.IPv6len { // implies req.Peer.IP.To4() == nil
+		req.Peer.IP.AddressFamily = bittorrent.IPv6
+	} else {
+		return ctx, ErrInvalidIP
+	}
+
+	return ctx, nil
+}
+
+func (h *sanitizationHook) HandleScrape(ctx context.Context, req *bittorrent.ScrapeRequest, resp *bittorrent.ScrapeResponse) (context.Context, error) {
+	return ctx, nil
+}
+
 type skipResponseHook struct{}
 
 // SkipResponseHookKey is a key for the context of an Announce or Scrape to
@@ -97,7 +139,7 @@ func (h *responseHook) HandleAnnounce(ctx context.Context, req *bittorrent.Annou
 	}
 
 	// Add the Scrape data to the response.
-	s := h.store.ScrapeSwarm(req.InfoHash, len(req.IP) == net.IPv6len)
+	s := h.store.ScrapeSwarm(req.InfoHash, req.IP.AddressFamily)
 	resp.Incomplete = s.Incomplete
 	resp.Complete = s.Complete
 
@@ -123,13 +165,13 @@ func (h *responseHook) appendPeers(req *bittorrent.AnnounceRequest, resp *bittor
 		peers = append(peers, req.Peer)
 	}
 
-	switch len(req.IP) {
-	case net.IPv4len:
+	switch req.IP.AddressFamily {
+	case bittorrent.IPv4:
 		resp.IPv4Peers = peers
-	case net.IPv6len:
+	case bittorrent.IPv6:
 		resp.IPv6Peers = peers
 	default:
-		panic("peer IP is not IPv4 or IPv6 length")
+		panic("attempted to append peer that is neither IPv4 nor IPv6")
 	}
 
 	return nil
@@ -143,7 +185,11 @@ func (h *responseHook) HandleScrape(ctx context.Context, req *bittorrent.ScrapeR
 	v6, _ := ctx.Value(ScrapeIsIPv6Key).(bool)
 
 	for _, infoHash := range req.InfoHashes {
-		resp.Files[infoHash] = h.store.ScrapeSwarm(infoHash, v6)
+		if v6 {
+			resp.Files[infoHash] = h.store.ScrapeSwarm(infoHash, bittorrent.IPv6)
+		} else {
+			resp.Files[infoHash] = h.store.ScrapeSwarm(infoHash, bittorrent.IPv4)
+		}
 	}
 
 	return ctx, nil

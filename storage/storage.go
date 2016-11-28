@@ -57,13 +57,13 @@ type PeerStore interface {
 
 	// ScrapeSwarm returns information required to answer a scrape request
 	// about a swarm identified by the given infohash.
-	// The v6 flag indicates whether or not the IPv6 swarm should be
+	// The AddressFamily indicates whether or not the IPv6 swarm should be
 	// scraped.
 	// The Complete and Incomplete fields of the Scrape must be filled,
 	// filling the Snatches field is optional.
 	// If the infohash is unknown to the PeerStore, an empty Scrape is
 	// returned.
-	ScrapeSwarm(infoHash bittorrent.InfoHash, v6 bool) bittorrent.Scrape
+	ScrapeSwarm(infoHash bittorrent.InfoHash, addressFamily bittorrent.AddressFamily) bittorrent.Scrape
 
 	// Stopper is an interface that expects a Stop method to stop the
 	// PeerStore.

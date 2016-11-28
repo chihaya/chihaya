@@ -110,11 +110,26 @@ type Scrape struct {
 	Incomplete uint32
 }
 
+// AddressFamily is the address family of an IP address.
+type AddressFamily uint8
+
+// AddressFamily constants.
+const (
+	IPv4 AddressFamily = iota
+	IPv6
+)
+
+// IP is a net.IP with an AddressFamily.
+type IP struct {
+	net.IP
+	AddressFamily
+}
+
 // Peer represents the connection details of a peer that is returned in an
 // announce response.
 type Peer struct {
 	ID   PeerID
-	IP   net.IP
+	IP   IP
 	Port uint16
 }
 
@@ -122,7 +137,7 @@ type Peer struct {
 func (p Peer) Equal(x Peer) bool { return p.EqualEndpoint(x) && p.ID == x.ID }
 
 // EqualEndpoint reports whether p and x have the same endpoint.
-func (p Peer) EqualEndpoint(x Peer) bool { return p.Port == x.Port && p.IP.Equal(x.IP) }
+func (p Peer) EqualEndpoint(x Peer) bool { return p.Port == x.Port && p.IP.Equal(x.IP.IP) }
 
 // ClientError represents an error that should be exposed to the client over
 // the BitTorrent protocol implementation.
