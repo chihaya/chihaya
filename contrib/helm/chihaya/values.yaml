@@ -1,0 +1,33 @@
+replicaCount: 1
+image:
+  repository: quay.io/jzelinskie/chihaya
+  tag: v2.0.0-rc.1
+  pullPolicy: IfNotPresent
+service:
+  name: chihaya
+  type: ClusterIP
+resources:
+  limits:
+    cpu: 100m
+    memory: 1Gi
+config:
+  chihaya:
+    announce_interval: 15m
+    prometheus_addr: 0.0.0.0:6880
+    http:
+      addr: 0.0.0.0:6881
+      allow_ip_spoofing: true
+      real_ip_header: X-Forwarded-For
+      read_timeout: 5s
+      write_timeout: 5s
+      request_timeout: 5s
+    udp:
+      addr: 0.0.0.0:6881
+      allow_ip_spoofing: true
+      max_clock_skew: 10s
+      private_key: "/K8AybyuKkob03fZJb+3Fu87eVcBNWsvVyDDxGd3wfvVGix10j6iGDEyS/ELPvQIIZvUPl2PnyfnpG6g1YJ/sw=="
+    storage:
+      gc_interval: 14m
+      peer_lifetime: 15m
+      shards: 16
+      max_numwant: 50
