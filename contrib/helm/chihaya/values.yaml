@@ -25,7 +25,6 @@ config:
       addr: 0.0.0.0:6881
       allow_ip_spoofing: true
       max_clock_skew: 10s
-      private_key: "/K8AybyuKkob03fZJb+3Fu87eVcBNWsvVyDDxGd3wfvVGix10j6iGDEyS/ELPvQIIZvUPl2PnyfnpG6g1YJ/sw=="
     storage:
       gc_interval: 14m
       peer_lifetime: 15m
