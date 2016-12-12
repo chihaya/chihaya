@@ -2,7 +2,7 @@ package storage
 
 import (
 	"github.com/chihaya/chihaya/bittorrent"
-	"github.com/chihaya/chihaya/stopper"
+	"github.com/chihaya/chihaya/pkg/stopper"
 )
 
 // ErrResourceDoesNotExist is the error returned by all delete methods in the
