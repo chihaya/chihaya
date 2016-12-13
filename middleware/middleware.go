@@ -9,7 +9,7 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/frontend"
-	"github.com/chihaya/chihaya/stopper"
+	"github.com/chihaya/chihaya/pkg/stopper"
 	"github.com/chihaya/chihaya/storage"
 )
 

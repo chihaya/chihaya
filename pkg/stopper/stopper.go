@@ -1,3 +1,4 @@
+// Package stopper implements a pattern for shutting down a group of processes.
 package stopper
 
 import (
