@@ -149,7 +149,7 @@ func (s *peerStore) GraduateLeecher(infoHash bittorrent.InfoHash, p bittorrent.P
 	return nil
 }
 
-//Ugly but works. To refactor
+//Ugly but works. Must refactor
 func (s *peerStore) AnnouncePeers(infoHash bittorrent.InfoHash, seeder bool, numWant int, announcer bittorrent.Peer) (peers []bittorrent.Peer, err error) {
 	panicIfClosed(s.closed)
 	if numWant > s.maxNumWant {
@@ -176,6 +176,10 @@ func (s *peerStore) AnnouncePeers(infoHash bittorrent.InfoHash, seeder bool, num
 			return nil, err
 		}
 		for _, p := range seeders {
+			if numWant == 0 {
+				break
+			}
+
 			peers = append(peers, decodePeerKey(p))
 			numWant--
 		}
@@ -202,11 +206,27 @@ func (s *peerStore) AnnouncePeers(infoHash bittorrent.InfoHash, seeder bool, num
 	return peers, nil
 }
 
-func (s *peerStore) ScrapeSwarm(infoHash bittorrent.InfoHash, v6 bool) bittorrent.Scrape {
+func (s *peerStore) ScrapeSwarm(infoHash bittorrent.InfoHash, v6 bool) (resp bittorrent.Scrape) {
 	panicIfClosed(s.closed)
-	return bittorrent.Scrape{}
+	complete, err := redis.Int(s.conn.Do("ZCARD",
+		addNameSpace(fmt.Sprintf("%s%s", "seeder:", infoHash))))
+	if err != nil {
+		return
+	}
+	resp.Complete = uint32(complete)
+	incomplete, err := redis.Int(s.conn.Do("ZCARD",
+		addNameSpace(fmt.Sprintf("%s%s", "leecher:", infoHash))))
+	if err != nil {
+		return
+	}
+	resp.Incomplete = uint32(incomplete)
+	return
 }
 
 func (s *peerStore) Stop() <-chan error {
-	return nil
+	toReturn := make(chan error)
+	close(s.closed)
+	s.conn.Close()
+	close(toReturn)
+	return toReturn
 }
