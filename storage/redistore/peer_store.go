@@ -2,6 +2,7 @@ package redistore
 
 import (
 	"encoding/binary"
+	"fmt"
 	"log"
 	"net"
 	"time"
@@ -82,11 +83,16 @@ func panicIfClosed(closed <-chan struct{}) {
 	}
 }
 
+func addNameSpace(command string) string {
+	return namespacePrefix + ":" + command
+}
+
 func (s *peerStore) PutSeeder(infoHash bittorrent.InfoHash, p bittorrent.Peer) error {
 	panicIfClosed(s.closed)
 
 	pk := newPeerKey(p)
-	_, err := s.conn.Do("ZADD", "seeder:"+string(infoHash[:20]),
+	_, err := s.conn.Do("ZADD",
+		addNameSpace(fmt.Sprintf("%s%s", "seeder:", infoHash)),
 		time.Now().Unix(), pk)
 	if err != nil {
 		return err
@@ -96,13 +102,21 @@ func (s *peerStore) PutSeeder(infoHash bittorrent.InfoHash, p bittorrent.Peer) e
 
 func (s *peerStore) DeleteSeeder(infoHash bittorrent.InfoHash, p bittorrent.Peer) error {
 	panicIfClosed(s.closed)
+	pk := newPeerKey(p)
+	_, err := s.conn.Do("ZREM",
+		addNameSpace(fmt.Sprintf("%s%s", "seeder:", infoHash)),
+		pk)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 func (s *peerStore) PutLeecher(infoHash bittorrent.InfoHash, p bittorrent.Peer) error {
 	panicIfClosed(s.closed)
 	pk := newPeerKey(p)
-	_, err := s.conn.Do("ZADD", "leecher:"+string(infoHash[:20]),
+	_, err := s.conn.Do("ZADD",
+		addNameSpace(fmt.Sprintf("%s%s", "leecher:", infoHash)),
 		time.Now().Unix(), pk)
 	if err != nil {
 		return err
@@ -112,11 +126,26 @@ func (s *peerStore) PutLeecher(infoHash bittorrent.InfoHash, p bittorrent.Peer) 
 
 func (s *peerStore) DeleteLeecher(infoHash bittorrent.InfoHash, p bittorrent.Peer) error {
 	panicIfClosed(s.closed)
+	pk := newPeerKey(p)
+	_, err := s.conn.Do("ZREM",
+		addNameSpace(fmt.Sprintf("%s%s", "leecher:", infoHash)),
+		pk)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 func (s *peerStore) GraduateLeecher(infoHash bittorrent.InfoHash, p bittorrent.Peer) error {
 	panicIfClosed(s.closed)
+	err := s.DeleteLeecher(infoHash, p)
+	if err != nil {
+		return err
+	}
+	err = s.PutSeeder(infoHash, p)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
