@@ -67,7 +67,7 @@ func newPeerKey(p bittorrent.Peer) serializedPeer {
 	return serializedPeer(b)
 }
 
-func decodePeerKey(pk serializedPeer) bittorrent.Peer {
+func decodePeerKey(pk string) bittorrent.Peer {
 	return bittorrent.Peer{
 		ID:   bittorrent.PeerIDFromString(string(pk[:20])),
 		Port: binary.BigEndian.Uint16([]byte(pk[20:22])),
@@ -149,8 +149,56 @@ func (s *peerStore) GraduateLeecher(infoHash bittorrent.InfoHash, p bittorrent.P
 	return nil
 }
 
-func (s *peerStore) AnnouncePeers(infoHash bittorrent.InfoHash, seeder bool, numWant int, p bittorrent.Peer) (peers []bittorrent.Peer, err error) {
+//Ugly but works. To refactor
+func (s *peerStore) AnnouncePeers(infoHash bittorrent.InfoHash, seeder bool, numWant int, announcer bittorrent.Peer) (peers []bittorrent.Peer, err error) {
 	panicIfClosed(s.closed)
+	if numWant > s.maxNumWant {
+		numWant = s.maxNumWant
+	}
+
+	if seeder {
+		leechers, err := redis.Strings(s.conn.Do("ZRANGE",
+			addNameSpace(fmt.Sprintf("%s%s", "leecher:", infoHash)), 0, -1))
+		if err != nil {
+			return nil, err
+		}
+		for _, p := range leechers {
+			if numWant == 0 {
+				break
+			}
+			peers = append(peers, decodePeerKey(p))
+			numWant--
+		}
+	} else {
+		seeders, err := redis.Strings(s.conn.Do("ZRANGE",
+			addNameSpace(fmt.Sprintf("%s%s", "seeder:", infoHash)), 0, -1))
+		if err != nil {
+			return nil, err
+		}
+		for _, p := range seeders {
+			peers = append(peers, decodePeerKey(p))
+			numWant--
+		}
+		if numWant > 0 {
+			leechers, err := redis.Strings(s.conn.Do("ZRANGE",
+				addNameSpace(fmt.Sprintf("%s%s", "leecher:", infoHash)), 0, -1))
+			if err != nil {
+				return nil, err
+			}
+			for _, p := range leechers {
+				decodedPeer := decodePeerKey(p)
+				if numWant == 0 {
+					break
+				}
+				if decodedPeer.Equal(announcer) {
+					continue
+				}
+				peers = append(peers, decodedPeer)
+				numWant--
+
+			}
+		}
+	}
 	return peers, nil
 }
 
