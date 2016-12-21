@@ -15,26 +15,25 @@ import (
 var namespacePrefix string
 
 type Config struct {
-	PeerLifetime int
-	Namespace    bool
+	Namespace bool
 	//use as namespace prefix if Namespace = yes or as instance no.
-	Cntrl      string
-	MaxNumWant int
-	Host       string
-	Port       string
-}
-
-type Connecter interface {
-	New() (redis.Conn, error)
+	Cntrl                     string
+	MaxNumWant                int
+	Host                      string
+	Port                      string
+	GarbageCollectionInterval int
+	PeerLifetime              time.Duration
 }
 
 type peerStore struct {
-	conn       redis.Conn
-	closed     chan struct{}
-	maxNumWant int
+	conn         redis.Conn
+	closed       chan struct{}
+	maxNumWant   int
+	peerLifetime time.Duration
+	gcValidity   int
 }
 
-func (cfg Config) New() (storage.PeerStore, error) {
+func New(cfg Config) (storage.PeerStore, error) {
 	conn, err := redis.Dial("tcp", cfg.Host+":"+cfg.Port)
 	if err != nil {
 		log.Fatal("Connection failed:" + err.Error())
@@ -48,9 +47,11 @@ func (cfg Config) New() (storage.PeerStore, error) {
 	}
 
 	ps := &peerStore{
-		conn:       conn,
-		closed:     make(chan struct{}),
-		maxNumWant: cfg.MaxNumWant,
+		conn:         conn,
+		closed:       make(chan struct{}),
+		maxNumWant:   cfg.MaxNumWant,
+		peerLifetime: cfg.PeerLifetime,
+		gcValidity:   cfg.GarbageCollectionInterval,
 	}
 
 	return ps, nil
@@ -91,49 +92,27 @@ func (s *peerStore) PutSeeder(infoHash bittorrent.InfoHash, p bittorrent.Peer) e
 	panicIfClosed(s.closed)
 
 	pk := newPeerKey(p)
-	_, err := s.conn.Do("ZADD",
-		addNameSpace(fmt.Sprintf("%s%s", "seeder:", infoHash)),
-		time.Now().Unix(), pk)
-	if err != nil {
-		return err
-	}
-	return nil
+	return addAndCleanPeer(s, infoHash, "seeder", pk)
 }
 
 func (s *peerStore) DeleteSeeder(infoHash bittorrent.InfoHash, p bittorrent.Peer) error {
 	panicIfClosed(s.closed)
 	pk := newPeerKey(p)
-	_, err := s.conn.Do("ZREM",
-		addNameSpace(fmt.Sprintf("%s%s", "seeder:", infoHash)),
-		pk)
-	if err != nil {
-		return err
-	}
-	return nil
+	return remPeers(s, infoHash, "seeder", pk)
 }
 
 func (s *peerStore) PutLeecher(infoHash bittorrent.InfoHash, p bittorrent.Peer) error {
 	panicIfClosed(s.closed)
 	pk := newPeerKey(p)
-	_, err := s.conn.Do("ZADD",
-		addNameSpace(fmt.Sprintf("%s%s", "leecher:", infoHash)),
-		time.Now().Unix(), pk)
-	if err != nil {
-		return err
-	}
-	return nil
+	return addAndCleanPeer(s, infoHash, "leecher", pk)
+
 }
 
 func (s *peerStore) DeleteLeecher(infoHash bittorrent.InfoHash, p bittorrent.Peer) error {
 	panicIfClosed(s.closed)
 	pk := newPeerKey(p)
-	_, err := s.conn.Do("ZREM",
-		addNameSpace(fmt.Sprintf("%s%s", "leecher:", infoHash)),
-		pk)
-	if err != nil {
-		return err
-	}
-	return nil
+	return remPeers(s, infoHash, "leecher", pk)
+
 }
 
 func (s *peerStore) GraduateLeecher(infoHash bittorrent.InfoHash, p bittorrent.Peer) error {
