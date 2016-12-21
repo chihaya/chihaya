@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"log"
-	"net"
 	"time"
 
 	"github.com/chihaya/chihaya/bittorrent"
@@ -68,14 +67,6 @@ func newPeerKey(p bittorrent.Peer) serializedPeer {
 	return serializedPeer(b)
 }
 
-func decodePeerKey(pk string) bittorrent.Peer {
-	return bittorrent.Peer{
-		ID:   bittorrent.PeerIDFromString(string(pk[:20])),
-		Port: binary.BigEndian.Uint16([]byte(pk[20:22])),
-		IP:   net.IP(pk[22:]),
-	}
-}
-
 func panicIfClosed(closed <-chan struct{}) {
 	select {
 	case <-closed:
@@ -128,58 +119,25 @@ func (s *peerStore) GraduateLeecher(infoHash bittorrent.InfoHash, p bittorrent.P
 	return nil
 }
 
-//Ugly but works. Must refactor
 func (s *peerStore) AnnouncePeers(infoHash bittorrent.InfoHash, seeder bool, numWant int, announcer bittorrent.Peer) (peers []bittorrent.Peer, err error) {
 	panicIfClosed(s.closed)
 	if numWant > s.maxNumWant {
 		numWant = s.maxNumWant
 	}
 
+	peers = []bittorrent.Peer{}
 	if seeder {
-		leechers, err := redis.Strings(s.conn.Do("ZRANGE",
-			addNameSpace(fmt.Sprintf("%s%s", "leecher:", infoHash)), 0, -1))
+		peers, err = getPeers(s, infoHash, "leecher", numWant, peers, bittorrent.Peer{})
 		if err != nil {
 			return nil, err
-		}
-		for _, p := range leechers {
-			if numWant == 0 {
-				break
-			}
-			peers = append(peers, decodePeerKey(p))
-			numWant--
 		}
 	} else {
-		seeders, err := redis.Strings(s.conn.Do("ZRANGE",
-			addNameSpace(fmt.Sprintf("%s%s", "seeder:", infoHash)), 0, -1))
+		peers, err = getPeers(s, infoHash, "seeder", numWant, peers, bittorrent.Peer{})
 		if err != nil {
 			return nil, err
 		}
-		for _, p := range seeders {
-			if numWant == 0 {
-				break
-			}
-
-			peers = append(peers, decodePeerKey(p))
-			numWant--
-		}
-		if numWant > 0 {
-			leechers, err := redis.Strings(s.conn.Do("ZRANGE",
-				addNameSpace(fmt.Sprintf("%s%s", "leecher:", infoHash)), 0, -1))
-			if err != nil {
-				return nil, err
-			}
-			for _, p := range leechers {
-				decodedPeer := decodePeerKey(p)
-				if numWant == 0 {
-					break
-				}
-				if decodedPeer.Equal(announcer) {
-					continue
-				}
-				peers = append(peers, decodedPeer)
-				numWant--
-
-			}
+		if numWant > len(peers) {
+			peers, err = getPeers(s, infoHash, "leecher", numWant, peers, announcer)
 		}
 	}
 	return peers, nil
