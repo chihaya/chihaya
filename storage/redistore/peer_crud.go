@@ -20,10 +20,8 @@ func decodePeerKey(pk string) bittorrent.Peer {
 
 func addAndCleanPeer(s *peerStore, infoHash bittorrent.InfoHash, peerType string, pk serializedPeer) error {
 	nameSpacedKey := addNameSpace(fmt.Sprintf("%s%s", peerType+":", infoHash))
-	s.conn.Send("WATCH")
+	s.conn.Send("MULTI")
 	s.conn.Send("ZADD", nameSpacedKey, time.Now().Unix(), pk)
-	s.conn.Send("ZREMRANGEBYSCORE", nameSpacedKey,
-		"-inf", fmt.Sprintf("%s%s", "(", time.Now().Add(-s.peerLifetime)))
 	s.conn.Send("EXPIRE", nameSpacedKey, s.gcValidity)
 	_, err := s.conn.Do("EXEC")
 	if err != nil {
@@ -43,8 +41,14 @@ func remPeers(s *peerStore, infoHash bittorrent.InfoHash, peerType string, pk se
 }
 
 func getPeers(s *peerStore, infoHash bittorrent.InfoHash, peerType string, numWant int, peers []bittorrent.Peer, announcer bittorrent.Peer) ([]bittorrent.Peer, error) {
+	nameSpacedKey := addNameSpace(fmt.Sprintf("%s%s", peerType+":", infoHash))
+	_, err := s.conn.Do("ZREMRANGEBYSCORE", nameSpacedKey,
+		"-inf", fmt.Sprintf("%s%d", "(", time.Now().Add(-s.peerLifetime).Unix()))
+	if err != nil {
+		return nil, err
+	}
 	peerList, err := redis.Strings(s.conn.Do("ZRANGE",
-		addNameSpace(fmt.Sprintf("%s%s", peerType+":", infoHash)), 0, -1))
+		nameSpacedKey, 0, -1))
 	if err != nil {
 		return nil, err
 	}

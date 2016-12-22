@@ -1,3 +1,4 @@
+//Note: ip6 seperation into shards is unnecessary when using Redis(?)
 package redistore
 
 import (
