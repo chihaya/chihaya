@@ -77,7 +77,10 @@ func panicIfClosed(closed <-chan struct{}) {
 }
 
 func addNameSpace(command string) string {
-	return namespacePrefix + ":" + command
+	if namespacePrefix != "" {
+		return namespacePrefix + ":" + command
+	}
+	return command
 }
 
 func (s *peerStore) PutSeeder(infoHash bittorrent.InfoHash, p bittorrent.Peer) error {

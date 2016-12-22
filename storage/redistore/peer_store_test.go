@@ -1,4 +1,4 @@
-package redistore_test
+package redistore
 
 import "testing"
 
