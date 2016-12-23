@@ -8,7 +8,6 @@ import (
 	"runtime/pprof"
 	"syscall"
 
-	"github.com/RealImage/chihaya/storage/redistore"
 	log "github.com/Sirupsen/logrus"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
@@ -52,17 +51,10 @@ func rootCmdRun(cmd *cobra.Command, args []string) error {
 			log.Fatalln("failed to start prometheus server:", err.Error())
 		}
 	}()
-	//	peerStore, err := memory.New(cfg.Storage)
-	cfg1 := &redistore.Config{Namespace: true,
-		Cntrl:      "nm",
-		MaxNumWant: 3,
-		Host:       "",
-		Port:       "6379",
-	}
 
-	peerStore, err := redistore.New(*cfg1)
+	peerStore, err := configFile.CreateStorage()
 	if err != nil {
-		return errors.New("failed to create memory storage: " + err.Error())
+		return errors.New("failed to create storage: " + err.Error())
 	}
 
 	preHooks, postHooks, err := configFile.CreateHooks()
@@ -162,7 +154,7 @@ func main() {
 			}
 		},
 	}
-	rootCmd.Flags().String("config", "/Users/sudarshanreddy/chihaya.yaml", "location of configuration file")
+	rootCmd.Flags().String("config", "/etc/chihaya.yaml", "location of configuration file")
 	rootCmd.Flags().String("cpuprofile", "", "location to save a CPU profile")
 	rootCmd.Flags().Bool("debug", false, "enable debug logging")
 

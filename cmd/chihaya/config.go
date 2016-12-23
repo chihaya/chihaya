@@ -7,17 +7,24 @@ import (
 
 	"gopkg.in/yaml.v2"
 
+	"github.com/RealImage/chihaya/storage/redistore"
 	httpfrontend "github.com/chihaya/chihaya/frontend/http"
 	udpfrontend "github.com/chihaya/chihaya/frontend/udp"
 	"github.com/chihaya/chihaya/middleware"
 	"github.com/chihaya/chihaya/middleware/clientapproval"
 	"github.com/chihaya/chihaya/middleware/jwt"
+	"github.com/chihaya/chihaya/storage"
 	"github.com/chihaya/chihaya/storage/memory"
 )
 
 type hookConfig struct {
 	Name   string      `yaml:"name"`
 	Config interface{} `yaml:"config"`
+}
+
+type Storage struct {
+	Type   string        `yaml:"type"`
+	Config yaml.MapSlice `yaml:"config"`
 }
 
 // ConfigFile represents a namespaced YAML configation file.
@@ -27,7 +34,7 @@ type ConfigFile struct {
 		PrometheusAddr    string              `yaml:"prometheus_addr"`
 		HTTPConfig        httpfrontend.Config `yaml:"http"`
 		UDPConfig         udpfrontend.Config  `yaml:"udp"`
-		Storage           memory.Config       `yaml:"storage"`
+		Storage           Storage             `yaml:"storage"`
 		PreHooks          []hookConfig        `yaml:"prehooks"`
 		PostHooks         []hookConfig        `yaml:"posthooks"`
 	} `yaml:"chihaya"`
@@ -60,6 +67,38 @@ func ParseConfigFile(path string) (*ConfigFile, error) {
 	}
 
 	return &cfgFile, nil
+}
+
+func (cfg ConfigFile) CreateStorage() (storage.PeerStore, error) {
+	storage, err := yaml.Marshal(&cfg.MainConfigBlock.Storage.Config)
+	if err != nil {
+		return nil, err
+	}
+	switch cfg.MainConfigBlock.Storage.Type {
+	case "memory":
+		var mem memory.Config
+		err := yaml.Unmarshal(storage, &mem)
+		if err != nil {
+			return nil, err
+		}
+		peerStore, err := memory.New(mem)
+		if err != nil {
+			return nil, err
+		}
+		return peerStore, nil
+	case "redis":
+		var redis redistore.Config
+		err := yaml.Unmarshal(storage, &redis)
+		if err != nil {
+			return nil, err
+		}
+		peerStore, err := redistore.New(redis)
+		if err != nil {
+			return nil, err
+		}
+		return peerStore, nil
+	}
+	return nil, err
 }
 
 // CreateHooks creates instances of Hooks for all of the PreHooks and PostHooks

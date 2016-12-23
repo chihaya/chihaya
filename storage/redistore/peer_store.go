@@ -3,7 +3,6 @@ package redistore
 
 import (
 	"encoding/binary"
-	"fmt"
 	"log"
 	"time"
 
@@ -15,14 +14,13 @@ import (
 var namespacePrefix string
 
 type Config struct {
-	Namespace bool
-	//use as namespace prefix if Namespace = yes or as instance no.
-	Cntrl                     string
-	MaxNumWant                int
-	Host                      string
-	Port                      string
-	GarbageCollectionInterval int
-	PeerLifetime              time.Duration
+	Namespace                 bool          `yaml:"namespace"`
+	Cntrl                     string        `yaml:"prefix"`
+	MaxNumWant                int           `yaml:"max_numwant"`
+	Host                      string        `yaml:"host"`
+	Port                      string        `yaml:"port"`
+	GarbageCollectionInterval time.Duration `yaml:"gc_interval"`
+	PeerLifetime              time.Duration `yaml:"peer_liftetime"`
 }
 
 type peerStore struct {
@@ -51,7 +49,7 @@ func New(cfg Config) (storage.PeerStore, error) {
 		closed:       make(chan struct{}),
 		maxNumWant:   cfg.MaxNumWant,
 		peerLifetime: cfg.PeerLifetime,
-		gcValidity:   cfg.GarbageCollectionInterval,
+		gcValidity:   int(cfg.GarbageCollectionInterval.Seconds()),
 	}
 
 	return ps, nil
@@ -149,14 +147,12 @@ func (s *peerStore) AnnouncePeers(infoHash bittorrent.InfoHash, seeder bool, num
 
 func (s *peerStore) ScrapeSwarm(infoHash bittorrent.InfoHash, v6 bool) (resp bittorrent.Scrape) {
 	panicIfClosed(s.closed)
-	complete, err := redis.Int(s.conn.Do("ZCARD",
-		addNameSpace(fmt.Sprintf("%s%s", "seeder:", infoHash))))
+	complete, err := getSetLength(s, infoHash, "seeder")
 	if err != nil {
 		return
 	}
 	resp.Complete = uint32(complete)
-	incomplete, err := redis.Int(s.conn.Do("ZCARD",
-		addNameSpace(fmt.Sprintf("%s%s", "leecher:", infoHash))))
+	incomplete, err := getSetLength(s, infoHash, "leecher")
 	if err != nil {
 		return
 	}

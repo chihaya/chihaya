@@ -32,8 +32,7 @@ func addAndCleanPeer(s *peerStore, infoHash bittorrent.InfoHash, peerType string
 
 func remPeers(s *peerStore, infoHash bittorrent.InfoHash, peerType string, pk serializedPeer) error {
 	_, err := s.conn.Do("ZREM",
-		addNameSpace(fmt.Sprintf("%s%s", peerType+":", infoHash)),
-		pk)
+		addNameSpace(fmt.Sprintf("%s%s", peerType+":", infoHash)), pk)
 	if err != nil {
 		return err
 	}
@@ -63,4 +62,9 @@ func getPeers(s *peerStore, infoHash bittorrent.InfoHash, peerType string, numWa
 		peers = append(peers, decodedPeer)
 	}
 	return peers, nil
+}
+
+func getSetLength(s *peerStore, infoHash bittorrent.InfoHash, peerType string) (int, error) {
+	return redis.Int(s.conn.Do("ZCARD",
+		addNameSpace(fmt.Sprintf("%s%s", peerType+":", infoHash))))
 }
