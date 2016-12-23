@@ -1,12 +1,17 @@
 hash: fe839da75efcf365317b1b5eb04bfa15cd1db10265f4947b8aff78932bf4622e
-updated: 2016-09-05T18:13:39.020799284-04:00
+updated: 2016-12-23T12:35:09.584009444+05:30
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
   subpackages:
   - quantile
+- name: github.com/garyburd/redigo
+  version: f8c71fc158ba13d50a7f5d8f10ea18ec49463c73
+  subpackages:
+  - internal
+  - redis
 - name: github.com/golang/protobuf
-  version: 1f49d83d9aa00e6ce4fc8258c71cc7786aec968a
+  version: 8ee79997227bf9b34611aee7946ae64735e6fd93
   subpackages:
   - proto
 - name: github.com/inconshreveable/mousetrap
@@ -28,13 +33,13 @@ imports:
   subpackages:
   - go
 - name: github.com/prometheus/common
-  version: 616e90af75cc300730196d04f3676f838d70414f
+  version: 6d76b79f239843a04e8ad8dfd8fcadfa3920236f
   subpackages:
   - expfmt
   - internal/bitbucket.org/ww/goautoneg
   - model
 - name: github.com/prometheus/procfs
-  version: abf152e5f3e97f2fafac028d2cc06c1feb87ffa5
+  version: fcdb11ccb4389efb1b210b7ffb623ab71c5fdd60
 - name: github.com/SermoDigital/jose
   version: 389fea327ef076853db8fae03a0f38e30e6092ab
   subpackages:
@@ -44,27 +49,29 @@ imports:
 - name: github.com/Sirupsen/logrus
   version: 4b6ea7319e214d98c938f12692336f7ca9348d6b
 - name: github.com/spf13/cobra
-  version: 9c28e4bbd74e5c3ed7aacbc552b2cab7cfdfe744
+  version: de09d9ce07d0d8a74442cfeaa91628cf9492cc23
 - name: github.com/spf13/pflag
-  version: 103ce5cd2042f2fe629c1957abb64ab3e7f50235
+  version: 25f8b5b07aece3207895bf19f7ab517eb3b22a40
 - name: github.com/tylerb/graceful
   version: 50a48b6e73fcc75b45e22c05b79629a67c79e938
 - name: golang.org/x/sys
-  version: a646d33e2ee3172a661fc09bca23bb4889a41bc8
+  version: d75a52659825e75fff6158388dddc6a5b04f9ba5
   subpackages:
   - unix
 - name: gopkg.in/yaml.v2
-  version: e4d366fc3c7938e2958e662b4258c7a89e1f0e3e
+  version: a5b47d31c556af34a302ce5d659e6fea44d90de0
 testImports:
 - name: github.com/davecgh/go-spew
-  version: 6cf5744a041a0022271cefed95ba843f6d87fd51
+  version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
   subpackages:
   - spew
 - name: github.com/pmezard/go-difflib
-  version: 792786c7400a136282c1664665ae0a8db921c6c2
+  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
   subpackages:
   - difflib
+- name: github.com/rafaeljusto/redigomock
+  version: 8a39246926d9f2a732f775c5b360d7078191cbbd
 - name: github.com/stretchr/testify
-  version: f390dcf405f7b83c997eac1b06768bb9f44dec18
+  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
   subpackages:
   - assert
