@@ -7,7 +7,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/RealImage/chihaya/storage/redistore"
+	"github.com/RealImage/chihaya/storage/redis"
 	httpfrontend "github.com/chihaya/chihaya/frontend/http"
 	udpfrontend "github.com/chihaya/chihaya/frontend/udp"
 	"github.com/chihaya/chihaya/middleware"
@@ -87,12 +87,12 @@ func (cfg ConfigFile) CreateStorage() (storage.PeerStore, error) {
 		}
 		return peerStore, nil
 	case "redis":
-		var redis redistore.Config
-		err := yaml.Unmarshal(storage, &redis)
+		var red redis.Config
+		err := yaml.Unmarshal(storage, &red)
 		if err != nil {
 			return nil, err
 		}
-		peerStore, err := redistore.New(redis)
+		peerStore, err := redis.New(red)
 		if err != nil {
 			return nil, err
 		}

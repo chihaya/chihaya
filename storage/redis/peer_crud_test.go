@@ -1,4 +1,4 @@
-package redistore
+package redis
 
 import (
 	"fmt"
@@ -58,7 +58,7 @@ var testPeers = []struct {
 	},
 }
 
-func getConn() (*redigomock.Conn, *peerStore) {
+func getPeerStore() (*redigomock.Conn, *peerStore) {
 	conn := redigomock.NewConn()
 	return conn, &peerStore{
 		conn:         conn,
@@ -69,30 +69,30 @@ func getConn() (*redigomock.Conn, *peerStore) {
 	}
 }
 
-func TestAddAndCleanPeer(t *testing.T) {
-	conn, ps := getConn()
+func TestAddPeer(t *testing.T) {
+	conn, ps := getPeerStore()
 	for _, tp := range testPeers {
 		peer := fmt.Sprintf("%s%s", "seeder:", tp.ih)
 		pk := newPeerKey(tp.vals)
 		conn.Command("MULTI").Expect("OK")
 		conn.Command("ZADD", peer, time.Now().Unix(), pk).Expect("QUEUED")
-		conn.Command("EXPIRE", peer, ps.gcValidity).Expect("QUEUED")
+		conn.Command("EXPIRE", peer, int(ps.peerLifetime.Seconds())).Expect("QUEUED")
 		conn.Command("EXEC").Expect("1) OK\n2) OK")
-		err := addAndCleanPeer(ps, tp.ih, "seeder", pk)
+		err := addPeer(ps, tp.ih, "seeder", pk)
 		if err != tp.expected {
-			t.Error("addAndCleanPeer redis fail : ", err)
+			t.Error("addPeer redis fail : ", err)
 		}
 	}
 }
 
 func TestRemPeers(t *testing.T) {
-	conn, ps := getConn()
+	conn, ps := getPeerStore()
 	conn.Clear()
 	for _, tp := range testPeers {
 		peer := fmt.Sprintf("%s%s", "seeder:", tp.ih)
 		pk := newPeerKey(tp.vals)
 		conn.Command("ZREM", peer, pk).Expect("(integer) 1")
-		err := remPeers(ps, tp.ih, "seeder", pk)
+		err := removePeers(ps, tp.ih, "seeder", pk)
 		if err != tp.expected {
 			t.Error("remPeers redis fail:", err)
 		}
@@ -100,7 +100,7 @@ func TestRemPeers(t *testing.T) {
 }
 
 func TestGetPeers(t *testing.T) {
-	conn, ps := getConn()
+	conn, ps := getPeerStore()
 	conn.Clear()
 	for _, tp := range testPeers {
 		peer := fmt.Sprintf("%s%s", "leecher:", tp.ih)
@@ -126,12 +126,12 @@ func TestGetPeers(t *testing.T) {
 }
 
 func TestGetSetLength(t *testing.T) {
-	conn, ps := getConn()
+	conn, ps := getPeerStore()
 	conn.Clear()
 	for _, tp := range testPeers {
 		peer := fmt.Sprintf("%s%s", "leecher:", tp.ih)
 		conn.Command("ZCARD", peer).Expect(tp.expectedL)
-		Actlen, err := getSetLength(ps, tp.ih, "leecher")
+		Actlen, err := getPeersLength(ps, tp.ih, "leecher")
 		if err != nil {
 			t.Error("getSEtLength redis fail: ", err)
 		} else {
