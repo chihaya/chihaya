@@ -70,6 +70,7 @@ func ParseConfigFile(path string) (*ConfigFile, error) {
 	return &cfgFile, nil
 }
 
+// CreateStorage returns a peerStore instance based on the yaml file
 func (cfg ConfigFile) CreateStorage() (storage.PeerStore, error) {
 	storage, err := yaml.Marshal(&cfg.MainConfigBlock.Storage.Config)
 	if err != nil {
