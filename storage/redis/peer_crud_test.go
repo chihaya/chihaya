@@ -76,7 +76,8 @@ func TestAddPeer(t *testing.T) {
 		pk := newPeerKey(tp.vals)
 		conn.Command("MULTI").Expect("OK")
 		conn.Command("ZADD", peer, time.Now().Unix(), pk).Expect("QUEUED")
-		conn.Command("EXPIRE", peer, int(ps.peerLifetime.Seconds())).Expect("QUEUED")
+		conn.Command("EXPIRE", peer, int(ps.peerLifetime.Seconds())).
+			Expect("QUEUED")
 		conn.Command("EXEC").Expect("1) OK\n2) OK")
 		err := addPeer(ps, tp.ih, "seeder", pk)
 		if err != tp.expected {

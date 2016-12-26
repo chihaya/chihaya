@@ -18,7 +18,9 @@ func decodePeerKey(pk string) bittorrent.Peer {
 	}
 }
 
-func addPeer(s *peerStore, infoHash bittorrent.InfoHash, peerType string, pk serializedPeer) error {
+//Adds an expiry to the set if not refreshed
+func addPeer(s *peerStore, infoHash bittorrent.InfoHash, peerType string,
+	pk serializedPeer) error {
 	Key := fmt.Sprintf("%s%s", peerType+":", infoHash)
 	s.conn.Send("MULTI")
 	s.conn.Send("ZADD", Key, time.Now().Unix(), pk)
@@ -30,7 +32,8 @@ func addPeer(s *peerStore, infoHash bittorrent.InfoHash, peerType string, pk ser
 	return nil
 }
 
-func removePeers(s *peerStore, infoHash bittorrent.InfoHash, peerType string, pk serializedPeer) error {
+func removePeers(s *peerStore, infoHash bittorrent.InfoHash, peerType string,
+	pk serializedPeer) error {
 	_, err := s.conn.Do("ZREM",
 		fmt.Sprintf("%s%s", peerType+":", infoHash), pk)
 	if err != nil {
@@ -39,10 +42,15 @@ func removePeers(s *peerStore, infoHash bittorrent.InfoHash, peerType string, pk
 	return nil
 }
 
-func getPeers(s *peerStore, infoHash bittorrent.InfoHash, peerType string, numWant int, peers []bittorrent.Peer, excludePeers bittorrent.Peer) ([]bittorrent.Peer, error) {
+// Prunes the existing infohash swarm for any old peers before
+// returning range of valid peers
+func getPeers(s *peerStore, infoHash bittorrent.InfoHash, peerType string,
+	numWant int, peers []bittorrent.Peer, excludePeers bittorrent.Peer) (
+	[]bittorrent.Peer, error) {
 	Key := fmt.Sprintf("%s%s", peerType+":", infoHash)
 	_, err := s.conn.Do("ZREMRANGEBYSCORE", Key,
-		"-inf", fmt.Sprintf("%s%d", "(", time.Now().Add(-s.peerLifetime).Unix()))
+		"-inf",
+		fmt.Sprintf("%s%d", "(", time.Now().Add(-s.peerLifetime).Unix()))
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +72,8 @@ func getPeers(s *peerStore, infoHash bittorrent.InfoHash, peerType string, numWa
 	return peers, nil
 }
 
-func getPeersLength(s *peerStore, infoHash bittorrent.InfoHash, peerType string) (int, error) {
+func getPeersLength(s *peerStore, infoHash bittorrent.InfoHash,
+	peerType string) (int, error) {
 	return redigo.Int(s.conn.Do("ZCARD",
 		fmt.Sprintf("%s%s", peerType+":", infoHash)))
 }
