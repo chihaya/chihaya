@@ -16,7 +16,6 @@ import (
 	udpfrontend "github.com/chihaya/chihaya/frontend/udp"
 	"github.com/chihaya/chihaya/middleware"
 	"github.com/chihaya/chihaya/storage"
-	"github.com/chihaya/chihaya/storage/memory"
 )
 
 func rootCmdRun(cmd *cobra.Command, args []string) error {
@@ -54,9 +53,9 @@ func rootCmdRun(cmd *cobra.Command, args []string) error {
 		}
 	}()
 
-	peerStore, err := memory.New(cfg.Storage)
+	peerStore, err := configFile.CreateStorage()
 	if err != nil {
-		return errors.New("failed to create memory storage: " + err.Error())
+		return errors.New("failed to create storage: " + err.Error())
 	}
 
 	preHooks, postHooks, err := configFile.CreateHooks()
