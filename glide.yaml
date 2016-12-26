@@ -1,5 +1,7 @@
 package: github.com/chihaya/chihaya
 import:
+- package: github.com/garyburd/redigo
+- package: github.com/rafaeljusto/redigomock
 - package: github.com/SermoDigital/jose
   version: ~1.0.0
   subpackages:
