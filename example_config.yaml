@@ -18,10 +18,22 @@ chihaya:
       paste a random string here that will be used to hmac connection IDs
 
   storage:
-    gc_interval: 14m
-    peer_lifetime: 15m
-    shards: 1
-    max_numwant: 100
+    #comment out one of these types to choose storage type
+    type: memory
+    config:
+      gc_interval: 14m
+      peer_lifetime: 15m
+      shards: 1
+      max_numwant: 100
+      #    type: redis 
+      #    config:
+      #      key_prefix: nm 
+      #      instance: 0
+      #      max_numwant: 100
+      #      host: 127.0.0.1
+      #      port: 6379
+      #      gc_interval: 15m 
+      #      peer_liftetime: 15m
 
   prehooks:
   - name: jwt
