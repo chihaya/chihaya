@@ -1,4 +1,3 @@
-// Note: ip6 separation into shards is unnecessary when using Redis
 package redis
 
 import (
