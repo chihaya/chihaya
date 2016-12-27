@@ -27,7 +27,7 @@ chihaya:
       max_numwant: 100
       #    type: redis 
       #    config:
-      #      key_prefix: nm 
+      #      key_prefix: "nm:"
       #      instance: 0
       #      max_numwant: 100
       #      host: 127.0.0.1
