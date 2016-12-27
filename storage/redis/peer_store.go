@@ -85,9 +85,8 @@ func panicIfClosed(closed <-chan struct{}) {
 func ipType(ip net.IP) string {
 	if len(ip) == net.IPv6len {
 		return ipv6
-	} else {
-		return ipv4
 	}
+	return ipv4
 }
 
 func (s *peerStore) PutSeeder(infoHash bittorrent.InfoHash,
