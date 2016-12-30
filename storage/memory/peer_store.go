@@ -10,8 +10,8 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/chihaya/chihaya/bittorrent"
-	"github.com/chihaya/chihaya/storage"
+	"github.com/RealImage/chihaya/bittorrent"
+	"github.com/RealImage/chihaya/storage"
 )
 
 // ErrInvalidGCInterval is returned for a GarbageCollectionInterval that is

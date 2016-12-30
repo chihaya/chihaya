@@ -5,8 +5,8 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 
-	"github.com/chihaya/chihaya/bittorrent"
-	"github.com/chihaya/chihaya/frontend/http/bencode"
+	"github.com/RealImage/chihaya/bittorrent"
+	"github.com/RealImage/chihaya/frontend/http/bencode"
 )
 
 // WriteError communicates an error to a BitTorrent client over HTTP.

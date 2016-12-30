@@ -6,8 +6,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/chihaya/chihaya/bittorrent"
-	"github.com/chihaya/chihaya/middleware"
+	"github.com/RealImage/chihaya/bittorrent"
+	"github.com/RealImage/chihaya/middleware"
 )
 
 // ErrClientUnapproved is the error returned when a client's PeerID is invalid.

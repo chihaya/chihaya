@@ -12,10 +12,10 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/chihaya/chihaya/bittorrent"
-	"github.com/chihaya/chihaya/frontend"
-	"github.com/chihaya/chihaya/frontend/udp/bytepool"
-	"github.com/chihaya/chihaya/middleware"
+	"github.com/RealImage/chihaya/bittorrent"
+	"github.com/RealImage/chihaya/frontend"
+	"github.com/RealImage/chihaya/frontend/udp/bytepool"
+	"github.com/RealImage/chihaya/middleware"
 )
 
 func init() {

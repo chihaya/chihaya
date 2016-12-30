@@ -8,13 +8,13 @@ import (
 	"gopkg.in/yaml.v2"
 
 	"github.com/RealImage/chihaya/storage/redis"
-	httpfrontend "github.com/chihaya/chihaya/frontend/http"
-	udpfrontend "github.com/chihaya/chihaya/frontend/udp"
-	"github.com/chihaya/chihaya/middleware"
-	"github.com/chihaya/chihaya/middleware/clientapproval"
-	"github.com/chihaya/chihaya/middleware/jwt"
-	"github.com/chihaya/chihaya/storage"
-	"github.com/chihaya/chihaya/storage/memory"
+	httpfrontend "github.com/RealImage/chihaya/frontend/http"
+	udpfrontend "github.com/RealImage/chihaya/frontend/udp"
+	"github.com/RealImage/chihaya/middleware"
+	"github.com/RealImage/chihaya/middleware/clientapproval"
+	"github.com/RealImage/chihaya/middleware/jwt"
+	"github.com/RealImage/chihaya/storage"
+	"github.com/RealImage/chihaya/storage/memory"
 )
 
 type hookConfig struct {

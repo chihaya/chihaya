@@ -6,7 +6,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/chihaya/chihaya/bittorrent"
+	"github.com/RealImage/chihaya/bittorrent"
 	redigo "github.com/garyburd/redigo/redis"
 )
 

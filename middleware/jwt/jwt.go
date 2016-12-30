@@ -21,9 +21,9 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/mendsley/gojwk"
 
-	"github.com/chihaya/chihaya/bittorrent"
-	"github.com/chihaya/chihaya/middleware"
-	"github.com/chihaya/chihaya/stopper"
+	"github.com/RealImage/chihaya/bittorrent"
+	"github.com/RealImage/chihaya/middleware"
+	"github.com/RealImage/chihaya/stopper"
 )
 
 var (

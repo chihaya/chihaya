@@ -3,7 +3,7 @@ package frontend
 import (
 	"context"
 
-	"github.com/chihaya/chihaya/bittorrent"
+	"github.com/RealImage/chihaya/bittorrent"
 )
 
 // TrackerLogic is the interface used by a frontend in order to: (1) generate a

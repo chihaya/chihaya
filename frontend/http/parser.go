@@ -4,7 +4,7 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/chihaya/chihaya/bittorrent"
+	"github.com/RealImage/chihaya/bittorrent"
 )
 
 // ParseAnnounce parses an bittorrent.AnnounceRequest from an http.Request.

@@ -1,4 +1,4 @@
-package: github.com/chihaya/chihaya
+package: github.com/RealImage/chihaya
 import:
 - package: github.com/garyburd/redigo
 - package: github.com/rafaeljusto/redigomock

@@ -12,9 +12,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
 
-	httpfrontend "github.com/chihaya/chihaya/frontend/http"
-	udpfrontend "github.com/chihaya/chihaya/frontend/udp"
-	"github.com/chihaya/chihaya/middleware"
+	httpfrontend "github.com/RealImage/chihaya/frontend/http"
+	udpfrontend "github.com/RealImage/chihaya/frontend/udp"
+	"github.com/RealImage/chihaya/middleware"
 )
 
 func rootCmdRun(cmd *cobra.Command, args []string) error {
