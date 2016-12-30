@@ -36,6 +36,11 @@ chihaya:
       - OP1011
       blacklist:
       - OP1012
+  - name: interval variation
+    config:
+      modify_response_probability: 0.2
+      max_increase_delta: 60
+      modify_min_interval: true
 
   posthooks:
   - name: gossip

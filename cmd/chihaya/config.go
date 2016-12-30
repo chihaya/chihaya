@@ -12,6 +12,7 @@ import (
 	"github.com/chihaya/chihaya/middleware"
 	"github.com/chihaya/chihaya/middleware/clientapproval"
 	"github.com/chihaya/chihaya/middleware/jwt"
+	"github.com/chihaya/chihaya/middleware/varinterval"
 	"github.com/chihaya/chihaya/storage/memory"
 )
 
@@ -92,6 +93,17 @@ func (cfg ConfigFile) CreateHooks() (preHooks, postHooks []middleware.Hook, err 
 			hook, err := clientapproval.NewHook(caCfg)
 			if err != nil {
 				return nil, nil, errors.New("invalid client approval middleware config: " + err.Error())
+			}
+			preHooks = append(preHooks, hook)
+		case "interval variation":
+			var viCfg varinterval.Config
+			err := yaml.Unmarshal(cfgBytes, &viCfg)
+			if err != nil {
+				return nil, nil, errors.New("invalid interval variation middleware config: " + err.Error())
+			}
+			hook, err := varinterval.New(viCfg)
+			if err != nil {
+				return nil, nil, errors.New("invalid interval variation middleware config: " + err.Error())
 			}
 			preHooks = append(preHooks, hook)
 		}
