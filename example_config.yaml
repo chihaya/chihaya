@@ -25,15 +25,15 @@ chihaya:
       peer_lifetime: 15m
       shards: 1
       max_numwant: 100
-      #    type: redis 
-      #    config:
-      #      key_prefix: "nm:"
-      #      instance: 0
-      #      max_numwant: 100
-      #      host: 127.0.0.1
-      #      port: 6379
-      #      gc_interval: 15m 
-      #      peer_liftetime: 15m
+#   type: redis 
+#   config:
+#     key_prefix: "nm:"
+#     instance: 0
+#     max_numwant: 100
+#     host: 127.0.0.1
+#     port: 6379
+#     gc_interval: 15m 
+#     peer_liftetime: 15m
 
   prehooks:
   - name: jwt

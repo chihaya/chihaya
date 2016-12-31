@@ -22,10 +22,9 @@ type hookConfig struct {
 	Config interface{} `yaml:"config"`
 }
 
-// Storage is a mapslice that lets me manipulate sub storage
-type Storage struct {
-	Type   string        `yaml:"type"`
-	Config yaml.MapSlice `yaml:"config"`
+type store struct {
+	Type   string      `yaml:"type"`
+	Config interface{} `yaml:"config"`
 }
 
 // ConfigFile represents a namespaced YAML configation file.
@@ -35,7 +34,7 @@ type ConfigFile struct {
 		PrometheusAddr    string              `yaml:"prometheus_addr"`
 		HTTPConfig        httpfrontend.Config `yaml:"http"`
 		UDPConfig         udpfrontend.Config  `yaml:"udp"`
-		Storage           Storage             `yaml:"storage"`
+		Storage           store               `yaml:"storage"`
 		PreHooks          []hookConfig        `yaml:"prehooks"`
 		PostHooks         []hookConfig        `yaml:"posthooks"`
 	} `yaml:"chihaya"`

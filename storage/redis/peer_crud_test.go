@@ -6,8 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/rafaeljusto/redigomock"
+
+	"github.com/chihaya/chihaya/bittorrent"
 )
 
 var testPeers = []struct {
