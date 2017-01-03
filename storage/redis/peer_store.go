@@ -31,7 +31,7 @@ type Config struct {
 }
 
 type peerStore struct {
-	conn             redigo.Pool
+	conn             *redigo.Pool
 	closed           chan struct{}
 	maxNumWant       int
 	peerLifetime     time.Duration
@@ -40,8 +40,8 @@ type peerStore struct {
 	leecherKeyPrefix string
 }
 
-func newPool(server string, maxIdle int) *redigo.Pool {
-	return &redigo.Pool{
+func newPool(server string, maxIdle int) redigo.Pool {
+	return redigo.Pool{
 		MaxIdle:     maxIdle,
 		IdleTimeout: 240 * time.Second,
 		Dial: func() (redigo.Conn, error) {
@@ -62,13 +62,14 @@ func newPool(server string, maxIdle int) *redigo.Pool {
 func New(cfg Config) (storage.PeerStore, error) {
 	pool := newPool(cfg.Host+":"+cfg.Port, cfg.MaxIdle)
 	conn := pool.Get()
+	defer conn.Close()
 
 	if cfg.Instance != 0 {
 		conn.Do("SELECT", cfg.Instance)
 	}
 
 	ps := &peerStore{
-		conn:             *pool,
+		conn:             &pool,
 		closed:           make(chan struct{}),
 		maxNumWant:       cfg.MaxNumWant,
 		peerLifetime:     cfg.PeerLifetime,
