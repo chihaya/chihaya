@@ -2,7 +2,6 @@ package redis
 
 import (
 	"encoding/binary"
-	"log"
 	"net"
 	"time"
 
@@ -25,13 +24,14 @@ type Config struct {
 	KeyPrefix    string        `yaml:"key_prefix"`
 	Instance     int           `yaml:"instance"`
 	MaxNumWant   int           `yaml:"max_numwant"`
+	MaxIdle      int           `yaml:"max_idle"`
 	Host         string        `yaml:"host"`
 	Port         string        `yaml:"port"`
 	PeerLifetime time.Duration `yaml:"peer_liftetime"`
 }
 
 type peerStore struct {
-	conn             redigo.Conn
+	conn             redigo.Pool
 	closed           chan struct{}
 	maxNumWant       int
 	peerLifetime     time.Duration
@@ -40,20 +40,35 @@ type peerStore struct {
 	leecherKeyPrefix string
 }
 
+func newPool(server string, maxIdle int) *redigo.Pool {
+	return &redigo.Pool{
+		MaxIdle:     maxIdle,
+		IdleTimeout: 240 * time.Second,
+		Dial: func() (redigo.Conn, error) {
+			c, err := redigo.Dial("tcp", server)
+			if err != nil {
+				return nil, err
+			}
+			return c, err
+		},
+		TestOnBorrow: func(c redigo.Conn, t time.Time) error {
+			_, err := c.Do("PING")
+			return err
+		},
+	}
+}
+
 // New creates a new peerstore backed by redis.
 func New(cfg Config) (storage.PeerStore, error) {
-	conn, err := redigo.Dial("tcp", cfg.Host+":"+cfg.Port)
-	if err != nil {
-		log.Fatal("Connection failed: " + err.Error())
-		return nil, err
-	}
+	pool := newPool(cfg.Host+":"+cfg.Port, cfg.MaxIdle)
+	conn := pool.Get()
 
 	if cfg.Instance != 0 {
 		conn.Do("SELECT", cfg.Instance)
 	}
 
 	ps := &peerStore{
-		conn:             conn,
+		conn:             *pool,
 		closed:           make(chan struct{}),
 		maxNumWant:       cfg.MaxNumWant,
 		peerLifetime:     cfg.PeerLifetime,

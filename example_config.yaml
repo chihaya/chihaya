@@ -30,6 +30,7 @@ chihaya:
 #     key_prefix: "nm:"
 #     instance: 0
 #     max_numwant: 100
+#     max_idle: 100
 #     host: 127.0.0.1
 #     port: 6379
 #     gc_interval: 15m 
