@@ -7,7 +7,6 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	"github.com/RealImage/chihaya/storage/redis"
 	httpfrontend "github.com/RealImage/chihaya/frontend/http"
 	udpfrontend "github.com/RealImage/chihaya/frontend/udp"
 	"github.com/RealImage/chihaya/middleware"
@@ -15,6 +14,7 @@ import (
 	"github.com/RealImage/chihaya/middleware/jwt"
 	"github.com/RealImage/chihaya/storage"
 	"github.com/RealImage/chihaya/storage/memory"
+	"github.com/RealImage/chihaya/storage/redis"
 )
 
 type hookConfig struct {
@@ -22,9 +22,9 @@ type hookConfig struct {
 	Config interface{} `yaml:"config"`
 }
 
-type Storage struct {
-	Type   string        `yaml:"type"`
-	Config yaml.MapSlice `yaml:"config"`
+type store struct {
+	Type   string      `yaml:"type"`
+	Config interface{} `yaml:"config"`
 }
 
 // ConfigFile represents a namespaced YAML configation file.
@@ -34,7 +34,7 @@ type ConfigFile struct {
 		PrometheusAddr    string              `yaml:"prometheus_addr"`
 		HTTPConfig        httpfrontend.Config `yaml:"http"`
 		UDPConfig         udpfrontend.Config  `yaml:"udp"`
-		Storage           Storage             `yaml:"storage"`
+		Storage           store               `yaml:"storage"`
 		PreHooks          []hookConfig        `yaml:"prehooks"`
 		PostHooks         []hookConfig        `yaml:"posthooks"`
 	} `yaml:"chihaya"`
@@ -69,6 +69,7 @@ func ParseConfigFile(path string) (*ConfigFile, error) {
 	return &cfgFile, nil
 }
 
+// CreateStorage returns a peerStore instance based on the yaml file
 func (cfg ConfigFile) CreateStorage() (storage.PeerStore, error) {
 	storage, err := yaml.Marshal(&cfg.MainConfigBlock.Storage.Config)
 	if err != nil {
