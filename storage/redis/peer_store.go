@@ -31,7 +31,7 @@ type Config struct {
 }
 
 type peerStore struct {
-	conn             *redigo.Pool
+	connPool         *redigo.Pool
 	closed           chan struct{}
 	maxNumWant       int
 	peerLifetime     time.Duration
@@ -69,7 +69,7 @@ func New(cfg Config) (storage.PeerStore, error) {
 	}
 
 	ps := &peerStore{
-		conn:             &pool,
+		connPool:         &pool,
 		closed:           make(chan struct{}),
 		maxNumWant:       cfg.MaxNumWant,
 		peerLifetime:     cfg.PeerLifetime,
@@ -193,7 +193,6 @@ func (s *peerStore) Stop() <-chan error {
 	toReturn := make(chan error)
 	go func() {
 		close(s.closed)
-		s.conn.Close()
 		close(toReturn)
 	}()
 	return toReturn

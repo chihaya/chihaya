@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	redigo "github.com/garyburd/redigo/redis"
 	"github.com/rafaeljusto/redigomock"
 
 	"github.com/chihaya/chihaya/bittorrent"
@@ -61,8 +62,19 @@ var testPeers = []struct {
 
 func getPeerStore() (*redigomock.Conn, *peerStore) {
 	conn := redigomock.NewConn()
+	pool := redigo.Pool{
+		MaxIdle: 10,
+		Dial: func() (redigo.Conn, error) {
+			return conn, nil
+		},
+		TestOnBorrow: func(c redigo.Conn, t time.Time) error {
+			_, err := c.Do("PING")
+			return err
+		},
+	}
+
 	return conn, &peerStore{
-		conn:         conn,
+		connPool:     &pool,
 		closed:       make(chan struct{}),
 		maxNumWant:   3,
 		peerLifetime: 15,
