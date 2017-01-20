@@ -16,7 +16,6 @@ import (
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/frontend"
 	"github.com/chihaya/chihaya/frontend/udp/bytepool"
-	"github.com/chihaya/chihaya/middleware"
 )
 
 func init() {
@@ -232,21 +231,18 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 			return
 		}
 
-		af := bittorrent.IPv4
 		if r.IP.To4() != nil {
-			af = bittorrent.IPv4
+			req.AddressFamily = bittorrent.IPv4
 		} else if len(r.IP) == net.IPv6len { // implies r.IP.To4() == nil
-			af = bittorrent.IPv6
+			req.AddressFamily = bittorrent.IPv6
 		} else {
-			log.Errorln("http: invalid IP: neither v4 nor v6, IP was", r.IP)
+			log.Errorln("udp: invalid IP: neither v4 nor v6, IP was", r.IP)
 			WriteError(w, txID, ErrInvalidIP)
 			return
 		}
 
-		ctx := context.WithValue(context.Background(), middleware.ScrapeIsIPv6Key, af == bittorrent.IPv6)
-
 		var resp *bittorrent.ScrapeResponse
-		resp, err = t.logic.HandleScrape(ctx, req)
+		resp, err = t.logic.HandleScrape(context.Background(), req)
 		if err != nil {
 			WriteError(w, txID, err)
 			return

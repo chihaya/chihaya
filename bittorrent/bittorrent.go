@@ -94,8 +94,9 @@ type AnnounceResponse struct {
 
 // ScrapeRequest represents the parsed parameters from a scrape request.
 type ScrapeRequest struct {
-	InfoHashes []InfoHash
-	Params     Params
+	AddressFamily AddressFamily
+	InfoHashes    []InfoHash
+	Params        Params
 }
 
 // ScrapeResponse represents the parameters used to create a scrape response.

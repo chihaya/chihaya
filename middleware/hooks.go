@@ -182,14 +182,8 @@ func (h *responseHook) HandleScrape(ctx context.Context, req *bittorrent.ScrapeR
 		return ctx, nil
 	}
 
-	v6, _ := ctx.Value(ScrapeIsIPv6Key).(bool)
-
 	for _, infoHash := range req.InfoHashes {
-		if v6 {
-			resp.Files[infoHash] = h.store.ScrapeSwarm(infoHash, bittorrent.IPv6)
-		} else {
-			resp.Files[infoHash] = h.store.ScrapeSwarm(infoHash, bittorrent.IPv4)
-		}
+		resp.Files[infoHash] = h.store.ScrapeSwarm(infoHash, req.AddressFamily)
 	}
 
 	return ctx, nil
