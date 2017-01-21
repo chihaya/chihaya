@@ -45,7 +45,7 @@ func generatePeers() (a [1000]bittorrent.Peer) {
 		port := uint16(r.Uint32())
 		a[i] = bittorrent.Peer{
 			ID:   bittorrent.PeerID(id),
-			IP:   net.IP(ip),
+			IP:   bittorrent.IP{IP: net.IP(ip), AddressFamily: bittorrent.IPv4},
 			Port: port,
 		}
 	}

@@ -74,14 +74,9 @@ func ParseAnnounce(r *http.Request, realIPHeader string, allowIPSpoofing bool) (
 	}
 	request.Peer.Port = uint16(port)
 
-	request.Peer.IP = requestedIP(r, qp, realIPHeader, allowIPSpoofing)
-	if request.Peer.IP == nil {
+	request.Peer.IP.IP = requestedIP(r, qp, realIPHeader, allowIPSpoofing)
+	if request.Peer.IP.IP == nil {
 		return nil, bittorrent.ClientError("failed to parse peer IP address")
-	}
-
-	// Sanitize IPv4 addresses to 4 bytes.
-	if ip := request.Peer.IP.To4(); ip != nil {
-		request.Peer.IP = ip
 	}
 
 	return request, nil

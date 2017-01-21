@@ -9,7 +9,7 @@ import (
 )
 
 func createNew() s.PeerStore {
-	ps, err := New(Config{ShardCount: 1024, GarbageCollectionInterval: 10 * time.Minute, MaxNumWant: 50})
+	ps, err := New(Config{ShardCount: 1024, GarbageCollectionInterval: 10 * time.Minute})
 	if err != nil {
 		panic(err)
 	}

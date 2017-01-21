@@ -16,6 +16,8 @@ import (
 // Config holds the configuration common across all middleware.
 type Config struct {
 	AnnounceInterval time.Duration `yaml:"announce_interval"`
+	MaxNumWant       uint32        `yaml:"max_numwant"`
+	DefaultNumWant   uint32        `yaml:"default_numwant"`
 }
 
 var _ frontend.TrackerLogic = &Logic{}
@@ -26,9 +28,12 @@ func NewLogic(cfg Config, peerStore storage.PeerStore, preHooks, postHooks []Hoo
 	l := &Logic{
 		announceInterval: cfg.AnnounceInterval,
 		peerStore:        peerStore,
-		preHooks:         append(preHooks, &responseHook{store: peerStore}),
+		preHooks:         []Hook{&sanitizationHook{maxNumWant: cfg.MaxNumWant, defaultNumWant: cfg.DefaultNumWant}},
 		postHooks:        append(postHooks, &swarmInteractionHook{store: peerStore}),
 	}
+
+	l.preHooks = append(l.preHooks, preHooks...)
+	l.preHooks = append(l.preHooks, &responseHook{store: peerStore})
 
 	return l
 }

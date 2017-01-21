@@ -10,18 +10,21 @@ import (
 	"sync"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/frontend"
 	"github.com/chihaya/chihaya/frontend/udp/bytepool"
-	"github.com/chihaya/chihaya/middleware"
 )
 
 func init() {
 	prometheus.MustRegister(promResponseDurationMilliseconds)
 	recordResponseDuration("action", nil, time.Second)
 }
+
+// ErrInvalidIP indicates an invalid IP.
+var ErrInvalidIP = bittorrent.ClientError("invalid IP")
 
 var promResponseDurationMilliseconds = prometheus.NewHistogramVec(
 	prometheus.HistogramOpts{
@@ -228,10 +231,18 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 			return
 		}
 
-		ctx := context.WithValue(context.Background(), middleware.ScrapeIsIPv6Key, len(r.IP) == net.IPv6len)
+		if r.IP.To4() != nil {
+			req.AddressFamily = bittorrent.IPv4
+		} else if len(r.IP) == net.IPv6len { // implies r.IP.To4() == nil
+			req.AddressFamily = bittorrent.IPv6
+		} else {
+			log.Errorln("udp: invalid IP: neither v4 nor v6, IP was", r.IP)
+			WriteError(w, txID, ErrInvalidIP)
+			return
+		}
 
 		var resp *bittorrent.ScrapeResponse
-		resp, err = t.logic.HandleScrape(ctx, req)
+		resp, err = t.logic.HandleScrape(context.Background(), req)
 		if err != nil {
 			WriteError(w, txID, err)
 			return
