@@ -19,7 +19,6 @@ import (
 
 func init() {
 	prometheus.MustRegister(promResponseDurationMilliseconds)
-	recordResponseDuration("action", nil, time.Second)
 }
 
 // ErrInvalidIP indicates an invalid IP.
