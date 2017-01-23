@@ -198,7 +198,7 @@ func main() {
 	var rootCmd = &cobra.Command{
 		Use:   "chihaya",
 		Short: "BitTorrent Tracker",
-		Long:  "A customizible, multi-protocol BitTorrent Tracker",
+		Long:  "A customizable, multi-protocol BitTorrent Tracker",
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := rootCmdRun(cmd, args); err != nil {
 				log.Fatal(err)
