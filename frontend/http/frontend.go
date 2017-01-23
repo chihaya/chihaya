@@ -133,7 +133,7 @@ func (t *Frontend) ListenAndServe() error {
 func (t *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	var err error
 	start := time.Now()
-	defer recordResponseDuration("announce", err, time.Since(start))
+	defer func() { recordResponseDuration("announce", err, time.Since(start)) }()
 
 	req, err := ParseAnnounce(r, t.RealIPHeader, t.AllowIPSpoofing)
 	if err != nil {
@@ -160,7 +160,7 @@ func (t *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, _ httpr
 func (t *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	var err error
 	start := time.Now()
-	defer recordResponseDuration("scrape", err, time.Since(start))
+	defer func() { recordResponseDuration("scrape", err, time.Since(start)) }()
 
 	req, err := ParseScrape(r)
 	if err != nil {
