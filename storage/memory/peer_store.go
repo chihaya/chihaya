@@ -9,10 +9,37 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/storage"
 )
+
+func init() {
+	prometheus.MustRegister(promGCDurationMilliseconds)
+	prometheus.MustRegister(promInfohashesCount)
+}
+
+var promGCDurationMilliseconds = prometheus.NewHistogram(prometheus.HistogramOpts{
+	Name:    "chihaya_storage_gc_duration_milliseconds",
+	Help:    "The time it takes to perform storage garbage collection",
+	Buckets: prometheus.ExponentialBuckets(9.375, 2, 10),
+})
+
+var promInfohashesCount = prometheus.NewGauge(prometheus.GaugeOpts{
+	Name: "chihaya_storage_infohashes_count",
+	Help: "The number of Infohashes tracked",
+})
+
+// recordGCDuration records the duration of a GC sweep.
+func recordGCDuration(duration time.Duration) {
+	promGCDurationMilliseconds.Observe(float64(duration.Nanoseconds()) / float64(time.Millisecond))
+}
+
+// recordInfohashesDelta records a change in the number of Infohashes tracked.
+func recordInfohashesDelta(delta float64) {
+	promInfohashesCount.Add(delta)
+}
 
 // ErrInvalidGCInterval is returned for a GarbageCollectionInterval that is
 // less than or equal to zero.
@@ -136,6 +163,7 @@ func (s *peerStore) PutSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) error {
 			seeders:  make(map[serializedPeer]int64),
 			leechers: make(map[serializedPeer]int64),
 		}
+		recordInfohashesDelta(1)
 	}
 
 	shard.swarms[ih].seeders[pk] = time.Now().UnixNano()
@@ -170,6 +198,7 @@ func (s *peerStore) DeleteSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) erro
 
 	if len(shard.swarms[ih].seeders)|len(shard.swarms[ih].leechers) == 0 {
 		delete(shard.swarms, ih)
+		recordInfohashesDelta(-1)
 	}
 
 	shard.Unlock()
@@ -193,6 +222,7 @@ func (s *peerStore) PutLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) error 
 			seeders:  make(map[serializedPeer]int64),
 			leechers: make(map[serializedPeer]int64),
 		}
+		recordInfohashesDelta(1)
 	}
 
 	shard.swarms[ih].leechers[pk] = time.Now().UnixNano()
@@ -227,6 +257,7 @@ func (s *peerStore) DeleteLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) err
 
 	if len(shard.swarms[ih].seeders)|len(shard.swarms[ih].leechers) == 0 {
 		delete(shard.swarms, ih)
+		recordInfohashesDelta(-1)
 	}
 
 	shard.Unlock()
@@ -250,6 +281,7 @@ func (s *peerStore) GraduateLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) e
 			seeders:  make(map[serializedPeer]int64),
 			leechers: make(map[serializedPeer]int64),
 		}
+		recordInfohashesDelta(1)
 	}
 
 	delete(shard.swarms[ih].leechers, pk)
@@ -356,7 +388,9 @@ func (s *peerStore) collectGarbage(cutoff time.Time) error {
 	default:
 	}
 
+	var ihDelta float64
 	cutoffUnix := cutoff.UnixNano()
+	start := time.Now()
 	for _, shard := range s.shards {
 		shard.RLock()
 		var infohashes []bittorrent.InfoHash
@@ -389,6 +423,7 @@ func (s *peerStore) collectGarbage(cutoff time.Time) error {
 
 			if len(shard.swarms[ih].seeders)|len(shard.swarms[ih].leechers) == 0 {
 				delete(shard.swarms, ih)
+				ihDelta--
 			}
 
 			shard.Unlock()
@@ -397,6 +432,9 @@ func (s *peerStore) collectGarbage(cutoff time.Time) error {
 
 		runtime.Gosched()
 	}
+
+	recordGCDuration(time.Since(start))
+	recordInfohashesDelta(ihDelta)
 
 	return nil
 }
