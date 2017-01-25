@@ -11,6 +11,7 @@ import (
 	udpfrontend "github.com/chihaya/chihaya/frontend/udp"
 	"github.com/chihaya/chihaya/middleware"
 	"github.com/chihaya/chihaya/middleware/clientapproval"
+	"github.com/chihaya/chihaya/middleware/deniability"
 	"github.com/chihaya/chihaya/middleware/jwt"
 	"github.com/chihaya/chihaya/middleware/varinterval"
 	"github.com/chihaya/chihaya/storage/memory"
@@ -104,6 +105,17 @@ func (cfg ConfigFile) CreateHooks() (preHooks, postHooks []middleware.Hook, err 
 			hook, err := varinterval.New(viCfg)
 			if err != nil {
 				return nil, nil, errors.New("invalid interval variation middleware config: " + err.Error())
+			}
+			preHooks = append(preHooks, hook)
+		case "deniability":
+			var hCfg deniability.Config
+			err := yaml.Unmarshal(cfgBytes, &hCfg)
+			if err != nil {
+				return nil, nil, errors.New("invalid deniability middleware config: " + err.Error())
+			}
+			hook, err := deniability.New(hCfg)
+			if err != nil {
+				return nil, nil, errors.New("invalid deniability middleware config: " + err.Error())
 			}
 			preHooks = append(preHooks, hook)
 		}
