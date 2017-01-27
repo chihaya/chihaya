@@ -27,3 +27,30 @@ func TestVerification(t *testing.T) {
 		}
 	}
 }
+
+func BenchmarkNewConnectionID(b *testing.B) {
+	ip := net.ParseIP("127.0.0.1")
+	key := "some random string that is hopefully at least this long"
+	createdAt := time.Now()
+	sum := int64(0)
+
+	for i := 0; i < b.N; i++ {
+		cid := NewConnectionID(ip, createdAt, key)
+		sum += int64(cid[7])
+	}
+
+	_ = sum
+}
+
+func BenchmarkValidConnectionID(b *testing.B) {
+	ip := net.ParseIP("127.0.0.1")
+	key := "some random string that is hopefully at least this long"
+	createdAt := time.Now()
+	cid := NewConnectionID(ip, createdAt, key)
+
+	for i := 0; i < b.N; i++ {
+		if !ValidConnectionID(cid, ip, createdAt, 10*time.Second, key) {
+			b.FailNow()
+		}
+	}
+}

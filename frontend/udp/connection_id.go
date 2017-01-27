@@ -2,10 +2,11 @@ package udp
 
 import (
 	"crypto/hmac"
-	"crypto/sha256"
 	"encoding/binary"
 	"net"
 	"time"
+
+	sha256 "github.com/minio/sha256-simd"
 )
 
 // ttl is the number of seconds a connection ID should be valid according to

@@ -1,12 +1,16 @@
-hash: fe839da75efcf365317b1b5eb04bfa15cd1db10265f4947b8aff78932bf4622e
-updated: 2016-09-05T18:13:39.020799284-04:00
+hash: a80b47d15d38444cacc1a086a04a567deb60266887de142074791bf75703f05e
+updated: 2017-01-26T10:10:57.486607918+01:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
   subpackages:
   - quantile
+- name: github.com/davecgh/go-spew
+  version: 6d212800a42e8ab5c146b8ace3490ee17e5225f9
+  subpackages:
+  - spew
 - name: github.com/golang/protobuf
-  version: 1f49d83d9aa00e6ce4fc8258c71cc7786aec968a
+  version: 8ee79997227bf9b34611aee7946ae64735e6fd93
   subpackages:
   - proto
 - name: github.com/inconshreveable/mousetrap
@@ -19,6 +23,12 @@ imports:
   - pbutil
 - name: github.com/mendsley/gojwk
   version: 4d5ec6e58103388d6cb0d7d72bc72649be4f0504
+- name: github.com/minio/sha256-simd
+  version: e82e73b775766b9011503e80e6772fc32b9afc5b
+- name: github.com/pmezard/go-difflib
+  version: d8ed2627bdf02c080bf22230dbb337003b7aba2d
+  subpackages:
+  - difflib
 - name: github.com/prometheus/client_golang
   version: c5b7fccd204277076155f10851dad72b76a49317
   subpackages:
@@ -28,13 +38,13 @@ imports:
   subpackages:
   - go
 - name: github.com/prometheus/common
-  version: 616e90af75cc300730196d04f3676f838d70414f
+  version: dd2f054febf4a6c00f2343686efb775948a8bff4
   subpackages:
   - expfmt
   - internal/bitbucket.org/ww/goautoneg
   - model
 - name: github.com/prometheus/procfs
-  version: abf152e5f3e97f2fafac028d2cc06c1feb87ffa5
+  version: fcdb11ccb4389efb1b210b7ffb623ab71c5fdd60
 - name: github.com/SermoDigital/jose
   version: 389fea327ef076853db8fae03a0f38e30e6092ab
   subpackages:
@@ -44,27 +54,20 @@ imports:
 - name: github.com/Sirupsen/logrus
   version: 4b6ea7319e214d98c938f12692336f7ca9348d6b
 - name: github.com/spf13/cobra
-  version: 9c28e4bbd74e5c3ed7aacbc552b2cab7cfdfe744
+  version: 0f056af21f5f368e5b0646079d0094a2c64150f7
 - name: github.com/spf13/pflag
-  version: 103ce5cd2042f2fe629c1957abb64ab3e7f50235
+  version: a9a634f3de0a7529baded7ad6b0c7467d5c6eca7
+- name: github.com/stretchr/testify
+  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
+  subpackages:
+  - assert
+  - require
 - name: github.com/tylerb/graceful
-  version: 50a48b6e73fcc75b45e22c05b79629a67c79e938
+  version: 0e9129e9c6d47da90dc0c188b26bd7bb1dab53cd
 - name: golang.org/x/sys
-  version: a646d33e2ee3172a661fc09bca23bb4889a41bc8
+  version: d75a52659825e75fff6158388dddc6a5b04f9ba5
   subpackages:
   - unix
 - name: gopkg.in/yaml.v2
-  version: e4d366fc3c7938e2958e662b4258c7a89e1f0e3e
-testImports:
-- name: github.com/davecgh/go-spew
-  version: 6cf5744a041a0022271cefed95ba843f6d87fd51
-  subpackages:
-  - spew
-- name: github.com/pmezard/go-difflib
-  version: 792786c7400a136282c1664665ae0a8db921c6c2
-  subpackages:
-  - difflib
-- name: github.com/stretchr/testify
-  version: f390dcf405f7b83c997eac1b06768bb9f44dec18
-  subpackages:
-  - assert
+  version: 4c78c975fe7c825c6d1466c42be594d1d6f3aba6
+testImports: []
