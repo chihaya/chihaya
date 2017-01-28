@@ -57,15 +57,48 @@ By verifying the infohash, Quay can be sure that only their content is being sha
 
 ### Getting Started
 
-In order to compile the project, the [latest stable version of Go] and a [working Go environment] are required.
+#### Building from HEAD
+
+In order to compile the project, the [latest stable version of Go] and knowledge of a [working Go environment] are required.
 
 ```sh
-$ go get -t -u github.com/chihaya/chihaya
-$ go install github.com/chihaya/chihaya/cmd/chihaya
+$ mkdir chihaya
+$ export GOPATH=$PWD/chihaya
+$ go get -t -u github.com/chihaya/chihaya/...
+$ $GOPATH/bin/chihaya --help
 ```
 
 [latest stable version of Go]: https://golang.org/dl
 [working Go environment]: https://golang.org/doc/code.html
+
+#### Reproducible Builds
+
+Reproducible builds are handled by using [glide] to vendor dependencies.
+
+```sh
+$ cd $GOPATH/src/github.com/chihaya/chihaya
+$ glide install
+$ go install github.com/chihaya/chihaya/...
+$ $GOPATH/bin/chihaya --help
+```
+
+[glide]: https://glide.sh
+
+#### Docker
+
+Docker containers are available for [HEAD] and [stable] releases.
+
+[HEAD]: https://quay.io/jzelinskie/chihaya-git
+[stable]: https://quay.io/jzelinskie/chihaya
+
+#### Testing
+
+The following will run all tests and benchmarks.
+Removing `-bench` will just run unit tests.
+
+```sh
+$ go test -bench $(glide novendor | grep -v contrib)
+```
 
 ### Contributing
 
