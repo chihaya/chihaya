@@ -78,7 +78,7 @@ func (l *Logic) AfterAnnounce(ctx context.Context, req *bittorrent.AnnounceReque
 // HandleScrape generates a response for a Scrape.
 func (l *Logic) HandleScrape(ctx context.Context, req *bittorrent.ScrapeRequest) (resp *bittorrent.ScrapeResponse, err error) {
 	resp = &bittorrent.ScrapeResponse{
-		Files: make(map[bittorrent.InfoHash]bittorrent.Scrape),
+		Files: make([]bittorrent.Scrape, 0, len(req.InfoHashes)),
 	}
 	for _, h := range l.preHooks {
 		if ctx, err = h.HandleScrape(ctx, req, resp); err != nil {

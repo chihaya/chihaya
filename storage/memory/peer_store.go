@@ -361,6 +361,7 @@ func (s *peerStore) ScrapeSwarm(ih bittorrent.InfoHash, addressFamily bittorrent
 	default:
 	}
 
+	resp.InfoHash = ih
 	shard := s.shards[s.shardIndex(ih, addressFamily)]
 	shard.RLock()
 

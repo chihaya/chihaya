@@ -74,8 +74,8 @@ func WriteAnnounceResponse(w http.ResponseWriter, resp *bittorrent.AnnounceRespo
 // client over HTTP.
 func WriteScrapeResponse(w http.ResponseWriter, resp *bittorrent.ScrapeResponse) error {
 	filesDict := bencode.NewDict()
-	for infohash, scrape := range resp.Files {
-		filesDict[string(infohash[:])] = bencode.Dict{
+	for _, scrape := range resp.Files {
+		filesDict[string(scrape.InfoHash[:])] = bencode.Dict{
 			"complete":   scrape.Complete,
 			"incomplete": scrape.Incomplete,
 		}

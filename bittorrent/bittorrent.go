@@ -100,12 +100,16 @@ type ScrapeRequest struct {
 }
 
 // ScrapeResponse represents the parameters used to create a scrape response.
+//
+// The Scrapes must be in the same order as the InfoHashes in the corresponding
+// ScrapeRequest.
 type ScrapeResponse struct {
-	Files map[InfoHash]Scrape
+	Files []Scrape
 }
 
 // Scrape represents the state of a swarm that is returned in a scrape response.
 type Scrape struct {
+	InfoHash   InfoHash
 	Snatches   uint32
 	Complete   uint32
 	Incomplete uint32
