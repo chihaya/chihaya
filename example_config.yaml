@@ -62,7 +62,7 @@ chihaya:
 
     # The number of partitions data will be divided into in order to provide a
     # higher degree of parallelism.
-    shards: 1
+    shards: 1024
 
   # This block defines configuration used for middleware executed before a
   # response has been returned to a BitTorrent client.
