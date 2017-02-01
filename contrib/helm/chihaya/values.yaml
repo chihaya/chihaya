@@ -1,7 +1,7 @@
 replicaCount: 1
 image:
-  repository: quay.io/jzelinskie/chihaya
-  tag: v2.0.0-rc.1
+  repository: quay.io/jzelinskie/chihaya-git
+  tag: latest
   pullPolicy: IfNotPresent
 service:
   name: chihaya
