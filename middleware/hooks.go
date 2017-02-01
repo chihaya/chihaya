@@ -183,7 +183,7 @@ func (h *responseHook) HandleScrape(ctx context.Context, req *bittorrent.ScrapeR
 	}
 
 	for _, infoHash := range req.InfoHashes {
-		resp.Files[infoHash] = h.store.ScrapeSwarm(infoHash, req.AddressFamily)
+		resp.Files = append(resp.Files, h.store.ScrapeSwarm(infoHash, req.AddressFamily))
 	}
 
 	return ctx, nil
