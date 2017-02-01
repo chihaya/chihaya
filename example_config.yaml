@@ -67,22 +67,22 @@ chihaya:
   # This block defines configuration used for middleware executed before a
   # response has been returned to a BitTorrent client.
   prehooks:
-  - name: jwt
-    config:
-      issuer: "https://issuer.com"
-      audience: "https://chihaya.issuer.com"
-      jwk_set_url: "https://issuer.com/keys"
-      jwk_set_update_interval: 5m
+  #- name: jwt
+  #  config:
+  #    issuer: "https://issuer.com"
+  #    audience: "https://chihaya.issuer.com"
+  #    jwk_set_url: "https://issuer.com/keys"
+  #    jwk_set_update_interval: 5m
 
-  - name: client approval
-    config:
-      whitelist:
-      - "OP1011"
-      blacklist:
-      - "OP1012"
+  #- name: client approval
+  #  config:
+  #    whitelist:
+  #    - "OP1011"
+  #    blacklist:
+  #    - "OP1012"
 
-  - name: interval variation
-    config:
-      modify_response_probability: 0.2
-      max_increase_delta: 60
-      modify_min_interval: true
+  #- name: interval variation
+  #  config:
+  #    modify_response_probability: 0.2
+  #    max_increase_delta: 60
+  #    modify_min_interval: true
