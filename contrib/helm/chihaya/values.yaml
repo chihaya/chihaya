@@ -14,6 +14,8 @@ config:
   chihaya:
     announce_interval: 15m
     prometheus_addr: 0.0.0.0:6880
+    max_numwant: 50
+    default_numwant: 25
     http:
       addr: 0.0.0.0:6881
       allow_ip_spoofing: true
@@ -27,6 +29,5 @@ config:
       max_clock_skew: 10s
     storage:
       gc_interval: 14m
-      peer_lifetime: 15m
-      shards: 16
-      max_numwant: 50
+      peer_lifetime: 16m
+      shards: 1024
