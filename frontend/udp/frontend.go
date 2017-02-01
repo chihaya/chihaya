@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"math/rand"
 	"net"
 	"sync"
 	"time"
@@ -17,6 +18,8 @@ import (
 	"github.com/chihaya/chihaya/frontend"
 	"github.com/chihaya/chihaya/frontend/udp/bytepool"
 )
+
+var allowedGeneratedPrivateKeyRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
 
 func init() {
 	prometheus.MustRegister(promResponseDurationMilliseconds)
@@ -68,6 +71,18 @@ type Frontend struct {
 
 // NewFrontend allocates a new instance of a Frontend.
 func NewFrontend(logic frontend.TrackerLogic, cfg Config) *Frontend {
+	// Generate a private key if one isn't provided by the user.
+	if cfg.PrivateKey == "" {
+		rand.Seed(time.Now().UnixNano())
+		pkeyRunes := make([]rune, 64)
+		for i := range pkeyRunes {
+			pkeyRunes[i] = allowedGeneratedPrivateKeyRunes[rand.Intn(len(allowedGeneratedPrivateKeyRunes))]
+		}
+		cfg.PrivateKey = string(pkeyRunes)
+
+		log.Warn("UDP private key was not provided, using generated key: ", cfg.PrivateKey)
+	}
+
 	return &Frontend{
 		closing: make(chan struct{}),
 		logic:   logic,

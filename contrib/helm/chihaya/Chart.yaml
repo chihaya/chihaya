@@ -1,0 +1,10 @@
+apiVersion: v1
+name: chihaya
+home: https://chihaya.io
+version: 0.1.0
+description: A Helm chart for running the Chihaya BitTorrent tracker on Kubernetes.
+sources:
+  - https://github.com/chihaya/chihaya
+maintainers:
+  - name: Jimmy Zelinskie
+    email: jimmyzelinskie@gmail.com
