@@ -31,19 +31,28 @@ var promResponseDurationMilliseconds = prometheus.NewHistogramVec(
 		Help:    "The duration of time it takes to receive and write a response to an API request",
 		Buckets: prometheus.ExponentialBuckets(9.375, 2, 10),
 	},
-	[]string{"action", "error"},
+	[]string{"action", "address_family", "error"},
 )
 
 // recordResponseDuration records the duration of time to respond to a Request
 // in milliseconds .
-func recordResponseDuration(action string, err error, duration time.Duration) {
+func recordResponseDuration(action string, af *bittorrent.AddressFamily, err error, duration time.Duration) {
 	var errString string
 	if err != nil {
 		errString = err.Error()
 	}
 
+	var afString string
+	if af == nil {
+		afString = "Unknown"
+	} else if *af == bittorrent.IPv4 {
+		afString = "IPv4"
+	} else if *af == bittorrent.IPv6 {
+		afString = "IPv6"
+	}
+
 	promResponseDurationMilliseconds.
-		WithLabelValues(action, errString).
+		WithLabelValues(action, afString, errString).
 		Observe(float64(duration.Nanoseconds()) / float64(time.Millisecond))
 }
 
@@ -149,13 +158,15 @@ func (t *Frontend) ListenAndServe() error {
 func (t *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	var err error
 	start := time.Now()
-	defer func() { recordResponseDuration("announce", err, time.Since(start)) }()
+	var af *bittorrent.AddressFamily
+	defer func() { recordResponseDuration("announce", af, err, time.Since(start)) }()
 
 	req, err := ParseAnnounce(r, t.RealIPHeader, t.AllowIPSpoofing)
 	if err != nil {
 		WriteError(w, err)
 		return
 	}
+	*af = req.IP.AddressFamily
 
 	resp, err := t.logic.HandleAnnounce(context.Background(), req)
 	if err != nil {
@@ -176,7 +187,8 @@ func (t *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, _ httpr
 func (t *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	var err error
 	start := time.Now()
-	defer func() { recordResponseDuration("scrape", err, time.Since(start)) }()
+	var af *bittorrent.AddressFamily
+	defer func() { recordResponseDuration("scrape", af, err, time.Since(start)) }()
 
 	req, err := ParseScrape(r)
 	if err != nil {
@@ -201,6 +213,7 @@ func (t *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprou
 		WriteError(w, ErrInvalidIP)
 		return
 	}
+	*af = req.AddressFamily
 
 	resp, err := t.logic.HandleScrape(context.Background(), req)
 	if err != nil {
