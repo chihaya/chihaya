@@ -83,8 +83,9 @@ var ErrInvalidIP = errors.New("invalid IP")
 //     IPv6. Sets the Peer.AddressFamily field accordingly. Truncates IPv4
 //     addresses to have a length of 4 bytes.
 type sanitizationHook struct {
-	maxNumWant     uint32
-	defaultNumWant uint32
+	maxNumWant          uint32
+	defaultNumWant      uint32
+	maxScrapeInfoHashes uint32
 }
 
 func (h *sanitizationHook) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequest, resp *bittorrent.AnnounceResponse) (context.Context, error) {
@@ -109,6 +110,10 @@ func (h *sanitizationHook) HandleAnnounce(ctx context.Context, req *bittorrent.A
 }
 
 func (h *sanitizationHook) HandleScrape(ctx context.Context, req *bittorrent.ScrapeRequest, resp *bittorrent.ScrapeResponse) (context.Context, error) {
+	if len(req.InfoHashes) > int(h.maxScrapeInfoHashes) {
+		req.InfoHashes = req.InfoHashes[:h.maxScrapeInfoHashes]
+	}
+
 	return ctx, nil
 }
 
