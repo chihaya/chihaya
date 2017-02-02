@@ -16,6 +16,7 @@ config:
     prometheus_addr: 0.0.0.0:6880
     max_numwant: 50
     default_numwant: 25
+    max_scrape_infohashes: 50
     http:
       addr: 0.0.0.0:6881
       allow_ip_spoofing: true

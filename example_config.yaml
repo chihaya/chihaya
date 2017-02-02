@@ -14,6 +14,9 @@ chihaya:
   # The default number of peers returned in an announce.
   default_numwant: 25
 
+  # The number of infohashes a single scrape can request before being truncated.
+  max_scrape_infohashes: 50
+
   # This block defines configuration for the tracker's HTTP interface.
   # If you do not wish to run this, delete this section.
   http:
