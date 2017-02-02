@@ -29,6 +29,10 @@ chihaya:
     # This is only necessary if using a reverse proxy.
     real_ip_header: "x-real-ip"
 
+    # The path to the required files to listen via HTTPS.
+    tls_cert_path: ""
+    tls_key_path: ""
+
     # The timeout durations for HTTP requests.
     read_timeout: 5s
     write_timeout: 5s

@@ -4,6 +4,7 @@ package http
 
 import (
 	"context"
+	"crypto/tls"
 	"net"
 	"net/http"
 	"time"
@@ -55,6 +56,8 @@ type Config struct {
 	RequestTimeout  time.Duration `yaml:"request_timeout"`
 	AllowIPSpoofing bool          `yaml:"allow_ip_spoofing"`
 	RealIPHeader    string        `yaml:"real_ip_header"`
+	TLSCertPath     string        `yaml:"tls_cert_path"`
+	TLSKeyPath      string        `yaml:"tls_key_path"`
 }
 
 // Frontend holds the state of an HTTP BitTorrent Frontend.
@@ -119,6 +122,20 @@ func (t *Frontend) ListenAndServe() error {
 	}
 	t.grace.SetKeepAlivesEnabled(false)
 
+	// If TLS is enabled, create a key pair and add it to the HTTP server.
+	if t.Config.TLSCertPath != "" && t.Config.TLSKeyPath != "" {
+		var err error
+		tlsCfg := &tls.Config{
+			Certificates: make([]tls.Certificate, 1),
+		}
+		tlsCfg.Certificates[0], err = tls.LoadX509KeyPair(t.Config.TLSCertPath, t.Config.TLSKeyPath)
+		if err != nil {
+			return err
+		}
+		t.grace.Server.TLSConfig = tlsCfg
+	}
+
+	// Start the HTTP server and gracefully handle any network errors.
 	if err := t.grace.ListenAndServe(); err != nil {
 		if opErr, ok := err.(*net.OpError); !ok || (ok && opErr.Op != "accept") {
 			panic("http: failed to gracefully run HTTP server: " + err.Error())
