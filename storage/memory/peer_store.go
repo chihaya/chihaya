@@ -28,7 +28,7 @@ var promGCDurationMilliseconds = prometheus.NewHistogram(prometheus.HistogramOpt
 
 var promInfohashesCount = prometheus.NewGauge(prometheus.GaugeOpts{
 	Name: "chihaya_storage_infohashes_count",
-	Help: "The number of Infohashes tracked",
+	Help: "The number of infohashes tracked",
 })
 
 // recordGCDuration records the duration of a GC sweep.

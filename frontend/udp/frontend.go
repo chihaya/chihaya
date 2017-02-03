@@ -34,19 +34,28 @@ var promResponseDurationMilliseconds = prometheus.NewHistogramVec(
 		Help:    "The duration of time it takes to receive and write a response to an API request",
 		Buckets: prometheus.ExponentialBuckets(9.375, 2, 10),
 	},
-	[]string{"action", "error"},
+	[]string{"action", "address_family", "error"},
 )
 
 // recordResponseDuration records the duration of time to respond to a UDP
 // Request in milliseconds .
-func recordResponseDuration(action string, err error, duration time.Duration) {
+func recordResponseDuration(action string, af *bittorrent.AddressFamily, err error, duration time.Duration) {
 	var errString string
 	if err != nil {
 		errString = err.Error()
 	}
 
+	var afString string
+	if af == nil {
+		afString = "Unknown"
+	} else if *af == bittorrent.IPv4 {
+		afString = "IPv4"
+	} else if *af == bittorrent.IPv6 {
+		afString = "IPv6"
+	}
+
 	promResponseDurationMilliseconds.
-		WithLabelValues(action, errString).
+		WithLabelValues(action, afString, errString).
 		Observe(float64(duration.Nanoseconds()) / float64(time.Millisecond))
 }
 
@@ -151,12 +160,12 @@ func (t *Frontend) ListenAndServe() error {
 
 			// Handle the request.
 			start := time.Now()
-			action, err := t.handleRequest(
+			action, af, err := t.handleRequest(
 				// Make sure the IP is copied, not referenced.
 				Request{buffer[:n], append([]byte{}, addr.IP...)},
 				ResponseWriter{t.socket, addr},
 			)
-			recordResponseDuration(action, err, time.Since(start))
+			recordResponseDuration(action, af, err, time.Since(start))
 		}()
 	}
 }
@@ -181,7 +190,7 @@ func (w ResponseWriter) Write(b []byte) (int, error) {
 }
 
 // handleRequest parses and responds to a UDP Request.
-func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string, err error) {
+func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string, af *bittorrent.AddressFamily, err error) {
 	if len(r.Packet) < 16 {
 		// Malformed, no client packets are less than 16 bytes.
 		// We explicitly return nothing in case this is a DoS attempt.
@@ -223,6 +232,7 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 			WriteError(w, txID, err)
 			return
 		}
+		*af = req.IP.AddressFamily
 
 		var resp *bittorrent.AnnounceResponse
 		resp, err = t.logic.HandleAnnounce(context.Background(), req)
@@ -254,6 +264,7 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 			WriteError(w, txID, ErrInvalidIP)
 			return
 		}
+		*af = req.AddressFamily
 
 		var resp *bittorrent.ScrapeResponse
 		resp, err = t.logic.HandleScrape(context.Background(), req)
