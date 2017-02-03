@@ -23,7 +23,7 @@ import (
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/middleware"
-	"github.com/chihaya/chihaya/pkg/stopper"
+	"github.com/chihaya/chihaya/pkg/stop"
 )
 
 var (
@@ -114,7 +114,7 @@ func (h *hook) Stop() <-chan error {
 	log.Debug("attempting to shutdown JWT middleware")
 	select {
 	case <-h.closing:
-		return stopper.AlreadyStopped
+		return stop.AlreadyStopped
 	default:
 	}
 	c := make(chan error)
