@@ -1,3 +1,6 @@
+// Package memorybysubnet implements the storage interface for a Chihaya
+// BitTorrent tracker keeping peer data in memory organized by a pre-configured
+// subnet.
 package memorybysubnet
 
 import (
