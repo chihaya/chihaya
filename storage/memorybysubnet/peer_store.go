@@ -238,8 +238,7 @@ func (s *peerStore) DeleteSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) erro
 
 	delete(shard.swarms[ih].seeders[mask], pk)
 
-	// TODO(jzelinskie): fix this to sum all peers in all subnets
-	if len(shard.swarms[ih].seeders)|len(shard.swarms[ih].leechers) == 0 {
+	if shard.swarms[ih].lenSeeders()|shard.swarms[ih].lenLeechers() == 0 {
 		delete(shard.swarms, ih)
 		recordInfohashesDelta(-1)
 	}
@@ -303,8 +302,7 @@ func (s *peerStore) DeleteLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) err
 
 	delete(shard.swarms[ih].leechers[mask], pk)
 
-	// TODO(jzelinskie): fix this to sum all peers in all subnets
-	if len(shard.swarms[ih].seeders)|len(shard.swarms[ih].leechers) == 0 {
+	if shard.swarms[ih].lenSeeders()|shard.swarms[ih].lenLeechers() == 0 {
 		delete(shard.swarms, ih)
 		recordInfohashesDelta(-1)
 	}
@@ -345,7 +343,6 @@ func (s *peerStore) GraduateLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) e
 	return nil
 }
 
-// TODO(jzelinskie): update iterations to be over
 func (s *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant int, announcer bittorrent.Peer) (peers []bittorrent.Peer, err error) {
 	select {
 	case <-s.closed:
@@ -379,6 +376,10 @@ func (s *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant i
 		// Append the rest of the leechers.
 		if numWant > 0 {
 			for subnet := range shard.swarms[ih].leechers {
+				if subnet == mask {
+					continue
+				}
+
 				for p := range shard.swarms[ih].leechers[subnet] {
 					if numWant == 0 {
 						break
@@ -403,9 +404,25 @@ func (s *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant i
 			numWant--
 		}
 
+		// Append as many close leechers as possible.
+		closestLeechers := shard.swarms[ih].leechers[mask]
+		for p := range closestLeechers {
+			if numWant == 0 {
+				break
+			}
+			decodedPeer := decodePeerKey(p)
+
+			peers = append(peers, decodedPeer)
+			numWant--
+		}
+
 		// Append as the rest of the seeders.
 		if numWant > 0 {
 			for subnet := range shard.swarms[ih].seeders {
+				if subnet == mask {
+					continue
+				}
+
 				for p := range shard.swarms[ih].seeders[subnet] {
 					if numWant == 0 {
 						break
@@ -418,10 +435,13 @@ func (s *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant i
 			}
 		}
 
-		// Append leechers until we reach numWant.
-		// TODO(jzelinskie): do we want close leechers before random seeders?
+		// Append the rest of the leechers.
 		if numWant > 0 {
 			for subnet := range shard.swarms[ih].leechers {
+				if subnet == mask {
+					continue
+				}
+
 				for p := range shard.swarms[ih].leechers[subnet] {
 					if numWant == 0 {
 						break
