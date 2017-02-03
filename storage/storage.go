@@ -2,7 +2,7 @@ package storage
 
 import (
 	"github.com/chihaya/chihaya/bittorrent"
-	"github.com/chihaya/chihaya/pkg/stopper"
+	"github.com/chihaya/chihaya/pkg/stop"
 )
 
 // ErrResourceDoesNotExist is the error returned by all delete methods in the
@@ -65,8 +65,8 @@ type PeerStore interface {
 	// returned.
 	ScrapeSwarm(infoHash bittorrent.InfoHash, addressFamily bittorrent.AddressFamily) bittorrent.Scrape
 
-	// Stopper is an interface that expects a Stop method to stop the
+	// stop is an interface that expects a Stop method to stop the
 	// PeerStore.
-	// For more details see the documentation in the stopper package.
-	stopper.Stopper
+	// For more details see the documentation in the stop package.
+	stop.Stopper
 }

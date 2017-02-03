@@ -1,5 +1,5 @@
-// Package stopper implements a pattern for shutting down a group of processes.
-package stopper
+// Package stop implements a pattern for shutting down a group of processes.
+package stop
 
 import (
 	"sync"
@@ -22,52 +22,52 @@ func init() {
 type Stopper interface {
 	// Stop returns a channel that indicates whether the stop was
 	// successful.
-	// The channel can either return one error or be closed. Closing the
-	// channel signals a clean shutdown.
-	// The Stop function should return immediately and perform the actual
-	// shutdown in a separate goroutine.
+	//
+	// The channel can either return one error or be closed.
+	// Closing the channel signals a clean shutdown.
+	// Stop() should return immediately and perform the actual shutdown in a
+	// separate goroutine.
 	Stop() <-chan error
-}
-
-// StopGroup is a group that can be stopped.
-type StopGroup struct {
-	stoppables []Func
-	sync.Mutex
 }
 
 // Func is a function that can be used to provide a clean shutdown.
 type Func func() <-chan error
 
-// NewStopGroup creates a new StopGroup.
-func NewStopGroup() *StopGroup {
-	return &StopGroup{
+// Group is a collection of Stoppers that can be stopped all at once.
+type Group struct {
+	stoppables []Func
+	sync.Mutex
+}
+
+// NewGroup allocates a new Group.
+func NewGroup() *Group {
+	return &Group{
 		stoppables: make([]Func, 0),
 	}
 }
 
-// Add adds a Stopper to the StopGroup.
-// On the next call to Stop(), the Stopper will be stopped.
-func (cg *StopGroup) Add(toAdd Stopper) {
+// Add appends a Stopper to the Group.
+func (cg *Group) Add(toAdd Stopper) {
 	cg.Lock()
 	defer cg.Unlock()
 
 	cg.stoppables = append(cg.stoppables, toAdd.Stop)
 }
 
-// AddFunc adds a Func to the StopGroup.
-// On the next call to Stop(), the Func will be called.
-func (cg *StopGroup) AddFunc(toAddFunc Func) {
+// AddFunc appends a Func to the Group.
+func (cg *Group) AddFunc(toAddFunc Func) {
 	cg.Lock()
 	defer cg.Unlock()
 
 	cg.stoppables = append(cg.stoppables, toAddFunc)
 }
 
-// Stop stops all members of the StopGroup.
+// Stop stops all members of the Group.
+//
 // Stopping will be done in a concurrent fashion.
 // The slice of errors returned contains all errors returned by stopping the
 // members.
-func (cg *StopGroup) Stop() []error {
+func (cg *Group) Stop() []error {
 	cg.Lock()
 	defer cg.Unlock()
 
