@@ -166,6 +166,7 @@ func (t *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, _ httpr
 		WriteError(w, err)
 		return
 	}
+	af = new(bittorrent.AddressFamily)
 	*af = req.IP.AddressFamily
 
 	resp, err := t.logic.HandleAnnounce(context.Background(), req)
@@ -213,6 +214,7 @@ func (t *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprou
 		WriteError(w, ErrInvalidIP)
 		return
 	}
+	af = new(bittorrent.AddressFamily)
 	*af = req.AddressFamily
 
 	resp, err := t.logic.HandleScrape(context.Background(), req)
