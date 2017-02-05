@@ -232,6 +232,7 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 			WriteError(w, txID, err)
 			return
 		}
+		af = new(bittorrent.AddressFamily)
 		*af = req.IP.AddressFamily
 
 		var resp *bittorrent.AnnounceResponse
@@ -264,6 +265,7 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 			WriteError(w, txID, ErrInvalidIP)
 			return
 		}
+		af = new(bittorrent.AddressFamily)
 		*af = req.AddressFamily
 
 		var resp *bittorrent.ScrapeResponse
