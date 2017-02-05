@@ -63,6 +63,10 @@ type QueryParams struct {
 // parse each value as an InfoHash and return an error if parsing fails. All
 // InfoHashes are collected and can later be retrieved by calling the InfoHashes
 // method.
+//
+// Also note that any error that is encountered during parsing is returned as a
+// ClientError, as this method is expected to be used to parse client-provided
+// data.
 func ParseURLData(urlData string) (*QueryParams, error) {
 	var path, query string
 
@@ -76,7 +80,7 @@ func ParseURLData(urlData string) (*QueryParams, error) {
 
 	q, err := parseQuery(query)
 	if err != nil {
-		return nil, err
+		return nil, ClientError(err.Error())
 	}
 	q.path = path
 	return q, nil
