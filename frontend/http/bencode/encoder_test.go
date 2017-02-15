@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var marshalTests = []struct {
@@ -37,8 +37,8 @@ var marshalTests = []struct {
 func TestMarshal(t *testing.T) {
 	for _, test := range marshalTests {
 		got, err := Marshal(test.input)
-		assert.Nil(t, err, "marshal should not fail")
-		assert.Contains(t, test.expected, string(got), "the marshaled result should be one of the expected permutations")
+		require.Nil(t, err, "marshal should not fail")
+		require.Contains(t, test.expected, string(got), "the marshaled result should be one of the expected permutations")
 	}
 }
 

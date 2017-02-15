@@ -3,7 +3,7 @@ package bittorrent
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNew(t *testing.T) {
@@ -23,7 +23,7 @@ func TestNew(t *testing.T) {
 
 	for _, tt := range table {
 		got, err := NewEvent(tt.data)
-		assert.Equal(t, err, tt.expectedErr, "errors should equal the expected value")
-		assert.Equal(t, got, tt.expected, "events should equal the expected value")
+		require.Equal(t, err, tt.expectedErr, "errors should equal the expected value")
+		require.Equal(t, got, tt.expected, "events should equal the expected value")
 	}
 }

@@ -3,7 +3,7 @@ package bencode
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var unmarshalTests = []struct {
@@ -25,8 +25,8 @@ var unmarshalTests = []struct {
 func TestUnmarshal(t *testing.T) {
 	for _, tt := range unmarshalTests {
 		got, err := Unmarshal([]byte(tt.input))
-		assert.Nil(t, err, "unmarshal should not fail")
-		assert.Equal(t, got, tt.expected, "unmarshalled values should match the expected results")
+		require.Nil(t, err, "unmarshal should not fail")
+		require.Equal(t, got, tt.expected, "unmarshalled values should match the expected results")
 	}
 }
 
@@ -61,8 +61,8 @@ func TestUnmarshalLarge(t *testing.T) {
 	dec := NewDecoder(&bufferLoop{string(buf)})
 
 	got, err := dec.Decode()
-	assert.Nil(t, err, "decode should not fail")
-	assert.Equal(t, got, data, "encoding and decoding should equal the original value")
+	require.Nil(t, err, "decode should not fail")
+	require.Equal(t, got, data, "encoding and decoding should equal the original value")
 }
 
 func BenchmarkUnmarshalLarge(b *testing.B) {
