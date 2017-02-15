@@ -1,5 +1,5 @@
-hash: a80b47d15d38444cacc1a086a04a567deb60266887de142074791bf75703f05e
-updated: 2017-01-26T10:10:57.486607918+01:00
+hash: 5d8b4db88e29a7095440707b96e55cafed00fd98a32293b4b54950797a54f9bc
+updated: 2017-02-15T00:55:54.619709972-05:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -46,13 +46,13 @@ imports:
 - name: github.com/prometheus/procfs
   version: fcdb11ccb4389efb1b210b7ffb623ab71c5fdd60
 - name: github.com/SermoDigital/jose
-  version: 389fea327ef076853db8fae03a0f38e30e6092ab
+  version: f6df55f235c24f236d11dbcf665249a59ac2021f
   subpackages:
   - crypto
   - jws
   - jwt
 - name: github.com/Sirupsen/logrus
-  version: 4b6ea7319e214d98c938f12692336f7ca9348d6b
+  version: c078b1e43f58d563c74cebe63c85789e76ddb627
 - name: github.com/spf13/cobra
   version: 0f056af21f5f368e5b0646079d0094a2c64150f7
 - name: github.com/spf13/pflag
@@ -63,7 +63,7 @@ imports:
   - assert
   - require
 - name: github.com/tylerb/graceful
-  version: 0e9129e9c6d47da90dc0c188b26bd7bb1dab53cd
+  version: 4654dfbb6ad53cb5e27f37d99b02e16c1872fbbb
 - name: golang.org/x/sys
   version: d75a52659825e75fff6158388dddc6a5b04f9ba5
   subpackages:
