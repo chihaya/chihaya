@@ -39,7 +39,11 @@ var promResponseDurationMilliseconds = prometheus.NewHistogramVec(
 func recordResponseDuration(action string, af *bittorrent.AddressFamily, err error, duration time.Duration) {
 	var errString string
 	if err != nil {
-		errString = err.Error()
+		if _, ok := err.(bittorrent.ClientError); ok {
+			errString = err.Error()
+		} else {
+			errString = "internal error"
+		}
 	}
 
 	var afString string
