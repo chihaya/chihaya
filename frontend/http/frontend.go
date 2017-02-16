@@ -91,16 +91,18 @@ type Frontend struct {
 	srv    *http.Server
 	tlsCfg *tls.Config
 
-	logic frontend.TrackerLogic
+	logic     frontend.TrackerLogic
+	sanitizer *bittorrent.RequestSanitizer
 	Config
 }
 
 // NewFrontend creates a new instance of an HTTP Frontend that asynchronously
 // serves requests.
-func NewFrontend(logic frontend.TrackerLogic, cfg Config) (*Frontend, error) {
+func NewFrontend(logic frontend.TrackerLogic, rs *bittorrent.RequestSanitizer, cfg Config) (*Frontend, error) {
 	f := &Frontend{
-		logic:  logic,
-		Config: cfg,
+		logic:     logic,
+		sanitizer: rs,
+		Config:    cfg,
 	}
 
 	// If TLS is enabled, create a key pair.
@@ -183,7 +185,7 @@ func (f *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, _ httpr
 		}
 	}()
 
-	req, err := ParseAnnounce(r, f.RealIPHeader, f.AllowIPSpoofing)
+	req, err := ParseAnnounce(r, f.sanitizer, f.RealIPHeader, f.AllowIPSpoofing)
 	if err != nil {
 		WriteError(w, err)
 		return
@@ -222,7 +224,7 @@ func (f *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprou
 		}
 	}()
 
-	req, err := ParseScrape(r)
+	req, err := ParseScrape(r, f.sanitizer)
 	if err != nil {
 		WriteError(w, err)
 		return

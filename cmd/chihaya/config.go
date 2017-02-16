@@ -7,6 +7,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 
+	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/frontend/http"
 	"github.com/chihaya/chihaya/frontend/udp"
 	"github.com/chihaya/chihaya/middleware"
@@ -44,12 +45,13 @@ type storageConfig struct {
 // Config represents the configuration used for executing Chihaya.
 type Config struct {
 	middleware.Config `yaml:",inline"`
-	PrometheusAddr    string        `yaml:"prometheus_addr"`
-	HTTPConfig        http.Config   `yaml:"http"`
-	UDPConfig         udp.Config    `yaml:"udp"`
-	Storage           storageConfig `yaml:"storage"`
-	PreHooks          hookConfigs   `yaml:"prehooks"`
-	PostHooks         hookConfigs   `yaml:"posthooks"`
+	RequestSanitizer  bittorrent.RequestSanitizer `yaml:",inline"`
+	PrometheusAddr    string                      `yaml:"prometheus_addr"`
+	HTTPConfig        http.Config                 `yaml:"http"`
+	UDPConfig         udp.Config                  `yaml:"udp"`
+	Storage           storageConfig               `yaml:"storage"`
+	PreHooks          hookConfigs                 `yaml:"prehooks"`
+	PostHooks         hookConfigs                 `yaml:"posthooks"`
 }
 
 // CreateHooks creates instances of Hooks for all of the PreHooks and PostHooks

@@ -7,12 +7,12 @@ import (
 	"github.com/chihaya/chihaya/bittorrent"
 )
 
-// ParseAnnounce parses an bittorrent.AnnounceRequest from an http.Request.
+// ParseAnnounce parses a bittorrent.AnnounceRequest from an http.Request.
 //
 // If allowIPSpoofing is true, IPs provided via params will be used.
 // If realIPHeader is not empty string, the first value of the HTTP Header with
 // that name will be used.
-func ParseAnnounce(r *http.Request, realIPHeader string, allowIPSpoofing bool) (*bittorrent.AnnounceRequest, error) {
+func ParseAnnounce(r *http.Request, rs *bittorrent.RequestSanitizer, realIPHeader string, allowIPSpoofing bool) (*bittorrent.AnnounceRequest, error) {
 	qp, err := bittorrent.ParseURLData(r.RequestURI)
 	if err != nil {
 		return nil, err
@@ -79,11 +79,11 @@ func ParseAnnounce(r *http.Request, realIPHeader string, allowIPSpoofing bool) (
 		return nil, bittorrent.ClientError("failed to parse peer IP address")
 	}
 
-	return request, nil
+	return rs.SanitizeAnnounce(request)
 }
 
 // ParseScrape parses an bittorrent.ScrapeRequest from an http.Request.
-func ParseScrape(r *http.Request) (*bittorrent.ScrapeRequest, error) {
+func ParseScrape(r *http.Request, rs *bittorrent.RequestSanitizer) (*bittorrent.ScrapeRequest, error) {
 	qp, err := bittorrent.ParseURLData(r.RequestURI)
 	if err != nil {
 		return nil, err
@@ -99,7 +99,7 @@ func ParseScrape(r *http.Request) (*bittorrent.ScrapeRequest, error) {
 		Params:     qp,
 	}
 
-	return request, nil
+	return rs.SanitizeScrape(request)
 }
 
 // requestedIP determines the IP address for a BitTorrent client request.
