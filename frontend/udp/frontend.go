@@ -136,7 +136,6 @@ func (t *Frontend) ListenAndServe() error {
 
 		// Read a UDP packet into a reusable buffer.
 		buffer := pool.Get()
-		t.socket.SetReadDeadline(time.Now().Add(time.Second))
 		n, addr, err := t.socket.ReadFromUDP(buffer)
 		if err != nil {
 			pool.Put(buffer)
