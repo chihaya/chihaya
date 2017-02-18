@@ -1,5 +1,5 @@
-hash: 5d8b4db88e29a7095440707b96e55cafed00fd98a32293b4b54950797a54f9bc
-updated: 2017-02-15T00:55:54.619709972-05:00
+hash: ba0c138fa4c3c1f55ce0bce72afb19e67be67edc48be86297440dae521cfee57
+updated: 2017-02-18T13:02:38.493823158+01:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -62,8 +62,6 @@ imports:
   subpackages:
   - assert
   - require
-- name: github.com/tylerb/graceful
-  version: 4654dfbb6ad53cb5e27f37d99b02e16c1872fbbb
 - name: golang.org/x/sys
   version: d75a52659825e75fff6158388dddc6a5b04f9ba5
   subpackages:
