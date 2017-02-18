@@ -39,7 +39,6 @@ chihaya:
     # The timeout durations for HTTP requests.
     read_timeout: 5s
     write_timeout: 5s
-    request_timeout: 5s
 
   # This block defines configuration for the tracker's UDP interface.
   # If you do not wish to run this, delete this section.

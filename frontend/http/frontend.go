@@ -12,7 +12,6 @@ import (
 	log "github.com/Sirupsen/logrus"
 	"github.com/julienschmidt/httprouter"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/tylerb/graceful"
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/frontend"
@@ -66,7 +65,6 @@ type Config struct {
 	Addr            string        `yaml:"addr"`
 	ReadTimeout     time.Duration `yaml:"read_timeout"`
 	WriteTimeout    time.Duration `yaml:"write_timeout"`
-	RequestTimeout  time.Duration `yaml:"request_timeout"`
 	AllowIPSpoofing bool          `yaml:"allow_ip_spoofing"`
 	RealIPHeader    string        `yaml:"real_ip_header"`
 	TLSCertPath     string        `yaml:"tls_cert_path"`
@@ -75,7 +73,7 @@ type Config struct {
 
 // Frontend holds the state of an HTTP BitTorrent Frontend.
 type Frontend struct {
-	grace *graceful.Server
+	s *http.Server
 
 	logic frontend.TrackerLogic
 	Config
@@ -91,8 +89,9 @@ func NewFrontend(logic frontend.TrackerLogic, cfg Config) *Frontend {
 
 // Stop provides a thread-safe way to shutdown a currently running Frontend.
 func (t *Frontend) Stop() {
-	t.grace.Stop(t.grace.Timeout)
-	<-t.grace.StopChan()
+	if err := t.s.Shutdown(context.Background()); err != nil {
+		log.Warn("Error shutting down HTTP frontend:", err)
+	}
 }
 
 func (t *Frontend) handler() http.Handler {
@@ -105,15 +104,11 @@ func (t *Frontend) handler() http.Handler {
 // ListenAndServe listens on the TCP network address t.Addr and blocks serving
 // BitTorrent requests until t.Stop() is called or an error is returned.
 func (t *Frontend) ListenAndServe() error {
-	t.grace = &graceful.Server{
-		Server: &http.Server{
-			Addr:         t.Addr,
-			Handler:      t.handler(),
-			ReadTimeout:  t.ReadTimeout,
-			WriteTimeout: t.WriteTimeout,
-		},
-		Timeout:          t.RequestTimeout,
-		NoSignalHandling: true,
+	t.s = &http.Server{
+		Addr:         t.Addr,
+		Handler:      t.handler(),
+		ReadTimeout:  t.ReadTimeout,
+		WriteTimeout: t.WriteTimeout,
 		ConnState: func(conn net.Conn, state http.ConnState) {
 			switch state {
 			case http.StateNew:
@@ -133,7 +128,7 @@ func (t *Frontend) ListenAndServe() error {
 			}
 		},
 	}
-	t.grace.SetKeepAlivesEnabled(false)
+	t.s.SetKeepAlivesEnabled(false)
 
 	// If TLS is enabled, create a key pair and add it to the HTTP server.
 	if t.Config.TLSCertPath != "" && t.Config.TLSKeyPath != "" {
@@ -145,11 +140,11 @@ func (t *Frontend) ListenAndServe() error {
 		if err != nil {
 			return err
 		}
-		t.grace.Server.TLSConfig = tlsCfg
+		t.s.TLSConfig = tlsCfg
 	}
 
 	// Start the HTTP server and gracefully handle any network errors.
-	if err := t.grace.ListenAndServe(); err != nil {
+	if err := t.s.ListenAndServe(); err != nil {
 		if opErr, ok := err.(*net.OpError); !ok || (ok && opErr.Op != "accept") {
 			panic("http: failed to gracefully run HTTP server: " + err.Error())
 		}
