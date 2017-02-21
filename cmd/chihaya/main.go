@@ -17,7 +17,6 @@ import (
 	"github.com/chihaya/chihaya/pkg/prometheus"
 	"github.com/chihaya/chihaya/pkg/stop"
 	"github.com/chihaya/chihaya/storage"
-	"github.com/chihaya/chihaya/storage/memory"
 )
 
 // Run represents the state of a running instance of Chihaya.
@@ -54,7 +53,7 @@ func (r *Run) Start(ps storage.PeerStore) error {
 
 	if ps == nil {
 		log.WithFields(cfg.Storage.LogFields()).Info("starting storage")
-		ps, err = memory.New(cfg.Storage)
+		ps, err = storage.NewPeerStore(cfg.Storage.Name, cfg.Storage.Config)
 		if err != nil {
 			return errors.New("failed to create memory storage: " + err.Error())
 		}

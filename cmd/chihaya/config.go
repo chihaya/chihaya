@@ -13,7 +13,10 @@ import (
 	"github.com/chihaya/chihaya/middleware/clientapproval"
 	"github.com/chihaya/chihaya/middleware/jwt"
 	"github.com/chihaya/chihaya/middleware/varinterval"
-	"github.com/chihaya/chihaya/storage/memory"
+
+	// Imported to register as Storage Drivers.
+	_ "github.com/chihaya/chihaya/storage/memory"
+	_ "github.com/chihaya/chihaya/storage/memorybysubnet"
 )
 
 type hookConfig struct {
@@ -33,13 +36,18 @@ func (hookCfgs hookConfigs) Names() (hookNames []string) {
 	return
 }
 
+type storageConfig struct {
+	Name   string      `yaml:"name"`
+	Config interface{} `yaml:"config"`
+}
+
 // Config represents the configuration used for executing Chihaya.
 type Config struct {
 	middleware.Config `yaml:",inline"`
 	PrometheusAddr    string              `yaml:"prometheus_addr"`
 	HTTPConfig        httpfrontend.Config `yaml:"http"`
 	UDPConfig         udpfrontend.Config  `yaml:"udp"`
-	Storage           memory.Config       `yaml:"storage"`
+	Storage           storageConfig       `yaml:"storage"`
 	PreHooks          hookConfigs         `yaml:"prehooks"`
 	PostHooks         hookConfigs         `yaml:"posthooks"`
 }

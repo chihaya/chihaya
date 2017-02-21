@@ -11,15 +11,20 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/prometheus/client_golang/prometheus"
+	"gopkg.in/yaml.v2"
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/storage"
 )
 
 func init() {
+	// Register Prometheus metrics.
 	prometheus.MustRegister(promGCDurationMilliseconds)
 	prometheus.MustRegister(promInfohashesCount)
 	prometheus.MustRegister(promSeedersCount, promLeechersCount)
+
+	// Register the storage driver.
+	storage.RegisterDriver("memory", driver{})
 }
 
 var promGCDurationMilliseconds = prometheus.NewHistogram(prometheus.HistogramOpts{
@@ -46,6 +51,30 @@ var promLeechersCount = prometheus.NewGauge(prometheus.GaugeOpts{
 // recordGCDuration records the duration of a GC sweep.
 func recordGCDuration(duration time.Duration) {
 	promGCDurationMilliseconds.Observe(float64(duration.Nanoseconds()) / float64(time.Millisecond))
+}
+
+// recordInfohashesDelta records a change in the number of Infohashes tracked.
+func recordInfohashesDelta(delta float64) {
+	promInfohashesCount.Add(delta)
+}
+
+type driver struct{}
+
+func (d driver) NewPeerStore(icfg interface{}) (storage.PeerStore, error) {
+	// Marshal the config back into bytes.
+	bytes, err := yaml.Marshal(icfg)
+	if err != nil {
+		return nil, err
+	}
+
+	// Unmarshal the bytes into the proper config type.
+	var cfg Config
+	err = yaml.Unmarshal(bytes, &cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return New(cfg)
 }
 
 // ErrInvalidGCInterval is returned for a GarbageCollectionInterval that is

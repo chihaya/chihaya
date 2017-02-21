@@ -13,6 +13,7 @@ import (
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/prometheus/client_golang/prometheus"
+	"gopkg.in/yaml.v2"
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/storage"
@@ -21,6 +22,9 @@ import (
 func init() {
 	prometheus.MustRegister(promGCDurationMilliseconds)
 	prometheus.MustRegister(promInfohashesCount)
+
+	// Register the storage driver.
+	storage.RegisterDriver("memorybysubnet", driver{})
 }
 
 var promGCDurationMilliseconds = prometheus.NewHistogram(prometheus.HistogramOpts{
@@ -42,6 +46,25 @@ func recordGCDuration(duration time.Duration) {
 // recordInfohashesDelta records a change in the number of Infohashes tracked.
 func recordInfohashesDelta(delta float64) {
 	promInfohashesCount.Add(delta)
+}
+
+type driver struct{}
+
+func (d driver) NewPeerStore(icfg interface{}) (storage.PeerStore, error) {
+	// Marshal the config back into bytes.
+	bytes, err := yaml.Marshal(icfg)
+	if err != nil {
+		return nil, err
+	}
+
+	// Unmarshal the bytes into the proper config type.
+	var cfg Config
+	err = yaml.Unmarshal(bytes, &cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	return New(cfg)
 }
 
 // ErrInvalidGCInterval is returned for a GarbageCollectionInterval that is
