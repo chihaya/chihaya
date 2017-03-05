@@ -7,11 +7,13 @@ import (
 	"crypto/tls"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/julienschmidt/httprouter"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/soheilhy/cmux"
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/frontend"
@@ -73,7 +75,8 @@ type Config struct {
 
 // Frontend holds the state of an HTTP BitTorrent Frontend.
 type Frontend struct {
-	s *http.Server
+	http  *http.Server
+	https *http.Server
 
 	logic frontend.TrackerLogic
 	Config
@@ -89,7 +92,13 @@ func NewFrontend(logic frontend.TrackerLogic, cfg Config) *Frontend {
 
 // Stop provides a thread-safe way to shutdown a currently running Frontend.
 func (t *Frontend) Stop() {
-	if err := t.s.Shutdown(context.Background()); err != nil {
+	if t.https != nil {
+		if err := t.https.Shutdown(context.Background()); err != nil && err != cmux.ErrListenerClosed {
+			log.Warn("Error shutting down HTTPS frontend:", err)
+		}
+	}
+
+	if err := t.http.Shutdown(context.Background()); err != nil && err != cmux.ErrListenerClosed {
 		log.Warn("Error shutting down HTTP frontend:", err)
 	}
 }
@@ -104,31 +113,13 @@ func (t *Frontend) handler() http.Handler {
 // ListenAndServe listens on the TCP network address t.Addr and blocks serving
 // BitTorrent requests until t.Stop() is called or an error is returned.
 func (t *Frontend) ListenAndServe() error {
-	t.s = &http.Server{
-		Addr:         t.Addr,
-		Handler:      t.handler(),
-		ReadTimeout:  t.ReadTimeout,
-		WriteTimeout: t.WriteTimeout,
-		ConnState: func(conn net.Conn, state http.ConnState) {
-			switch state {
-			case http.StateNew:
-				//stats.RecordEvent(stats.AcceptedConnection)
-
-			case http.StateClosed:
-				//stats.RecordEvent(stats.ClosedConnection)
-
-			case http.StateHijacked:
-				panic("http: connection impossibly hijacked")
-
-			// Ignore the following cases.
-			case http.StateActive, http.StateIdle:
-
-			default:
-				panic("http: connection transitioned to unknown state")
-			}
-		},
+	l, err := net.Listen("tcp", t.Addr)
+	if err != nil {
+		return err
 	}
-	t.s.SetKeepAlivesEnabled(false)
+
+	mux := cmux.New(l)
+	httpListener := mux.Match(cmux.HTTP1Fast())
 
 	// If TLS is enabled, create a key pair and add it to the HTTP server.
 	if t.Config.TLSCertPath != "" && t.Config.TLSKeyPath != "" {
@@ -140,14 +131,38 @@ func (t *Frontend) ListenAndServe() error {
 		if err != nil {
 			return err
 		}
-		t.s.TLSConfig = tlsCfg
+
+		t.https = &http.Server{
+			Handler:      t.handler(),
+			ReadTimeout:  t.ReadTimeout,
+			WriteTimeout: t.WriteTimeout,
+		}
+		t.https.SetKeepAlivesEnabled(false)
+
+		httpsListener := tls.NewListener(mux.Match(cmux.Any()), tlsCfg)
+
+		go func() {
+			if err := t.https.Serve(httpsListener); err != cmux.ErrListenerClosed {
+				panic(err)
+			}
+		}()
 	}
 
-	// Start the HTTP server and gracefully handle any network errors.
-	if err := t.s.ListenAndServe(); err != nil {
-		if opErr, ok := err.(*net.OpError); !ok || (ok && opErr.Op != "accept") {
-			panic("http: failed to gracefully run HTTP server: " + err.Error())
+	t.http = &http.Server{
+		Handler:      t.handler(),
+		ReadTimeout:  t.ReadTimeout,
+		WriteTimeout: t.WriteTimeout,
+	}
+	t.http.SetKeepAlivesEnabled(false)
+
+	go func() {
+		if err := t.http.Serve(httpListener); err != cmux.ErrListenerClosed {
+			panic(err)
 		}
+	}()
+
+	if err := mux.Serve(); !strings.Contains(err.Error(), "use of closed network connection") {
+		panic(err)
 	}
 
 	return nil

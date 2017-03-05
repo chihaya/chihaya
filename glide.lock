@@ -1,5 +1,5 @@
-hash: ba0c138fa4c3c1f55ce0bce72afb19e67be67edc48be86297440dae521cfee57
-updated: 2017-02-18T13:02:38.493823158+01:00
+hash: 52e797b06ed95fd81e57302dd9927c930431a760f1b6c07b96144e17ce5c66a2
+updated: 2017-03-05T00:50:13.815389758-05:00
 imports:
 - name: github.com/beorn7/perks
   version: 4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9
@@ -52,7 +52,9 @@ imports:
   - jws
   - jwt
 - name: github.com/Sirupsen/logrus
-  version: c078b1e43f58d563c74cebe63c85789e76ddb627
+  version: 0208149b40d863d2c1a2f8fe5753096a9cf2cc8b
+- name: github.com/soheilhy/cmux
+  version: bf4a8ede9e87c006fe1d4278c6c7f2b8be1fa84c
 - name: github.com/spf13/cobra
   version: 0f056af21f5f368e5b0646079d0094a2c64150f7
 - name: github.com/spf13/pflag
@@ -62,8 +64,14 @@ imports:
   subpackages:
   - assert
   - require
+- name: golang.org/x/net
+  version: 9313baa13d9262e49d07b20ed57dceafcd7240cc
+  subpackages:
+  - http2
+  - http2/hpack
+  - lex/httplex
 - name: golang.org/x/sys
-  version: d75a52659825e75fff6158388dddc6a5b04f9ba5
+  version: 30de6d19a3bd89a5f38ae4028e23aaa5582648af
   subpackages:
   - unix
 - name: gopkg.in/yaml.v2
