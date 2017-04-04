@@ -5,6 +5,7 @@ package http
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"net"
 	"net/http"
 	"time"
@@ -144,10 +145,8 @@ func (t *Frontend) ListenAndServe() error {
 	}
 
 	// Start the HTTP server and gracefully handle any network errors.
-	if err := t.s.ListenAndServe(); err != nil {
-		if opErr, ok := err.(*net.OpError); !ok || (ok && opErr.Op != "accept") {
-			panic("http: failed to gracefully run HTTP server: " + err.Error())
-		}
+	if err := t.s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		return errors.New("http: failed to run HTTP server: " + err.Error())
 	}
 
 	return nil
