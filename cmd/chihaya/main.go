@@ -124,7 +124,7 @@ func rootCmdRun(cmd *cobra.Command, args []string) error {
 				close(shutdown)
 				closed = true
 			} else {
-				log.Infoln(bufErr)
+				log.Errorln(bufErr)
 			}
 			bufErr = err
 		}
@@ -175,7 +175,7 @@ func startFrontends(httpConfig httpfrontend.Config, udpConfig udpfrontend.Config
 		go func() {
 			log.Infoln("started serving HTTP on", httpConfig.Addr)
 			if err := httpFrontend.ListenAndServe(); err != nil {
-				errChan <- errors.New("failed to cleanly shutdown HTTP frontend: " + err.Error())
+				errChan <- err
 			}
 		}()
 	}
@@ -186,7 +186,7 @@ func startFrontends(httpConfig httpfrontend.Config, udpConfig udpfrontend.Config
 		go func() {
 			log.Infoln("started serving UDP on", udpConfig.Addr)
 			if err := udpFrontend.ListenAndServe(); err != nil {
-				errChan <- errors.New("failed to cleanly shutdown UDP frontend: " + err.Error())
+				errChan <- err
 			}
 		}()
 	}
