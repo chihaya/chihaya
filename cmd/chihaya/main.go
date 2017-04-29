@@ -20,11 +20,6 @@ import (
 )
 
 func rootCmdRun(cmd *cobra.Command, args []string) error {
-	debugLog, _ := cmd.Flags().GetBool("debug")
-	if debugLog {
-		log.SetLevel(log.DebugLevel)
-		log.Debugln("debug logging enabled")
-	}
 	cpuProfilePath, _ := cmd.Flags().GetString("cpuprofile")
 	if cpuProfilePath != "" {
 		log.Infoln("enabled CPU profiling to", cpuProfilePath)
@@ -154,7 +149,6 @@ func stopLogic(logic *middleware.Logic, errChan chan error) {
 
 func stop(udpFrontend *udpfrontend.Frontend, httpFrontend *httpfrontend.Frontend, logic *middleware.Logic, errChan chan error, peerStore storage.PeerStore) {
 	stopFrontends(udpFrontend, httpFrontend)
-
 	stopLogic(logic, errChan)
 
 	// Stop storage
@@ -199,6 +193,13 @@ func main() {
 		Use:   "chihaya",
 		Short: "BitTorrent Tracker",
 		Long:  "A customizable, multi-protocol BitTorrent Tracker",
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			debugLog, _ := cmd.Flags().GetBool("debug")
+			if debugLog {
+				log.SetLevel(log.DebugLevel)
+				log.Debugln("debug logging enabled")
+			}
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := rootCmdRun(cmd, args); err != nil {
 				log.Fatal(err)
