@@ -2,24 +2,125 @@ package main
 
 import (
 	"errors"
-	"net/http"
 	"os"
 	"os/signal"
 	"runtime/pprof"
 	"syscall"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
 
-	httpfrontend "github.com/chihaya/chihaya/frontend/http"
-	udpfrontend "github.com/chihaya/chihaya/frontend/udp"
+	"github.com/chihaya/chihaya/frontend/http"
+	"github.com/chihaya/chihaya/frontend/udp"
 	"github.com/chihaya/chihaya/middleware"
+	"github.com/chihaya/chihaya/pkg/prometheus"
+	"github.com/chihaya/chihaya/pkg/stop"
 	"github.com/chihaya/chihaya/storage"
 	"github.com/chihaya/chihaya/storage/memory"
 )
 
-func rootCmdRun(cmd *cobra.Command, args []string) error {
+// Run represents the state of a running instance of Chihaya.
+type Run struct {
+	configFilePath string
+	peerStore      storage.PeerStore
+	logic          *middleware.Logic
+	sg             *stop.Group
+}
+
+// NewRun runs an instance of Chihaya.
+func NewRun(configFilePath string) (*Run, error) {
+	r := &Run{
+		configFilePath: configFilePath,
+	}
+
+	return r, r.Start()
+}
+
+// Start begins an instance of Chihaya.
+func (r *Run) Start() error {
+	configFile, err := ParseConfigFile(r.configFilePath)
+	if err != nil {
+		return errors.New("failed to read config: " + err.Error())
+	}
+
+	chihayaCfg := configFile.Chihaya
+	preHooks, postHooks, err := chihayaCfg.CreateHooks()
+	if err != nil {
+		return errors.New("failed to validate hook config: " + err.Error())
+	}
+
+	r.sg = stop.NewGroup()
+	r.sg.Add(prometheus.NewServer(chihayaCfg.PrometheusAddr))
+
+	r.peerStore, err = memory.New(chihayaCfg.Storage)
+	if err != nil {
+		return errors.New("failed to create memory storage: " + err.Error())
+	}
+
+	r.logic = middleware.NewLogic(chihayaCfg.Config, r.peerStore, preHooks, postHooks)
+
+	if chihayaCfg.HTTPConfig.Addr != "" {
+		httpfe, err := http.NewFrontend(r.logic, chihayaCfg.HTTPConfig)
+		if err != nil {
+			return err
+		}
+		r.sg.Add(httpfe)
+	}
+
+	if chihayaCfg.UDPConfig.Addr != "" {
+		udpfe, err := udp.NewFrontend(r.logic, chihayaCfg.UDPConfig)
+		if err != nil {
+			return err
+		}
+		r.sg.Add(udpfe)
+	}
+
+	return nil
+}
+
+// Stop shuts down an instance of Chihaya.
+func (r *Run) Stop() error {
+	log.Debug("stopping frontends and prometheus endpoint")
+	if errs := r.sg.Stop(); len(errs) != 0 {
+		errDelimiter := "; "
+		errStr := "failed while shutting down frontends: "
+
+		for _, err := range errs {
+			errStr += err.Error() + errDelimiter
+		}
+
+		// Remove the last delimiter.
+		errStr = errStr[0 : len(errStr)-len(errDelimiter)]
+
+		return errors.New(errStr)
+	}
+
+	log.Debug("stopping logic")
+	if errs := r.logic.Stop(); len(errs) != 0 {
+		errDelimiter := "; "
+		errStr := "failed while shutting down middleware: "
+
+		for _, err := range errs {
+			errStr += err.Error() + errDelimiter
+		}
+
+		// Remove the last delimiter.
+		errStr = errStr[0 : len(errStr)-len(errDelimiter)]
+
+		return errors.New(errStr)
+	}
+
+	log.Debug("stopping peer store")
+	if err, closed := <-r.peerStore.Stop(); !closed {
+		return err
+	}
+
+	return nil
+}
+
+// RunCmdFunc implements a Cobra command that runs an instance of Chihaya and
+// handles reloading and shutdown via process signals.
+func RunCmdFunc(cmd *cobra.Command, args []string) error {
 	cpuProfilePath, _ := cmd.Flags().GetString("cpuprofile")
 	if cpuProfilePath != "" {
 		log.Infoln("enabled CPU profiling to", cpuProfilePath)
@@ -31,161 +132,41 @@ func rootCmdRun(cmd *cobra.Command, args []string) error {
 		defer pprof.StopCPUProfile()
 	}
 
-	configFilePath, _ := cmd.Flags().GetString("config")
-	configFile, err := ParseConfigFile(configFilePath)
+	configFilePath, err := cmd.Flags().GetString("config")
 	if err != nil {
-		return errors.New("failed to read config: " + err.Error())
-	}
-	cfg := configFile.MainConfigBlock
-
-	go func() {
-		promServer := http.Server{
-			Addr:    cfg.PrometheusAddr,
-			Handler: prometheus.Handler(),
-		}
-		log.Infoln("started serving prometheus stats on", cfg.PrometheusAddr)
-		if err := promServer.ListenAndServe(); err != nil {
-			log.Fatalln("failed to start prometheus server:", err.Error())
-		}
-	}()
-
-	peerStore, err := memory.New(cfg.Storage)
-	if err != nil {
-		return errors.New("failed to create memory storage: " + err.Error())
+		return err
 	}
 
-	preHooks, postHooks, err := configFile.CreateHooks()
+	r, err := NewRun(configFilePath)
 	if err != nil {
-		return errors.New("failed to create hooks: " + err.Error())
+		return err
 	}
 
-	logic := middleware.NewLogic(cfg.Config, peerStore, preHooks, postHooks)
-
-	errChan := make(chan error)
-
-	httpFrontend, udpFrontend := startFrontends(cfg.HTTPConfig, cfg.UDPConfig, logic, errChan)
-
-	shutdown := make(chan struct{})
 	quit := make(chan os.Signal)
-	restart := make(chan os.Signal)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	signal.Notify(restart, syscall.SIGUSR1)
 
-	go func() {
-		for {
-			select {
-			case <-restart:
-				log.Info("Got signal to restart")
+	reload := make(chan os.Signal)
+	signal.Notify(reload, syscall.SIGUSR1)
 
-				// Reload config
-				configFile, err = ParseConfigFile(configFilePath)
-				if err != nil {
-					log.Error("failed to read config: " + err.Error())
-				}
-				cfg = configFile.MainConfigBlock
-
-				preHooks, postHooks, err = configFile.CreateHooks()
-				if err != nil {
-					log.Error("failed to create hooks: " + err.Error())
-				}
-
-				// Stop frontends and logic
-				stopFrontends(udpFrontend, httpFrontend)
-
-				stopLogic(logic, errChan)
-
-				// Restart
-				log.Debug("Restarting logic")
-				logic = middleware.NewLogic(cfg.Config, peerStore, preHooks, postHooks)
-
-				log.Debug("Restarting frontends")
-				httpFrontend, udpFrontend = startFrontends(cfg.HTTPConfig, cfg.UDPConfig, logic, errChan)
-
-				log.Debug("Successfully restarted")
-
-			case <-quit:
-				stop(udpFrontend, httpFrontend, logic, errChan, peerStore)
-			case <-shutdown:
-				stop(udpFrontend, httpFrontend, logic, errChan, peerStore)
+	for {
+		select {
+		case <-reload:
+			log.Info("received SIGUSR1")
+			if err := r.Stop(); err != nil {
+				return err
 			}
-		}
-	}()
-
-	closed := false
-	var bufErr error
-	for err = range errChan {
-		if err != nil {
-			if !closed {
-				close(shutdown)
-				closed = true
-			} else {
-				log.Errorln(bufErr)
+			if err := r.Start(); err != nil {
+				return err
 			}
-			bufErr = err
+		case <-quit:
+			log.Info("received SIGINT/SIGTERM")
+			if err := r.Stop(); err != nil {
+				return err
+			}
+
+			return nil
 		}
 	}
-
-	return bufErr
-}
-
-func stopFrontends(udpFrontend *udpfrontend.Frontend, httpFrontend *httpfrontend.Frontend) {
-	log.Debug("Stopping frontends")
-	if udpFrontend != nil {
-		udpFrontend.Stop()
-	}
-
-	if httpFrontend != nil {
-		httpFrontend.Stop()
-	}
-}
-
-func stopLogic(logic *middleware.Logic, errChan chan error) {
-	log.Debug("Stopping logic")
-	errs := logic.Stop()
-	for _, err := range errs {
-		errChan <- err
-	}
-}
-
-func stop(udpFrontend *udpfrontend.Frontend, httpFrontend *httpfrontend.Frontend, logic *middleware.Logic, errChan chan error, peerStore storage.PeerStore) {
-	stopFrontends(udpFrontend, httpFrontend)
-	stopLogic(logic, errChan)
-
-	// Stop storage
-	log.Debug("Stopping storage")
-	for err := range peerStore.Stop() {
-		if err != nil {
-			errChan <- err
-		}
-	}
-
-	close(errChan)
-}
-
-func startFrontends(httpConfig httpfrontend.Config, udpConfig udpfrontend.Config, logic *middleware.Logic, errChan chan<- error) (httpFrontend *httpfrontend.Frontend, udpFrontend *udpfrontend.Frontend) {
-	if httpConfig.Addr != "" {
-		httpFrontend = httpfrontend.NewFrontend(logic, httpConfig)
-
-		go func() {
-			log.Infoln("started serving HTTP on", httpConfig.Addr)
-			if err := httpFrontend.ListenAndServe(); err != nil {
-				errChan <- err
-			}
-		}()
-	}
-
-	if udpConfig.Addr != "" {
-		udpFrontend = udpfrontend.NewFrontend(logic, udpConfig)
-
-		go func() {
-			log.Infoln("started serving UDP on", udpConfig.Addr)
-			if err := udpFrontend.ListenAndServe(); err != nil {
-				errChan <- err
-			}
-		}()
-	}
-
-	return
 }
 
 func main() {
@@ -200,17 +181,13 @@ func main() {
 				log.Debugln("debug logging enabled")
 			}
 		},
-		Run: func(cmd *cobra.Command, args []string) {
-			if err := rootCmdRun(cmd, args); err != nil {
-				log.Fatal(err)
-			}
-		},
+		RunE: RunCmdFunc,
 	}
 	rootCmd.Flags().String("config", "/etc/chihaya.yaml", "location of configuration file")
 	rootCmd.Flags().String("cpuprofile", "", "location to save a CPU profile")
 	rootCmd.Flags().Bool("debug", false, "enable debug logging")
 
 	if err := rootCmd.Execute(); err != nil {
-		log.Fatal(err)
+		log.Fatal("failed when executing root cobra command: " + err.Error())
 	}
 }
