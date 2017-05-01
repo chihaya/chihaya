@@ -33,11 +33,13 @@ func NewRun(configFilePath string) (*Run, error) {
 		configFilePath: configFilePath,
 	}
 
-	return r, r.Start()
+	return r, r.Start(nil)
 }
 
 // Start begins an instance of Chihaya.
-func (r *Run) Start() error {
+// It is optional to provide an instance of the peer store to avoid the
+// creation of a new one.
+func (r *Run) Start(ps storage.PeerStore) error {
 	configFile, err := ParseConfigFile(r.configFilePath)
 	if err != nil {
 		return errors.New("failed to read config: " + err.Error())
@@ -52,10 +54,13 @@ func (r *Run) Start() error {
 	r.sg = stop.NewGroup()
 	r.sg.Add(prometheus.NewServer(chihayaCfg.PrometheusAddr))
 
-	r.peerStore, err = memory.New(chihayaCfg.Storage)
-	if err != nil {
-		return errors.New("failed to create memory storage: " + err.Error())
+	if ps == nil {
+		ps, err = memory.New(chihayaCfg.Storage)
+		if err != nil {
+			return errors.New("failed to create memory storage: " + err.Error())
+		}
 	}
+	r.peerStore = ps
 
 	r.logic = middleware.NewLogic(chihayaCfg.Config, r.peerStore, preHooks, postHooks)
 
@@ -79,7 +84,7 @@ func (r *Run) Start() error {
 }
 
 // Stop shuts down an instance of Chihaya.
-func (r *Run) Stop() error {
+func (r *Run) Stop(keepPeerStore bool) (storage.PeerStore, error) {
 	log.Debug("stopping frontends and prometheus endpoint")
 	if errs := r.sg.Stop(); len(errs) != 0 {
 		errDelimiter := "; "
@@ -92,7 +97,7 @@ func (r *Run) Stop() error {
 		// Remove the last delimiter.
 		errStr = errStr[0 : len(errStr)-len(errDelimiter)]
 
-		return errors.New(errStr)
+		return nil, errors.New(errStr)
 	}
 
 	log.Debug("stopping logic")
@@ -107,15 +112,18 @@ func (r *Run) Stop() error {
 		// Remove the last delimiter.
 		errStr = errStr[0 : len(errStr)-len(errDelimiter)]
 
-		return errors.New(errStr)
+		return nil, errors.New(errStr)
 	}
 
-	log.Debug("stopping peer store")
-	if err, closed := <-r.peerStore.Stop(); !closed {
-		return err
+	if !keepPeerStore {
+		log.Debug("stopping peer store")
+		if err, closed := <-r.peerStore.Stop(); !closed {
+			return nil, err
+		}
+		r.peerStore = nil
 	}
 
-	return nil
+	return r.peerStore, nil
 }
 
 // RunCmdFunc implements a Cobra command that runs an instance of Chihaya and
@@ -152,15 +160,17 @@ func RunCmdFunc(cmd *cobra.Command, args []string) error {
 		select {
 		case <-reload:
 			log.Info("received SIGUSR1")
-			if err := r.Stop(); err != nil {
+			peerStore, err := r.Stop(true)
+			if err != nil {
 				return err
 			}
-			if err := r.Start(); err != nil {
+
+			if err := r.Start(peerStore); err != nil {
 				return err
 			}
 		case <-quit:
 			log.Info("received SIGINT/SIGTERM")
-			if err := r.Stop(); err != nil {
+			if _, err := r.Stop(false); err != nil {
 				return err
 			}
 
