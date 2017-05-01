@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime/pprof"
+	"strings"
 	"syscall"
 
 	log "github.com/Sirupsen/logrus"
@@ -83,36 +84,25 @@ func (r *Run) Start(ps storage.PeerStore) error {
 	return nil
 }
 
+func combineErrors(prefix string, errs []error) error {
+	var errStrs []string
+	for _, err := range errs {
+		errStrs = append(errStrs, err.Error())
+	}
+
+	return errors.New(prefix + ": " + strings.Join(errStrs, "; "))
+}
+
 // Stop shuts down an instance of Chihaya.
 func (r *Run) Stop(keepPeerStore bool) (storage.PeerStore, error) {
 	log.Debug("stopping frontends and prometheus endpoint")
 	if errs := r.sg.Stop(); len(errs) != 0 {
-		errDelimiter := "; "
-		errStr := "failed while shutting down frontends: "
-
-		for _, err := range errs {
-			errStr += err.Error() + errDelimiter
-		}
-
-		// Remove the last delimiter.
-		errStr = errStr[0 : len(errStr)-len(errDelimiter)]
-
-		return nil, errors.New(errStr)
+		return nil, combineErrors("failed while shutting down frontends", errs)
 	}
 
 	log.Debug("stopping logic")
 	if errs := r.logic.Stop(); len(errs) != 0 {
-		errDelimiter := "; "
-		errStr := "failed while shutting down middleware: "
-
-		for _, err := range errs {
-			errStr += err.Error() + errDelimiter
-		}
-
-		// Remove the last delimiter.
-		errStr = errStr[0 : len(errStr)-len(errDelimiter)]
-
-		return nil, errors.New(errStr)
+		return nil, combineErrors("failed while shutting down middleware", errs)
 	}
 
 	if !keepPeerStore {
