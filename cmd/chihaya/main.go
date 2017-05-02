@@ -46,35 +46,35 @@ func (r *Run) Start(ps storage.PeerStore) error {
 		return errors.New("failed to read config: " + err.Error())
 	}
 
-	chihayaCfg := configFile.Chihaya
-	preHooks, postHooks, err := chihayaCfg.CreateHooks()
+	cfg := configFile.Chihaya
+	preHooks, postHooks, err := cfg.CreateHooks()
 	if err != nil {
 		return errors.New("failed to validate hook config: " + err.Error())
 	}
 
 	r.sg = stop.NewGroup()
-	r.sg.Add(prometheus.NewServer(chihayaCfg.PrometheusAddr))
+	r.sg.Add(prometheus.NewServer(cfg.PrometheusAddr))
 
 	if ps == nil {
-		ps, err = memory.New(chihayaCfg.Storage)
+		ps, err = memory.New(cfg.Storage)
 		if err != nil {
 			return errors.New("failed to create memory storage: " + err.Error())
 		}
 	}
 	r.peerStore = ps
 
-	r.logic = middleware.NewLogic(chihayaCfg.Config, r.peerStore, preHooks, postHooks)
+	r.logic = middleware.NewLogic(cfg.Config, r.peerStore, preHooks, postHooks)
 
-	if chihayaCfg.HTTPConfig.Addr != "" {
-		httpfe, err := http.NewFrontend(r.logic, chihayaCfg.HTTPConfig)
+	if cfg.HTTPConfig.Addr != "" {
+		httpfe, err := http.NewFrontend(r.logic, cfg.HTTPConfig)
 		if err != nil {
 			return err
 		}
 		r.sg.Add(httpfe)
 	}
 
-	if chihayaCfg.UDPConfig.Addr != "" {
-		udpfe, err := udp.NewFrontend(r.logic, chihayaCfg.UDPConfig)
+	if cfg.UDPConfig.Addr != "" {
+		udpfe, err := udp.NewFrontend(r.logic, cfg.UDPConfig)
 		if err != nil {
 			return err
 		}
