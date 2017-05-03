@@ -5,7 +5,6 @@ package http
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"net"
 	"net/http"
 	"time"
@@ -72,94 +71,95 @@ type Config struct {
 	TLSKeyPath      string        `yaml:"tls_key_path"`
 }
 
-// Frontend holds the state of an HTTP BitTorrent Frontend.
+// Frontend represents the state of an HTTP BitTorrent Frontend.
 type Frontend struct {
-	s *http.Server
+	srv    *http.Server
+	tlsCfg *tls.Config
 
 	logic frontend.TrackerLogic
 	Config
 }
 
-// NewFrontend allocates a new instance of a Frontend.
-func NewFrontend(logic frontend.TrackerLogic, cfg Config) *Frontend {
-	return &Frontend{
+// NewFrontend creates a new instance of an HTTP Frontend that asynchronously
+// serves requests.
+func NewFrontend(logic frontend.TrackerLogic, cfg Config) (*Frontend, error) {
+	f := &Frontend{
 		logic:  logic,
 		Config: cfg,
 	}
+
+	// If TLS is enabled, create a key pair.
+	if cfg.TLSCertPath != "" && cfg.TLSKeyPath != "" {
+		var err error
+		f.tlsCfg = &tls.Config{
+			Certificates: make([]tls.Certificate, 1),
+		}
+		f.tlsCfg.Certificates[0], err = tls.LoadX509KeyPair(cfg.TLSCertPath, cfg.TLSKeyPath)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	go func() {
+		if err := f.listenAndServe(); err != nil {
+			log.Fatal("failed while serving http: " + err.Error())
+		}
+	}()
+
+	return f, nil
 }
 
 // Stop provides a thread-safe way to shutdown a currently running Frontend.
-func (t *Frontend) Stop() {
-	if err := t.s.Shutdown(context.Background()); err != nil {
-		log.Warn("Error shutting down HTTP frontend:", err)
-	}
+func (f *Frontend) Stop() <-chan error {
+	c := make(chan error)
+	go func() {
+		if err := f.srv.Shutdown(context.Background()); err != nil {
+			c <- err
+		} else {
+			close(c)
+		}
+	}()
+
+	return c
 }
 
-func (t *Frontend) handler() http.Handler {
+func (f *Frontend) handler() http.Handler {
 	router := httprouter.New()
-	router.GET("/announce", t.announceRoute)
-	router.GET("/scrape", t.scrapeRoute)
+	router.GET("/announce", f.announceRoute)
+	router.GET("/scrape", f.scrapeRoute)
 	return router
 }
 
-// ListenAndServe listens on the TCP network address t.Addr and blocks serving
-// BitTorrent requests until t.Stop() is called or an error is returned.
-func (t *Frontend) ListenAndServe() error {
-	t.s = &http.Server{
-		Addr:         t.Addr,
-		Handler:      t.handler(),
-		ReadTimeout:  t.ReadTimeout,
-		WriteTimeout: t.WriteTimeout,
-		ConnState: func(conn net.Conn, state http.ConnState) {
-			switch state {
-			case http.StateNew:
-				//stats.RecordEvent(stats.AcceptedConnection)
-
-			case http.StateClosed:
-				//stats.RecordEvent(stats.ClosedConnection)
-
-			case http.StateHijacked:
-				panic("http: connection impossibly hijacked")
-
-			// Ignore the following cases.
-			case http.StateActive, http.StateIdle:
-
-			default:
-				panic("http: connection transitioned to unknown state")
-			}
-		},
-	}
-	t.s.SetKeepAlivesEnabled(false)
-
-	// If TLS is enabled, create a key pair and add it to the HTTP server.
-	if t.Config.TLSCertPath != "" && t.Config.TLSKeyPath != "" {
-		var err error
-		tlsCfg := &tls.Config{
-			Certificates: make([]tls.Certificate, 1),
-		}
-		tlsCfg.Certificates[0], err = tls.LoadX509KeyPair(t.Config.TLSCertPath, t.Config.TLSKeyPath)
-		if err != nil {
-			return err
-		}
-		t.s.TLSConfig = tlsCfg
+// listenAndServe blocks while listening and serving HTTP BitTorrent requests
+// until Stop() is called or an error is returned.
+func (f *Frontend) listenAndServe() error {
+	f.srv = &http.Server{
+		Addr:         f.Addr,
+		TLSConfig:    f.tlsCfg,
+		Handler:      f.handler(),
+		ReadTimeout:  f.ReadTimeout,
+		WriteTimeout: f.WriteTimeout,
 	}
 
-	// Start the HTTP server and gracefully handle any network errors.
-	if err := t.s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		return errors.New("http: failed to run HTTP server: " + err.Error())
+	// Disable KeepAlives.
+	f.srv.SetKeepAlivesEnabled(false)
+
+	// Start the HTTP server.
+	if err := f.srv.ListenAndServe(); err != http.ErrServerClosed {
+		return err
 	}
 
 	return nil
 }
 
-// announceRoute parses and responds to an Announce by using t.TrackerLogic.
-func (t *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+// announceRoute parses and responds to an Announce.
+func (f *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	var err error
 	start := time.Now()
 	var af *bittorrent.AddressFamily
 	defer func() { recordResponseDuration("announce", af, err, time.Since(start)) }()
 
-	req, err := ParseAnnounce(r, t.RealIPHeader, t.AllowIPSpoofing)
+	req, err := ParseAnnounce(r, f.RealIPHeader, f.AllowIPSpoofing)
 	if err != nil {
 		WriteError(w, err)
 		return
@@ -167,7 +167,7 @@ func (t *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, _ httpr
 	af = new(bittorrent.AddressFamily)
 	*af = req.IP.AddressFamily
 
-	resp, err := t.logic.HandleAnnounce(context.Background(), req)
+	resp, err := f.logic.HandleAnnounce(context.Background(), req)
 	if err != nil {
 		WriteError(w, err)
 		return
@@ -179,11 +179,11 @@ func (t *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, _ httpr
 		return
 	}
 
-	go t.logic.AfterAnnounce(context.Background(), req, resp)
+	go f.logic.AfterAnnounce(context.Background(), req, resp)
 }
 
-// scrapeRoute parses and responds to a Scrape by using t.TrackerLogic.
-func (t *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+// scrapeRoute parses and responds to a Scrape.
+func (f *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	var err error
 	start := time.Now()
 	var af *bittorrent.AddressFamily
@@ -215,7 +215,7 @@ func (t *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprou
 	af = new(bittorrent.AddressFamily)
 	*af = req.AddressFamily
 
-	resp, err := t.logic.HandleScrape(context.Background(), req)
+	resp, err := f.logic.HandleScrape(context.Background(), req)
 	if err != nil {
 		WriteError(w, err)
 		return
@@ -227,5 +227,5 @@ func (t *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprou
 		return
 	}
 
-	go t.logic.AfterScrape(context.Background(), req, resp)
+	go f.logic.AfterScrape(context.Background(), req, resp)
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/frontend"
 	"github.com/chihaya/chihaya/frontend/udp/bytepool"
+	"github.com/chihaya/chihaya/pkg/stop"
 )
 
 var allowedGeneratedPrivateKeyRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
@@ -82,8 +83,9 @@ type Frontend struct {
 	Config
 }
 
-// NewFrontend allocates a new instance of a Frontend.
-func NewFrontend(logic frontend.TrackerLogic, cfg Config) *Frontend {
+// NewFrontend creates a new instance of an UDP Frontend that asynchronously
+// serves requests.
+func NewFrontend(logic frontend.TrackerLogic, cfg Config) (*Frontend, error) {
 	// Generate a private key if one isn't provided by the user.
 	if cfg.PrivateKey == "" {
 		rand.Seed(time.Now().UnixNano())
@@ -96,40 +98,68 @@ func NewFrontend(logic frontend.TrackerLogic, cfg Config) *Frontend {
 		log.Warn("UDP private key was not provided, using generated key: ", cfg.PrivateKey)
 	}
 
-	return &Frontend{
+	f := &Frontend{
 		closing: make(chan struct{}),
 		logic:   logic,
 		Config:  cfg,
 	}
+
+	go func() {
+		if err := f.listenAndServe(); err != nil {
+			log.Fatal("failed while serving udp: " + err.Error())
+		}
+	}()
+
+	return f, nil
 }
 
 // Stop provides a thread-safe way to shutdown a currently running Frontend.
-func (t *Frontend) Stop() {
-	close(t.closing)
-	t.socket.SetReadDeadline(time.Now())
-	t.wg.Wait()
+func (t *Frontend) Stop() <-chan error {
+	select {
+	case <-t.closing:
+		return stop.AlreadyStopped
+	default:
+	}
+
+	c := make(chan error)
+	go func() {
+		close(t.closing)
+		t.socket.SetReadDeadline(time.Now())
+		t.wg.Wait()
+		if err := t.socket.Close(); err != nil {
+			c <- err
+		} else {
+			close(c)
+		}
+	}()
+
+	return c
 }
 
-// ListenAndServe listens on the UDP network address t.Addr and blocks serving
-// BitTorrent requests until t.Stop() is called or an error is returned.
-func (t *Frontend) ListenAndServe() error {
+// listenAndServe blocks while listening and serving UDP BitTorrent requests
+// until Stop() is called or an error is returned.
+func (t *Frontend) listenAndServe() error {
 	udpAddr, err := net.ResolveUDPAddr("udp", t.Addr)
 	if err != nil {
 		return err
 	}
 
+	log.Debugf("listening on udp socket")
 	t.socket, err = net.ListenUDP("udp", udpAddr)
 	if err != nil {
 		return err
 	}
-	defer t.socket.Close()
 
 	pool := bytepool.New(2048)
+
+	t.wg.Add(1)
+	defer t.wg.Done()
 
 	for {
 		// Check to see if we need to shutdown.
 		select {
 		case <-t.closing:
+			log.Debugf("returning from udp listen&serve")
 			return nil
 		default:
 		}
