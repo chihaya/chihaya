@@ -547,6 +547,9 @@ func (s *peerStore) collectGarbage(cutoff time.Time) error {
 						delete(shard.swarms[ih].leechers[subnet], pk)
 					}
 				}
+				if len(shard.swarms[ih].leechers[subnet]) == 0 {
+					delete(shard.swarms[ih].leechers, subnet)
+				}
 			}
 
 			for subnet := range shard.swarms[ih].seeders {
@@ -554,6 +557,9 @@ func (s *peerStore) collectGarbage(cutoff time.Time) error {
 					if mtime <= cutoffUnix {
 						delete(shard.swarms[ih].seeders[subnet], pk)
 					}
+				}
+				if len(shard.swarms[ih].seeders[subnet]) == 0 {
+					delete(shard.swarms[ih].seeders, subnet)
 				}
 			}
 
