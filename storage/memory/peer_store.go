@@ -28,13 +28,13 @@ func init() {
 }
 
 var promGCDurationMilliseconds = prometheus.NewHistogram(prometheus.HistogramOpts{
-	Name:    "chihaya_storage_gc_duration_milliseconds",
+	Name:    "chihaya_storage_memory_gc_duration_milliseconds",
 	Help:    "The time it takes to perform storage garbage collection",
 	Buckets: prometheus.ExponentialBuckets(9.375, 2, 10),
 })
 
 var promInfohashesCount = prometheus.NewGauge(prometheus.GaugeOpts{
-	Name: "chihaya_storage_infohashes_count",
+	Name: "chihaya_storage_memory_infohashes_count",
 	Help: "The number of infohashes tracked",
 })
 
