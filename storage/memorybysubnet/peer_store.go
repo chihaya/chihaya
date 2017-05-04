@@ -133,18 +133,14 @@ type swarm struct {
 
 func (s swarm) lenSeeders() (i int) {
 	for _, subnet := range s.seeders {
-		for range subnet {
-			i++
-		}
+		i += len(subnet)
 	}
 	return
 }
 
 func (s swarm) lenLeechers() (i int) {
 	for _, subnet := range s.leechers {
-		for range subnet {
-			i++
-		}
+		i += len(subnet)
 	}
 	return
 }
