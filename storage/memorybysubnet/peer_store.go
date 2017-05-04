@@ -73,11 +73,11 @@ var ErrInvalidGCInterval = errors.New("invalid garbage collection interval")
 
 // Config holds the configuration of a memory PeerStore.
 type Config struct {
-	GarbageCollectionInterval   time.Duration `yaml:"gc_interval"`
-	PeerLifetime                time.Duration `yaml:"peer_lifetime"`
-	ShardCount                  int           `yaml:"shard_count"`
-	PreferredIPv4SubnetMaskBits int           `yaml:"preferred_ipv4_subnet_mask_bits"`
-	PreferredIPv6SubnetMaskBits int           `yaml:"preferred_ipv6_subnet_mask_bits"`
+	GarbageCollectionInterval      time.Duration `yaml:"gc_interval"`
+	PeerLifetime                   time.Duration `yaml:"peer_lifetime"`
+	ShardCount                     int           `yaml:"shard_count"`
+	PreferredIPv4SubnetMaskBitsSet int           `yaml:"preferred_ipv4_subnet_mask_bits_set"`
+	PreferredIPv6SubnetMaskBitsSet int           `yaml:"preferred_ipv6_subnet_mask_bits_set"`
 }
 
 // New creates a new PeerStore backed by memory.
@@ -94,8 +94,8 @@ func New(cfg Config) (storage.PeerStore, error) {
 	ps := &peerStore{
 		shards:   make([]*peerShard, shardCount*2),
 		closed:   make(chan struct{}),
-		ipv4Mask: net.CIDRMask(cfg.PreferredIPv4SubnetMaskBits, 32),
-		ipv6Mask: net.CIDRMask(cfg.PreferredIPv6SubnetMaskBits, 128),
+		ipv4Mask: net.CIDRMask(cfg.PreferredIPv4SubnetMaskBitsSet, 32),
+		ipv6Mask: net.CIDRMask(cfg.PreferredIPv6SubnetMaskBitsSet, 128),
 	}
 
 	for i := 0; i < shardCount*2; i++ {
