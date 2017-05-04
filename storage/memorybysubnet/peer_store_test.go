@@ -2,14 +2,16 @@ package memorybysubnet
 
 import (
 	"testing"
-
 	"time"
 
 	s "github.com/chihaya/chihaya/storage"
 )
 
 func createNew() s.PeerStore {
-	ps, err := New(Config{ShardCount: 1024, GarbageCollectionInterval: 10 * time.Minute})
+	ps, err := New(Config{
+		ShardCount:                1024,
+		GarbageCollectionInterval: 10 * time.Minute,
+	})
 	if err != nil {
 		panic(err)
 	}

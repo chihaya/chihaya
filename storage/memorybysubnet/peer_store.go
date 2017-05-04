@@ -94,8 +94,8 @@ func New(cfg Config) (storage.PeerStore, error) {
 	ps := &peerStore{
 		shards:   make([]*peerShard, shardCount*2),
 		closed:   make(chan struct{}),
-		ipv4Mask: cfg.PreferredIPv4SubnetMaskBits,
-		ipv6Mask: cfg.PreferredIPv6SubnetMaskBits,
+		ipv4Mask: net.CIDRMask(cfg.PreferredIPv4SubnetMaskBits, 32),
+		ipv6Mask: net.CIDRMask(cfg.PreferredIPv6SubnetMaskBits, 128),
 	}
 
 	for i := 0; i < shardCount*2; i++ {
@@ -152,8 +152,8 @@ func (s swarm) lenLeechers() (i int) {
 type peerStore struct {
 	shards   []*peerShard
 	closed   chan struct{}
-	ipv4Mask int
-	ipv6Mask int
+	ipv4Mask net.IPMask
+	ipv6Mask net.IPMask
 }
 
 var _ storage.PeerStore = &peerStore{}
@@ -200,9 +200,9 @@ func (s *peerStore) mask(p bittorrent.Peer) string {
 	var maskedIP net.IP
 	switch p.IP.AddressFamily {
 	case bittorrent.IPv4:
-		maskedIP = p.IP.IP.Mask(net.CIDRMask(s.ipv4Mask, 32))
+		maskedIP = p.IP.IP.Mask(s.ipv4Mask)
 	case bittorrent.IPv6:
-		maskedIP = p.IP.IP.Mask(net.CIDRMask(s.ipv6Mask, 128))
+		maskedIP = p.IP.IP.Mask(s.ipv6Mask)
 	default:
 		panic("IP is neither v4 nor v6")
 	}
@@ -554,7 +554,7 @@ func (s *peerStore) collectGarbage(cutoff time.Time) error {
 			}
 
 			for subnet := range shard.swarms[ih].seeders {
-				for pk, mtime := range shard.swarms[ih].leechers[subnet] {
+				for pk, mtime := range shard.swarms[ih].seeders[subnet] {
 					if mtime <= cutoffUnix {
 						delete(shard.swarms[ih].seeders[subnet], pk)
 					}
