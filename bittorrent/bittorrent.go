@@ -6,6 +6,8 @@ package bittorrent
 import (
 	"net"
 	"time"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 // PeerID represents a peer ID.
@@ -22,6 +24,10 @@ func PeerIDFromBytes(b []byte) PeerID {
 	var buf [20]byte
 	copy(buf[:], b)
 	return PeerID(buf)
+}
+
+func (p PeerID) String() string {
+	return string(p[:])
 }
 
 // PeerIDFromString creates a PeerID from a string.
@@ -66,6 +72,10 @@ func InfoHashFromString(s string) InfoHash {
 	return InfoHash(buf)
 }
 
+func (i InfoHash) String() string {
+	return string(i[:])
+}
+
 // AnnounceRequest represents the parsed parameters from an announce request.
 type AnnounceRequest struct {
 	Event      Event
@@ -92,6 +102,18 @@ type AnnounceResponse struct {
 	IPv6Peers   []Peer
 }
 
+// LogFields renders the current response as a set of Logrus fields.
+func (ar AnnounceResponse) LogFields() log.Fields {
+	return log.Fields{
+		"compact":     ar.Compact,
+		"complete":    ar.Complete,
+		"interval":    ar.Interval,
+		"minInterval": ar.MinInterval,
+		"ipv4Peers":   ar.IPv4Peers,
+		"ipv6Peers":   ar.IPv6Peers,
+	}
+}
+
 // ScrapeRequest represents the parsed parameters from a scrape request.
 type ScrapeRequest struct {
 	AddressFamily AddressFamily
@@ -105,6 +127,13 @@ type ScrapeRequest struct {
 // ScrapeRequest.
 type ScrapeResponse struct {
 	Files []Scrape
+}
+
+// LogFields renders the current response as a set of Logrus fields.
+func (sr ScrapeResponse) LogFields() log.Fields {
+	return log.Fields{
+		"files": sr.Files,
+	}
 }
 
 // Scrape represents the state of a swarm that is returned in a scrape response.

@@ -71,6 +71,19 @@ type Config struct {
 	TLSKeyPath      string        `yaml:"tls_key_path"`
 }
 
+// LogFields renders the current config as a set of Logrus fields.
+func (cfg Config) LogFields() log.Fields {
+	return log.Fields{
+		"addr":            cfg.Addr,
+		"readTimeout":     cfg.ReadTimeout,
+		"writeTimeout":    cfg.WriteTimeout,
+		"allowIPSpoofing": cfg.AllowIPSpoofing,
+		"realIPHeader":    cfg.RealIPHeader,
+		"tlsCertPath":     cfg.TLSCertPath,
+		"tlsKeyPath":      cfg.TLSKeyPath,
+	}
+}
+
 // Frontend represents the state of an HTTP BitTorrent Frontend.
 type Frontend struct {
 	srv    *http.Server
