@@ -183,6 +183,11 @@ func main() {
 		Short: "BitTorrent Tracker",
 		Long:  "A customizable, multi-protocol BitTorrent Tracker",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			jsonLog, _ := cmd.Flags().GetBool("json")
+			if jsonLog {
+				log.SetFormatter(&log.JSONFormatter{})
+			}
+
 			debugLog, _ := cmd.Flags().GetBool("debug")
 			if debugLog {
 				log.Info("enabling debug logging")
@@ -194,6 +199,7 @@ func main() {
 	rootCmd.Flags().String("config", "/etc/chihaya.yaml", "location of configuration file")
 	rootCmd.Flags().String("cpuprofile", "", "location to save a CPU profile")
 	rootCmd.Flags().Bool("debug", false, "enable debug logging")
+	rootCmd.Flags().Bool("json", false, "enable json logging")
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal("failed when executing root cobra command: " + err.Error())
