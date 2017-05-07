@@ -52,6 +52,15 @@ type Config struct {
 	ShardCount                int           `yaml:"shard_count"`
 }
 
+// LogFields renders the current config as a set of Logrus fields.
+func (cfg Config) LogFields() log.Fields {
+	return log.Fields{
+		"gcInterval":   cfg.GarbageCollectionInterval,
+		"peerLifetime": cfg.PeerLifetime,
+		"shardCount":   cfg.ShardCount,
+	}
+}
+
 // New creates a new PeerStore backed by memory.
 func New(cfg Config) (storage.PeerStore, error) {
 	shardCount := 1

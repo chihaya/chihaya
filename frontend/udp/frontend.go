@@ -73,6 +73,16 @@ type Config struct {
 	AllowIPSpoofing bool          `yaml:"allow_ip_spoofing"`
 }
 
+// LogFields renders the current config as a set of Logrus fields.
+func (cfg Config) LogFields() log.Fields {
+	return log.Fields{
+		"addr":            cfg.Addr,
+		"privateKey":      cfg.PrivateKey,
+		"maxClockSkew":    cfg.MaxClockSkew,
+		"allowIPSpoofing": cfg.AllowIPSpoofing,
+	}
+}
+
 // Frontend holds the state of a UDP BitTorrent Frontend.
 type Frontend struct {
 	socket  *net.UDPConn
@@ -144,7 +154,6 @@ func (t *Frontend) listenAndServe() error {
 		return err
 	}
 
-	log.Debugf("listening on udp socket")
 	t.socket, err = net.ListenUDP("udp", udpAddr)
 	if err != nil {
 		return err
@@ -159,7 +168,7 @@ func (t *Frontend) listenAndServe() error {
 		// Check to see if we need to shutdown.
 		select {
 		case <-t.closing:
-			log.Debugf("returning from udp listen&serve")
+			log.Debug("udp listenAndServe() received shutdown signal")
 			return nil
 		default:
 		}

@@ -61,6 +61,7 @@ func (l *Logic) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequ
 		}
 	}
 
+	log.WithFields(resp.LogFields()).Debug("generated announce response")
 	return resp, nil
 }
 
@@ -87,6 +88,7 @@ func (l *Logic) HandleScrape(ctx context.Context, req *bittorrent.ScrapeRequest)
 		}
 	}
 
+	log.WithFields(resp.LogFields()).Debug("generated scrape response")
 	return resp, nil
 }
 

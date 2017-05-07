@@ -45,17 +45,15 @@ func (r *Run) Start(ps storage.PeerStore) error {
 	if err != nil {
 		return errors.New("failed to read config: " + err.Error())
 	}
-
 	cfg := configFile.Chihaya
-	preHooks, postHooks, err := cfg.CreateHooks()
-	if err != nil {
-		return errors.New("failed to validate hook config: " + err.Error())
-	}
 
 	r.sg = stop.NewGroup()
+
+	log.WithFields(log.Fields{"addr": cfg.PrometheusAddr}).Info("starting Prometheus server")
 	r.sg.Add(prometheus.NewServer(cfg.PrometheusAddr))
 
 	if ps == nil {
+		log.WithFields(cfg.Storage.LogFields()).Info("starting storage")
 		ps, err = memory.New(cfg.Storage)
 		if err != nil {
 			return errors.New("failed to create memory storage: " + err.Error())
@@ -63,9 +61,18 @@ func (r *Run) Start(ps storage.PeerStore) error {
 	}
 	r.peerStore = ps
 
+	preHooks, postHooks, err := cfg.CreateHooks()
+	if err != nil {
+		return errors.New("failed to validate hook config: " + err.Error())
+	}
+	log.WithFields(log.Fields{
+		"preHooks":  preHooks,
+		"postHooks": postHooks,
+	}).Info("starting middleware")
 	r.logic = middleware.NewLogic(cfg.Config, r.peerStore, preHooks, postHooks)
 
 	if cfg.HTTPConfig.Addr != "" {
+		log.WithFields(cfg.HTTPConfig.LogFields()).Info("starting HTTP frontend")
 		httpfe, err := http.NewFrontend(r.logic, cfg.HTTPConfig)
 		if err != nil {
 			return err
@@ -74,6 +81,7 @@ func (r *Run) Start(ps storage.PeerStore) error {
 	}
 
 	if cfg.UDPConfig.Addr != "" {
+		log.WithFields(cfg.UDPConfig.LogFields()).Info("starting UDP frontend")
 		udpfe, err := udp.NewFrontend(r.logic, cfg.UDPConfig)
 		if err != nil {
 			return err
@@ -121,7 +129,7 @@ func (r *Run) Stop(keepPeerStore bool) (storage.PeerStore, error) {
 func RunCmdFunc(cmd *cobra.Command, args []string) error {
 	cpuProfilePath, _ := cmd.Flags().GetString("cpuprofile")
 	if cpuProfilePath != "" {
-		log.Infoln("enabled CPU profiling to", cpuProfilePath)
+		log.WithFields(log.Fields{"path": cpuProfilePath}).Info("enabling CPU profiling")
 		f, err := os.Create(cpuProfilePath)
 		if err != nil {
 			return err
@@ -149,7 +157,7 @@ func RunCmdFunc(cmd *cobra.Command, args []string) error {
 	for {
 		select {
 		case <-reload:
-			log.Info("received SIGUSR1")
+			log.Info("reloading; received SIGUSR1")
 			peerStore, err := r.Stop(true)
 			if err != nil {
 				return err
@@ -159,7 +167,7 @@ func RunCmdFunc(cmd *cobra.Command, args []string) error {
 				return err
 			}
 		case <-quit:
-			log.Info("received SIGINT/SIGTERM")
+			log.Info("shutting down; received SIGINT/SIGTERM")
 			if _, err := r.Stop(false); err != nil {
 				return err
 			}
@@ -175,10 +183,15 @@ func main() {
 		Short: "BitTorrent Tracker",
 		Long:  "A customizable, multi-protocol BitTorrent Tracker",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			jsonLog, _ := cmd.Flags().GetBool("json")
+			if jsonLog {
+				log.SetFormatter(&log.JSONFormatter{})
+			}
+
 			debugLog, _ := cmd.Flags().GetBool("debug")
 			if debugLog {
+				log.Info("enabling debug logging")
 				log.SetLevel(log.DebugLevel)
-				log.Debugln("debug logging enabled")
 			}
 		},
 		RunE: RunCmdFunc,
@@ -186,6 +199,7 @@ func main() {
 	rootCmd.Flags().String("config", "/etc/chihaya.yaml", "location of configuration file")
 	rootCmd.Flags().String("cpuprofile", "", "location to save a CPU profile")
 	rootCmd.Flags().Bool("debug", false, "enable debug logging")
+	rootCmd.Flags().Bool("json", false, "enable json logging")
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal("failed when executing root cobra command: " + err.Error())
