@@ -127,17 +127,6 @@ func (r *Run) Stop(keepPeerStore bool) (storage.PeerStore, error) {
 // RunCmdFunc implements a Cobra command that runs an instance of Chihaya and
 // handles reloading and shutdown via process signals.
 func RunCmdFunc(cmd *cobra.Command, args []string) error {
-	cpuProfilePath, _ := cmd.Flags().GetString("cpuprofile")
-	if cpuProfilePath != "" {
-		log.WithFields(log.Fields{"path": cpuProfilePath}).Info("enabling CPU profiling")
-		f, err := os.Create(cpuProfilePath)
-		if err != nil {
-			return err
-		}
-		pprof.StartCPUProfile(f)
-		defer pprof.StopCPUProfile()
-	}
-
 	configFilePath, err := cmd.Flags().GetString("config")
 	if err != nil {
 		return err
@@ -182,19 +171,45 @@ func main() {
 		Use:   "chihaya",
 		Short: "BitTorrent Tracker",
 		Long:  "A customizable, multi-protocol BitTorrent Tracker",
-		PersistentPreRun: func(cmd *cobra.Command, args []string) {
-			jsonLog, _ := cmd.Flags().GetBool("json")
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			jsonLog, err := cmd.Flags().GetBool("json")
+			if err != nil {
+				return err
+			}
 			if jsonLog {
 				log.SetFormatter(&log.JSONFormatter{})
 			}
 
-			debugLog, _ := cmd.Flags().GetBool("debug")
+			debugLog, err := cmd.Flags().GetBool("debug")
+			if err != nil {
+				return err
+			}
 			if debugLog {
 				log.Info("enabling debug logging")
 				log.SetLevel(log.DebugLevel)
 			}
+
+			cpuProfilePath, err := cmd.Flags().GetString("cpuprofile")
+			if err != nil {
+				return err
+			}
+			if cpuProfilePath != "" {
+				log.WithFields(log.Fields{"path": cpuProfilePath}).Info("enabling CPU profiling")
+				f, err := os.Create(cpuProfilePath)
+				if err != nil {
+					return err
+				}
+				pprof.StartCPUProfile(f)
+			}
+
+			return nil
 		},
 		RunE: RunCmdFunc,
+		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
+			// StopCPUProfile() noops when not profiling.
+			pprof.StopCPUProfile()
+			return nil
+		},
 	}
 	rootCmd.Flags().String("config", "/etc/chihaya.yaml", "location of configuration file")
 	rootCmd.Flags().String("cpuprofile", "", "location to save a CPU profile")
