@@ -9,7 +9,7 @@ import (
 )
 
 func createNew() s.PeerStore {
-	ps, err := New(Config{ShardCount: 1024, GarbageCollectionInterval: 10 * time.Minute})
+	ps, err := New(Config{ShardCount: 1024, GarbageCollectionInterval: 10 * time.Minute, PrometheusReportingInterval: 10 * time.Minute})
 	if err != nil {
 		panic(err)
 	}
