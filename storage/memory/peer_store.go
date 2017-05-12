@@ -63,9 +63,12 @@ func (cfg Config) LogFields() log.Fields {
 
 // New creates a new PeerStore backed by memory.
 func New(cfg Config) (storage.PeerStore, error) {
-	shardCount := 1
+	var shardCount int
 	if cfg.ShardCount > 0 {
 		shardCount = cfg.ShardCount
+	} else {
+		log.Warnln("storage: shardCount not configured, using 1 as default value.")
+		shardCount = 1
 	}
 
 	if cfg.GarbageCollectionInterval <= 0 {
