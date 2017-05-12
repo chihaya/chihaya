@@ -62,25 +62,27 @@ func recordResponseDuration(action string, af *bittorrent.AddressFamily, err err
 // Config represents all of the configurable options for an HTTP BitTorrent
 // Frontend.
 type Config struct {
-	Addr            string        `yaml:"addr"`
-	ReadTimeout     time.Duration `yaml:"read_timeout"`
-	WriteTimeout    time.Duration `yaml:"write_timeout"`
-	AllowIPSpoofing bool          `yaml:"allow_ip_spoofing"`
-	RealIPHeader    string        `yaml:"real_ip_header"`
-	TLSCertPath     string        `yaml:"tls_cert_path"`
-	TLSKeyPath      string        `yaml:"tls_key_path"`
+	Addr                string        `yaml:"addr"`
+	ReadTimeout         time.Duration `yaml:"read_timeout"`
+	WriteTimeout        time.Duration `yaml:"write_timeout"`
+	AllowIPSpoofing     bool          `yaml:"allow_ip_spoofing"`
+	RealIPHeader        string        `yaml:"real_ip_header"`
+	TLSCertPath         string        `yaml:"tls_cert_path"`
+	TLSKeyPath          string        `yaml:"tls_key_path"`
+	EnableRequestTiming bool          `yaml:"enable_request_timing"`
 }
 
 // LogFields renders the current config as a set of Logrus fields.
 func (cfg Config) LogFields() log.Fields {
 	return log.Fields{
-		"addr":            cfg.Addr,
-		"readTimeout":     cfg.ReadTimeout,
-		"writeTimeout":    cfg.WriteTimeout,
-		"allowIPSpoofing": cfg.AllowIPSpoofing,
-		"realIPHeader":    cfg.RealIPHeader,
-		"tlsCertPath":     cfg.TLSCertPath,
-		"tlsKeyPath":      cfg.TLSKeyPath,
+		"addr":                cfg.Addr,
+		"readTimeout":         cfg.ReadTimeout,
+		"writeTimeout":        cfg.WriteTimeout,
+		"allowIPSpoofing":     cfg.AllowIPSpoofing,
+		"realIPHeader":        cfg.RealIPHeader,
+		"tlsCertPath":         cfg.TLSCertPath,
+		"tlsKeyPath":          cfg.TLSKeyPath,
+		"enableRequestTiming": cfg.EnableRequestTiming,
 	}
 }
 
@@ -168,9 +170,18 @@ func (f *Frontend) listenAndServe() error {
 // announceRoute parses and responds to an Announce.
 func (f *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	var err error
-	start := time.Now()
+	var start time.Time
+	if f.EnableRequestTiming {
+		start = time.Now()
+	}
 	var af *bittorrent.AddressFamily
-	defer func() { recordResponseDuration("announce", af, err, time.Since(start)) }()
+	defer func() {
+		if f.EnableRequestTiming {
+			recordResponseDuration("announce", af, err, time.Since(start))
+		} else {
+			recordResponseDuration("announce", af, err, time.Duration(0))
+		}
+	}()
 
 	req, err := ParseAnnounce(r, f.RealIPHeader, f.AllowIPSpoofing)
 	if err != nil {
@@ -198,9 +209,18 @@ func (f *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, _ httpr
 // scrapeRoute parses and responds to a Scrape.
 func (f *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	var err error
-	start := time.Now()
+	var start time.Time
+	if f.EnableRequestTiming {
+		start = time.Now()
+	}
 	var af *bittorrent.AddressFamily
-	defer func() { recordResponseDuration("scrape", af, err, time.Since(start)) }()
+	defer func() {
+		if f.EnableRequestTiming {
+			recordResponseDuration("scrape", af, err, time.Since(start))
+		} else {
+			recordResponseDuration("scrape", af, err, time.Duration(0))
+		}
+	}()
 
 	req, err := ParseScrape(r)
 	if err != nil {

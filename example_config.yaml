@@ -40,6 +40,10 @@ chihaya:
     read_timeout: 5s
     write_timeout: 5s
 
+    # Whether to time requests.
+    # Disabling this should increase performance/decrease load.
+    enable_request_timing: false
+
   # This block defines configuration for the tracker's UDP interface.
   # If you do not wish to run this, delete this section.
   udp:
@@ -56,6 +60,10 @@ chihaya:
 
     # The key used to encrypt connection IDs.
     private_key: "paste a random string here that will be used to hmac connection IDs"
+
+    # Whether to time requests.
+    # Disabling this should increase performance/decrease load.
+    enable_request_timing: false
 
   # This block defines configuration used for the storage of peer data.
   storage:

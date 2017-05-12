@@ -67,19 +67,21 @@ func recordResponseDuration(action string, af *bittorrent.AddressFamily, err err
 // Config represents all of the configurable options for a UDP BitTorrent
 // Tracker.
 type Config struct {
-	Addr            string        `yaml:"addr"`
-	PrivateKey      string        `yaml:"private_key"`
-	MaxClockSkew    time.Duration `yaml:"max_clock_skew"`
-	AllowIPSpoofing bool          `yaml:"allow_ip_spoofing"`
+	Addr                string        `yaml:"addr"`
+	PrivateKey          string        `yaml:"private_key"`
+	MaxClockSkew        time.Duration `yaml:"max_clock_skew"`
+	AllowIPSpoofing     bool          `yaml:"allow_ip_spoofing"`
+	EnableRequestTiming bool          `yaml:"enable_request_timing"`
 }
 
 // LogFields renders the current config as a set of Logrus fields.
 func (cfg Config) LogFields() log.Fields {
 	return log.Fields{
-		"addr":            cfg.Addr,
-		"privateKey":      cfg.PrivateKey,
-		"maxClockSkew":    cfg.MaxClockSkew,
-		"allowIPSpoofing": cfg.AllowIPSpoofing,
+		"addr":                cfg.Addr,
+		"privateKey":          cfg.PrivateKey,
+		"maxClockSkew":        cfg.MaxClockSkew,
+		"allowIPSpoofing":     cfg.AllowIPSpoofing,
+		"enableRequestTiming": cfg.EnableRequestTiming,
 	}
 }
 
@@ -201,13 +203,20 @@ func (t *Frontend) listenAndServe() error {
 			}
 
 			// Handle the request.
-			start := time.Now()
+			var start time.Time
+			if t.EnableRequestTiming {
+				start = time.Now()
+			}
 			action, af, err := t.handleRequest(
 				// Make sure the IP is copied, not referenced.
 				Request{buffer[:n], append([]byte{}, addr.IP...)},
 				ResponseWriter{t.socket, addr},
 			)
-			recordResponseDuration(action, af, err, time.Since(start))
+			if t.EnableRequestTiming {
+				recordResponseDuration(action, af, err, time.Since(start))
+			} else {
+				recordResponseDuration(action, af, err, time.Duration(0))
+			}
 		}()
 	}
 }
