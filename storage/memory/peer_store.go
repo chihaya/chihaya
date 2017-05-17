@@ -6,6 +6,7 @@ import (
 	"net"
 	"runtime"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	log "github.com/Sirupsen/logrus"
@@ -99,6 +100,25 @@ func New(cfg Config) (storage.PeerStore, error) {
 		}
 	}()
 
+	ps.wg.Add(1)
+	go func() {
+		defer ps.wg.Done()
+		t := time.NewTicker(1 * time.Second)
+		for {
+			select {
+			case <-ps.closing:
+				t.Stop()
+				select {
+				case <-t.C:
+				default:
+				}
+				return
+			case now := <-t.C:
+				ps.setClock(now.UnixNano())
+			}
+		}
+	}()
+
 	return ps, nil
 }
 
@@ -118,10 +138,21 @@ type swarm struct {
 type peerStore struct {
 	shards  []*peerShard
 	closing chan struct{}
-	wg      sync.WaitGroup
+	// clock stores the current time nanoseconds, updated every second.
+	// Must be accessed atomically!
+	clock int64
+	wg    sync.WaitGroup
 }
 
 var _ storage.PeerStore = &peerStore{}
+
+func (ps *peerStore) getClock() int64 {
+	return atomic.LoadInt64(&ps.clock)
+}
+
+func (ps *peerStore) setClock(to int64) {
+	atomic.StoreInt64(&ps.clock, to)
+}
 
 func (ps *peerStore) shardIndex(infoHash bittorrent.InfoHash, af bittorrent.AddressFamily) uint32 {
 	// There are twice the amount of shards specified by the user, the first
@@ -181,7 +212,7 @@ func (ps *peerStore) PutSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) error 
 		recordInfohashesDelta(1)
 	}
 
-	shard.swarms[ih].seeders[pk] = time.Now().UnixNano()
+	shard.swarms[ih].seeders[pk] = ps.getClock()
 
 	shard.Unlock()
 	return nil
@@ -240,7 +271,7 @@ func (ps *peerStore) PutLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) error
 		recordInfohashesDelta(1)
 	}
 
-	shard.swarms[ih].leechers[pk] = time.Now().UnixNano()
+	shard.swarms[ih].leechers[pk] = ps.getClock()
 
 	shard.Unlock()
 	return nil
@@ -301,7 +332,7 @@ func (ps *peerStore) GraduateLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) 
 
 	delete(shard.swarms[ih].leechers, pk)
 
-	shard.swarms[ih].seeders[pk] = time.Now().UnixNano()
+	shard.swarms[ih].seeders[pk] = ps.getClock()
 
 	shard.Unlock()
 	return nil
