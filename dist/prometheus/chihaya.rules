@@ -1,0 +1,79 @@
+# Chihaya recording rules
+#
+# Recording rules are queries that will be evaluated by prometheus periodically.
+# They can be used to rename, aggregate, transform or decorate any of the time series available.
+# After evaluation, their results are saved and they can be treated like any other time series.
+# The rules provided below are entirely optional, but proven to be very useful for monitoring instances of Chihaya.
+# 
+# Set the global configuration fields scrape_interval and evaluation_interval to 5s for smooth evaluations.
+# All rules can (and should) be filtered or aggregated further.
+# They usually at least have the protocol, job, instance, and address_family fields.
+# Look at the chihaya:announce:rate1m rule for an example.
+
+#################################
+# Request/error rates
+
+# UDP request rate, no errors (good requests)
+chihaya:udp:requests:rate1m{protocol="udp"} = drop_common_labels(rate(chihaya_udp_response_duration_milliseconds_count{error=""}[1m]))
+chihaya:udp:requests:rate5m{protocol="udp"} = drop_common_labels(rate(chihaya_udp_response_duration_milliseconds_count{error=""}[5m]))
+
+# UDP error rate
+chihaya:udp:errors:rate1m{protocol="udp"} = drop_common_labels(rate(chihaya_udp_response_duration_milliseconds_count{error!=""}[1m]))
+chihaya:udp:errors:rate5m{protocol="udp"} = drop_common_labels(rate(chihaya_udp_response_duration_milliseconds_count{error!=""}[5m]))
+
+# HTTP request rate, no errors (good requests)
+chihaya:http:requests:rate1m{protocol="http"} = drop_common_labels(rate(chihaya_http_response_duration_milliseconds_count{error=""}[1m]))
+chihaya:http:requests:rate5m{protocol="http"} = drop_common_labels(rate(chihaya_http_response_duration_milliseconds_count{error=""}[5m]))
+
+# HTTP error rate
+chihaya:http:errors:rate1m{protocol="http"} = drop_common_labels(rate(chihaya_http_response_duration_milliseconds_count{error!=""}[1m]))
+chihaya:http:errors:rate5m{protocol="http"} = drop_common_labels(rate(chihaya_http_response_duration_milliseconds_count{error!=""}[5m]))
+
+# Total request rate, no errors (good requests)
+chihaya:requests:rate1m = sum(chihaya:udp:requests:rate1m) by (job,instance,address_family,protocol) or sum(chihaya:http:requests:rate1m) by (job,instance,address_family,protocol)
+chihaya:requests:rate5m = sum(chihaya:udp:requests:rate5m) by (job,instance,address_family,protocol) or sum(chihaya:http:requests:rate5m) by (job,instance,address_family,protocol)
+
+# Total error rate
+chihaya:errors:rate1m = sum(chihaya:udp:errors:rate1m) by (job,instance,address_family,protocol) or sum(chihaya:http:errors:rate1m) by (job,instance,address_family,protocol)
+chihaya:errors:rate5m = sum(chihaya:udp:errors:rate5m) by (job,instance,address_family,protocol) or sum(chihaya:http:errors:rate5m) by (job,instance,address_family,protocol)
+
+# Total announce rate, no errors (good announces)
+# Aggregate this for even more fun, for example:
+# sum(chihaya:announce:rate1m) without (protocol)
+chihaya:announce:rate1m = chihaya:udp:requests:rate1m{action="announce"} or chihaya:http:requests:rate1m{action="announce"}
+chihaya:announce:rate5m = chihaya:udp:requests:rate5m{action="announce"} or chihaya:http:requests:rate5m{action="announce"}
+
+# Total scrape rate, no errors (good scrapes)
+# Aggregate these for even more fun, for example:
+# sum(chihaya:scrape:rate1m) without (protocol)
+chihaya:scrape:rate1m = chihaya:udp:requests:rate1m{action="scrape"} or chihaya:http:requests:rate1m{action="scrape"}
+chihaya:scrape:rate5m = chihaya:udp:requests:rate5m{action="scrape"} or chihaya:http:requests:rate5m{action="scrape"}
+
+#################################
+# Latencies
+# These only work with request timing enabled.
+
+# UDP request latency, no errors (good requests)
+chihaya:udp:requests:latency:rate1m{protocol="udp"} = drop_common_labels(rate(chihaya_udp_response_duration_milliseconds_sum{error=""}[1m])/rate(chihaya_udp_response_duration_milliseconds_count{error=""}[1m]))
+chihaya:udp:requests:latency:rate5m{protocol="udp"} = drop_common_labels(rate(chihaya_udp_response_duration_milliseconds_sum{error=""}[5m])/rate(chihaya_udp_response_duration_milliseconds_count{error=""}[5m]))
+
+# UDP error latency
+chihaya:udp:errors:latency:rate1m{protocol="udp"} = drop_common_labels(rate(chihaya_udp_response_duration_milliseconds_sum{error!=""}[1m])/rate(chihaya_udp_response_duration_milliseconds_count{error!=""}[1m]))
+chihaya:udp:errors:latency:rate5m{protocol="udp"} = drop_common_labels(rate(chihaya_udp_response_duration_milliseconds_sum{error!=""}[5m])/rate(chihaya_udp_response_duration_milliseconds_count{error!=""}[5m]))
+
+# UDP latency of everything
+chihaya:udp:latency:rate1m = chihaya:udp:requests:latency:rate1m or chihaya:udp:errors:latency:rate1m
+chihaya:udp:latency:rate5m = chihaya:udp:requests:latency:rate5m or chihaya:udp:errors:latency:rate5m
+
+# HTTP request latency, no errors (good requests)
+chihaya:http:requests:latency:rate1m{protocol="http"} = drop_common_labels(rate(chihaya_http_response_duration_milliseconds_sum{error=""}[1m])/rate(chihaya_http_response_duration_milliseconds_count{error=""}[1m]))
+chihaya:http:requests:latency:rate5m{protocol="http"} = drop_common_labels(rate(chihaya_http_response_duration_milliseconds_sum{error=""}[5m])/rate(chihaya_http_response_duration_milliseconds_count{error=""}[5m]))
+
+# HTTP error latency
+chihaya:http:errors:latency:rate1m{protocol="http"} = drop_common_labels(rate(chihaya_http_response_duration_milliseconds_sum{error!=""}[1m])/rate(chihaya_http_response_duration_milliseconds_count{error!=""}[1m]))
+chihaya:http:errors:latency:rate5m{protocol="http"} = drop_common_labels(rate(chihaya_http_response_duration_milliseconds_sum{error!=""}[5m])/rate(chihaya_http_response_duration_milliseconds_count{error!=""}[5m]))
+
+# HTTP latency of everything
+chihaya:http:latency:rate1m = chihaya:http:requests:latency:rate1m or chihaya:http:errors:latency:rate1m
+chihaya:http:latency:rate5m = chihaya:http:requests:latency:rate1m or chihaya:http:errors:latency:rate1m
+
