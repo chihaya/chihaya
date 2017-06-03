@@ -66,8 +66,8 @@ func (r *Run) Start(ps storage.PeerStore) error {
 		return errors.New("failed to validate hook config: " + err.Error())
 	}
 	log.WithFields(log.Fields{
-		"preHooks":  preHooks,
-		"postHooks": postHooks,
+		"preHooks":  cfg.PreHooks.Names(),
+		"postHooks": cfg.PostHooks.Names(),
 	}).Info("starting middleware")
 	r.logic = middleware.NewLogic(cfg.Config, r.peerStore, preHooks, postHooks)
 

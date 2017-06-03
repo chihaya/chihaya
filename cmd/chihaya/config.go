@@ -21,6 +21,18 @@ type hookConfig struct {
 	Config interface{} `yaml:"config"`
 }
 
+type hookConfigs []hookConfig
+
+// Names returns all hook names listed in the configuration.
+func (hookCfgs hookConfigs) Names() (hookNames []string) {
+	hookNames = make([]string, len(hookCfgs))
+	for index, hookCfg := range hookCfgs {
+		hookNames[index] = hookCfg.Name
+	}
+
+	return
+}
+
 // Config represents the configuration used for executing Chihaya.
 type Config struct {
 	middleware.Config `yaml:",inline"`
@@ -28,8 +40,8 @@ type Config struct {
 	HTTPConfig        httpfrontend.Config `yaml:"http"`
 	UDPConfig         udpfrontend.Config  `yaml:"udp"`
 	Storage           memory.Config       `yaml:"storage"`
-	PreHooks          []hookConfig        `yaml:"prehooks"`
-	PostHooks         []hookConfig        `yaml:"posthooks"`
+	PreHooks          hookConfigs         `yaml:"prehooks"`
+	PostHooks         hookConfigs         `yaml:"posthooks"`
 }
 
 // CreateHooks creates instances of Hooks for all of the PreHooks and PostHooks
