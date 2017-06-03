@@ -19,12 +19,15 @@ import (
 	"github.com/chihaya/chihaya/storage"
 )
 
+// Name is the name by which this peer store is registered with Chihaya.
+const Name = "memorybysubnet"
+
 func init() {
 	prometheus.MustRegister(promGCDurationMilliseconds)
 	prometheus.MustRegister(promInfohashesCount)
 
 	// Register the storage driver.
-	storage.RegisterDriver("memorybysubnet", driver{})
+	storage.RegisterDriver(Name, driver{})
 }
 
 var promGCDurationMilliseconds = prometheus.NewHistogram(prometheus.HistogramOpts{
@@ -80,6 +83,18 @@ type Config struct {
 	PreferredIPv6SubnetMaskBitsSet int           `yaml:"preferred_ipv6_subnet_mask_bits_set"`
 }
 
+// LogFields renders the current config as a set of Logrus fields.
+func (cfg Config) LogFields() log.Fields {
+	return log.Fields{
+		"name":         Name,
+		"gcInterval":   cfg.GarbageCollectionInterval,
+		"peerLifetime": cfg.PeerLifetime,
+		"shardCount":   cfg.ShardCount,
+		"prefIPv4Mask": cfg.PreferredIPv4SubnetMaskBitsSet,
+		"prefIPv6Mask": cfg.PreferredIPv6SubnetMaskBitsSet,
+	}
+}
+
 // New creates a new PeerStore backed by memory.
 func New(cfg Config) (storage.PeerStore, error) {
 	shardCount := 1
@@ -92,10 +107,11 @@ func New(cfg Config) (storage.PeerStore, error) {
 	}
 
 	ps := &peerStore{
-		shards:   make([]*peerShard, shardCount*2),
-		closed:   make(chan struct{}),
+		cfg:      cfg,
 		ipv4Mask: net.CIDRMask(cfg.PreferredIPv4SubnetMaskBitsSet, 32),
 		ipv6Mask: net.CIDRMask(cfg.PreferredIPv6SubnetMaskBitsSet, 128),
+		shards:   make([]*peerShard, shardCount*2),
+		closed:   make(chan struct{}),
 	}
 
 	for i := 0; i < shardCount*2; i++ {
@@ -170,10 +186,12 @@ func (s swarm) lenLeechers() (i int) {
 }
 
 type peerStore struct {
-	shards   []*peerShard
-	closed   chan struct{}
+	cfg      Config
 	ipv4Mask net.IPMask
 	ipv6Mask net.IPMask
+	shards   []*peerShard
+
+	closed chan struct{}
 }
 
 var _ storage.PeerStore = &peerStore{}
@@ -596,4 +614,8 @@ func (s *peerStore) Stop() <-chan error {
 		close(toReturn)
 	}()
 	return toReturn
+}
+
+func (s *peerStore) LogFields() log.Fields {
+	return s.cfg.LogFields()
 }

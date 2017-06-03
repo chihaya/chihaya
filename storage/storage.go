@@ -4,6 +4,8 @@ import (
 	"errors"
 	"sync"
 
+	log "github.com/Sirupsen/logrus"
+
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/pkg/stop"
 )
@@ -86,6 +88,10 @@ type PeerStore interface {
 	// PeerStore.
 	// For more details see the documentation in the stop package.
 	stop.Stopper
+
+	// LogFields returns a loggable version of the data used to configure and
+	// operate a particular peer store.
+	LogFields() log.Fields
 }
 
 // RegisterDriver makes a Driver available by the provided name.

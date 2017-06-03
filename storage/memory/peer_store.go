@@ -17,6 +17,9 @@ import (
 	"github.com/chihaya/chihaya/storage"
 )
 
+// Name is the name by which this peer store is registered with Chihaya.
+const Name = "memory"
+
 func init() {
 	// Register Prometheus metrics.
 	prometheus.MustRegister(promGCDurationMilliseconds)
@@ -24,7 +27,7 @@ func init() {
 	prometheus.MustRegister(promSeedersCount, promLeechersCount)
 
 	// Register the storage driver.
-	storage.RegisterDriver("memory", driver{})
+	storage.RegisterDriver(Name, driver{})
 }
 
 var promGCDurationMilliseconds = prometheus.NewHistogram(prometheus.HistogramOpts{
@@ -92,9 +95,11 @@ type Config struct {
 // LogFields renders the current config as a set of Logrus fields.
 func (cfg Config) LogFields() log.Fields {
 	return log.Fields{
-		"gcInterval":   cfg.GarbageCollectionInterval,
-		"peerLifetime": cfg.PeerLifetime,
-		"shardCount":   cfg.ShardCount,
+		"name":               Name,
+		"gcInterval":         cfg.GarbageCollectionInterval,
+		"promReportInterval": cfg.PrometheusReportingInterval,
+		"peerLifetime":       cfg.PeerLifetime,
+		"shardCount":         cfg.ShardCount,
 	}
 }
 
@@ -113,6 +118,7 @@ func New(cfg Config) (storage.PeerStore, error) {
 	}
 
 	ps := &peerStore{
+		cfg:     cfg,
 		shards:  make([]*peerShard, shardCount*2),
 		closing: make(chan struct{}),
 	}
@@ -191,12 +197,15 @@ type swarm struct {
 }
 
 type peerStore struct {
-	shards  []*peerShard
-	closing chan struct{}
+	cfg    Config
+	shards []*peerShard
+
 	// clock stores the current time nanoseconds, updated every second.
 	// Must be accessed atomically!
 	clock int64
-	wg    sync.WaitGroup
+
+	closing chan struct{}
+	wg      sync.WaitGroup
 }
 
 // populateProm aggregates metrics over all shards and then posts them to
@@ -594,4 +603,8 @@ func (ps *peerStore) Stop() <-chan error {
 	}()
 
 	return c
+}
+
+func (ps *peerStore) LogFields() log.Fields {
+	return ps.cfg.LogFields()
 }
