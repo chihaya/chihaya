@@ -1,0 +1,14 @@
+global:
+  scrape_interval:     5s
+  evaluation_interval: 5s
+
+rule_files:
+  - chihaya.rules
+
+# A scrape configuration containing exactly one endpoint to scrape:
+scrape_configs:
+  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+  - job_name: 'local-chihaya' # you can name this however you want
+    scrape_interval: 5s # optionally override the global scrape_interval
+    static_configs:
+      - targets: ['localhost:6881'] # provide the address of chihaya's prometheus endpoint
