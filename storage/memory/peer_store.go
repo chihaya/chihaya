@@ -125,6 +125,10 @@ func New(cfg Config) (storage.PeerStore, error) {
 	ps.wg.Add(1)
 	go func() {
 		defer ps.wg.Done()
+		if cfg.PrometheusReportingInterval <= 0 {
+			cfg.PrometheusReportingInterval = 1
+			log.Warn("storage: PrometheusReportingInterval not specified/invalid, defaulting to 1 second")
+		}
 		t := time.NewTicker(cfg.PrometheusReportingInterval)
 		for {
 			select {
