@@ -80,9 +80,9 @@ chihaya:
       # higher degree of parallelism.
       shards: 1024
 
-    # The interval at which metrics about the number of infohashes and peers
-    # are collected and posted to Prometheus.
-    prometheus_reporting_interval: 1s
+      # The interval at which metrics about the number of infohashes and peers
+      # are collected and posted to Prometheus.
+      prometheus_reporting_interval: 1s
 
   # This block defines configuration used for middleware executed before a
   # response has been returned to a BitTorrent client.
