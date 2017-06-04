@@ -1,6 +1,7 @@
-// Package memory implements the storage interface for a Chihaya
-// BitTorrent tracker keeping peer data in memory.
-package memory
+// Package memorybysubnet implements the storage interface for a Chihaya
+// BitTorrent tracker keeping peer data in memory organized by a pre-configured
+// subnet mask.
+package memorybysubnet
 
 import (
 	"encoding/binary"
@@ -20,7 +21,7 @@ import (
 )
 
 // Name is the name by which this peer store is registered with Chihaya.
-const Name = "memory"
+const Name = "memorybysubnet"
 
 func init() {
 	// Register Prometheus metrics.
@@ -82,10 +83,12 @@ func (d driver) NewPeerStore(icfg interface{}) (storage.PeerStore, error) {
 
 // Config holds the configuration of a memory PeerStore.
 type Config struct {
-	GarbageCollectionInterval   time.Duration `yaml:"gc_interval"`
-	PrometheusReportingInterval time.Duration `yaml:"prometheus_reporting_interval"`
-	PeerLifetime                time.Duration `yaml:"peer_lifetime"`
-	ShardCount                  int           `yaml:"shard_count"`
+	GarbageCollectionInterval      time.Duration `yaml:"gc_interval"`
+	PrometheusReportingInterval    time.Duration `yaml:"prometheus_reporting_interval"`
+	PeerLifetime                   time.Duration `yaml:"peer_lifetime"`
+	ShardCount                     int           `yaml:"shard_count"`
+	PreferredIPv4SubnetMaskBitsSet int           `yaml:"preferred_ipv4_subnet_mask_bits_set"`
+	PreferredIPv6SubnetMaskBitsSet int           `yaml:"preferred_ipv6_subnet_mask_bits_set"`
 }
 
 // LogFields renders the current config as a set of Logrus fields.
@@ -96,6 +99,8 @@ func (cfg Config) LogFields() log.Fields {
 		"promReportInterval": cfg.PrometheusReportingInterval,
 		"peerLifetime":       cfg.PeerLifetime,
 		"shardCount":         cfg.ShardCount,
+		"prefIPv4Mask":       cfg.PreferredIPv4SubnetMaskBitsSet,
+		"prefIPv6Mask":       cfg.PreferredIPv6SubnetMaskBitsSet,
 	}
 }
 
@@ -137,13 +142,16 @@ func (cfg Config) Validate() Config {
 	return validcfg
 }
 
-// New creates a new PeerStore backed by memory.
+// New creates a new PeerStore backed by memory that organizes peers by a
+// pre-configured subnet mask.
 func New(provided Config) (storage.PeerStore, error) {
 	cfg := provided.Validate()
 	ps := &peerStore{
-		cfg:    cfg,
-		shards: make([]*peerShard, cfg.ShardCount*2),
-		closed: make(chan struct{}),
+		cfg:      cfg,
+		ipv4Mask: net.CIDRMask(cfg.PreferredIPv4SubnetMaskBitsSet, 32),
+		ipv6Mask: net.CIDRMask(cfg.PreferredIPv6SubnetMaskBitsSet, 128),
+		shards:   make([]*peerShard, cfg.ShardCount*2),
+		closed:   make(chan struct{}),
 	}
 
 	for i := 0; i < cfg.ShardCount*2; i++ {
@@ -232,6 +240,22 @@ func decodePeerKey(pk serializedPeer) bittorrent.Peer {
 	return peer
 }
 
+type peerSubnet string
+
+func newPeerSubnet(ip bittorrent.IP, ipv4Mask, ipv6Mask net.IPMask) peerSubnet {
+	var maskedIP net.IP
+	switch ip.AddressFamily {
+	case bittorrent.IPv4:
+		maskedIP = ip.Mask(ipv4Mask)
+	case bittorrent.IPv6:
+		maskedIP = ip.Mask(ipv6Mask)
+	default:
+		panic("IP is neither v4 nor v6")
+	}
+
+	return peerSubnet(maskedIP.String())
+}
+
 type peerShard struct {
 	swarms      map[bittorrent.InfoHash]swarm
 	numSeeders  uint64
@@ -240,14 +264,29 @@ type peerShard struct {
 }
 
 type swarm struct {
-	// map serialized peer to mtime
-	seeders  map[serializedPeer]int64
-	leechers map[serializedPeer]int64
+	seeders  map[peerSubnet]map[serializedPeer]int64
+	leechers map[peerSubnet]map[serializedPeer]int64
+}
+
+func (s swarm) lenSeeders() (i int) {
+	for _, subnet := range s.seeders {
+		i += len(subnet)
+	}
+	return
+}
+
+func (s swarm) lenLeechers() (i int) {
+	for _, subnet := range s.leechers {
+		i += len(subnet)
+	}
+	return
 }
 
 type peerStore struct {
-	cfg    Config
-	shards []*peerShard
+	cfg      Config
+	ipv4Mask net.IPMask
+	ipv6Mask net.IPMask
+	shards   []*peerShard
 
 	// clock stores the current time nanoseconds, updated every second.
 	// Must be accessed atomically!
@@ -310,18 +349,25 @@ func (ps *peerStore) PutSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) error 
 
 	if _, ok := shard.swarms[ih]; !ok {
 		shard.swarms[ih] = swarm{
-			seeders:  make(map[serializedPeer]int64),
-			leechers: make(map[serializedPeer]int64),
+			seeders:  make(map[peerSubnet]map[serializedPeer]int64),
+			leechers: make(map[peerSubnet]map[serializedPeer]int64),
 		}
 	}
 
+	preferredSubnet := newPeerSubnet(p.IP, ps.ipv4Mask, ps.ipv6Mask)
+
+	// Allocate a new map if necessary.
+	if shard.swarms[ih].seeders[preferredSubnet] == nil {
+		shard.swarms[ih].seeders[preferredSubnet] = make(map[serializedPeer]int64)
+	}
+
 	// If this peer isn't already a seeder, update the stats for the swarm.
-	if _, ok := shard.swarms[ih].seeders[pk]; !ok {
+	if _, ok := shard.swarms[ih].seeders[preferredSubnet][pk]; !ok {
 		shard.numSeeders++
 	}
 
 	// Update the peer in the swarm.
-	shard.swarms[ih].seeders[pk] = ps.getClock()
+	shard.swarms[ih].seeders[preferredSubnet][pk] = ps.getClock()
 
 	shard.Unlock()
 	return nil
@@ -344,16 +390,19 @@ func (ps *peerStore) DeleteSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) err
 		return storage.ErrResourceDoesNotExist
 	}
 
-	if _, ok := shard.swarms[ih].seeders[pk]; !ok {
+	preferredSubnet := newPeerSubnet(p.IP, ps.ipv4Mask, ps.ipv6Mask)
+	if _, ok := shard.swarms[ih].seeders[preferredSubnet][pk]; !ok {
 		shard.Unlock()
 		return storage.ErrResourceDoesNotExist
 	}
 
 	shard.numSeeders--
-	delete(shard.swarms[ih].seeders, pk)
+	delete(shard.swarms[ih].seeders[preferredSubnet], pk)
 
-	if len(shard.swarms[ih].seeders)|len(shard.swarms[ih].leechers) == 0 {
+	if shard.swarms[ih].lenSeeders()|shard.swarms[ih].lenLeechers() == 0 {
 		delete(shard.swarms, ih)
+	} else if len(shard.swarms[ih].seeders[preferredSubnet]) == 0 {
+		delete(shard.swarms[ih].seeders, preferredSubnet)
 	}
 
 	shard.Unlock()
@@ -374,18 +423,25 @@ func (ps *peerStore) PutLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) error
 
 	if _, ok := shard.swarms[ih]; !ok {
 		shard.swarms[ih] = swarm{
-			seeders:  make(map[serializedPeer]int64),
-			leechers: make(map[serializedPeer]int64),
+			seeders:  make(map[peerSubnet]map[serializedPeer]int64),
+			leechers: make(map[peerSubnet]map[serializedPeer]int64),
 		}
 	}
 
-	// If this peer isn't already a leecher, update the stats for the swarm.
-	if _, ok := shard.swarms[ih].leechers[pk]; !ok {
+	preferredSubnet := newPeerSubnet(p.IP, ps.ipv4Mask, ps.ipv6Mask)
+
+	// Allocate a new map if necessary.
+	if shard.swarms[ih].leechers[preferredSubnet] == nil {
+		shard.swarms[ih].leechers[preferredSubnet] = make(map[serializedPeer]int64)
+	}
+
+	// If this peer isn't already a seeder, update the stats for the swarm.
+	if _, ok := shard.swarms[ih].leechers[preferredSubnet][pk]; !ok {
 		shard.numLeechers++
 	}
 
 	// Update the peer in the swarm.
-	shard.swarms[ih].leechers[pk] = ps.getClock()
+	shard.swarms[ih].leechers[preferredSubnet][pk] = ps.getClock()
 
 	shard.Unlock()
 	return nil
@@ -408,16 +464,19 @@ func (ps *peerStore) DeleteLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) er
 		return storage.ErrResourceDoesNotExist
 	}
 
-	if _, ok := shard.swarms[ih].leechers[pk]; !ok {
+	preferredSubnet := newPeerSubnet(p.IP, ps.ipv4Mask, ps.ipv6Mask)
+	if _, ok := shard.swarms[ih].leechers[preferredSubnet][pk]; !ok {
 		shard.Unlock()
 		return storage.ErrResourceDoesNotExist
 	}
 
 	shard.numLeechers--
-	delete(shard.swarms[ih].leechers, pk)
+	delete(shard.swarms[ih].leechers[preferredSubnet], pk)
 
-	if len(shard.swarms[ih].seeders)|len(shard.swarms[ih].leechers) == 0 {
+	if shard.swarms[ih].lenSeeders()|shard.swarms[ih].lenLeechers() == 0 {
 		delete(shard.swarms, ih)
+	} else if len(shard.swarms[ih].leechers[preferredSubnet]) == 0 {
+		delete(shard.swarms[ih].leechers, preferredSubnet)
 	}
 
 	shard.Unlock()
@@ -438,24 +497,30 @@ func (ps *peerStore) GraduateLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) 
 
 	if _, ok := shard.swarms[ih]; !ok {
 		shard.swarms[ih] = swarm{
-			seeders:  make(map[serializedPeer]int64),
-			leechers: make(map[serializedPeer]int64),
+			seeders:  make(map[peerSubnet]map[serializedPeer]int64),
+			leechers: make(map[peerSubnet]map[serializedPeer]int64),
 		}
 	}
 
 	// If this peer is a leecher, update the stats for the swarm and remove them.
-	if _, ok := shard.swarms[ih].leechers[pk]; ok {
+	preferredSubnet := newPeerSubnet(p.IP, ps.ipv4Mask, ps.ipv6Mask)
+	if _, ok := shard.swarms[ih].leechers[preferredSubnet][pk]; ok {
 		shard.numLeechers--
-		delete(shard.swarms[ih].leechers, pk)
+		delete(shard.swarms[ih].leechers[preferredSubnet], pk)
+	}
+
+	// Allocate a new map if necessary.
+	if shard.swarms[ih].seeders[preferredSubnet] == nil {
+		shard.swarms[ih].seeders[preferredSubnet] = make(map[serializedPeer]int64)
 	}
 
 	// If this peer isn't already a seeder, update the stats for the swarm.
-	if _, ok := shard.swarms[ih].seeders[pk]; !ok {
+	if _, ok := shard.swarms[ih].seeders[preferredSubnet][pk]; !ok {
 		shard.numSeeders++
 	}
 
 	// Update the peer in the swarm.
-	shard.swarms[ih].seeders[pk] = ps.getClock()
+	shard.swarms[ih].seeders[preferredSubnet][pk] = ps.getClock()
 
 	shard.Unlock()
 	return nil
@@ -476,21 +541,42 @@ func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant 
 		return nil, storage.ErrResourceDoesNotExist
 	}
 
+	preferredSubnet := newPeerSubnet(announcer.IP, ps.ipv4Mask, ps.ipv6Mask)
+
 	if seeder {
-		// Append leechers as possible.
-		leechers := shard.swarms[ih].leechers
-		for pk := range leechers {
+		// Append as many close leechers as possible.
+		closestLeechers := shard.swarms[ih].leechers[preferredSubnet]
+		for pk := range closestLeechers {
 			if numWant == 0 {
 				break
 			}
 
 			peers = append(peers, decodePeerKey(pk))
 			numWant--
+		}
+
+		// Append the rest of the leechers.
+		if numWant > 0 {
+			for subnet := range shard.swarms[ih].leechers {
+				// Already appended from this subnet explictly first.
+				if subnet == preferredSubnet {
+					continue
+				}
+
+				for pk := range shard.swarms[ih].leechers[subnet] {
+					if numWant == 0 {
+						break
+					}
+
+					peers = append(peers, decodePeerKey(pk))
+					numWant--
+				}
+			}
 		}
 	} else {
-		// Append as many seeders as possible.
-		seeders := shard.swarms[ih].seeders
-		for pk := range seeders {
+		// Append as many close seeders as possible.
+		closestSeeders := shard.swarms[ih].seeders[preferredSubnet]
+		for pk := range closestSeeders {
 			if numWant == 0 {
 				break
 			}
@@ -499,11 +585,11 @@ func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant 
 			numWant--
 		}
 
-		// Append leechers until we reach numWant.
+		// Append as many close leechers as possible.
 		if numWant > 0 {
-			leechers := shard.swarms[ih].leechers
+			closestLeechers := shard.swarms[ih].leechers[preferredSubnet]
 			announcerPK := newPeerKey(announcer)
-			for pk := range leechers {
+			for pk := range closestLeechers {
 				if pk == announcerPK {
 					continue
 				}
@@ -514,6 +600,44 @@ func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant 
 
 				peers = append(peers, decodePeerKey(pk))
 				numWant--
+			}
+		}
+
+		// Append as the rest of the seeders.
+		if numWant > 0 {
+			for subnet := range shard.swarms[ih].seeders {
+				// Already appended from this subnet explictly first.
+				if subnet == preferredSubnet {
+					continue
+				}
+
+				for pk := range shard.swarms[ih].seeders[subnet] {
+					if numWant == 0 {
+						break
+					}
+
+					peers = append(peers, decodePeerKey(pk))
+					numWant--
+				}
+			}
+		}
+
+		// Append the rest of the leechers.
+		if numWant > 0 {
+			for subnet := range shard.swarms[ih].leechers {
+				// Already appended from this subnet explictly first.
+				if subnet == preferredSubnet {
+					continue
+				}
+
+				for pk := range shard.swarms[ih].leechers[subnet] {
+					if numWant == 0 {
+						break
+					}
+
+					peers = append(peers, decodePeerKey(pk))
+					numWant--
+				}
 			}
 		}
 	}
@@ -538,8 +662,8 @@ func (ps *peerStore) ScrapeSwarm(ih bittorrent.InfoHash, addressFamily bittorren
 		return
 	}
 
-	resp.Incomplete = uint32(len(shard.swarms[ih].leechers))
-	resp.Complete = uint32(len(shard.swarms[ih].seeders))
+	resp.Incomplete = uint32(shard.swarms[ih].lenLeechers())
+	resp.Complete = uint32(shard.swarms[ih].lenSeeders())
 	shard.RUnlock()
 
 	return
@@ -578,21 +702,33 @@ func (ps *peerStore) collectGarbage(cutoff time.Time) error {
 				continue
 			}
 
-			for pk, mtime := range shard.swarms[ih].leechers {
-				if mtime <= cutoffUnix {
-					shard.numLeechers--
-					delete(shard.swarms[ih].leechers, pk)
+			for subnet := range shard.swarms[ih].leechers {
+				for pk, mtime := range shard.swarms[ih].leechers[subnet] {
+					if mtime <= cutoffUnix {
+						shard.numLeechers--
+						delete(shard.swarms[ih].leechers[subnet], pk)
+					}
+				}
+
+				if len(shard.swarms[ih].leechers[subnet]) == 0 {
+					delete(shard.swarms[ih].leechers, subnet)
 				}
 			}
 
-			for pk, mtime := range shard.swarms[ih].seeders {
-				if mtime <= cutoffUnix {
-					shard.numSeeders--
-					delete(shard.swarms[ih].seeders, pk)
+			for subnet := range shard.swarms[ih].seeders {
+				for pk, mtime := range shard.swarms[ih].seeders[subnet] {
+					if mtime <= cutoffUnix {
+						shard.numSeeders--
+						delete(shard.swarms[ih].seeders[subnet], pk)
+					}
+				}
+
+				if len(shard.swarms[ih].seeders[subnet]) == 0 {
+					delete(shard.swarms[ih].seeders, subnet)
 				}
 			}
 
-			if len(shard.swarms[ih].seeders)|len(shard.swarms[ih].leechers) == 0 {
+			if shard.swarms[ih].lenSeeders()|shard.swarms[ih].lenLeechers() == 0 {
 				delete(shard.swarms, ih)
 			}
 

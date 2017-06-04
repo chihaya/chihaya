@@ -1,13 +1,32 @@
 package storage
 
 import (
+	"errors"
+	"sync"
+
+	log "github.com/Sirupsen/logrus"
+
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/pkg/stop"
 )
 
+var (
+	driversM sync.RWMutex
+	drivers  = make(map[string]Driver)
+)
+
+// Driver is the interface used to initalize a new type of PeerStore.
+type Driver interface {
+	NewPeerStore(cfg interface{}) (PeerStore, error)
+}
+
 // ErrResourceDoesNotExist is the error returned by all delete methods in the
 // store if the requested resource does not exist.
 var ErrResourceDoesNotExist = bittorrent.ClientError("resource does not exist")
+
+// ErrDriverDoesNotExist is the error returned by NewPeerStore when a peer
+// store driver with that name does not exist.
+var ErrDriverDoesNotExist = errors.New("peer store driver with that name does not exist")
 
 // PeerStore is an interface that abstracts the interactions of storing and
 // manipulating Peers such that it can be implemented for various data stores.
@@ -69,4 +88,47 @@ type PeerStore interface {
 	// PeerStore.
 	// For more details see the documentation in the stop package.
 	stop.Stopper
+
+	// LogFields returns a loggable version of the data used to configure and
+	// operate a particular peer store.
+	LogFields() log.Fields
+}
+
+// RegisterDriver makes a Driver available by the provided name.
+//
+// If called twice with the same name, the name is blank, or if the provided
+// Driver is nil, this function panics.
+func RegisterDriver(name string, d Driver) {
+	if name == "" {
+		panic("storage: could not register a Driver with an empty name")
+	}
+	if d == nil {
+		panic("storage: could not register a nil Driver")
+	}
+
+	driversM.Lock()
+	defer driversM.Unlock()
+
+	if _, dup := drivers[name]; dup {
+		panic("storage: RegisterDriver called twice for " + name)
+	}
+
+	drivers[name] = d
+}
+
+// NewPeerStore attempts to initialize a new PeerStore with given a name from
+// the list of registered Drivers.
+//
+// If a driver does not exist, returns ErrDriverDoesNotExist.
+func NewPeerStore(name string, cfg interface{}) (ps PeerStore, err error) {
+	driversM.RLock()
+	defer driversM.RUnlock()
+
+	var d Driver
+	d, ok := drivers[name]
+	if !ok {
+		return nil, ErrDriverDoesNotExist
+	}
+
+	return d.NewPeerStore(cfg)
 }

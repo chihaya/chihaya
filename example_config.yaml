@@ -67,20 +67,22 @@ chihaya:
 
   # This block defines configuration used for the storage of peer data.
   storage:
-    # The frequency which stale peers are removed.
-    gc_interval: 14m
+    name: memory
+    config:
+      # The frequency which stale peers are removed.
+      gc_interval: 14m
 
-    # The amount of time until a peer is considered stale.
-    # To avoid churn, keep this slightly larger than `announce_interval`
-    peer_lifetime: 16m
+      # The amount of time until a peer is considered stale.
+      # To avoid churn, keep this slightly larger than `announce_interval`
+      peer_lifetime: 16m
 
-    # The number of partitions data will be divided into in order to provide a
-    # higher degree of parallelism.
-    shard_count: 1024
+      # The number of partitions data will be divided into in order to provide a
+      # higher degree of parallelism.
+      shards: 1024
 
-    # The interval at which metrics about the number of infohashes and peers
-    # are collected and posted to Prometheus.
-    prometheus_reporting_interval: 1s
+      # The interval at which metrics about the number of infohashes and peers
+      # are collected and posted to Prometheus.
+      prometheus_reporting_interval: 1s
 
   # This block defines configuration used for middleware executed before a
   # response has been returned to a BitTorrent client.
