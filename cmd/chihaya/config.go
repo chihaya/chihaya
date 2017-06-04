@@ -7,8 +7,8 @@ import (
 
 	"gopkg.in/yaml.v2"
 
-	httpfrontend "github.com/chihaya/chihaya/frontend/http"
-	udpfrontend "github.com/chihaya/chihaya/frontend/udp"
+	"github.com/chihaya/chihaya/frontend/http"
+	"github.com/chihaya/chihaya/frontend/udp"
 	"github.com/chihaya/chihaya/middleware"
 	"github.com/chihaya/chihaya/middleware/clientapproval"
 	"github.com/chihaya/chihaya/middleware/jwt"
@@ -44,12 +44,12 @@ type storageConfig struct {
 // Config represents the configuration used for executing Chihaya.
 type Config struct {
 	middleware.Config `yaml:",inline"`
-	PrometheusAddr    string              `yaml:"prometheus_addr"`
-	HTTPConfig        httpfrontend.Config `yaml:"http"`
-	UDPConfig         udpfrontend.Config  `yaml:"udp"`
-	Storage           storageConfig       `yaml:"storage"`
-	PreHooks          hookConfigs         `yaml:"prehooks"`
-	PostHooks         hookConfigs         `yaml:"posthooks"`
+	PrometheusAddr    string        `yaml:"prometheus_addr"`
+	HTTPConfig        http.Config   `yaml:"http"`
+	UDPConfig         udp.Config    `yaml:"udp"`
+	Storage           storageConfig `yaml:"storage"`
+	PreHooks          hookConfigs   `yaml:"prehooks"`
+	PostHooks         hookConfigs   `yaml:"posthooks"`
 }
 
 // CreateHooks creates instances of Hooks for all of the PreHooks and PostHooks

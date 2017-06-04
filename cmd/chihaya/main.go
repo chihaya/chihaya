@@ -17,10 +17,6 @@ import (
 	"github.com/chihaya/chihaya/pkg/prometheus"
 	"github.com/chihaya/chihaya/pkg/stop"
 	"github.com/chihaya/chihaya/storage"
-
-	// Register Storage Drivers
-	_ "github.com/chihaya/chihaya/storage/memory"
-	_ "github.com/chihaya/chihaya/storage/memorybysubnet"
 )
 
 // Run represents the state of a running instance of Chihaya.
