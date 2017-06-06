@@ -21,6 +21,8 @@ spec:
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         args:
         - "--config=/etc/chihaya/config.yaml"
+        - "--debug"
+        - "--json"
         ports:
         - name: bittorrent-http
           containerPort: {{ $v := .Values.config.chihaya.http.addr | split ":" }}{{ $v._1 }}
