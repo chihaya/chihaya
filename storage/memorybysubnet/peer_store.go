@@ -13,7 +13,6 @@ import (
 	"time"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/prometheus/client_golang/prometheus"
 	"gopkg.in/yaml.v2"
 
 	"github.com/chihaya/chihaya/bittorrent"
@@ -24,42 +23,8 @@ import (
 const Name = "memorybysubnet"
 
 func init() {
-	// Register Prometheus metrics.
-	prometheus.MustRegister(
-		promGCDurationMilliseconds,
-		promInfohashesCount,
-		promSeedersCount,
-		promLeechersCount,
-	)
-
 	// Register the storage driver.
 	storage.RegisterDriver(Name, driver{})
-}
-
-var promGCDurationMilliseconds = prometheus.NewHistogram(prometheus.HistogramOpts{
-	Name:    "chihaya_storage_gc_duration_milliseconds",
-	Help:    "The time it takes to perform storage garbage collection",
-	Buckets: prometheus.ExponentialBuckets(9.375, 2, 10),
-})
-
-var promInfohashesCount = prometheus.NewGauge(prometheus.GaugeOpts{
-	Name: "chihaya_storage_infohashes_count",
-	Help: "The number of Infohashes tracked",
-})
-
-var promSeedersCount = prometheus.NewGauge(prometheus.GaugeOpts{
-	Name: "chihaya_storage_seeders_count",
-	Help: "The number of seeders tracked",
-})
-
-var promLeechersCount = prometheus.NewGauge(prometheus.GaugeOpts{
-	Name: "chihaya_storage_leechers_count",
-	Help: "The number of leechers tracked",
-})
-
-// recordGCDuration records the duration of a GC sweep.
-func recordGCDuration(duration time.Duration) {
-	promGCDurationMilliseconds.Observe(float64(duration.Nanoseconds()) / float64(time.Millisecond))
 }
 
 type driver struct{}
@@ -311,9 +276,14 @@ func (ps *peerStore) populateProm() {
 		s.RUnlock()
 	}
 
-	promInfohashesCount.Set(float64(numInfohashes))
-	promSeedersCount.Set(float64(numSeeders))
-	promLeechersCount.Set(float64(numLeechers))
+	storage.PromInfohashesCount.Set(float64(numInfohashes))
+	storage.PromSeedersCount.Set(float64(numSeeders))
+	storage.PromLeechersCount.Set(float64(numLeechers))
+}
+
+// recordGCDuration records the duration of a GC sweep.
+func recordGCDuration(duration time.Duration) {
+	storage.PromGCDurationMilliseconds.Observe(float64(duration.Nanoseconds()) / float64(time.Millisecond))
 }
 
 func (ps *peerStore) getClock() int64 {
