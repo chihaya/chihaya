@@ -286,8 +286,9 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 		af = new(bittorrent.AddressFamily)
 		*af = req.IP.AddressFamily
 
+		var ctx context.Context
 		var resp *bittorrent.AnnounceResponse
-		resp, err = t.logic.HandleAnnounce(context.Background(), req)
+		ctx, resp, err = t.logic.HandleAnnounce(context.Background(), req)
 		if err != nil {
 			WriteError(w, txID, err)
 			return
@@ -295,7 +296,7 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 
 		WriteAnnounce(w, txID, resp, actionID == announceV6ActionID)
 
-		go t.logic.AfterAnnounce(context.Background(), req, resp)
+		go t.logic.AfterAnnounce(ctx, req, resp)
 
 	case scrapeActionID:
 		actionName = "scrape"
@@ -319,8 +320,9 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 		af = new(bittorrent.AddressFamily)
 		*af = req.AddressFamily
 
+		var ctx context.Context
 		var resp *bittorrent.ScrapeResponse
-		resp, err = t.logic.HandleScrape(context.Background(), req)
+		ctx, resp, err = t.logic.HandleScrape(context.Background(), req)
 		if err != nil {
 			WriteError(w, txID, err)
 			return
@@ -328,7 +330,7 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 
 		WriteScrape(w, txID, resp)
 
-		go t.logic.AfterScrape(context.Background(), req, resp)
+		go t.logic.AfterScrape(ctx, req, resp)
 
 	default:
 		err = errUnknownAction

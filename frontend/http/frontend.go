@@ -191,7 +191,7 @@ func (f *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, _ httpr
 	af = new(bittorrent.AddressFamily)
 	*af = req.IP.AddressFamily
 
-	resp, err := f.logic.HandleAnnounce(context.Background(), req)
+	ctx, resp, err := f.logic.HandleAnnounce(context.Background(), req)
 	if err != nil {
 		WriteError(w, err)
 		return
@@ -203,7 +203,7 @@ func (f *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, _ httpr
 		return
 	}
 
-	go f.logic.AfterAnnounce(context.Background(), req, resp)
+	go f.logic.AfterAnnounce(ctx, req, resp)
 }
 
 // scrapeRoute parses and responds to a Scrape.
@@ -248,7 +248,7 @@ func (f *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprou
 	af = new(bittorrent.AddressFamily)
 	*af = req.AddressFamily
 
-	resp, err := f.logic.HandleScrape(context.Background(), req)
+	ctx, resp, err := f.logic.HandleScrape(context.Background(), req)
 	if err != nil {
 		WriteError(w, err)
 		return
@@ -260,5 +260,5 @@ func (f *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprou
 		return
 	}
 
-	go f.logic.AfterScrape(context.Background(), req, resp)
+	go f.logic.AfterScrape(ctx, req, resp)
 }
