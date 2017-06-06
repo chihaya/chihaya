@@ -11,6 +11,15 @@
 # Look at the chihaya:announce:rate1m rule for an example.
 
 #################################
+# Storage
+
+# Total peers
+chihaya:storage:peers:total = chihaya_storage_leechers_count + chihaya_storage_seeders_count
+
+# Storage GC duration
+chihaya:storage:gc:duration:rate1m = drop_common_labels(rate(chihaya_storage_gc_duration_milliseconds_sum[1m]) / rate(chihaya_storage_gc_duration_milliseconds_count[1m]))
+
+#################################
 # Request/error rates
 
 # UDP request rate, no errors (good requests)
