@@ -175,7 +175,7 @@ func validateJWT(ih bittorrent.InfoHash, jwtBytes []byte, cfgIss, cfgAud string,
 	if ihClaim, ok := claims.Get("infohash").(string); !ok || !validInfoHash(ihClaim, ih) {
 		log.WithFields(log.Fields{
 			"exists":  ok,
-			"request": ih,
+			"request": url.QueryEscape(ih.String()),
 			"claim":   ihClaim,
 		}).Debugln("unequal or missing infohash when validating JWT")
 		return errors.New("claim \"infohash\" is invalid")
