@@ -155,28 +155,58 @@ func validateJWT(ih bittorrent.InfoHash, jwtBytes []byte, cfgIss, cfgAud string,
 
 	claims := parsedJWT.Claims()
 	if iss, ok := claims.Issuer(); !ok || iss != cfgIss {
+		log.WithFields(log.Fields{
+			"exists": ok,
+			"claim":  iss,
+			"config": cfgIss,
+		}).Debugln("unequal or missing issuer when validating JWT")
 		return jwt.ErrInvalidISSClaim
 	}
 
 	if aud, ok := claims.Audience(); !ok || !validAudience(aud, cfgAud) {
+		log.WithFields(log.Fields{
+			"exists": ok,
+			"claim":  aud,
+			"config": cfgAud,
+		}).Debugln("unequal or missing audience when validating JWT")
 		return jwt.ErrInvalidAUDClaim
 	}
 
 	if ihClaim, ok := claims.Get("infohash").(string); !ok || !validInfoHash(ihClaim, ih) {
+		log.WithFields(log.Fields{
+			"exists":  ok,
+			"request": ih,
+			"claim":   ihClaim,
+		}).Debugln("unequal or missing infohash when validating JWT")
 		return errors.New("claim \"infohash\" is invalid")
 	}
 
 	parsedJWS := parsedJWT.(jws.JWS)
 	kid, ok := parsedJWS.Protected().Get("kid").(string)
 	if !ok {
+		log.WithFields(log.Fields{
+			"exists": ok,
+			"claim":  kid,
+		}).Debugln("missing kid when validating JWT")
 		return errors.New("invalid kid")
 	}
 	publicKey, ok := publicKeys[kid]
 	if !ok {
+		log.WithFields(log.Fields{
+			"kid": kid,
+		}).Debugln("missing public key for kid when validating JWT")
 		return errors.New("signed by unknown kid")
 	}
 
-	return parsedJWS.Verify(publicKey, jc.SigningMethodRS256)
+	err = parsedJWS.Verify(publicKey, jc.SigningMethodRS256)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err": err,
+		}).Debugln("failed to verify signature of JWT")
+		return err
+	}
+
+	return nil
 }
 
 func validAudience(aud []string, cfgAud string) bool {
@@ -188,6 +218,8 @@ func validAudience(aud []string, cfgAud string) bool {
 	return false
 }
 
+// validInfoHash attempts to match the claim for the Infohash field of a JWT by
+// checking both the raw and unescaped forms of the contents of the field.
 func validInfoHash(claim string, ih bittorrent.InfoHash) bool {
 	if len(claim) == 20 && bittorrent.InfoHashFromString(claim) == ih {
 		return true
