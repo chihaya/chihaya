@@ -49,7 +49,7 @@ type Logic struct {
 }
 
 // HandleAnnounce generates a response for an Announce.
-func (l *Logic) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequest) (resp *bittorrent.AnnounceResponse, err error) {
+func (l *Logic) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequest) (_ context.Context, resp *bittorrent.AnnounceResponse, err error) {
 	resp = &bittorrent.AnnounceResponse{
 		Interval:    l.announceInterval,
 		MinInterval: l.announceInterval,
@@ -57,12 +57,12 @@ func (l *Logic) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequ
 	}
 	for _, h := range l.preHooks {
 		if ctx, err = h.HandleAnnounce(ctx, req, resp); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
 	log.WithFields(resp.LogFields()).Debug("generated announce response")
-	return resp, nil
+	return ctx, resp, nil
 }
 
 // AfterAnnounce does something with the results of an Announce after it has
@@ -78,18 +78,18 @@ func (l *Logic) AfterAnnounce(ctx context.Context, req *bittorrent.AnnounceReque
 }
 
 // HandleScrape generates a response for a Scrape.
-func (l *Logic) HandleScrape(ctx context.Context, req *bittorrent.ScrapeRequest) (resp *bittorrent.ScrapeResponse, err error) {
+func (l *Logic) HandleScrape(ctx context.Context, req *bittorrent.ScrapeRequest) (_ context.Context, resp *bittorrent.ScrapeResponse, err error) {
 	resp = &bittorrent.ScrapeResponse{
 		Files: make([]bittorrent.Scrape, 0, len(req.InfoHashes)),
 	}
 	for _, h := range l.preHooks {
 		if ctx, err = h.HandleScrape(ctx, req, resp); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
 
 	log.WithFields(resp.LogFields()).Debug("generated scrape response")
-	return resp, nil
+	return ctx, resp, nil
 }
 
 // AfterScrape does something with the results of a Scrape after it has been
