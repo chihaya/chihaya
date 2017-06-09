@@ -9,10 +9,11 @@ package jwt
 import (
 	"context"
 	"crypto"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"net/http"
-	"net/url"
+	"strings"
 	"time"
 
 	jc "github.com/SermoDigital/jose/crypto"
@@ -163,20 +164,21 @@ func validateJWT(ih bittorrent.InfoHash, jwtBytes []byte, cfgIss, cfgAud string,
 		return jwt.ErrInvalidISSClaim
 	}
 
-	if aud, ok := claims.Audience(); !ok || !validAudience(aud, cfgAud) {
+	if auds, ok := claims.Audience(); !ok || !in(cfgAud, auds) {
 		log.WithFields(log.Fields{
 			"exists": ok,
-			"claim":  aud,
+			"claim":  strings.Join(auds, ","),
 			"config": cfgAud,
 		}).Debugln("unequal or missing audience when validating JWT")
 		return jwt.ErrInvalidAUDClaim
 	}
 
-	if ihClaim, ok := claims.Get("infohash").(string); !ok || !validInfoHash(ihClaim, ih) {
+	ihHex := hex.EncodeToString(ih[:])
+	if ihClaim, ok := claims.Get("infohash").(string); !ok || ihClaim != ihHex {
 		log.WithFields(log.Fields{
 			"exists":  ok,
-			"request": url.QueryEscape(ih.String()),
 			"claim":   ihClaim,
+			"request": ihHex,
 		}).Debugln("unequal or missing infohash when validating JWT")
 		return errors.New("claim \"infohash\" is invalid")
 	}
@@ -209,30 +211,11 @@ func validateJWT(ih bittorrent.InfoHash, jwtBytes []byte, cfgIss, cfgAud string,
 	return nil
 }
 
-func validAudience(aud []string, cfgAud string) bool {
-	for _, a := range aud {
-		if a == cfgAud {
+func in(x string, xs []string) bool {
+	for _, y := range xs {
+		if x == y {
 			return true
 		}
 	}
-	return false
-}
-
-// validInfoHash attempts to match the claim for the Infohash field of a JWT by
-// checking both the raw and unescaped forms of the contents of the field.
-func validInfoHash(claim string, ih bittorrent.InfoHash) bool {
-	if len(claim) == 20 && bittorrent.InfoHashFromString(claim) == ih {
-		return true
-	}
-
-	unescapedClaim, err := url.QueryUnescape(claim)
-	if err != nil {
-		return false
-	}
-
-	if len(unescapedClaim) == 20 && bittorrent.InfoHashFromString(unescapedClaim) == ih {
-		return true
-	}
-
 	return false
 }
