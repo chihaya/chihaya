@@ -3,12 +3,13 @@ package varinterval
 import (
 	"context"
 	"errors"
+	"math/rand"
 	"sync"
 	"time"
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/middleware"
-	"github.com/chihaya/chihaya/pkg/prand"
+	"github.com/chihaya/chihaya/pkg/xorshift"
 )
 
 // ErrInvalidModifyResponseProbability is returned for a config with an invalid
@@ -47,7 +48,7 @@ func checkConfig(cfg Config) error {
 
 type hook struct {
 	cfg Config
-	pr  *prand.Container
+	pr  [1024]*xorshift.LockedXORShift128Plus
 	sync.Mutex
 }
 
@@ -59,18 +60,25 @@ func New(cfg Config) (middleware.Hook, error) {
 		return nil, err
 	}
 
-	return &hook{
+	h := &hook{
 		cfg: cfg,
-		pr:  prand.New(1024),
-	}, nil
+		pr:  [1024]*xorshift.LockedXORShift128Plus{},
+	}
+	for i := range h.pr {
+		h.pr[i] = xorshift.NewLockedXORShift128Plus(rand.Uint64(), rand.Uint64())
+	}
+	return h, nil
+}
+
+func (h *hook) getXORShiftByInfohash(ih *bittorrent.InfoHash) *xorshift.LockedXORShift128Plus {
+	return h.pr[(int(ih[1])|int(ih[0])<<8)%len(h.pr)]
 }
 
 func (h *hook) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequest, resp *bittorrent.AnnounceResponse) (context.Context, error) {
-	r := h.pr.GetByInfohash(req.InfoHash)
+	r := h.getXORShiftByInfohash(&req.InfoHash)
 
-	if h.cfg.ModifyResponseProbability == 1 || r.Float32() < h.cfg.ModifyResponseProbability {
-		addSeconds := time.Duration(r.Intn(h.cfg.MaxIncreaseDelta)+1) * time.Second
-		h.pr.ReturnByInfohash(req.InfoHash)
+	if h.cfg.ModifyResponseProbability == 1 || float32(xorshift.Intn(r, 1<<24))/(1<<24) < h.cfg.ModifyResponseProbability {
+		addSeconds := time.Duration(xorshift.Intn(r, h.cfg.MaxIncreaseDelta)+1) * time.Second
 
 		resp.Interval += addSeconds
 
@@ -81,7 +89,6 @@ func (h *hook) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceReque
 		return ctx, nil
 	}
 
-	h.pr.ReturnByInfohash(req.InfoHash)
 	return ctx, nil
 }
 
