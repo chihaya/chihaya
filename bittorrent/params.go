@@ -5,6 +5,8 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+
+	log "github.com/Sirupsen/logrus"
 )
 
 // Params is used to fetch (optional) request parameters from an Announce.
@@ -38,6 +40,10 @@ var ErrKeyNotFound = errors.New("query: value for the provided key does not exis
 // ErrInvalidInfohash is returned when parsing a query encounters an infohash
 // with invalid length.
 var ErrInvalidInfohash = ClientError("provided invalid infohash")
+
+// ErrInvalidQueryEscape is returned when a query string contains invalid
+// escapes.
+var ErrInvalidQueryEscape = ClientError("invalid query escape")
 
 // QueryParams parses a URL Query and implements the Params interface with some
 // additional helpers.
@@ -118,7 +124,12 @@ func parseQuery(rawQuery string) (*QueryParams, error) {
 
 			keyStr, err := url.QueryUnescape(rawQuery[keyStart : keyEnd+1])
 			if err != nil {
-				return nil, err
+				// QueryUnescape returns an error like "invalid escape: '%x'.
+				// But frontends record these errors to prometheus, which generates
+				// a lot of time series.
+				// We log it here for debugging instead.
+				log.Debugln(err)
+				return nil, ErrInvalidQueryEscape
 			}
 
 			var valStr string
@@ -126,7 +137,12 @@ func parseQuery(rawQuery string) (*QueryParams, error) {
 			if valEnd > 0 {
 				valStr, err = url.QueryUnescape(rawQuery[valStart : valEnd+1])
 				if err != nil {
-					return nil, err
+					// QueryUnescape returns an error like "invalid escape: '%x'.
+					// But frontends record these errors to prometheus, which generates
+					// a lot of time series.
+					// We log it here for debugging instead.
+					log.Debugln(err)
+					return nil, ErrInvalidQueryEscape
 				}
 			}
 
