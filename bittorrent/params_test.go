@@ -27,6 +27,12 @@ var (
 	InvalidQueries = []string{
 		"/announce?" + "info_hash=%0%a",
 	}
+
+	// See https://github.com/chihaya/chihaya/issues/334.
+	shouldNotPanicQueries = []string{
+		"/annnounce?" + "info_hash=" + testPeerID + "&a",
+		"/annnounce?" + "info_hash=" + testPeerID + "&=b?",
+	}
 )
 
 func mapArrayEqual(boxed map[string][]string, unboxed map[string]string) bool {
@@ -84,26 +90,40 @@ func TestParseInvalidURLData(t *testing.T) {
 	}
 }
 
+func TestParseShouldNotPanicURLData(t *testing.T) {
+	for _, parseStr := range shouldNotPanicQueries {
+		ParseURLData(parseStr)
+	}
+}
+
 func BenchmarkParseQuery(b *testing.B) {
+	announceStrings := make([]string, 0)
+	for i := range ValidAnnounceArguments {
+		announceStrings = append(announceStrings, ValidAnnounceArguments[i].Encode())
+	}
+	b.ResetTimer()
 	for bCount := 0; bCount < b.N; bCount++ {
-		for parseIndex, parseStr := range ValidAnnounceArguments {
-			parsedQueryObj, err := parseQuery(parseStr.Encode())
-			if err != nil {
-				b.Error(err, parseIndex)
-				b.Log(parsedQueryObj)
-			}
+		i := bCount % len(announceStrings)
+		parsedQueryObj, err := parseQuery(announceStrings[i])
+		if err != nil {
+			b.Error(err, i)
+			b.Log(parsedQueryObj)
 		}
 	}
 }
 
 func BenchmarkURLParseQuery(b *testing.B) {
+	announceStrings := make([]string, 0)
+	for i := range ValidAnnounceArguments {
+		announceStrings = append(announceStrings, ValidAnnounceArguments[i].Encode())
+	}
+	b.ResetTimer()
 	for bCount := 0; bCount < b.N; bCount++ {
-		for parseIndex, parseStr := range ValidAnnounceArguments {
-			parsedQueryObj, err := url.ParseQuery(parseStr.Encode())
-			if err != nil {
-				b.Error(err, parseIndex)
-				b.Log(parsedQueryObj)
-			}
+		i := bCount % len(announceStrings)
+		parsedQueryObj, err := url.ParseQuery(announceStrings[i])
+		if err != nil {
+			b.Error(err, i)
+			b.Log(parsedQueryObj)
 		}
 	}
 }

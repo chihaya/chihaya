@@ -88,69 +88,45 @@ func ParseURLData(urlData string) (*QueryParams, error) {
 
 // parseQuery parses a URL query into QueryParams.
 // The query is expected to exclude the delimiting '?'.
-func parseQuery(rawQuery string) (*QueryParams, error) {
-	var (
-		keyStart, keyEnd int
-		valStart, valEnd int
+func parseQuery(query string) (q *QueryParams, err error) {
+	// This is basically url.parseQuery, but with a map[string]string
+	// instead of map[string][]string for the values.
+	q = &QueryParams{
+		query:      query,
+		infoHashes: nil,
+		params:     make(map[string]string),
+	}
 
-		onKey = true
-
-		q = &QueryParams{
-			query:      rawQuery,
-			infoHashes: nil,
-			params:     make(map[string]string),
-		}
-	)
-
-	for i, length := 0, len(rawQuery); i < length; i++ {
-		separator := rawQuery[i] == '&' || rawQuery[i] == ';'
-		last := i == length-1
-
-		if separator || last {
-			if onKey && !last {
-				keyStart = i + 1
-				continue
-			}
-
-			if last && !separator && !onKey {
-				valEnd = i
-			}
-
-			keyStr, err := url.QueryUnescape(rawQuery[keyStart : keyEnd+1])
-			if err != nil {
-				return nil, err
-			}
-
-			var valStr string
-
-			if valEnd > 0 {
-				valStr, err = url.QueryUnescape(rawQuery[valStart : valEnd+1])
-				if err != nil {
-					return nil, err
-				}
-			}
-
-			if keyStr == "info_hash" {
-				if len(valStr) != 20 {
-					return nil, ErrInvalidInfohash
-				}
-				q.infoHashes = append(q.infoHashes, InfoHashFromString(valStr))
-			} else {
-				q.params[strings.ToLower(keyStr)] = valStr
-			}
-
-			valEnd = 0
-			onKey = true
-			keyStart = i + 1
-
-		} else if rawQuery[i] == '=' {
-			onKey = false
-			valStart = i + 1
-			valEnd = 0
-		} else if onKey {
-			keyEnd = i
+	for query != "" {
+		key := query
+		if i := strings.IndexAny(key, "&;"); i >= 0 {
+			key, query = key[:i], key[i+1:]
 		} else {
-			valEnd = i
+			query = ""
+		}
+		if key == "" {
+			continue
+		}
+		value := ""
+		if i := strings.Index(key, "="); i >= 0 {
+			key, value = key[:i], key[i+1:]
+		}
+		key, err = url.QueryUnescape(key)
+		if err != nil {
+			return nil, err
+		}
+		value, err = url.QueryUnescape(value)
+		if err != nil {
+			return nil, err
+		}
+
+		if key == "info_hash" {
+			if len(value) != 20 {
+				return nil, ErrInvalidInfohash
+			}
+			q.infoHashes = append(q.infoHashes, InfoHashFromString(value))
+		} else {
+			q.params[strings.ToLower(key)] = value
 		}
 	}
 
