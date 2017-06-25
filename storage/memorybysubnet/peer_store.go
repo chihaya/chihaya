@@ -7,7 +7,6 @@ import (
 	"encoding/binary"
 	"net"
 	"runtime"
-	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -21,6 +20,14 @@ import (
 
 // Name is the name by which this peer store is registered with Chihaya.
 const Name = "memorybysubnet"
+
+// Default config constants.
+const (
+	defaultShardCount                  = 1024
+	defaultPrometheusReportingInterval = time.Second * 1
+	defaultGarbageCollectionInterval   = time.Minute * 3
+	defaultPeerLifetime                = time.Minute * 30
+)
 
 func init() {
 	// Register the storage driver.
@@ -75,19 +82,17 @@ func (cfg Config) LogFields() log.Fields {
 // This function warns to the logger when a value is changed.
 func (cfg Config) Validate() Config {
 	validcfg := cfg
-	if cfg.ShardCount > 0 {
-		validcfg.ShardCount = cfg.ShardCount
-	} else {
-		validcfg.ShardCount = 1024
+	if cfg.ShardCount <= 0 {
+		validcfg.ShardCount = defaultShardCount
 		log.WithFields(log.Fields{
 			"name":     Name + ".ShardCount",
-			"provided": strconv.Itoa(cfg.ShardCount),
-			"default":  strconv.Itoa(validcfg.ShardCount),
+			"provided": cfg.ShardCount,
+			"default":  validcfg.ShardCount,
 		}).Warnln("falling back to default configuration")
 	}
 
 	if cfg.GarbageCollectionInterval <= 0 {
-		validcfg.GarbageCollectionInterval = time.Minute * 14
+		validcfg.GarbageCollectionInterval = defaultGarbageCollectionInterval
 		log.WithFields(log.Fields{
 			"name":     Name + ".GarbageCollectionInterval",
 			"provided": cfg.GarbageCollectionInterval,
@@ -96,11 +101,20 @@ func (cfg Config) Validate() Config {
 	}
 
 	if cfg.PrometheusReportingInterval <= 0 {
-		validcfg.PrometheusReportingInterval = time.Second * 1
+		validcfg.PrometheusReportingInterval = defaultPrometheusReportingInterval
 		log.WithFields(log.Fields{
 			"name":     Name + ".PrometheusReportingInterval",
 			"provided": cfg.PrometheusReportingInterval,
 			"default":  validcfg.PrometheusReportingInterval,
+		}).Warnln("falling back to default configuration")
+	}
+
+	if cfg.PeerLifetime <= 0 {
+		validcfg.PeerLifetime = defaultPeerLifetime
+		log.WithFields(log.Fields{
+			"name":     Name + ".PeerLifetime",
+			"provided": cfg.PeerLifetime,
+			"default":  validcfg.PeerLifetime,
 		}).Warnln("falling back to default configuration")
 	}
 
