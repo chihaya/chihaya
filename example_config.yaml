@@ -1,7 +1,7 @@
 chihaya:
   # The interval communicated with BitTorrent clients informing them how
   # frequently they should announce in between client events.
-  announce_interval: 15m
+  announce_interval: 30m
 
   # The network interface that will bind to an HTTP endpoint that can be
   # scraped by an instance of the Prometheus time series database.
@@ -70,11 +70,11 @@ chihaya:
     name: memory
     config:
       # The frequency which stale peers are removed.
-      gc_interval: 14m
+      gc_interval: 3m
 
       # The amount of time until a peer is considered stale.
       # To avoid churn, keep this slightly larger than `announce_interval`
-      peer_lifetime: 16m
+      peer_lifetime: 31m
 
       # The number of partitions data will be divided into in order to provide a
       # higher degree of parallelism.
