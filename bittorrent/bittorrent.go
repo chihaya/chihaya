@@ -7,7 +7,7 @@ import (
 	"net"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/chihaya/chihaya/pkg/log"
 )
 
 // PeerID represents a peer ID.

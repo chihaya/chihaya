@@ -8,12 +8,13 @@ import (
 	"strings"
 	"syscall"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/Sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/chihaya/chihaya/frontend/http"
 	"github.com/chihaya/chihaya/frontend/udp"
 	"github.com/chihaya/chihaya/middleware"
+	"github.com/chihaya/chihaya/pkg/log"
 	"github.com/chihaya/chihaya/pkg/prometheus"
 	"github.com/chihaya/chihaya/pkg/stop"
 	"github.com/chihaya/chihaya/storage"
@@ -48,7 +49,7 @@ func (r *Run) Start(ps storage.PeerStore) error {
 
 	r.sg = stop.NewGroup()
 
-	log.WithFields(log.Fields{"addr": cfg.PrometheusAddr}).Info("starting Prometheus server")
+	log.Info("starting Prometheus server", log.Fields{"addr": cfg.PrometheusAddr})
 	r.sg.Add(prometheus.NewServer(cfg.PrometheusAddr))
 
 	if ps == nil {
@@ -56,7 +57,7 @@ func (r *Run) Start(ps storage.PeerStore) error {
 		if err != nil {
 			return errors.New("failed to create memory storage: " + err.Error())
 		}
-		log.WithFields(ps.LogFields()).Info("started storage")
+		log.Info("started storage", ps.LogFields())
 	}
 	r.peerStore = ps
 
@@ -64,14 +65,14 @@ func (r *Run) Start(ps storage.PeerStore) error {
 	if err != nil {
 		return errors.New("failed to validate hook config: " + err.Error())
 	}
-	log.WithFields(log.Fields{
+	log.Info("starting middleware", log.Fields{
 		"preHooks":  cfg.PreHooks.Names(),
 		"postHooks": cfg.PostHooks.Names(),
-	}).Info("starting middleware")
+	})
 	r.logic = middleware.NewLogic(cfg.Config, r.peerStore, preHooks, postHooks)
 
 	if cfg.HTTPConfig.Addr != "" {
-		log.WithFields(cfg.HTTPConfig.LogFields()).Info("starting HTTP frontend")
+		log.Info("starting HTTP frontend", cfg.HTTPConfig.LogFields())
 		httpfe, err := http.NewFrontend(r.logic, cfg.HTTPConfig)
 		if err != nil {
 			return err
@@ -80,7 +81,7 @@ func (r *Run) Start(ps storage.PeerStore) error {
 	}
 
 	if cfg.UDPConfig.Addr != "" {
-		log.WithFields(cfg.UDPConfig.LogFields()).Info("starting UDP frontend")
+		log.Info("starting UDP frontend", cfg.UDPConfig.LogFields())
 		udpfe, err := udp.NewFrontend(r.logic, cfg.UDPConfig)
 		if err != nil {
 			return err
@@ -176,7 +177,7 @@ func main() {
 				return err
 			}
 			if jsonLog {
-				log.SetFormatter(&log.JSONFormatter{})
+				log.SetFormatter(&logrus.JSONFormatter{})
 			}
 
 			debugLog, err := cmd.Flags().GetBool("debug")
@@ -185,7 +186,7 @@ func main() {
 			}
 			if debugLog {
 				log.Info("enabling debug logging")
-				log.SetLevel(log.DebugLevel)
+				log.SetDebug(true)
 			}
 
 			cpuProfilePath, err := cmd.Flags().GetString("cpuprofile")
@@ -193,7 +194,7 @@ func main() {
 				return err
 			}
 			if cpuProfilePath != "" {
-				log.WithFields(log.Fields{"path": cpuProfilePath}).Info("enabling CPU profiling")
+				log.Info("enabling CPU profiling", log.Fields{"path": cpuProfilePath})
 				f, err := os.Create(cpuProfilePath)
 				if err != nil {
 					return err

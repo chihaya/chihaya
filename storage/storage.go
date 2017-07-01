@@ -4,9 +4,8 @@ import (
 	"errors"
 	"sync"
 
-	log "github.com/Sirupsen/logrus"
-
 	"github.com/chihaya/chihaya/bittorrent"
+	"github.com/chihaya/chihaya/pkg/log"
 	"github.com/chihaya/chihaya/pkg/stop"
 )
 
@@ -84,14 +83,14 @@ type PeerStore interface {
 	// returned.
 	ScrapeSwarm(infoHash bittorrent.InfoHash, addressFamily bittorrent.AddressFamily) bittorrent.Scrape
 
-	// stop is an interface that expects a Stop method to stop the
+	// stop.Stopper is an interface that expects a Stop method to stop the
 	// PeerStore.
 	// For more details see the documentation in the stop package.
 	stop.Stopper
 
-	// LogFields returns a loggable version of the data used to configure and
+	// log.Fielder returns a loggable version of the data used to configure and
 	// operate a particular peer store.
-	LogFields() log.Fields
+	log.Fielder
 }
 
 // RegisterDriver makes a Driver available by the provided name.

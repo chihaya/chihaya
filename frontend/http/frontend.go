@@ -9,12 +9,12 @@ import (
 	"net/http"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/julienschmidt/httprouter"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/frontend"
+	"github.com/chihaya/chihaya/pkg/log"
 )
 
 func init() {
@@ -117,7 +117,7 @@ func NewFrontend(logic frontend.TrackerLogic, cfg Config) (*Frontend, error) {
 
 	go func() {
 		if err := f.listenAndServe(); err != nil {
-			log.Fatal("failed while serving http: " + err.Error())
+			log.Fatal("failed while serving http", log.Err(err))
 		}
 	}()
 
@@ -230,7 +230,7 @@ func (f *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprou
 
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
-		log.Errorln("http: unable to determine remote address for scrape:", err)
+		log.Error("http: unable to determine remote address for scrape", log.Err(err))
 		WriteError(w, err)
 		return
 	}
@@ -241,7 +241,7 @@ func (f *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprou
 	} else if len(reqIP) == net.IPv6len { // implies reqIP.To4() == nil
 		req.AddressFamily = bittorrent.IPv6
 	} else {
-		log.Errorln("http: invalid IP: neither v4 nor v6, RemoteAddr was", r.RemoteAddr)
+		log.Error("http: invalid IP: neither v4 nor v6", log.Fields{"RemoteAddr": r.RemoteAddr})
 		WriteError(w, ErrInvalidIP)
 		return
 	}

@@ -19,11 +19,11 @@ import (
 	jc "github.com/SermoDigital/jose/crypto"
 	"github.com/SermoDigital/jose/jws"
 	"github.com/SermoDigital/jose/jwt"
-	log "github.com/Sirupsen/logrus"
 	"github.com/mendsley/gojwk"
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/middleware"
+	"github.com/chihaya/chihaya/pkg/log"
 	"github.com/chihaya/chihaya/pkg/stop"
 )
 
@@ -44,6 +44,16 @@ type Config struct {
 	JWKUpdateInterval time.Duration `yaml:"jwk_set_update_interval"`
 }
 
+// LogFields implements log.Fielder for a Config.
+func (cfg Config) LogFields() log.Fields {
+	return log.Fields{
+		"issuer":            cfg.Issuer,
+		"audience":          cfg.Audience,
+		"JWKSetURL":         cfg.JWKSetURL,
+		"JWKUpdateInterval": cfg.JWKUpdateInterval,
+	}
+}
+
 type hook struct {
 	cfg        Config
 	publicKeys map[string]crypto.PublicKey
@@ -52,7 +62,7 @@ type hook struct {
 
 // NewHook returns an instance of the JWT middleware.
 func NewHook(cfg Config) (middleware.Hook, error) {
-	log.Debugf("creating new JWT middleware with config: %#v", cfg)
+	log.Debug("creating new JWT middleware", cfg)
 	h := &hook{
 		cfg:        cfg,
 		publicKeys: map[string]crypto.PublicKey{},
@@ -83,7 +93,7 @@ func NewHook(cfg Config) (middleware.Hook, error) {
 func (h *hook) updateKeys() error {
 	resp, err := http.Get(h.cfg.JWKSetURL)
 	if err != nil {
-		log.Errorln("failed to fetch JWK Set: " + err.Error())
+		log.Error("failed to fetch JWK Set", log.Err(err))
 		return err
 	}
 
@@ -91,7 +101,7 @@ func (h *hook) updateKeys() error {
 	err = json.NewDecoder(resp.Body).Decode(&parsedJWKs)
 	if err != nil {
 		resp.Body.Close()
-		log.Errorln("failed to decode JWK JSON: " + err.Error())
+		log.Error("failed to decode JWK JSON", log.Err(err))
 		return err
 	}
 	resp.Body.Close()
@@ -100,7 +110,7 @@ func (h *hook) updateKeys() error {
 	for _, parsedJWK := range parsedJWKs.Keys {
 		publicKey, err := parsedJWK.DecodePublicKey()
 		if err != nil {
-			log.Errorln("failed to decode JWK into public key: " + err.Error())
+			log.Error("failed to decode JWK into public key", log.Err(err))
 			return err
 		}
 		keys[parsedJWK.Kid] = publicKey
@@ -156,55 +166,53 @@ func validateJWT(ih bittorrent.InfoHash, jwtBytes []byte, cfgIss, cfgAud string,
 
 	claims := parsedJWT.Claims()
 	if iss, ok := claims.Issuer(); !ok || iss != cfgIss {
-		log.WithFields(log.Fields{
+		log.Debug("unequal or missing issuer when validating JWT", log.Fields{
 			"exists": ok,
 			"claim":  iss,
 			"config": cfgIss,
-		}).Debugln("unequal or missing issuer when validating JWT")
+		})
 		return jwt.ErrInvalidISSClaim
 	}
 
 	if auds, ok := claims.Audience(); !ok || !in(cfgAud, auds) {
-		log.WithFields(log.Fields{
+		log.Debug("unequal or missing audience when validating JWT", log.Fields{
 			"exists": ok,
 			"claim":  strings.Join(auds, ","),
 			"config": cfgAud,
-		}).Debugln("unequal or missing audience when validating JWT")
+		})
 		return jwt.ErrInvalidAUDClaim
 	}
 
 	ihHex := hex.EncodeToString(ih[:])
 	if ihClaim, ok := claims.Get("infohash").(string); !ok || ihClaim != ihHex {
-		log.WithFields(log.Fields{
+		log.Debug("unequal or missing infohash when validating JWT", log.Fields{
 			"exists":  ok,
 			"claim":   ihClaim,
 			"request": ihHex,
-		}).Debugln("unequal or missing infohash when validating JWT")
+		})
 		return errors.New("claim \"infohash\" is invalid")
 	}
 
 	parsedJWS := parsedJWT.(jws.JWS)
 	kid, ok := parsedJWS.Protected().Get("kid").(string)
 	if !ok {
-		log.WithFields(log.Fields{
+		log.Debug("missing kid when validating JWT", log.Fields{
 			"exists": ok,
 			"claim":  kid,
-		}).Debugln("missing kid when validating JWT")
+		})
 		return errors.New("invalid kid")
 	}
 	publicKey, ok := publicKeys[kid]
 	if !ok {
-		log.WithFields(log.Fields{
+		log.Debug("missing public key forkid when validating JWT", log.Fields{
 			"kid": kid,
-		}).Debugln("missing public key for kid when validating JWT")
+		})
 		return errors.New("signed by unknown kid")
 	}
 
 	err = parsedJWS.Verify(publicKey, jc.SigningMethodRS256)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"err": err,
-		}).Debugln("failed to verify signature of JWT")
+		log.Debug("failed to verify signature of JWT", log.Err(err))
 		return err
 	}
 

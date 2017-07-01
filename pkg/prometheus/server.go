@@ -6,7 +6,7 @@ import (
 	"context"
 	"net/http"
 
-	log "github.com/Sirupsen/logrus"
+	"github.com/chihaya/chihaya/pkg/log"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
@@ -42,7 +42,7 @@ func NewServer(addr string) *Server {
 
 	go func() {
 		if err := s.srv.ListenAndServe(); err != http.ErrServerClosed {
-			log.Fatal("failed while serving prometheus: " + err.Error())
+			log.Fatal("failed while serving prometheus", log.Err(err))
 		}
 	}()
 

@@ -11,12 +11,12 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/frontend"
 	"github.com/chihaya/chihaya/frontend/udp/bytepool"
+	"github.com/chihaya/chihaya/pkg/log"
 	"github.com/chihaya/chihaya/pkg/stop"
 )
 
@@ -107,7 +107,7 @@ func NewFrontend(logic frontend.TrackerLogic, cfg Config) (*Frontend, error) {
 		}
 		cfg.PrivateKey = string(pkeyRunes)
 
-		log.Warn("UDP private key was not provided, using generated key: ", cfg.PrivateKey)
+		log.Warn("UDP private key was not provided, using generated key", log.Fields{"key": cfg.PrivateKey})
 	}
 
 	f := &Frontend{
@@ -118,7 +118,7 @@ func NewFrontend(logic frontend.TrackerLogic, cfg Config) (*Frontend, error) {
 
 	go func() {
 		if err := f.listenAndServe(); err != nil {
-			log.Fatal("failed while serving udp: " + err.Error())
+			log.Fatal("failed while serving udp", log.Err(err))
 		}
 	}()
 
@@ -313,7 +313,7 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 		} else if len(r.IP) == net.IPv6len { // implies r.IP.To4() == nil
 			req.AddressFamily = bittorrent.IPv6
 		} else {
-			log.Errorln("udp: invalid IP: neither v4 nor v6, IP was", r.IP)
+			log.Error("udp: invalid IP: neither v4 nor v6", log.Fields{"IP": r.IP})
 			WriteError(w, txID, ErrInvalidIP)
 			return
 		}
