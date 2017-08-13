@@ -4,7 +4,7 @@ import (
 	"errors"
 	"net"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 // ErrInvalidIP indicates an invalid IP for an Announce.
