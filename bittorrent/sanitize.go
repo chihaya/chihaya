@@ -21,12 +21,10 @@ type RequestSanitizer struct {
 // SanitizeAnnounce enforces a max and default NumWant and coerces the a peer's
 // IP address into the proper format.
 func (rs *RequestSanitizer) SanitizeAnnounce(r *AnnounceRequest) (*AnnounceRequest, error) {
-	if r.NumWant > rs.MaxNumWant {
-		r.NumWant = rs.MaxNumWant
-	}
-
-	if r.NumWant == 0 {
+	if !r.NumWantProvided {
 		r.NumWant = rs.DefaultNumWant
+	} else if r.NumWant > rs.MaxNumWant {
+		r.NumWant = rs.MaxNumWant
 	}
 
 	if ip := r.Peer.IP.To4(); ip != nil {

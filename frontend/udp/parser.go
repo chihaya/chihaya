@@ -73,10 +73,12 @@ func ParseAnnounce(r Request, rs *bittorrent.RequestSanitizer, allowIPSpoofing, 
 	}
 
 	ip := r.IP
+	ipProvided := false
 	ipbytes := r.Packet[84:ipEnd]
 	if allowIPSpoofing {
 		// Make sure the bytes are copied to a new slice.
 		copy(ip, net.IP(ipbytes))
+		ipProvided = true
 	}
 	if !allowIPSpoofing && r.IP == nil {
 		// We have no IP address to fallback on.
@@ -92,12 +94,15 @@ func ParseAnnounce(r Request, rs *bittorrent.RequestSanitizer, allowIPSpoofing, 
 	}
 
 	return rs.SanitizeAnnounce(&bittorrent.AnnounceRequest{
-		Event:      eventIDs[eventID],
-		InfoHash:   bittorrent.InfoHashFromBytes(infohash),
-		NumWant:    uint32(numWant),
-		Left:       left,
-		Downloaded: downloaded,
-		Uploaded:   uploaded,
+		Event:           eventIDs[eventID],
+		InfoHash:        bittorrent.InfoHashFromBytes(infohash),
+		NumWant:         uint32(numWant),
+		Left:            left,
+		Downloaded:      downloaded,
+		Uploaded:        uploaded,
+		IPProvided:      ipProvided,
+		NumWantProvided: true,
+		EventProvided:   true,
 		Peer: bittorrent.Peer{
 			ID:   bittorrent.PeerIDFromBytes(peerID),
 			IP:   bittorrent.IP{IP: ip},
