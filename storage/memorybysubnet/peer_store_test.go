@@ -11,6 +11,7 @@ func createNew() s.PeerStore {
 	ps, err := New(Config{
 		ShardCount:                     1024,
 		GarbageCollectionInterval:      10 * time.Minute,
+		PeerLifetime:                   30 * time.Minute,
 		PreferredIPv4SubnetMaskBitsSet: 31,
 		PreferredIPv6SubnetMaskBitsSet: 64,
 	})
