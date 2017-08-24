@@ -518,13 +518,14 @@ func (ps *peerStore) ScrapeSwarm(ih bittorrent.InfoHash, addressFamily bittorren
 	shard := ps.shards[ps.shardIndex(ih, addressFamily)]
 	shard.RLock()
 
-	if _, ok := shard.swarms[ih]; !ok {
+	swarm, ok := shard.swarms[ih]
+	if !ok {
 		shard.RUnlock()
 		return
 	}
 
-	resp.Incomplete = uint32(len(shard.swarms[ih].leechers))
-	resp.Complete = uint32(len(shard.swarms[ih].seeders))
+	resp.Incomplete = uint32(len(swarm.leechers))
+	resp.Complete = uint32(len(swarm.seeders))
 	shard.RUnlock()
 
 	return

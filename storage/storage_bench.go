@@ -95,6 +95,19 @@ func runBenchmark(b *testing.B, ps PeerStore, parallel bool, sf setupFunc, ef ex
 	}
 }
 
+// Nop executes a no-op for each iteration.
+// It should produce the same results for each PeerStore.
+// This can be used to get an estimate of the impact of the benchmark harness
+// on benchmark results and an estimate of the general performance of the system
+// benchmarked on.
+//
+// Nop can run in parallel.
+func Nop(b *testing.B, ps PeerStore) {
+	runBenchmark(b, ps, true, putPeers, func(i int, ps PeerStore, bd *benchData) error {
+		return nil
+	})
+}
+
 // Put benchmarks the PutSeeder method of a PeerStore by repeatedly Putting the
 // same Peer for the same InfoHash.
 //
@@ -413,5 +426,26 @@ func AnnounceSeeder1kInfohash(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, putPeers, func(i int, ps PeerStore, bd *benchData) error {
 		_, err := ps.AnnouncePeers(bd.infohashes[i%1000], true, 50, bd.peers[0])
 		return err
+	})
+}
+
+// ScrapeSwarm benchmarks the ScrapeSwarm method of a PeerStore.
+// The swarm scraped has 500 seeders and 500 leechers.
+//
+// ScrapeSwarm can run in parallel.
+func ScrapeSwarm(b *testing.B, ps PeerStore) {
+	runBenchmark(b, ps, true, putPeers, func(i int, ps PeerStore, bd *benchData) error {
+		ps.ScrapeSwarm(bd.infohashes[0], bittorrent.IPv4)
+		return nil
+	})
+}
+
+// ScrapeSwarm1kInfohash behaves like ScrapeSwarm with one of 1000 infohashes.
+//
+// ScrapeSwarm1kInfohash can run in parallel.
+func ScrapeSwarm1kInfohash(b *testing.B, ps PeerStore) {
+	runBenchmark(b, ps, true, putPeers, func(i int, ps PeerStore, bd *benchData) error {
+		ps.ScrapeSwarm(bd.infohashes[i%1000], bittorrent.IPv4)
+		return nil
 	})
 }
