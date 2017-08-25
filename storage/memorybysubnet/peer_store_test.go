@@ -14,6 +14,7 @@ func createNew() s.PeerStore {
 		PeerLifetime:                   30 * time.Minute,
 		PreferredIPv4SubnetMaskBitsSet: 31,
 		PreferredIPv6SubnetMaskBitsSet: 64,
+		PrometheusReportingInterval:    10 * time.Minute,
 	})
 	if err != nil {
 		panic(err)
