@@ -4,6 +4,7 @@ package log
 
 import (
 	"fmt"
+	"io"
 
 	"github.com/sirupsen/logrus"
 )
@@ -21,6 +22,11 @@ func SetDebug(to bool) {
 // SetFormatter sets the formatter.
 func SetFormatter(to logrus.Formatter) {
 	l.Formatter = to
+}
+
+// SetOutput sets the output.
+func SetOutput(to io.Writer) {
+	l.Out = to
 }
 
 // Fields is a map of logging fields.
