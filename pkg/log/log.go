@@ -17,6 +17,7 @@ var (
 // SetDebug controls debug logging.
 func SetDebug(to bool) {
 	debug = to
+	l.Level = logrus.DebugLevel
 }
 
 // SetFormatter sets the formatter.
