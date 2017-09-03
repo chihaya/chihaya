@@ -53,9 +53,10 @@ func (r *Run) Start(ps storage.PeerStore) error {
 	r.sg.Add(prometheus.NewServer(cfg.PrometheusAddr))
 
 	if ps == nil {
+		log.Info("starting storage", log.Fields{"name": cfg.Storage.Name})
 		ps, err = storage.NewPeerStore(cfg.Storage.Name, cfg.Storage.Config)
 		if err != nil {
-			return errors.New("failed to create memory storage: " + err.Error())
+			return errors.New("failed to create storage: " + err.Error())
 		}
 		log.Info("started storage", ps.LogFields())
 	}
