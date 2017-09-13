@@ -146,6 +146,8 @@ func TestPeerStore(t *testing.T, p PeerStore) {
 		require.Equal(t, ErrResourceDoesNotExist, err)
 	}
 
+	e := p.Stop()
+	require.Nil(t, <-e)
 }
 
 func containsPeer(peers []bittorrent.Peer, p bittorrent.Peer) bool {
