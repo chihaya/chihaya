@@ -80,15 +80,4 @@ func BenchmarkHookOverhead(b *testing.B) {
 			benchHookListV6(b, nopHooks)
 		})
 	}
-
-	var sanHooks hookList
-	for i := 1; i < 4; i++ {
-		sanHooks = append(sanHooks, &sanitizationHook{maxNumWant: 50})
-		b.Run(fmt.Sprintf("%dsanitation-v4", i), func(b *testing.B) {
-			benchHookListV4(b, sanHooks)
-		})
-		b.Run(fmt.Sprintf("%dsanitation-v6", i), func(b *testing.B) {
-			benchHookListV6(b, sanHooks)
-		})
-	}
 }

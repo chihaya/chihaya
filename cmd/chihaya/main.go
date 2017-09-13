@@ -74,7 +74,7 @@ func (r *Run) Start(ps storage.PeerStore) error {
 
 	if cfg.HTTPConfig.Addr != "" {
 		log.Info("starting HTTP frontend", cfg.HTTPConfig.LogFields())
-		httpfe, err := http.NewFrontend(r.logic, cfg.HTTPConfig)
+		httpfe, err := http.NewFrontend(r.logic, &cfg.RequestSanitizer, cfg.HTTPConfig)
 		if err != nil {
 			return err
 		}
@@ -83,7 +83,7 @@ func (r *Run) Start(ps storage.PeerStore) error {
 
 	if cfg.UDPConfig.Addr != "" {
 		log.Info("starting UDP frontend", cfg.UDPConfig.LogFields())
-		udpfe, err := udp.NewFrontend(r.logic, cfg.UDPConfig)
+		udpfe, err := udp.NewFrontend(r.logic, &cfg.RequestSanitizer, cfg.UDPConfig)
 		if err != nil {
 			return err
 		}

@@ -91,13 +91,14 @@ type Frontend struct {
 	closing chan struct{}
 	wg      sync.WaitGroup
 
-	logic frontend.TrackerLogic
+	logic     frontend.TrackerLogic
+	sanitizer *bittorrent.RequestSanitizer
 	Config
 }
 
 // NewFrontend creates a new instance of an UDP Frontend that asynchronously
 // serves requests.
-func NewFrontend(logic frontend.TrackerLogic, cfg Config) (*Frontend, error) {
+func NewFrontend(logic frontend.TrackerLogic, rs *bittorrent.RequestSanitizer, cfg Config) (*Frontend, error) {
 	// Generate a private key if one isn't provided by the user.
 	if cfg.PrivateKey == "" {
 		rand.Seed(time.Now().UnixNano())
@@ -111,9 +112,10 @@ func NewFrontend(logic frontend.TrackerLogic, cfg Config) (*Frontend, error) {
 	}
 
 	f := &Frontend{
-		closing: make(chan struct{}),
-		logic:   logic,
-		Config:  cfg,
+		closing:   make(chan struct{}),
+		logic:     logic,
+		sanitizer: rs,
+		Config:    cfg,
 	}
 
 	go func() {
@@ -278,7 +280,7 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 		actionName = "announce"
 
 		var req *bittorrent.AnnounceRequest
-		req, err = ParseAnnounce(r, t.AllowIPSpoofing, actionID == announceV6ActionID)
+		req, err = ParseAnnounce(r, t.sanitizer, t.AllowIPSpoofing, actionID == announceV6ActionID)
 		if err != nil {
 			WriteError(w, txID, err)
 			return
@@ -302,7 +304,7 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 		actionName = "scrape"
 
 		var req *bittorrent.ScrapeRequest
-		req, err = ParseScrape(r)
+		req, err = ParseScrape(r, t.sanitizer)
 		if err != nil {
 			WriteError(w, txID, err)
 			return

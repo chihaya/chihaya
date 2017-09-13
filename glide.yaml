@@ -6,8 +6,6 @@ import:
   - crypto
   - jws
   - jwt
-- package: github.com/sirupsen/logrus
-  version: ~1.0.0
 - package: github.com/julienschmidt/httprouter
   version: ~1.1.0
 - package: github.com/mendsley/gojwk
@@ -16,6 +14,8 @@ import:
   version: ~0.8.0
   subpackages:
   - prometheus
+- package: github.com/sirupsen/logrus
+  version: ~1.0.2
 - package: github.com/spf13/cobra
 - package: github.com/stretchr/testify
   version: ~1.1.4

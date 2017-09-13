@@ -7,12 +7,12 @@ import (
 	"github.com/chihaya/chihaya/bittorrent"
 )
 
-// ParseAnnounce parses an bittorrent.AnnounceRequest from an http.Request.
+// ParseAnnounce parses a bittorrent.AnnounceRequest from an http.Request.
 //
 // If allowIPSpoofing is true, IPs provided via params will be used.
 // If realIPHeader is not empty string, the first value of the HTTP Header with
 // that name will be used.
-func ParseAnnounce(r *http.Request, realIPHeader string, allowIPSpoofing bool) (*bittorrent.AnnounceRequest, error) {
+func ParseAnnounce(r *http.Request, rs *bittorrent.RequestSanitizer, realIPHeader string, allowIPSpoofing bool) (*bittorrent.AnnounceRequest, error) {
 	qp, err := bittorrent.ParseURLData(r.RequestURI)
 	if err != nil {
 		return nil, err
@@ -20,10 +20,15 @@ func ParseAnnounce(r *http.Request, realIPHeader string, allowIPSpoofing bool) (
 
 	request := &bittorrent.AnnounceRequest{Params: qp}
 
-	eventStr, _ := qp.String("event")
-	request.Event, err = bittorrent.NewEvent(eventStr)
-	if err != nil {
-		return nil, bittorrent.ClientError("failed to provide valid client event")
+	var eventStr string
+	eventStr, request.EventProvided = qp.String("event")
+	if request.EventProvided {
+		request.Event, err = bittorrent.NewEvent(eventStr)
+		if err != nil {
+			return nil, bittorrent.ClientError("failed to provide valid client event")
+		}
+	} else {
+		request.Event = bittorrent.None
 	}
 
 	compactStr, _ := qp.String("compact")
@@ -67,6 +72,7 @@ func ParseAnnounce(r *http.Request, realIPHeader string, allowIPSpoofing bool) (
 		return nil, bittorrent.ClientError("failed to parse parameter: numwant")
 	}
 	request.NumWant = uint32(numwant)
+	request.NumWantProvided = err == nil
 
 	port, err := qp.Uint64("port")
 	if err != nil {
@@ -74,16 +80,16 @@ func ParseAnnounce(r *http.Request, realIPHeader string, allowIPSpoofing bool) (
 	}
 	request.Peer.Port = uint16(port)
 
-	request.Peer.IP.IP = requestedIP(r, qp, realIPHeader, allowIPSpoofing)
+	request.Peer.IP.IP, request.IPProvided = requestedIP(r, qp, realIPHeader, allowIPSpoofing)
 	if request.Peer.IP.IP == nil {
 		return nil, bittorrent.ClientError("failed to parse peer IP address")
 	}
 
-	return request, nil
+	return rs.SanitizeAnnounce(request)
 }
 
 // ParseScrape parses an bittorrent.ScrapeRequest from an http.Request.
-func ParseScrape(r *http.Request) (*bittorrent.ScrapeRequest, error) {
+func ParseScrape(r *http.Request, rs *bittorrent.RequestSanitizer) (*bittorrent.ScrapeRequest, error) {
 	qp, err := bittorrent.ParseURLData(r.RequestURI)
 	if err != nil {
 		return nil, err
@@ -99,7 +105,7 @@ func ParseScrape(r *http.Request) (*bittorrent.ScrapeRequest, error) {
 		Params:     qp,
 	}
 
-	return request, nil
+	return rs.SanitizeScrape(request)
 }
 
 // requestedIP determines the IP address for a BitTorrent client request.
@@ -107,31 +113,31 @@ func ParseScrape(r *http.Request) (*bittorrent.ScrapeRequest, error) {
 // If allowIPSpoofing is true, IPs provided via params will be used.
 // If realIPHeader is not empty string, the first value of the HTTP Header with
 // that name will be used.
-func requestedIP(r *http.Request, p bittorrent.Params, realIPHeader string, allowIPSpoofing bool) net.IP {
+func requestedIP(r *http.Request, p bittorrent.Params, realIPHeader string, allowIPSpoofing bool) (ip net.IP, provided bool) {
 	if allowIPSpoofing {
 		if ipstr, ok := p.String("ip"); ok {
-			ip := net.ParseIP(ipstr)
-			return ip
+			ip = net.ParseIP(ipstr)
+			return ip, true
 		}
 
 		if ipstr, ok := p.String("ipv4"); ok {
-			ip := net.ParseIP(ipstr)
-			return ip
+			ip = net.ParseIP(ipstr)
+			return ip, true
 		}
 
 		if ipstr, ok := p.String("ipv6"); ok {
-			ip := net.ParseIP(ipstr)
-			return ip
+			ip = net.ParseIP(ipstr)
+			return ip, true
 		}
 	}
 
 	if realIPHeader != "" {
 		if ips, ok := r.Header[realIPHeader]; ok && len(ips) > 0 {
-			ip := net.ParseIP(ips[0])
-			return ip
+			ip = net.ParseIP(ips[0])
+			return ip, false
 		}
 	}
 
 	host, _, _ := net.SplitHostPort(r.RemoteAddr)
-	return net.ParseIP(host)
+	return net.ParseIP(host), false
 }

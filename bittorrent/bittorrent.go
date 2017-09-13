@@ -78,13 +78,16 @@ func (i InfoHash) String() string {
 
 // AnnounceRequest represents the parsed parameters from an announce request.
 type AnnounceRequest struct {
-	Event      Event
-	InfoHash   InfoHash
-	Compact    bool
-	NumWant    uint32
-	Left       uint64
-	Downloaded uint64
-	Uploaded   uint64
+	Event           Event
+	InfoHash        InfoHash
+	Compact         bool
+	EventProvided   bool
+	NumWantProvided bool
+	IPProvided      bool
+	NumWant         uint32
+	Left            uint64
+	Downloaded      uint64
+	Uploaded        uint64
 
 	Peer
 	Params

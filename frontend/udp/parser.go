@@ -48,11 +48,10 @@ var (
 // ParseAnnounce parses an AnnounceRequest from a UDP request.
 //
 // If allowIPSpoofing is true, IPs provided via params will be used.
-//
 // If v6 is true the announce will be parsed as an IPv6 announce "the
-// opentracker way", see
+// opentracker way":
 // http://opentracker.blog.h3q.com/2007/12/28/the-ipv6-situation/
-func ParseAnnounce(r Request, allowIPSpoofing, v6 bool) (*bittorrent.AnnounceRequest, error) {
+func ParseAnnounce(r Request, rs *bittorrent.RequestSanitizer, allowIPSpoofing, v6 bool) (*bittorrent.AnnounceRequest, error) {
 	ipEnd := 84 + net.IPv4len
 	if v6 {
 		ipEnd = 84 + net.IPv6len
@@ -74,10 +73,12 @@ func ParseAnnounce(r Request, allowIPSpoofing, v6 bool) (*bittorrent.AnnounceReq
 	}
 
 	ip := r.IP
+	ipProvided := false
 	ipbytes := r.Packet[84:ipEnd]
 	if allowIPSpoofing {
 		// Make sure the bytes are copied to a new slice.
 		copy(ip, net.IP(ipbytes))
+		ipProvided = true
 	}
 	if !allowIPSpoofing && r.IP == nil {
 		// We have no IP address to fallback on.
@@ -92,20 +93,23 @@ func ParseAnnounce(r Request, allowIPSpoofing, v6 bool) (*bittorrent.AnnounceReq
 		return nil, err
 	}
 
-	return &bittorrent.AnnounceRequest{
-		Event:      eventIDs[eventID],
-		InfoHash:   bittorrent.InfoHashFromBytes(infohash),
-		NumWant:    uint32(numWant),
-		Left:       left,
-		Downloaded: downloaded,
-		Uploaded:   uploaded,
+	return rs.SanitizeAnnounce(&bittorrent.AnnounceRequest{
+		Event:           eventIDs[eventID],
+		InfoHash:        bittorrent.InfoHashFromBytes(infohash),
+		NumWant:         uint32(numWant),
+		Left:            left,
+		Downloaded:      downloaded,
+		Uploaded:        uploaded,
+		IPProvided:      ipProvided,
+		NumWantProvided: true,
+		EventProvided:   true,
 		Peer: bittorrent.Peer{
 			ID:   bittorrent.PeerIDFromBytes(peerID),
 			IP:   bittorrent.IP{IP: ip},
 			Port: port,
 		},
 		Params: params,
-	}, nil
+	})
 }
 
 type buffer struct {
@@ -170,7 +174,7 @@ func handleOptionalParameters(packet []byte) (bittorrent.Params, error) {
 }
 
 // ParseScrape parses a ScrapeRequest from a UDP request.
-func ParseScrape(r Request) (*bittorrent.ScrapeRequest, error) {
+func ParseScrape(r Request, rs *bittorrent.RequestSanitizer) (*bittorrent.ScrapeRequest, error) {
 	// If a scrape isn't at least 36 bytes long, it's malformed.
 	if len(r.Packet) < 36 {
 		return nil, errMalformedPacket
@@ -190,7 +194,7 @@ func ParseScrape(r Request) (*bittorrent.ScrapeRequest, error) {
 		r.Packet = r.Packet[20:]
 	}
 
-	return &bittorrent.ScrapeRequest{
+	return rs.SanitizeScrape(&bittorrent.ScrapeRequest{
 		InfoHashes: infohashes,
-	}, nil
+	})
 }
