@@ -148,6 +148,43 @@ func (t *Frontend) Stop() <-chan error {
 	return c
 }
 
+const (
+	// maxUDPPacketSize is the maximum size a client->server packet could have.
+	maxUDPPacketSize = 2048
+)
+
+// a pooledBuffer is a large buffer that is used to receive datagrams into.
+// Goroutines are then started to handle these packets, each operating on a
+// slice of the large buffer.
+// After all goroutines are done, the buffer can be safely returned to a pool
+// to be used again later.
+// Use b to access the slice.
+type pooledBuffer struct {
+	// original must not be modified.
+	original []byte
+	b        []byte
+	wg       sync.WaitGroup
+	c        chan struct{}
+}
+
+// reclaimAfterUse returns the buffer to the BytePool after all goroutines have
+// finished working on it.
+func (p *pooledBuffer) reclaimAfterUse(pool *bytepool.BytePool) {
+	<-p.c
+	p.wg.Wait()
+	pool.Put(p.original)
+}
+
+func (p *pooledBuffer) free() {
+	close(p.c)
+}
+
+// newPooledBuffer creates a new pooled buffer.
+func newPooledBuffer(pool *bytepool.BytePool) *pooledBuffer {
+	b := pool.Get()
+	return &pooledBuffer{b: b, original: b, c: make(chan struct{})}
+}
+
 // listenAndServe blocks while listening and serving UDP BitTorrent requests
 // until Stop() is called or an error is returned.
 func (t *Frontend) listenAndServe() error {
@@ -161,11 +198,24 @@ func (t *Frontend) listenAndServe() error {
 		return err
 	}
 
-	pool := bytepool.New(2048)
+	// Use a pool of large (1MB) blocks of memory to receive into. This should
+	// reduce the load on the garbage collector and is faster than using a pool
+	// for each receive operation.
+	pool := bytepool.New(1024 * 1024) // 1MB
 
 	t.wg.Add(1)
 	defer t.wg.Done()
 
+	// get a new large buffer.
+	buf := newPooledBuffer(pool)
+	// reclaim this buffer after use. reclaimAfterUse will block until free is called.
+	go buf.reclaimAfterUse(pool)
+	defer func() {
+		// release the buf at that time. This is usually not the same buf as the
+		// one created above. We need to return it though, to avoid leaking
+		// memory in case of a frontend restart.
+		buf.free()
+	}()
 	for {
 		// Check to see if we need to shutdown.
 		select {
@@ -175,11 +225,23 @@ func (t *Frontend) listenAndServe() error {
 		default:
 		}
 
-		// Read a UDP packet into a reusable buffer.
-		buffer := pool.Get()
-		n, addr, err := t.socket.ReadFromUDP(buffer)
+		if len(buf.b) < maxUDPPacketSize {
+			// Not enough space to hold a packet, remake.
+			log.Debug("udp: remaking listenAndServe buffer")
+			// mark the current buffer as to-be-freed. It will be freed only
+			// after all goroutines operating on it have finished.
+			buf.free()
+
+			buf = newPooledBuffer(pool)
+			log.Debug("got a buffer with", log.Fields{"len": len(buf.b)})
+			go buf.reclaimAfterUse(pool)
+		}
+
+		// Read a UDP packet into the large buffer.
+		// TODO this is safe to be called from multiple goroutines, test if
+		// that improves performance.
+		n, addr, err := t.socket.ReadFromUDP(buf.b)
 		if err != nil {
-			pool.Put(buffer)
 			if netErr, ok := err.(net.Error); ok && netErr.Temporary() {
 				// A temporary failure is not fatal; just pretend it never happened.
 				continue
@@ -189,14 +251,20 @@ func (t *Frontend) listenAndServe() error {
 
 		// We got nothin'
 		if n == 0 {
-			pool.Put(buffer)
 			continue
 		}
 
+		// make a slice from the large buffer that contains the packet.
+		msg := buf.b[:n]
+		// Advance the start of the large buffer.
+		buf.b = buf.b[n:]
 		t.wg.Add(1)
-		go func() {
-			defer t.wg.Done()
-			defer pool.Put(buffer)
+		buf.wg.Add(1)
+		go func(w *sync.WaitGroup) {
+			defer func() {
+				t.wg.Done()
+				w.Done()
+			}()
 
 			if ip := addr.IP.To4(); ip != nil {
 				addr.IP = ip
@@ -209,7 +277,7 @@ func (t *Frontend) listenAndServe() error {
 			}
 			action, af, err := t.handleRequest(
 				// Make sure the IP is copied, not referenced.
-				Request{buffer[:n], append([]byte{}, addr.IP...)},
+				Request{msg, append([]byte{}, addr.IP...)},
 				ResponseWriter{t.socket, addr},
 			)
 			if t.EnableRequestTiming {
@@ -217,7 +285,7 @@ func (t *Frontend) listenAndServe() error {
 			} else {
 				recordResponseDuration(action, af, err, time.Duration(0))
 			}
-		}()
+		}(&buf.wg)
 	}
 }
 
