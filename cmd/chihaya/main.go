@@ -58,7 +58,7 @@ func (r *Run) Start(ps storage.PeerStore) error {
 		if err != nil {
 			return errors.New("failed to create storage: " + err.Error())
 		}
-		log.Info("started storage", ps.LogFields())
+		log.Info("started storage", ps)
 	}
 	r.peerStore = ps
 
@@ -73,7 +73,7 @@ func (r *Run) Start(ps storage.PeerStore) error {
 	r.logic = middleware.NewLogic(cfg.Config, r.peerStore, preHooks, postHooks)
 
 	if cfg.HTTPConfig.Addr != "" {
-		log.Info("starting HTTP frontend", cfg.HTTPConfig.LogFields())
+		log.Info("starting HTTP frontend", cfg.HTTPConfig)
 		httpfe, err := http.NewFrontend(r.logic, cfg.HTTPConfig)
 		if err != nil {
 			return err
@@ -82,7 +82,7 @@ func (r *Run) Start(ps storage.PeerStore) error {
 	}
 
 	if cfg.UDPConfig.Addr != "" {
-		log.Info("starting UDP frontend", cfg.UDPConfig.LogFields())
+		log.Info("starting UDP frontend", cfg.UDPConfig)
 		udpfe, err := udp.NewFrontend(r.logic, cfg.UDPConfig)
 		if err != nil {
 			return err
