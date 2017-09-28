@@ -25,7 +25,7 @@ const ttl = 2 * time.Minute
 // forgery probability of approximately 1 in 4 billion.
 func NewConnectionID(ip net.IP, now time.Time, key string) []byte {
 	buf := make([]byte, 8)
-	binary.BigEndian.PutUint32(buf, uint32(now.UTC().Unix()))
+	binary.BigEndian.PutUint32(buf, uint32(now.Unix()))
 
 	mac := hmac.New(sha256.New, []byte(key))
 	mac.Write(buf[:4])
