@@ -18,6 +18,7 @@ import (
 	"github.com/chihaya/chihaya/frontend/udp/bytepool"
 	"github.com/chihaya/chihaya/pkg/log"
 	"github.com/chihaya/chihaya/pkg/stop"
+	"github.com/chihaya/chihaya/pkg/timecache"
 )
 
 var allowedGeneratedPrivateKeyRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
@@ -256,7 +257,7 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 
 	// If this isn't requesting a new connection ID and the connection ID is
 	// invalid, then fail.
-	if actionID != connectActionID && !ValidConnectionID(connID, r.IP, time.Now(), t.MaxClockSkew, t.PrivateKey) {
+	if actionID != connectActionID && !ValidConnectionID(connID, r.IP, timecache.Now(), t.MaxClockSkew, t.PrivateKey) {
 		err = errBadConnectionID
 		WriteError(w, txID, err)
 		return
@@ -272,7 +273,7 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 			return
 		}
 
-		WriteConnectionID(w, txID, NewConnectionID(r.IP, time.Now(), t.PrivateKey))
+		WriteConnectionID(w, txID, NewConnectionID(r.IP, timecache.Now(), t.PrivateKey))
 
 	case announceActionID, announceV6ActionID:
 		actionName = "announce"
