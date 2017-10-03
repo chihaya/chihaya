@@ -86,6 +86,40 @@ func (cfg Config) LogFields() log.Fields {
 	}
 }
 
+// Default config constants.
+const (
+	defaultReadTimeout  = 2 * time.Second
+	defaultWriteTimeout = 2 * time.Second
+)
+
+// Validate sanity checks values set in a config and returns a new config with
+// default values replacing anything that is invalid.
+//
+// This function warns to the logger when a value is changed.
+func (cfg Config) Validate() Config {
+	validcfg := cfg
+
+	if cfg.ReadTimeout <= 0 {
+		validcfg.ReadTimeout = defaultReadTimeout
+		log.Warn("falling back to default configuration", log.Fields{
+			"name":     "http.ReadTimeout",
+			"provided": cfg.ReadTimeout,
+			"default":  validcfg.ReadTimeout,
+		})
+	}
+
+	if cfg.WriteTimeout <= 0 {
+		validcfg.WriteTimeout = defaultWriteTimeout
+		log.Warn("falling back to default configuration", log.Fields{
+			"name":     "http.WriteTimeout",
+			"provided": cfg.WriteTimeout,
+			"default":  validcfg.WriteTimeout,
+		})
+	}
+
+	return validcfg
+}
+
 // Frontend represents the state of an HTTP BitTorrent Frontend.
 type Frontend struct {
 	srv    *http.Server
@@ -97,7 +131,9 @@ type Frontend struct {
 
 // NewFrontend creates a new instance of an HTTP Frontend that asynchronously
 // serves requests.
-func NewFrontend(logic frontend.TrackerLogic, cfg Config) (*Frontend, error) {
+func NewFrontend(logic frontend.TrackerLogic, provided Config) (*Frontend, error) {
+	cfg := provided.Validate()
+
 	f := &Frontend{
 		logic:  logic,
 		Config: cfg,
