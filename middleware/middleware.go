@@ -15,10 +15,7 @@ import (
 
 // Config holds the configuration common across all middleware.
 type Config struct {
-	AnnounceInterval    time.Duration `yaml:"announce_interval"`
-	MaxNumWant          uint32        `yaml:"max_numwant"`
-	DefaultNumWant      uint32        `yaml:"default_numwant"`
-	MaxScrapeInfoHashes uint32        `yaml:"max_scrape_infohashes"`
+	AnnounceInterval time.Duration `yaml:"announce_interval"`
 }
 
 var _ frontend.TrackerLogic = &Logic{}
@@ -26,17 +23,12 @@ var _ frontend.TrackerLogic = &Logic{}
 // NewLogic creates a new instance of a TrackerLogic that executes the provided
 // middleware hooks.
 func NewLogic(cfg Config, peerStore storage.PeerStore, preHooks, postHooks []Hook) *Logic {
-	l := &Logic{
+	return &Logic{
 		announceInterval: cfg.AnnounceInterval,
 		peerStore:        peerStore,
-		preHooks:         []Hook{&sanitizationHook{cfg.MaxNumWant, cfg.DefaultNumWant, cfg.MaxScrapeInfoHashes}},
+		preHooks:         append(preHooks, &responseHook{store: peerStore}),
 		postHooks:        append(postHooks, &swarmInteractionHook{store: peerStore}),
 	}
-
-	l.preHooks = append(l.preHooks, preHooks...)
-	l.preHooks = append(l.preHooks, &responseHook{store: peerStore})
-
-	return l
 }
 
 // Logic is an implementation of the TrackerLogic that functions by

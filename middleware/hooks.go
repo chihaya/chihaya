@@ -2,8 +2,6 @@ package middleware
 
 import (
 	"context"
-	"errors"
-	"net"
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/storage"
@@ -64,56 +62,6 @@ func (h *swarmInteractionHook) HandleAnnounce(ctx context.Context, req *bittorre
 
 func (h *swarmInteractionHook) HandleScrape(ctx context.Context, _ *bittorrent.ScrapeRequest, _ *bittorrent.ScrapeResponse) (context.Context, error) {
 	// Scrapes have no effect on the swarm.
-	return ctx, nil
-}
-
-// ErrInvalidIP indicates an invalid IP for an Announce.
-var ErrInvalidIP = errors.New("invalid IP")
-
-// sanitizationHook enforces semantic assumptions about requests that may have
-// not been accounted for in a tracker frontend.
-//
-// The SanitizationHook performs the following checks:
-// - maxNumWant: Checks whether the numWant parameter of an announce is below
-//     a limit. Sets it to the limit if the value is higher.
-// - defaultNumWant: Checks whether the numWant parameter of an announce is
-//     zero. Sets it to the default if it is.
-// - IP sanitization: Checks whether the announcing Peer's IP address is either
-//     IPv4 or IPv6. Returns ErrInvalidIP if the address is neither IPv4 nor
-//     IPv6. Sets the Peer.AddressFamily field accordingly. Truncates IPv4
-//     addresses to have a length of 4 bytes.
-type sanitizationHook struct {
-	maxNumWant          uint32
-	defaultNumWant      uint32
-	maxScrapeInfoHashes uint32
-}
-
-func (h *sanitizationHook) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequest, resp *bittorrent.AnnounceResponse) (context.Context, error) {
-	if req.NumWant > h.maxNumWant {
-		req.NumWant = h.maxNumWant
-	}
-
-	if req.NumWant == 0 {
-		req.NumWant = h.defaultNumWant
-	}
-
-	if ip := req.Peer.IP.To4(); ip != nil {
-		req.Peer.IP.IP = ip
-		req.Peer.IP.AddressFamily = bittorrent.IPv4
-	} else if len(req.Peer.IP.IP) == net.IPv6len { // implies req.Peer.IP.To4() == nil
-		req.Peer.IP.AddressFamily = bittorrent.IPv6
-	} else {
-		return ctx, ErrInvalidIP
-	}
-
-	return ctx, nil
-}
-
-func (h *sanitizationHook) HandleScrape(ctx context.Context, req *bittorrent.ScrapeRequest, resp *bittorrent.ScrapeResponse) (context.Context, error) {
-	if len(req.InfoHashes) > int(h.maxScrapeInfoHashes) {
-		req.InfoHashes = req.InfoHashes[:h.maxScrapeInfoHashes]
-	}
-
 	return ctx, nil
 }
 
