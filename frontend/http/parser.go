@@ -7,12 +7,19 @@ import (
 	"github.com/chihaya/chihaya/bittorrent"
 )
 
-// ParseAnnounce parses an bittorrent.AnnounceRequest from an http.Request.
+// ParseOptions is the configuration used to parse an Announce Request.
 //
-// If allowIPSpoofing is true, IPs provided via params will be used.
-// If realIPHeader is not empty string, the first value of the HTTP Header with
+// If AllowIPSpoofing is true, IPs provided via BitTorrent params will be used.
+// If RealIPHeader is not empty string, the value of the first HTTP Header with
 // that name will be used.
-func ParseAnnounce(r *http.Request, realIPHeader string, allowIPSpoofing bool) (*bittorrent.AnnounceRequest, error) {
+type ParseOptions struct {
+	AllowIPSpoofing             bool   `yaml:"allowIPSpoofing"`
+	RealIPHeader                string `yaml:"realIPHeader"`
+	bittorrent.RequestSanitizer `yaml:",inline"`
+}
+
+// ParseAnnounce parses an bittorrent.AnnounceRequest from an http.Request.
+func ParseAnnounce(r *http.Request, opts ParseOptions) (*bittorrent.AnnounceRequest, error) {
 	qp, err := bittorrent.ParseURLData(r.RequestURI)
 	if err != nil {
 		return nil, err
@@ -20,15 +27,23 @@ func ParseAnnounce(r *http.Request, realIPHeader string, allowIPSpoofing bool) (
 
 	request := &bittorrent.AnnounceRequest{Params: qp}
 
-	eventStr, _ := qp.String("event")
-	request.Event, err = bittorrent.NewEvent(eventStr)
-	if err != nil {
-		return nil, bittorrent.ClientError("failed to provide valid client event")
+	// Attempt to parse the event from the request.
+	var eventStr string
+	eventStr, request.EventProvided = qp.String("event")
+	if request.EventProvided {
+		request.Event, err = bittorrent.NewEvent(eventStr)
+		if err != nil {
+			return nil, bittorrent.ClientError("failed to provide valid client event")
+		}
+	} else {
+		request.Event = bittorrent.None
 	}
 
+	// Determine if the client expects a compact response.
 	compactStr, _ := qp.String("compact")
 	request.Compact = compactStr != "" && compactStr != "0"
 
+	// Parse the infohash from the request.
 	infoHashes := qp.InfoHashes()
 	if len(infoHashes) < 1 {
 		return nil, bittorrent.ClientError("no info_hash parameter supplied")
@@ -38,6 +53,7 @@ func ParseAnnounce(r *http.Request, realIPHeader string, allowIPSpoofing bool) (
 	}
 	request.InfoHash = infoHashes[0]
 
+	// Parse the PeerID from the request.
 	peerID, ok := qp.String("peer_id")
 	if !ok {
 		return nil, bittorrent.ClientError("failed to parse parameter: peer_id")
@@ -47,43 +63,54 @@ func ParseAnnounce(r *http.Request, realIPHeader string, allowIPSpoofing bool) (
 	}
 	request.Peer.ID = bittorrent.PeerIDFromString(peerID)
 
+	// Determine the number of remaining pieces for the client.
 	request.Left, err = qp.Uint64("left")
 	if err != nil {
 		return nil, bittorrent.ClientError("failed to parse parameter: left")
 	}
 
+	// Determine the number of pieces downloaded by the client.
 	request.Downloaded, err = qp.Uint64("downloaded")
 	if err != nil {
 		return nil, bittorrent.ClientError("failed to parse parameter: downloaded")
 	}
 
+	// Determine the number of pieces shared by the client.
 	request.Uploaded, err = qp.Uint64("uploaded")
 	if err != nil {
 		return nil, bittorrent.ClientError("failed to parse parameter: uploaded")
 	}
 
+	// Determine the number of peers the client wants in the response.
 	numwant, err := qp.Uint64("numwant")
 	if err != nil && err != bittorrent.ErrKeyNotFound {
 		return nil, bittorrent.ClientError("failed to parse parameter: numwant")
 	}
 	request.NumWant = uint32(numwant)
+	request.NumWantProvided = err == nil
 
+	// Parse the port where the client is listening.
 	port, err := qp.Uint64("port")
 	if err != nil {
 		return nil, bittorrent.ClientError("failed to parse parameter: port")
 	}
 	request.Peer.Port = uint16(port)
 
-	request.Peer.IP.IP = requestedIP(r, qp, realIPHeader, allowIPSpoofing)
+	// Parse the IP address where the client is listening.
+	request.Peer.IP.IP, request.IPProvided = requestedIP(r, qp, opts)
 	if request.Peer.IP.IP == nil {
 		return nil, bittorrent.ClientError("failed to parse peer IP address")
+	}
+
+	if err := opts.SanitizeAnnounce(request); err != nil {
+		return nil, err
 	}
 
 	return request, nil
 }
 
 // ParseScrape parses an bittorrent.ScrapeRequest from an http.Request.
-func ParseScrape(r *http.Request) (*bittorrent.ScrapeRequest, error) {
+func ParseScrape(r *http.Request, opts ParseOptions) (*bittorrent.ScrapeRequest, error) {
 	qp, err := bittorrent.ParseURLData(r.RequestURI)
 	if err != nil {
 		return nil, err
@@ -99,39 +126,35 @@ func ParseScrape(r *http.Request) (*bittorrent.ScrapeRequest, error) {
 		Params:     qp,
 	}
 
+	if err := opts.SanitizeScrape(request); err != nil {
+		return nil, err
+	}
+
 	return request, nil
 }
 
 // requestedIP determines the IP address for a BitTorrent client request.
-//
-// If allowIPSpoofing is true, IPs provided via params will be used.
-// If realIPHeader is not empty string, the first value of the HTTP Header with
-// that name will be used.
-func requestedIP(r *http.Request, p bittorrent.Params, realIPHeader string, allowIPSpoofing bool) net.IP {
-	if allowIPSpoofing {
+func requestedIP(r *http.Request, p bittorrent.Params, opts ParseOptions) (ip net.IP, provided bool) {
+	if opts.AllowIPSpoofing {
 		if ipstr, ok := p.String("ip"); ok {
-			ip := net.ParseIP(ipstr)
-			return ip
+			return net.ParseIP(ipstr), true
 		}
 
 		if ipstr, ok := p.String("ipv4"); ok {
-			ip := net.ParseIP(ipstr)
-			return ip
+			return net.ParseIP(ipstr), true
 		}
 
 		if ipstr, ok := p.String("ipv6"); ok {
-			ip := net.ParseIP(ipstr)
-			return ip
+			return net.ParseIP(ipstr), true
 		}
 	}
 
-	if realIPHeader != "" {
-		if ips, ok := r.Header[realIPHeader]; ok && len(ips) > 0 {
-			ip := net.ParseIP(ips[0])
-			return ip
+	if opts.RealIPHeader != "" {
+		if ips, ok := r.Header[opts.RealIPHeader]; ok && len(ips) > 0 {
+			return net.ParseIP(ips[0]), false
 		}
 	}
 
 	host, _, _ := net.SplitHostPort(r.RemoteAddr)
-	return net.ParseIP(host)
+	return net.ParseIP(host), false
 }
