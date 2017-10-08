@@ -70,8 +70,8 @@ type Config struct {
 	Addr                string        `yaml:"addr"`
 	PrivateKey          string        `yaml:"private_key"`
 	MaxClockSkew        time.Duration `yaml:"max_clock_skew"`
-	AllowIPSpoofing     bool          `yaml:"allow_ip_spoofing"`
 	EnableRequestTiming bool          `yaml:"enable_request_timing"`
+	ParseOptions        `yaml:",inline"`
 }
 
 // LogFields renders the current config as a set of Logrus fields.
@@ -80,8 +80,11 @@ func (cfg Config) LogFields() log.Fields {
 		"addr":                cfg.Addr,
 		"privateKey":          cfg.PrivateKey,
 		"maxClockSkew":        cfg.MaxClockSkew,
-		"allowIPSpoofing":     cfg.AllowIPSpoofing,
 		"enableRequestTiming": cfg.EnableRequestTiming,
+		"allowIPSpoofing":     cfg.AllowIPSpoofing,
+		"maxNumWant":          cfg.MaxNumWant,
+		"defaultNumWant":      cfg.DefaultNumWant,
+		"maxScrapeInfohashes": cfg.MaxScrapeInfoHashes,
 	}
 }
 
@@ -278,7 +281,7 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 		actionName = "announce"
 
 		var req *bittorrent.AnnounceRequest
-		req, err = ParseAnnounce(r, t.AllowIPSpoofing, actionID == announceV6ActionID)
+		req, err = ParseAnnounce(r, actionID == announceV6ActionID, t.ParseOptions)
 		if err != nil {
 			WriteError(w, txID, err)
 			return
@@ -302,7 +305,7 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 		actionName = "scrape"
 
 		var req *bittorrent.ScrapeRequest
-		req, err = ParseScrape(r)
+		req, err = ParseScrape(r, t.ParseOptions)
 		if err != nil {
 			WriteError(w, txID, err)
 			return
