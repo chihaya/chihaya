@@ -8,13 +8,13 @@ import (
 	"net"
 	"runtime"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"gopkg.in/yaml.v2"
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/pkg/log"
+	"github.com/chihaya/chihaya/pkg/timecache"
 	"github.com/chihaya/chihaya/storage"
 )
 
@@ -155,22 +155,6 @@ func New(provided Config) (storage.PeerStore, error) {
 		}
 	}()
 
-	// Start a goroutine for updating our cached system clock.
-	ps.wg.Add(1)
-	go func() {
-		defer ps.wg.Done()
-		t := time.NewTicker(1 * time.Second)
-		for {
-			select {
-			case <-ps.closed:
-				t.Stop()
-				return
-			case now := <-t.C:
-				ps.setClock(now.UnixNano())
-			}
-		}
-	}()
-
 	// Start a goroutine for reporting statistics to Prometheus.
 	ps.wg.Add(1)
 	go func() {
@@ -269,10 +253,6 @@ type peerStore struct {
 	ipv6Mask net.IPMask
 	shards   []*peerShard
 
-	// clock stores the current time nanoseconds, updated every second.
-	// Must be accessed atomically!
-	clock int64
-
 	closed chan struct{}
 	wg     sync.WaitGroup
 }
@@ -303,11 +283,7 @@ func recordGCDuration(duration time.Duration) {
 }
 
 func (ps *peerStore) getClock() int64 {
-	return atomic.LoadInt64(&ps.clock)
-}
-
-func (ps *peerStore) setClock(to int64) {
-	atomic.StoreInt64(&ps.clock, to)
+	return timecache.NowUnixNano()
 }
 
 func (ps *peerStore) shardIndex(infoHash bittorrent.InfoHash, af bittorrent.AddressFamily) uint32 {
