@@ -88,8 +88,9 @@ func ParseAnnounce(r *http.Request, opts ParseOptions) (*bittorrent.AnnounceRequ
 	if err != nil && err != bittorrent.ErrKeyNotFound {
 		return nil, bittorrent.ClientError("failed to parse parameter: numwant")
 	}
-	request.NumWant = uint32(numwant)
+	// If there were no errors, the user actually provided the numwant.
 	request.NumWantProvided = err == nil
+	request.NumWant = uint32(numwant)
 
 	// Parse the port where the client is listening.
 	port, err := qp.Uint64("port")
