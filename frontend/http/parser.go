@@ -65,19 +65,19 @@ func ParseAnnounce(r *http.Request, opts ParseOptions) (*bittorrent.AnnounceRequ
 	}
 	request.Peer.ID = bittorrent.PeerIDFromString(peerID)
 
-	// Determine the number of remaining pieces for the client.
+	// Determine the number of remaining bytes for the client.
 	request.Left, err = qp.Uint64("left")
 	if err != nil {
 		return nil, bittorrent.ClientError("failed to parse parameter: left")
 	}
 
-	// Determine the number of pieces downloaded by the client.
+	// Determine the number of bytes downloaded by the client.
 	request.Downloaded, err = qp.Uint64("downloaded")
 	if err != nil {
 		return nil, bittorrent.ClientError("failed to parse parameter: downloaded")
 	}
 
-	// Determine the number of pieces shared by the client.
+	// Determine the number of bytes shared by the client.
 	request.Uploaded, err = qp.Uint64("uploaded")
 	if err != nil {
 		return nil, bittorrent.ClientError("failed to parse parameter: uploaded")
