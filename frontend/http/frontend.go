@@ -21,9 +21,6 @@ func init() {
 	prometheus.MustRegister(promResponseDurationMilliseconds)
 }
 
-// ErrInvalidIP indicates an invalid IP.
-var ErrInvalidIP = bittorrent.ClientError("invalid IP")
-
 var promResponseDurationMilliseconds = prometheus.NewHistogramVec(
 	prometheus.HistogramOpts{
 		Name:    "chihaya_http_response_duration_milliseconds",
@@ -84,7 +81,7 @@ func (cfg Config) LogFields() log.Fields {
 		"realIPHeader":        cfg.RealIPHeader,
 		"maxNumWant":          cfg.MaxNumWant,
 		"defaultNumWant":      cfg.DefaultNumWant,
-		"maxScrapeInfohashes": cfg.MaxScrapeInfoHashes,
+		"maxScrapeInfoHashes": cfg.MaxScrapeInfoHashes,
 	}
 }
 
@@ -280,7 +277,7 @@ func (f *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprou
 		req.AddressFamily = bittorrent.IPv6
 	} else {
 		log.Error("http: invalid IP: neither v4 nor v6", log.Fields{"RemoteAddr": r.RemoteAddr})
-		WriteError(w, ErrInvalidIP)
+		WriteError(w, bittorrent.ErrInvalidIP)
 		return
 	}
 	af = new(bittorrent.AddressFamily)

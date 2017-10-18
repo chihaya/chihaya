@@ -13,9 +13,11 @@ import (
 // If RealIPHeader is not empty string, the value of the first HTTP Header with
 // that name will be used.
 type ParseOptions struct {
-	AllowIPSpoofing             bool   `yaml:"allowIPSpoofing"`
-	RealIPHeader                string `yaml:"realIPHeader"`
-	bittorrent.RequestSanitizer `yaml:",inline"`
+	AllowIPSpoofing     bool   `yaml:"allow_ip_spoofing"`
+	RealIPHeader        string `yaml:"real_ip_header"`
+	MaxNumWant          uint32 `yaml:"max_numwant"`
+	DefaultNumWant      uint32 `yaml:"default_numwant"`
+	MaxScrapeInfoHashes uint32 `yaml:"max_scrape_infohashes"`
 }
 
 // ParseAnnounce parses an bittorrent.AnnounceRequest from an http.Request.
@@ -102,7 +104,7 @@ func ParseAnnounce(r *http.Request, opts ParseOptions) (*bittorrent.AnnounceRequ
 		return nil, bittorrent.ClientError("failed to parse peer IP address")
 	}
 
-	if err := opts.SanitizeAnnounce(request); err != nil {
+	if err := bittorrent.SanitizeAnnounce(request, opts.MaxNumWant, opts.DefaultNumWant); err != nil {
 		return nil, err
 	}
 
@@ -126,7 +128,7 @@ func ParseScrape(r *http.Request, opts ParseOptions) (*bittorrent.ScrapeRequest,
 		Params:     qp,
 	}
 
-	if err := opts.SanitizeScrape(request); err != nil {
+	if err := bittorrent.SanitizeScrape(request, opts.MaxScrapeInfoHashes); err != nil {
 		return nil, err
 	}
 

@@ -49,8 +49,10 @@ var (
 //
 // If AllowIPSpoofing is true, IPs provided via params will be used.
 type ParseOptions struct {
-	AllowIPSpoofing             bool `yaml:"allowIPSpoofing"`
-	bittorrent.RequestSanitizer `yaml:",inline"`
+	AllowIPSpoofing     bool   `yaml:"allow_ip_spoofing"`
+	MaxNumWant          uint32 `yaml:"max_numwant"`
+	DefaultNumWant      uint32 `yaml:"default_numwant"`
+	MaxScrapeInfoHashes uint32 `yaml:"max_scrape_infohashes"`
 }
 
 // ParseAnnounce parses an AnnounceRequest from a UDP request.
@@ -117,7 +119,7 @@ func ParseAnnounce(r Request, v6 bool, opts ParseOptions) (*bittorrent.AnnounceR
 		Params: params,
 	}
 
-	if err := opts.SanitizeAnnounce(request); err != nil {
+	if err := bittorrent.SanitizeAnnounce(request, opts.MaxNumWant, opts.DefaultNumWant); err != nil {
 		return nil, err
 	}
 
@@ -208,7 +210,7 @@ func ParseScrape(r Request, opts ParseOptions) (*bittorrent.ScrapeRequest, error
 
 	// Sanitize the request.
 	request := &bittorrent.ScrapeRequest{InfoHashes: infohashes}
-	if err := opts.SanitizeScrape(request); err != nil {
+	if err := bittorrent.SanitizeScrape(request, opts.MaxScrapeInfoHashes); err != nil {
 		return nil, err
 	}
 
