@@ -78,16 +78,37 @@ func (i InfoHash) String() string {
 
 // AnnounceRequest represents the parsed parameters from an announce request.
 type AnnounceRequest struct {
-	Event      Event
-	InfoHash   InfoHash
-	Compact    bool
-	NumWant    uint32
-	Left       uint64
-	Downloaded uint64
-	Uploaded   uint64
+	Event           Event
+	InfoHash        InfoHash
+	Compact         bool
+	EventProvided   bool
+	NumWantProvided bool
+	IPProvided      bool
+	NumWant         uint32
+	Left            uint64
+	Downloaded      uint64
+	Uploaded        uint64
 
 	Peer
 	Params
+}
+
+// LogFields renders the current response as a set of log fields.
+func (r AnnounceRequest) LogFields() log.Fields {
+	return log.Fields{
+		"event":           r.Event,
+		"infoHash":        r.InfoHash,
+		"compact":         r.Compact,
+		"eventProvided":   r.EventProvided,
+		"numWantProvided": r.NumWantProvided,
+		"ipProvided":      r.IPProvided,
+		"numWant":         r.NumWant,
+		"left":            r.Left,
+		"downloaded":      r.Downloaded,
+		"uploaded":        r.Uploaded,
+		"peer":            r.Peer,
+		"params":          r.Params,
+	}
 }
 
 // AnnounceResponse represents the parameters used to create an announce
@@ -102,15 +123,15 @@ type AnnounceResponse struct {
 	IPv6Peers   []Peer
 }
 
-// LogFields renders the current response as a set of Logrus fields.
-func (ar AnnounceResponse) LogFields() log.Fields {
+// LogFields renders the current response as a set of log fields.
+func (r AnnounceResponse) LogFields() log.Fields {
 	return log.Fields{
-		"compact":     ar.Compact,
-		"complete":    ar.Complete,
-		"interval":    ar.Interval,
-		"minInterval": ar.MinInterval,
-		"ipv4Peers":   ar.IPv4Peers,
-		"ipv6Peers":   ar.IPv6Peers,
+		"compact":     r.Compact,
+		"complete":    r.Complete,
+		"interval":    r.Interval,
+		"minInterval": r.MinInterval,
+		"ipv4Peers":   r.IPv4Peers,
+		"ipv6Peers":   r.IPv6Peers,
 	}
 }
 
@@ -119,6 +140,15 @@ type ScrapeRequest struct {
 	AddressFamily AddressFamily
 	InfoHashes    []InfoHash
 	Params        Params
+}
+
+// LogFields renders the current response as a set of log fields.
+func (r ScrapeRequest) LogFields() log.Fields {
+	return log.Fields{
+		"addressFamily": r.AddressFamily,
+		"infoHashes":    r.InfoHashes,
+		"params":        r.Params,
+	}
 }
 
 // ScrapeResponse represents the parameters used to create a scrape response.
@@ -147,6 +177,17 @@ type Scrape struct {
 // AddressFamily is the address family of an IP address.
 type AddressFamily uint8
 
+func (af AddressFamily) String() string {
+	switch af {
+	case IPv4:
+		return "IPv4"
+	case IPv6:
+		return "IPv6"
+	default:
+		panic("tried to print unknown AddressFamily")
+	}
+}
+
 // AddressFamily constants.
 const (
 	IPv4 AddressFamily = iota
@@ -157,6 +198,10 @@ const (
 type IP struct {
 	net.IP
 	AddressFamily
+}
+
+func (ip IP) String() string {
+	return ip.IP.String()
 }
 
 // Peer represents the connection details of a peer that is returned in an

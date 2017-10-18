@@ -21,9 +21,6 @@ func init() {
 	prometheus.MustRegister(promResponseDurationMilliseconds)
 }
 
-// ErrInvalidIP indicates an invalid IP.
-var ErrInvalidIP = bittorrent.ClientError("invalid IP")
-
 var promResponseDurationMilliseconds = prometheus.NewHistogramVec(
 	prometheus.HistogramOpts{
 		Name:    "chihaya_http_response_duration_milliseconds",
@@ -65,11 +62,10 @@ type Config struct {
 	Addr                string        `yaml:"addr"`
 	ReadTimeout         time.Duration `yaml:"read_timeout"`
 	WriteTimeout        time.Duration `yaml:"write_timeout"`
-	AllowIPSpoofing     bool          `yaml:"allow_ip_spoofing"`
-	RealIPHeader        string        `yaml:"real_ip_header"`
 	TLSCertPath         string        `yaml:"tls_cert_path"`
 	TLSKeyPath          string        `yaml:"tls_key_path"`
 	EnableRequestTiming bool          `yaml:"enable_request_timing"`
+	ParseOptions        `yaml:",inline"`
 }
 
 // LogFields renders the current config as a set of Logrus fields.
@@ -78,11 +74,14 @@ func (cfg Config) LogFields() log.Fields {
 		"addr":                cfg.Addr,
 		"readTimeout":         cfg.ReadTimeout,
 		"writeTimeout":        cfg.WriteTimeout,
-		"allowIPSpoofing":     cfg.AllowIPSpoofing,
-		"realIPHeader":        cfg.RealIPHeader,
 		"tlsCertPath":         cfg.TLSCertPath,
 		"tlsKeyPath":          cfg.TLSKeyPath,
 		"enableRequestTiming": cfg.EnableRequestTiming,
+		"allowIPSpoofing":     cfg.AllowIPSpoofing,
+		"realIPHeader":        cfg.RealIPHeader,
+		"maxNumWant":          cfg.MaxNumWant,
+		"defaultNumWant":      cfg.DefaultNumWant,
+		"maxScrapeInfoHashes": cfg.MaxScrapeInfoHashes,
 	}
 }
 
@@ -219,7 +218,7 @@ func (f *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, _ httpr
 		}
 	}()
 
-	req, err := ParseAnnounce(r, f.RealIPHeader, f.AllowIPSpoofing)
+	req, err := ParseAnnounce(r, f.ParseOptions)
 	if err != nil {
 		WriteError(w, err)
 		return
@@ -258,7 +257,7 @@ func (f *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprou
 		}
 	}()
 
-	req, err := ParseScrape(r)
+	req, err := ParseScrape(r, f.ParseOptions)
 	if err != nil {
 		WriteError(w, err)
 		return
@@ -278,7 +277,7 @@ func (f *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprou
 		req.AddressFamily = bittorrent.IPv6
 	} else {
 		log.Error("http: invalid IP: neither v4 nor v6", log.Fields{"RemoteAddr": r.RemoteAddr})
-		WriteError(w, ErrInvalidIP)
+		WriteError(w, bittorrent.ErrInvalidIP)
 		return
 	}
 	af = new(bittorrent.AddressFamily)
