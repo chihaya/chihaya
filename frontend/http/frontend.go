@@ -176,7 +176,9 @@ func (f *Frontend) Stop() <-chan error {
 func (f *Frontend) handler() http.Handler {
 	router := httprouter.New()
 	router.GET("/announce", f.announceRoute)
+	router.GET("/announce.php", f.announceRoute)
 	router.GET("/scrape", f.scrapeRoute)
+	router.GET("/scrape.php", f.scrapeRoute)
 	return router
 }
 
