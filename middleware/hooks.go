@@ -9,6 +9,9 @@ import (
 
 // Hook abstracts the concept of anything that needs to interact with a
 // BitTorrent client's request and response to a BitTorrent tracker.
+// PreHooks and PostHooks both use the same interface.
+//
+// A Hook can implement stop.Stopper if clean shutdown is required.
 type Hook interface {
 	HandleAnnounce(context.Context, *bittorrent.AnnounceRequest, *bittorrent.AnnounceResponse) (context.Context, error)
 	HandleScrape(context.Context, *bittorrent.ScrapeRequest, *bittorrent.ScrapeResponse) (context.Context, error)
