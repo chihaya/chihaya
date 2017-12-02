@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"fmt"
 	"math/rand"
 	"net"
 	"sync"
@@ -273,6 +274,16 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 			return
 		}
 
+		af = new(bittorrent.AddressFamily)
+		if r.IP.To4() != nil {
+			*af = bittorrent.IPv4
+		} else if len(r.IP) == net.IPv6len { // implies r.IP.To4() == nil
+			*af = bittorrent.IPv6
+		} else {
+			// Should never happen - we got the IP straight from the UDP packet.
+			panic(fmt.Sprintf("udp: invalid IP: neither v4 nor v6, IP: %#v", r.IP))
+		}
+
 		WriteConnectionID(w, txID, NewConnectionID(r.IP, timecache.Now(), t.PrivateKey))
 
 	case announceActionID, announceV6ActionID:
@@ -314,9 +325,8 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 		} else if len(r.IP) == net.IPv6len { // implies r.IP.To4() == nil
 			req.AddressFamily = bittorrent.IPv6
 		} else {
-			log.Error("udp: invalid IP: neither v4 nor v6", log.Fields{"IP": r.IP})
-			WriteError(w, txID, bittorrent.ErrInvalidIP)
-			return
+			// Should never happen - we got the IP straight from the UDP packet.
+			panic(fmt.Sprintf("udp: invalid IP: neither v4 nor v6, IP: %#v", r.IP))
 		}
 		af = new(bittorrent.AddressFamily)
 		*af = req.AddressFamily
