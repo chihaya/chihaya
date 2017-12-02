@@ -9,7 +9,10 @@ import (
 	"github.com/chihaya/chihaya/bittorrent"
 )
 
-// PeerEqualityFunc is the boolean function to use to check two Peers for equality.
+// PeerEqualityFunc is the boolean function to use to check two Peers for
+// equality.
+// Depending on the implementation of the PeerStore, this can be changed to
+// use (Peer).EqualEndpoint instead.
 var PeerEqualityFunc = func(p1, p2 bittorrent.Peer) bool { return p1.Equal(p2) }
 
 // TestPeerStore tests a PeerStore implementation against the interface.
