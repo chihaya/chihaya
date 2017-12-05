@@ -64,6 +64,7 @@ type Config struct {
 	WriteTimeout        time.Duration `yaml:"write_timeout"`
 	TLSCertPath         string        `yaml:"tls_cert_path"`
 	TLSKeyPath          string        `yaml:"tls_key_path"`
+	EnableLegacyPHPURLs bool          `yaml:"enable_legacy_php_urls"`
 	EnableRequestTiming bool          `yaml:"enable_request_timing"`
 	ParseOptions        `yaml:",inline"`
 }
@@ -76,6 +77,7 @@ func (cfg Config) LogFields() log.Fields {
 		"writeTimeout":        cfg.WriteTimeout,
 		"tlsCertPath":         cfg.TLSCertPath,
 		"tlsKeyPath":          cfg.TLSKeyPath,
+		"enableLegacyPHPURLs": cfg.EnableLegacyPHPURLs,
 		"enableRequestTiming": cfg.EnableRequestTiming,
 		"allowIPSpoofing":     cfg.AllowIPSpoofing,
 		"realIPHeader":        cfg.RealIPHeader,
@@ -177,6 +179,13 @@ func (f *Frontend) handler() http.Handler {
 	router := httprouter.New()
 	router.GET("/announce", f.announceRoute)
 	router.GET("/scrape", f.scrapeRoute)
+
+	if f.EnableLegacyPHPURLs {
+		log.Info("http: enabling legacy PHP URLs")
+		router.GET("/announce.php", f.announceRoute)
+		router.GET("/scrape.php", f.scrapeRoute)
+	}
+
 	return router
 }
 
