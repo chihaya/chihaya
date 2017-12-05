@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"os/signal"
+	"runtime"
 	"runtime/pprof"
 	"strings"
 	"syscall"
@@ -141,8 +142,7 @@ func RunCmdFunc(cmd *cobra.Command, args []string) error {
 	quit := make(chan os.Signal)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
-	reload := make(chan os.Signal)
-	signal.Notify(reload, syscall.SIGUSR1)
+	reload := makeReloadChan()
 
 	for {
 		select {
@@ -173,6 +173,14 @@ func main() {
 		Short: "BitTorrent Tracker",
 		Long:  "A customizable, multi-protocol BitTorrent Tracker",
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			noColors, err := cmd.Flags().GetBool("nocolors")
+			if err != nil {
+				return err
+			}
+			if noColors {
+				log.SetFormatter(&logrus.TextFormatter{DisableColors: true})
+			}
+
 			jsonLog, err := cmd.Flags().GetBool("json")
 			if err != nil {
 				return err
@@ -216,6 +224,11 @@ func main() {
 	rootCmd.Flags().String("cpuprofile", "", "location to save a CPU profile")
 	rootCmd.Flags().Bool("debug", false, "enable debug logging")
 	rootCmd.Flags().Bool("json", false, "enable json logging")
+	if runtime.GOOS == "windows" {
+		rootCmd.Flags().Bool("nocolors", true, "disable log coloring")
+	} else {
+		rootCmd.Flags().Bool("nocolors", false, "disable log coloring")
+	}
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal("failed when executing root cobra command: " + err.Error())
