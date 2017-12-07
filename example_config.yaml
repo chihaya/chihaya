@@ -3,6 +3,10 @@ chihaya:
   # frequently they should announce in between client events.
   announce_interval: 30m
 
+  # The interval communicated with BitTorrent clients informing them of the
+  # minimal duration between announces.
+  min_announce_interval: 15m
+
   # The network interface that will bind to an HTTP endpoint that can be
   # scraped by an instance of the Prometheus time series database.
   # For more info see: https://prometheus.io

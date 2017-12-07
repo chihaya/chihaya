@@ -15,7 +15,8 @@ import (
 
 // Config holds the configuration common across all middleware.
 type Config struct {
-	AnnounceInterval time.Duration `yaml:"announce_interval"`
+	AnnounceInterval    time.Duration `yaml:"announce_interval"`
+	MinAnnounceInterval time.Duration `yaml:"min_announce_interval"`
 }
 
 var _ frontend.TrackerLogic = &Logic{}
@@ -24,27 +25,29 @@ var _ frontend.TrackerLogic = &Logic{}
 // middleware hooks.
 func NewLogic(cfg Config, peerStore storage.PeerStore, preHooks, postHooks []Hook) *Logic {
 	return &Logic{
-		announceInterval: cfg.AnnounceInterval,
-		peerStore:        peerStore,
-		preHooks:         append(preHooks, &responseHook{store: peerStore}),
-		postHooks:        append(postHooks, &swarmInteractionHook{store: peerStore}),
+		announceInterval:    cfg.AnnounceInterval,
+		minAnnounceInterval: cfg.MinAnnounceInterval,
+		peerStore:           peerStore,
+		preHooks:            append(preHooks, &responseHook{store: peerStore}),
+		postHooks:           append(postHooks, &swarmInteractionHook{store: peerStore}),
 	}
 }
 
 // Logic is an implementation of the TrackerLogic that functions by
 // executing a series of middleware hooks.
 type Logic struct {
-	announceInterval time.Duration
-	peerStore        storage.PeerStore
-	preHooks         []Hook
-	postHooks        []Hook
+	announceInterval    time.Duration
+	minAnnounceInterval time.Duration
+	peerStore           storage.PeerStore
+	preHooks            []Hook
+	postHooks           []Hook
 }
 
 // HandleAnnounce generates a response for an Announce.
 func (l *Logic) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequest) (_ context.Context, resp *bittorrent.AnnounceResponse, err error) {
 	resp = &bittorrent.AnnounceResponse{
 		Interval:    l.announceInterval,
-		MinInterval: l.announceInterval,
+		MinInterval: l.minAnnounceInterval,
 		Compact:     req.Compact,
 	}
 	for _, h := range l.preHooks {
