@@ -12,7 +12,7 @@ COPY . /go/src/github.com/chihaya/chihaya
 
 # Install our golang dependencies and compile our binary.
 RUN glide install
-RUN CGO_ENABLED=0 GOOS=linux go install github.com/chihaya/chihaya/cmd/chihaya
+RUN CGO_ENABLED=0 go install github.com/chihaya/chihaya/cmd/chihaya
 RUN adduser -D chihaya
 
 FROM scratch
