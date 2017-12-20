@@ -13,11 +13,11 @@ COPY . /go/src/github.com/chihaya/chihaya
 # Install our golang dependencies and compile our binary.
 RUN glide install
 RUN CGO_ENABLED=0 go install github.com/chihaya/chihaya/cmd/chihaya
-RUN adduser -D chihaya
 
-FROM scratch
+FROM alpine:latest
 COPY --from=build-env /go/bin/chihaya /chihaya
-COPY --from=build-env /etc/passwd /etc/passwd
+
+RUN adduser -D chihaya
 
 # Expose a docker interface to our binary.
 EXPOSE 6880 6881
