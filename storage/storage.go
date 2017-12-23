@@ -136,7 +136,7 @@ func RegisterDriver(name string, d Driver) {
 	drivers[name] = d
 }
 
-// NewPeerStore attempts to initialize a new PeerStore with given a name from
+// NewPeerStore attempts to initialize a new PeerStore instance from
 // the list of registered Drivers.
 //
 // If a driver does not exist, returns ErrDriverDoesNotExist.

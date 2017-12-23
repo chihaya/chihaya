@@ -10,31 +10,16 @@ import (
 	"github.com/chihaya/chihaya/frontend/http"
 	"github.com/chihaya/chihaya/frontend/udp"
 	"github.com/chihaya/chihaya/middleware"
-	"github.com/chihaya/chihaya/middleware/clientapproval"
-	"github.com/chihaya/chihaya/middleware/jwt"
-	"github.com/chihaya/chihaya/middleware/varinterval"
 
-	// Imported to register as Storage Drivers.
+	// Imported to register as middleware drivers.
+	_ "github.com/chihaya/chihaya/middleware/clientapproval"
+	_ "github.com/chihaya/chihaya/middleware/jwt"
+	_ "github.com/chihaya/chihaya/middleware/varinterval"
+
+	// Imported to register as storage drivers.
 	_ "github.com/chihaya/chihaya/storage/memory"
 	_ "github.com/chihaya/chihaya/storage/memorybysubnet"
 )
-
-type hookConfig struct {
-	Name   string      `yaml:"name"`
-	Config interface{} `yaml:"config"`
-}
-
-type hookConfigs []hookConfig
-
-// Names returns all hook names listed in the configuration.
-func (hookCfgs hookConfigs) Names() (hookNames []string) {
-	hookNames = make([]string, len(hookCfgs))
-	for index, hookCfg := range hookCfgs {
-		hookNames[index] = hookCfg.Name
-	}
-
-	return
-}
 
 type storageConfig struct {
 	Name   string      `yaml:"name"`
@@ -43,64 +28,28 @@ type storageConfig struct {
 
 // Config represents the configuration used for executing Chihaya.
 type Config struct {
-	middleware.Config `yaml:",inline"`
-	PrometheusAddr    string        `yaml:"prometheus_addr"`
-	HTTPConfig        http.Config   `yaml:"http"`
-	UDPConfig         udp.Config    `yaml:"udp"`
-	Storage           storageConfig `yaml:"storage"`
-	PreHooks          hookConfigs   `yaml:"prehooks"`
-	PostHooks         hookConfigs   `yaml:"posthooks"`
+	middleware.ResponseConfig `yaml:",inline"`
+	PrometheusAddr            string                  `yaml:"prometheus_addr"`
+	HTTPConfig                http.Config             `yaml:"http"`
+	UDPConfig                 udp.Config              `yaml:"udp"`
+	Storage                   storageConfig           `yaml:"storage"`
+	PreHooks                  []middleware.HookConfig `yaml:"prehooks"`
+	PostHooks                 []middleware.HookConfig `yaml:"posthooks"`
 }
 
-// CreateHooks creates instances of Hooks for all of the PreHooks and PostHooks
-// configured in a Config.
-func (cfg Config) CreateHooks() (preHooks, postHooks []middleware.Hook, err error) {
-	for _, hookCfg := range cfg.PreHooks {
-		cfgBytes, err := yaml.Marshal(hookCfg.Config)
-		if err != nil {
-			panic("failed to remarshal valid YAML")
-		}
-
-		switch hookCfg.Name {
-		case "jwt":
-			var jwtCfg jwt.Config
-			err := yaml.Unmarshal(cfgBytes, &jwtCfg)
-			if err != nil {
-				return nil, nil, errors.New("invalid JWT middleware config: " + err.Error())
-			}
-			hook, err := jwt.NewHook(jwtCfg)
-			if err != nil {
-				return nil, nil, errors.New("invalid JWT middleware config: " + err.Error())
-			}
-			preHooks = append(preHooks, hook)
-		case "client approval":
-			var caCfg clientapproval.Config
-			err := yaml.Unmarshal(cfgBytes, &caCfg)
-			if err != nil {
-				return nil, nil, errors.New("invalid client approval middleware config: " + err.Error())
-			}
-			hook, err := clientapproval.NewHook(caCfg)
-			if err != nil {
-				return nil, nil, errors.New("invalid client approval middleware config: " + err.Error())
-			}
-			preHooks = append(preHooks, hook)
-		case "interval variation":
-			var viCfg varinterval.Config
-			err := yaml.Unmarshal(cfgBytes, &viCfg)
-			if err != nil {
-				return nil, nil, errors.New("invalid interval variation middleware config: " + err.Error())
-			}
-			hook, err := varinterval.New(viCfg)
-			if err != nil {
-				return nil, nil, errors.New("invalid interval variation middleware config: " + err.Error())
-			}
-			preHooks = append(preHooks, hook)
-		}
+// PreHookNames returns only the names of the configured middleware.
+func (cfg Config) PreHookNames() (names []string) {
+	for _, hook := range cfg.PreHooks {
+		names = append(names, hook.Name)
 	}
 
-	for _, hookCfg := range cfg.PostHooks {
-		switch hookCfg.Name {
-		}
+	return
+}
+
+// PostHookNames returns only the names of the configured middleware.
+func (cfg Config) PostHookNames() (names []string) {
+	for _, hook := range cfg.PostHooks {
+		names = append(names, hook.Name)
 	}
 
 	return

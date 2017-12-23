@@ -43,7 +43,7 @@ func TestCheckConfig(t *testing.T) {
 }
 
 func TestHandleAnnounce(t *testing.T) {
-	h, err := New(Config{1.0, 10, true})
+	h, err := NewHook(Config{1.0, 10, true})
 	require.Nil(t, err)
 	require.NotNil(t, h)
 

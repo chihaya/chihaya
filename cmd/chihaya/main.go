@@ -63,15 +63,20 @@ func (r *Run) Start(ps storage.PeerStore) error {
 	}
 	r.peerStore = ps
 
-	preHooks, postHooks, err := cfg.CreateHooks()
+	preHooks, err := middleware.HooksFromHookConfigs(cfg.PreHooks)
 	if err != nil {
 		return errors.New("failed to validate hook config: " + err.Error())
 	}
-	log.Info("starting middleware", log.Fields{
-		"preHooks":  cfg.PreHooks.Names(),
-		"postHooks": cfg.PostHooks.Names(),
+	postHooks, err := middleware.HooksFromHookConfigs(cfg.PostHooks)
+	if err != nil {
+		return errors.New("failed to validate hook config: " + err.Error())
+	}
+
+	log.Info("starting tracker logic", log.Fields{
+		"prehooks":  cfg.PreHookNames(),
+		"posthooks": cfg.PostHookNames(),
 	})
-	r.logic = middleware.NewLogic(cfg.Config, r.peerStore, preHooks, postHooks)
+	r.logic = middleware.NewLogic(cfg.ResponseConfig, r.peerStore, preHooks, postHooks)
 
 	if cfg.HTTPConfig.Addr != "" {
 		log.Info("starting HTTP frontend", cfg.HTTPConfig)

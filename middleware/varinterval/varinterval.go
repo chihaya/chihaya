@@ -3,13 +3,37 @@ package varinterval
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
+
+	"gopkg.in/yaml.v2"
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/middleware"
 	"github.com/chihaya/chihaya/middleware/pkg/random"
 )
+
+// Name is the name by which this middleware is registered with Chihaya.
+const Name = "interval variation"
+
+func init() {
+	middleware.RegisterDriver(Name, driver{})
+}
+
+var _ middleware.Driver = driver{}
+
+type driver struct{}
+
+func (d driver) NewHook(optionBytes []byte) (middleware.Hook, error) {
+	var cfg Config
+	err := yaml.Unmarshal(optionBytes, &cfg)
+	if err != nil {
+		return nil, fmt.Errorf("invalid options for middleware %s: %s", Name, err)
+	}
+
+	return NewHook(cfg)
+}
 
 // ErrInvalidModifyResponseProbability is returned for a config with an invalid
 // ModifyResponseProbability.
@@ -50,9 +74,9 @@ type hook struct {
 	sync.Mutex
 }
 
-// New creates a middleware to randomly modify the announce interval from the
-// given config.
-func New(cfg Config) (middleware.Hook, error) {
+// NewHook creates a middleware to randomly modify the announce interval from
+// the given config.
+func NewHook(cfg Config) (middleware.Hook, error) {
 	err := checkConfig(cfg)
 	if err != nil {
 		return nil, err

@@ -5,10 +5,34 @@ package clientapproval
 import (
 	"context"
 	"errors"
+	"fmt"
+
+	"gopkg.in/yaml.v2"
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/middleware"
 )
+
+// Name is the name by which this middleware is registered with Chihaya.
+const Name = "client approval"
+
+func init() {
+	middleware.RegisterDriver(Name, driver{})
+}
+
+var _ middleware.Driver = driver{}
+
+type driver struct{}
+
+func (d driver) NewHook(optionBytes []byte) (middleware.Hook, error) {
+	var cfg Config
+	err := yaml.Unmarshal(optionBytes, &cfg)
+	if err != nil {
+		return nil, fmt.Errorf("invalid options for middleware %s: %s", Name, err)
+	}
+
+	return NewHook(cfg)
+}
 
 // ErrClientUnapproved is the error returned when a client's PeerID is invalid.
 var ErrClientUnapproved = bittorrent.ClientError("unapproved client")
