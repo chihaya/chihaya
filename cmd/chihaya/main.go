@@ -167,59 +167,69 @@ func RunCmdFunc(cmd *cobra.Command, args []string) error {
 	}
 }
 
+// PreRunCmdFunc handles command line flags for the Run command.
+func PreRunCmdFunc(cmd *cobra.Command, args []string) error {
+	noColors, err := cmd.Flags().GetBool("nocolors")
+	if err != nil {
+		return err
+	}
+	if noColors {
+		log.SetFormatter(&logrus.TextFormatter{DisableColors: true})
+	}
+
+	jsonLog, err := cmd.Flags().GetBool("json")
+	if err != nil {
+		return err
+	}
+	if jsonLog {
+		log.SetFormatter(&logrus.JSONFormatter{})
+		log.Info("enabled JSON logging")
+	}
+
+	debugLog, err := cmd.Flags().GetBool("debug")
+	if err != nil {
+		return err
+	}
+	if debugLog {
+		log.SetDebug(true)
+		log.Info("enabled debug logging")
+	}
+
+	cpuProfilePath, err := cmd.Flags().GetString("cpuprofile")
+	if err != nil {
+		return err
+	}
+	if cpuProfilePath != "" {
+		f, err := os.Create(cpuProfilePath)
+		if err != nil {
+			return err
+		}
+		pprof.StartCPUProfile(f)
+		log.Info("enabled CPU profiling", log.Fields{"path": cpuProfilePath})
+	}
+
+	return nil
+}
+
+// PostRunCmdFunc handles clean up of any state initialized by command line
+// flags.
+func PostRunCmdFunc(cmd *cobra.Command, args []string) error {
+	// This can be called regardless because it noops when not profiling.
+	pprof.StopCPUProfile()
+
+	return nil
+}
+
 func main() {
 	var rootCmd = &cobra.Command{
-		Use:   "chihaya",
-		Short: "BitTorrent Tracker",
-		Long:  "A customizable, multi-protocol BitTorrent Tracker",
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			noColors, err := cmd.Flags().GetBool("nocolors")
-			if err != nil {
-				return err
-			}
-			if noColors {
-				log.SetFormatter(&logrus.TextFormatter{DisableColors: true})
-			}
-
-			jsonLog, err := cmd.Flags().GetBool("json")
-			if err != nil {
-				return err
-			}
-			if jsonLog {
-				log.SetFormatter(&logrus.JSONFormatter{})
-			}
-
-			debugLog, err := cmd.Flags().GetBool("debug")
-			if err != nil {
-				return err
-			}
-			if debugLog {
-				log.Info("enabling debug logging")
-				log.SetDebug(true)
-			}
-
-			cpuProfilePath, err := cmd.Flags().GetString("cpuprofile")
-			if err != nil {
-				return err
-			}
-			if cpuProfilePath != "" {
-				log.Info("enabling CPU profiling", log.Fields{"path": cpuProfilePath})
-				f, err := os.Create(cpuProfilePath)
-				if err != nil {
-					return err
-				}
-				pprof.StartCPUProfile(f)
-			}
-
-			return nil
-		},
-		RunE: RunCmdFunc,
-		PersistentPostRunE: func(cmd *cobra.Command, args []string) error {
-			// StopCPUProfile() noops when not profiling.
-			pprof.StopCPUProfile()
-			return nil
-		},
+		Use:                "chihaya",
+		Short:              "BitTorrent Tracker",
+		Long:               "A customizable, multi-protocol BitTorrent Tracker",
+		PersistentPreRunE:  PreRunCmdFunc,
+		RunE:               RunCmdFunc,
+		PersistentPostRunE: PostRunCmdFunc,
 	}
+
 	rootCmd.Flags().String("config", "/etc/chihaya.yaml", "location of configuration file")
 	rootCmd.Flags().String("cpuprofile", "", "location to save a CPU profile")
 	rootCmd.Flags().Bool("debug", false, "enable debug logging")
