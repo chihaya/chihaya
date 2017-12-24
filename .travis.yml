@@ -1,6 +1,4 @@
 language: go
-go:
-- 1.9.x
 sudo: false
 install:
 - go get -t ./...
