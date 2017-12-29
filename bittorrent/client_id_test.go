@@ -43,11 +43,13 @@ func TestClientID(t *testing.T) {
 	}
 
 	for _, tt := range clientTable {
-		var clientID ClientID
-		copy(clientID[:], []byte(tt.clientID))
-		parsedID := NewClientID(PeerIDFromString(tt.peerID))
-		if parsedID != clientID {
-			t.Error("Incorrectly parsed peer ID", tt.peerID, "as", parsedID)
-		}
+		t.Run(tt.peerID, func(t *testing.T) {
+			var clientID ClientID
+			copy(clientID[:], []byte(tt.clientID))
+			parsedID := NewClientID(PeerIDFromString(tt.peerID))
+			if parsedID != clientID {
+				t.Error("Incorrectly parsed peer ID", tt.peerID, "as", parsedID)
+			}
+		})
 	}
 }

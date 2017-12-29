@@ -24,9 +24,11 @@ var unmarshalTests = []struct {
 
 func TestUnmarshal(t *testing.T) {
 	for _, tt := range unmarshalTests {
-		got, err := Unmarshal([]byte(tt.input))
-		require.Nil(t, err, "unmarshal should not fail")
-		require.Equal(t, got, tt.expected, "unmarshalled values should match the expected results")
+		t.Run(tt.input, func(t *testing.T) {
+			got, err := Unmarshal([]byte(tt.input))
+			require.Nil(t, err, "unmarshal should not fail")
+			require.Equal(t, got, tt.expected, "unmarshalled values should match the expected results")
+		})
 	}
 }
 

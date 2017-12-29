@@ -1,6 +1,9 @@
 package udp
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 var table = []struct {
 	data   []byte
@@ -45,27 +48,29 @@ var table = []struct {
 }
 
 func TestHandleOptionalParameters(t *testing.T) {
-	for _, testCase := range table {
-		params, err := handleOptionalParameters(testCase.data)
-		if err != testCase.err {
-			if testCase.err == nil {
-				t.Fatalf("expected no parsing error for %x but got %s", testCase.data, err)
-			} else {
-				t.Fatalf("expected parsing error for %x", testCase.data)
+	for _, tt := range table {
+		t.Run(fmt.Sprintf("%#v as %#v", tt.data, tt.values), func(t *testing.T) {
+			params, err := handleOptionalParameters(tt.data)
+			if err != tt.err {
+				if tt.err == nil {
+					t.Fatalf("expected no parsing error for %x but got %s", tt.data, err)
+				} else {
+					t.Fatalf("expected parsing error for %x", tt.data)
+				}
 			}
-		}
-		if testCase.values != nil {
-			if params == nil {
-				t.Fatalf("expected values %v for %x", testCase.values, testCase.data)
-			} else {
-				for key, want := range testCase.values {
-					if got, ok := params.String(key); !ok {
-						t.Fatalf("params missing entry %s for data %x", key, testCase.data)
-					} else if got != want {
-						t.Fatalf("expected param %s=%s, but was %s for data %x", key, want, got, testCase.data)
+			if tt.values != nil {
+				if params == nil {
+					t.Fatalf("expected values %v for %x", tt.values, tt.data)
+				} else {
+					for key, want := range tt.values {
+						if got, ok := params.String(key); !ok {
+							t.Fatalf("params missing entry %s for data %x", key, tt.data)
+						} else if got != want {
+							t.Fatalf("expected param %s=%s, but was %s for data %x", key, want, got, tt.data)
+						}
 					}
 				}
 			}
-		}
+		})
 	}
 }
