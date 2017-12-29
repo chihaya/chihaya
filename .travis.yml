@@ -2,15 +2,40 @@ language: go
 go:
   - 1.9.x
 sudo: false
-install:
-- go get -t ./...
-- go get -u github.com/golang/lint/golint
-- go get -u golang.org/x/tools/cmd/goimports
-script:
-- go test -v $(go list ./... | grep -v /vendor/)
-- go vet $(go list ./... | grep -v /vendor/)
-- diff <(goimports -d $(find . -type f -name '*.go' -not -path "./vendor/*")) <(printf "")
-- (for d in $(go list ./... | grep -v /vendor/); do diff <(golint $d) <(printf "") || exit 1;  done)
+matrix:
+  include:
+  # Using vendored dependencies
+  - install:
+    - go get -u github.com/golang/dep/...
+    - go get -u github.com/golang/lint/...
+    - go get -u golang.org/x/tools/cmd/...
+    script:
+    - dep ensure
+    - go test -v $(go list ./... | grep -v /vendor/)
+    - go vet $(go list ./... | grep -v /vendor/)
+    - diff <(goimports -d $(find . -type f -name '*.go' -not -path "./vendor/*")) <(printf "")
+    - (for d in $(go list ./... | grep -v /vendor/); do diff <(golint $d) <(printf "") || exit 1;  done)
+  # Using HEAD of dependencies
+  - install:
+    - go get -t ./...
+    - go get -u github.com/golang/lint/...
+    - go get -u golang.org/x/tools/cmd/...
+    script:
+    - go test -v $(go list ./... | grep -v /vendor/)
+    - go vet $(go list ./... | grep -v /vendor/)
+    - diff <(goimports -d $(find . -type f -name '*.go' -not -path "./vendor/*")) <(printf "")
+    - (for d in $(go list ./... | grep -v /vendor/); do diff <(golint $d) <(printf "") || exit 1;  done)
+  allow_failures:
+  # Using HEAD of dependencies
+  - install:
+    - go get -t ./...
+    - go get -u github.com/golang/lint/...
+    - go get -u golang.org/x/tools/cmd/...
+    script:
+    - go test -v $(go list ./... | grep -v /vendor/)
+    - go vet $(go list ./... | grep -v /vendor/)
+    - diff <(goimports -d $(find . -type f -name '*.go' -not -path "./vendor/*")) <(printf "")
+    - (for d in $(go list ./... | grep -v /vendor/); do diff <(golint $d) <(printf "") || exit 1;  done)
 notifications:
   irc:
     channels:
