@@ -77,18 +77,18 @@ $ $GOPATH/bin/chihaya --help
 
 #### Reproducible Builds
 
-Reproducible builds are handled by using [glide] to vendor dependencies.
+Reproducible builds are handled by using [dep] to vendor dependencies.
 
 ```sh
 $ mkdir chihaya && export GOPATH=$PWD/chihaya
 $ git clone git@github.com:chihaya/chihaya.git $GOPATH/src/github.com/chihaya/chihaya
 $ cd $GOPATH/src/github.com/chihaya/chihaya
-$ glide install
+$ dep ensure
 $ go install github.com/chihaya/chihaya/cmd/...
 $ $GOPATH/bin/chihaya --help
 ```
 
-[glide]: https://glide.sh
+[dep]: https://github.com/golang/dep
 
 #### Docker
 
@@ -103,7 +103,7 @@ The following will run all tests and benchmarks.
 Removing `-bench` will just run unit tests.
 
 ```sh
-$ go test -bench $(glide novendor | grep -v contrib)
+$ go test -bench $(go list ./...)
 ```
 
 ### Contributing
