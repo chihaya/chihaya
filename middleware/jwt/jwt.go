@@ -12,6 +12,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -20,12 +21,34 @@ import (
 	"github.com/SermoDigital/jose/jws"
 	"github.com/SermoDigital/jose/jwt"
 	"github.com/mendsley/gojwk"
+	"gopkg.in/yaml.v2"
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/middleware"
 	"github.com/chihaya/chihaya/pkg/log"
 	"github.com/chihaya/chihaya/pkg/stop"
 )
+
+// Name is the name by which this middleware is registered with Chihaya.
+const Name = "jwt"
+
+func init() {
+	middleware.RegisterDriver(Name, driver{})
+}
+
+var _ middleware.Driver = driver{}
+
+type driver struct{}
+
+func (d driver) NewHook(optionBytes []byte) (middleware.Hook, error) {
+	var cfg Config
+	err := yaml.Unmarshal(optionBytes, &cfg)
+	if err != nil {
+		return nil, fmt.Errorf("invalid options for middleware %s: %s", Name, err)
+	}
+
+	return NewHook(cfg)
+}
 
 var (
 	// ErrMissingJWT is returned when a JWT is missing from a request.
