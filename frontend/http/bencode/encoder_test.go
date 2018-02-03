@@ -2,6 +2,7 @@ package bencode
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 	"time"
 
@@ -35,10 +36,12 @@ var marshalTests = []struct {
 }
 
 func TestMarshal(t *testing.T) {
-	for _, test := range marshalTests {
-		got, err := Marshal(test.input)
-		require.Nil(t, err, "marshal should not fail")
-		require.Contains(t, test.expected, string(got), "the marshaled result should be one of the expected permutations")
+	for _, tt := range marshalTests {
+		t.Run(fmt.Sprintf("%#v", tt.input), func(t *testing.T) {
+			got, err := Marshal(tt.input)
+			require.Nil(t, err, "marshal should not fail")
+			require.Contains(t, tt.expected, string(got), "the marshaled result should be one of the expected permutations")
+		})
 	}
 }
 

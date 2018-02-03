@@ -2,6 +2,7 @@ package varinterval
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/chihaya/chihaya/bittorrent"
@@ -34,10 +35,10 @@ var configTests = []struct {
 }
 
 func TestCheckConfig(t *testing.T) {
-	for _, tc := range configTests {
-		t.Run("", func(t *testing.T) {
-			got := checkConfig(tc.cfg)
-			require.Equal(t, tc.expected, got, "", tc.cfg)
+	for _, tt := range configTests {
+		t.Run(fmt.Sprintf("%#v", tt.cfg), func(t *testing.T) {
+			got := checkConfig(tt.cfg)
+			require.Equal(t, tt.expected, got, "", tt.cfg)
 		})
 	}
 }

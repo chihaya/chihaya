@@ -1,6 +1,7 @@
 package bittorrent
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -22,8 +23,17 @@ func TestNew(t *testing.T) {
 	}
 
 	for _, tt := range table {
-		got, err := NewEvent(tt.data)
-		require.Equal(t, err, tt.expectedErr, "errors should equal the expected value")
-		require.Equal(t, got, tt.expected, "events should equal the expected value")
+		t.Run(fmt.Sprintf("%#v expecting %s", tt.data, nilPrinter(tt.expectedErr)), func(t *testing.T) {
+			got, err := NewEvent(tt.data)
+			require.Equal(t, err, tt.expectedErr, "errors should equal the expected value")
+			require.Equal(t, got, tt.expected, "events should equal the expected value")
+		})
 	}
+}
+
+func nilPrinter(err error) string {
+	if err == nil {
+		return "nil"
+	}
+	return err.Error()
 }

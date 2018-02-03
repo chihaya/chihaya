@@ -1,6 +1,7 @@
 package udp
 
 import (
+	"fmt"
 	"net"
 	"testing"
 	"time"
@@ -20,11 +21,13 @@ var golden = []struct {
 
 func TestVerification(t *testing.T) {
 	for _, tt := range golden {
-		cid := NewConnectionID(net.ParseIP(tt.ip), time.Unix(tt.createdAt, 0), tt.key)
-		got := ValidConnectionID(cid, net.ParseIP(tt.ip), time.Unix(tt.now, 0), time.Minute, tt.key)
-		if got != tt.valid {
-			t.Errorf("expected validity: %t got validity: %t", tt.valid, got)
-		}
+		t.Run(fmt.Sprintf("%s created at %d verified at %d", tt.ip, tt.createdAt, tt.now), func(t *testing.T) {
+			cid := NewConnectionID(net.ParseIP(tt.ip), time.Unix(tt.createdAt, 0), tt.key)
+			got := ValidConnectionID(cid, net.ParseIP(tt.ip), time.Unix(tt.now, 0), time.Minute, tt.key)
+			if got != tt.valid {
+				t.Errorf("expected validity: %t got validity: %t", tt.valid, got)
+			}
+		})
 	}
 }
 
