@@ -56,3 +56,11 @@
 [[constraint]]
   branch = "v2"
   name = "gopkg.in/yaml.v2"
+
+[[constraint]]
+  name = "github.com/pkg/errors"
+  branch = "master"
+
+[[constraint]]
+  name = "github.com/anacrolix/torrent"
+  branch = "master"
