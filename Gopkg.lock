@@ -3,15 +3,48 @@
 
 [[projects]]
   name = "github.com/SermoDigital/jose"
-  packages = [".","crypto","jws","jwt"]
+  packages = [
+    ".",
+    "crypto",
+    "jws",
+    "jwt"
+  ]
   revision = "f6df55f235c24f236d11dbcf665249a59ac2021f"
   version = "1.1"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/anacrolix/missinggo"
+  packages = [
+    ".",
+    "assert",
+    "httptoo",
+    "mime",
+    "pproffd"
+  ]
+  revision = "173db517b5f8002d630f815e2097a1858c27f8ef"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/anacrolix/torrent"
+  packages = [
+    "bencode",
+    "tracker",
+    "util"
+  ]
+  revision = "64d13d86a6ba04269e2abacedcdd890165901010"
 
 [[projects]]
   branch = "master"
   name = "github.com/beorn7/perks"
   packages = ["quantile"]
   revision = "4c0e84591b9aa9e6dcfdf3e020114cd81f89d5f9"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/bradfitz/iter"
+  packages = ["."]
+  revision = "454541ec3da2a73fc34fd049b19ee5777bf19345"
 
 [[projects]]
   name = "github.com/davecgh/go-spew"
@@ -56,6 +89,12 @@
   revision = "ad98a36ba0da87206e3378c556abbfeaeaa98668"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  revision = "30136e27e2ac8d167177e8a583aa4c3fea5be833"
+
+[[projects]]
   name = "github.com/pmezard/go-difflib"
   packages = ["difflib"]
   revision = "792786c7400a136282c1664665ae0a8db921c6c2"
@@ -76,13 +115,20 @@
 [[projects]]
   branch = "master"
   name = "github.com/prometheus/common"
-  packages = ["expfmt","internal/bitbucket.org/ww/goautoneg","model"]
+  packages = [
+    "expfmt",
+    "internal/bitbucket.org/ww/goautoneg",
+    "model"
+  ]
   revision = "2e54d0b93cba2fd133edc32211dcc32c06ef72ca"
 
 [[projects]]
   branch = "master"
   name = "github.com/prometheus/procfs"
-  packages = [".","xfs"]
+  packages = [
+    ".",
+    "xfs"
+  ]
   revision = "8f918ac9ab4be3a790338bda8624fec5d71260b3"
 
 [[projects]]
@@ -105,7 +151,10 @@
 
 [[projects]]
   name = "github.com/stretchr/testify"
-  packages = ["assert","require"]
+  packages = [
+    "assert",
+    "require"
+  ]
   revision = "69483b4bd14f5845b5a1e55bca19e954e827f1d0"
   version = "v1.1.4"
 
@@ -118,7 +167,10 @@
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
-  packages = ["unix","windows"]
+  packages = [
+    "unix",
+    "windows"
+  ]
   revision = "83801418e1b59fb1880e363299581ee543af32ca"
 
 [[projects]]
@@ -130,6 +182,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "f73a01a852753ecab441d7901cbf324cdfbdbadf174e60fe0d162278f355ea21"
+  inputs-digest = "70d8adf87b226f38ffea02e5edd2a0adb03b5e1a567eb2ed74ab9d480b9fd68c"
   solver-name = "gps-cdcl"
   solver-version = 1

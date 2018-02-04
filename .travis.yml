@@ -15,6 +15,13 @@ matrix:
     - go vet $(go list ./...)
     - diff <(goimports -d $(find . -type f -name '*.go' -not -path "./vendor/*")) <(printf "")
     - (for d in $(go list ./...); do diff <(golint $d) <(printf "") || exit 1;  done)
+    - go install github.com/chihaya/chihaya/cmd/chihaya
+    - chihaya --config=example_config.yaml --debug&
+    - pid=$!
+    # we move the installation here so chihaya has enough time to start up
+    - go install github.com/chihaya/chihaya/cmd/chihaya-e2e
+    - chihaya-e2e
+    - kill $pid
   # Using HEAD of dependencies
   - install:
     - go get -t ./...
@@ -25,6 +32,13 @@ matrix:
     - go vet $(go list ./...)
     - diff <(goimports -d $(find . -type f -name '*.go' -not -path "./vendor/*")) <(printf "")
     - (for d in $(go list ./...); do diff <(golint $d) <(printf "") || exit 1;  done)
+    - go install github.com/chihaya/chihaya/cmd/chihaya
+    - chihaya --config=example_config.yaml --debug&
+    - pid=$!
+    # we move the installation here so chihaya has enough time to start up
+    - go install github.com/chihaya/chihaya/cmd/chihaya-e2e
+    - chihaya-e2e
+    - kill $pid
   allow_failures:
   # Using HEAD of dependencies
   - install:
@@ -36,6 +50,13 @@ matrix:
     - go vet $(go list ./...)
     - diff <(goimports -d $(find . -type f -name '*.go' -not -path "./vendor/*")) <(printf "")
     - (for d in $(go list ./...); do diff <(golint $d) <(printf "") || exit 1;  done)
+    - go install github.com/chihaya/chihaya/cmd/chihaya
+    - chihaya --config=example_config.yaml --debug&
+    - pid=$!
+    # we move the installation here so chihaya has enough time to start up
+    - go install github.com/chihaya/chihaya/cmd/chihaya-e2e
+    - chihaya-e2e
+    - kill $pid
 notifications:
   irc:
     channels:
