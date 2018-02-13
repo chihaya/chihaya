@@ -15,8 +15,8 @@ import (
 )
 
 func init() {
-	flag.StringVar(&httpTrackerURL, "http", "http://localhost:6881/announce", "the address of the HTTP tracker")
-	flag.StringVar(&udpTrackerURL, "udp", "udp://localhost:6881", "the address of the UDP tracker")
+	flag.StringVar(&httpTrackerURL, "http", "http://localhost:6969/announce", "the address of the HTTP tracker")
+	flag.StringVar(&udpTrackerURL, "udp", "udp://localhost:6969", "the address of the UDP tracker")
 	flag.DurationVar(&delay, "delay", 1*time.Second, "the delay between announces")
 }
 
