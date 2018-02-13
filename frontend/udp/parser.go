@@ -15,6 +15,9 @@ const (
 	announceActionID
 	scrapeActionID
 	errorActionID
+	// action == 4 is the "old" IPv6 action used by opentracker, with a packet
+	// format specified at
+	// https://web.archive.org/web/20170503181830/http://opentracker.blog.h3q.com/2007/12/28/the-ipv6-situation/
 	announceV6ActionID
 )
 
@@ -57,11 +60,12 @@ type ParseOptions struct {
 
 // ParseAnnounce parses an AnnounceRequest from a UDP request.
 //
-// If v6 is true, the announce is parsed the "opentracker way":
-// http://opentracker.blog.h3q.com/2007/12/28/the-ipv6-situation/
-func ParseAnnounce(r Request, v6 bool, opts ParseOptions) (*bittorrent.AnnounceRequest, error) {
+// If v6Action is true, the announce is parsed the
+// "old opentracker way":
+// https://web.archive.org/web/20170503181830/http://opentracker.blog.h3q.com/2007/12/28/the-ipv6-situation/
+func ParseAnnounce(r Request, v6Action bool, opts ParseOptions) (*bittorrent.AnnounceRequest, error) {
 	ipEnd := 84 + net.IPv4len
-	if v6 {
+	if v6Action {
 		ipEnd = 84 + net.IPv6len
 	}
 
