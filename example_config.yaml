@@ -26,7 +26,7 @@ chihaya:
   http:
     # The network interface that will bind to an HTTP server for serving
     # BitTorrent traffic.
-    addr: "0.0.0.0:6881"
+    addr: "0.0.0.0:6969"
 
     # The path to the required files to listen via HTTPS.
     tls_cert_path: ""
@@ -72,7 +72,7 @@ chihaya:
   udp:
     # The network interface that will bind to a UDP server for serving
     # BitTorrent traffic.
-    addr: "0.0.0.0:6881"
+    addr: "0.0.0.0:6969"
 
     # The leeway for a timestamp on a connection ID.
     max_clock_skew: 10s

@@ -20,7 +20,7 @@ COPY --from=build-env /go/bin/chihaya /chihaya
 RUN adduser -D chihaya
 
 # Expose a docker interface to our binary.
-EXPOSE 6880 6881
+EXPOSE 6880 6969
 
 # Drop root privileges
 USER chihaya
