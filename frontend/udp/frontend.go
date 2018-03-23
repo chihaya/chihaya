@@ -306,7 +306,7 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 			return
 		}
 
-		WriteAnnounce(w, txID, resp, actionID == announceV6ActionID)
+		WriteAnnounce(w, txID, resp, actionID == announceV6ActionID, req.IP.AddressFamily == bittorrent.IPv6)
 
 		go t.logic.AfterAnnounce(ctx, req, resp)
 

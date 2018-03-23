@@ -21,7 +21,8 @@ It listens for requests and usually answers each of them with one response, a ba
 
 Chihaya ships with frontends for HTTP(S) and UDP.
 The HTTP frontend uses Go's `http` package.
-The UDP frontend implements [opentracker-style] IPv6, contrary to the specification in [BEP 15].
+The UDP frontend implements both [old-opentracker-style] IPv6 and the IPv6 support specified in [BEP 15].
+The advantage of the old opentracker style is that it contains a usable IPv6 `ip` field, to enable IP overrides in announces.
 
 ## Implementing a Frontend
 
@@ -105,4 +106,4 @@ This way, a PreHook can communicate with a PostHook by setting a context value.
 [BEP 3]: http://bittorrent.org/beps/bep_0003.html
 [BEP 15]: http://bittorrent.org/beps/bep_0015.html
 [Prometheus]: https://prometheus.io/
-[opentracker-style]: http://opentracker.blog.h3q.com/2007/12/28/the-ipv6-situation/
+[old-opentracker-style]: https://web.archive.org/web/20170503181830/http://opentracker.blog.h3q.com/2007/12/28/the-ipv6-situation/
