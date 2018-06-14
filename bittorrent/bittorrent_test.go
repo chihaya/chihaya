@@ -19,22 +19,16 @@ var peerStringTestCases = []struct {
 }{
 	{
 		input: Peer{
-			ID: PeerIDFromBytes(b),
-			IP: IP{
-				IP:            net.IPv4(10, 11, 12, 1),
-				AddressFamily: IPv4,
-			},
+			ID:   PeerIDFromBytes(b),
+			IP:   IP{net.IPv4(10, 11, 12, 1), IPv4},
 			Port: 1234,
 		},
 		expected: fmt.Sprintf("%s@[10.11.12.1]:1234", expected),
 	},
 	{
 		input: Peer{
-			ID: PeerIDFromBytes(b),
-			IP: IP{
-				IP:            net.ParseIP("2001:db8::ff00:42:8329"),
-				AddressFamily: IPv6,
-			},
+			ID:   PeerIDFromBytes(b),
+			IP:   IP{net.ParseIP("2001:db8::ff00:42:8329"), IPv6},
 			Port: 1234,
 		},
 		expected: fmt.Sprintf("%s@[2001:db8::ff00:42:8329]:1234", expected),
