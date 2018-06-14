@@ -2,9 +2,6 @@ global:
   scrape_interval:     5s
   evaluation_interval: 5s
 
-rule_files:
-  - chihaya.rules
-
 # A scrape configuration containing exactly one endpoint to scrape:
 scrape_configs:
   # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
