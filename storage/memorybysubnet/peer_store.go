@@ -520,7 +520,7 @@ func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant 
 		// Append the rest of the leechers.
 		if numWant > 0 {
 			for subnet := range shard.swarms[ih].leechers {
-				// Already appended from this subnet explictly first.
+				// Already appended from this subnet explicitly first.
 				if subnet == preferredSubnet {
 					continue
 				}
@@ -568,7 +568,7 @@ func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant 
 		// Append as the rest of the seeders.
 		if numWant > 0 {
 			for subnet := range shard.swarms[ih].seeders {
-				// Already appended from this subnet explictly first.
+				// Already appended from this subnet explicitly first.
 				if subnet == preferredSubnet {
 					continue
 				}
@@ -587,7 +587,7 @@ func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant 
 		// Append the rest of the leechers.
 		if numWant > 0 {
 			for subnet := range shard.swarms[ih].leechers {
-				// Already appended from this subnet explictly first.
+				// Already appended from this subnet explicitly first.
 				if subnet == preferredSubnet {
 					continue
 				}
