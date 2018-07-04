@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"runtime"
 	"runtime/pprof"
+	"runtime/trace"
 	"strings"
 	"syscall"
 
@@ -200,6 +201,19 @@ func PreRunCmdFunc(cmd *cobra.Command, args []string) error {
 		log.Info("enabled debug logging")
 	}
 
+	tracePath, err := cmd.Flags().GetString("trace")
+	if err != nil {
+		return err
+	}
+	if tracePath != "" {
+		f, err := os.Create(tracePath)
+		if err != nil {
+			return err
+		}
+		trace.Start(f)
+		log.Info("enabled tracing", log.Fields{"path": tracePath})
+	}
+
 	cpuProfilePath, err := cmd.Flags().GetString("cpuprofile")
 	if err != nil {
 		return err
@@ -219,8 +233,9 @@ func PreRunCmdFunc(cmd *cobra.Command, args []string) error {
 // PostRunCmdFunc handles clean up of any state initialized by command line
 // flags.
 func PostRunCmdFunc(cmd *cobra.Command, args []string) error {
-	// This can be called regardless because it noops when not profiling.
+	// These can be called regardless because it noops when not profiling.
 	pprof.StopCPUProfile()
+	trace.Stop()
 
 	return nil
 }
@@ -237,6 +252,7 @@ func main() {
 
 	rootCmd.Flags().String("config", "/etc/chihaya.yaml", "location of configuration file")
 	rootCmd.Flags().String("cpuprofile", "", "location to save a CPU profile")
+	rootCmd.Flags().String("trace", "", "location to save a trace")
 	rootCmd.Flags().Bool("debug", false, "enable debug logging")
 	rootCmd.Flags().Bool("json", false, "enable json logging")
 	if runtime.GOOS == "windows" {
