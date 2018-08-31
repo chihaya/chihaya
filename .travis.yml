@@ -1,6 +1,6 @@
 language: go
 go:
-  - 1.9.x
+  - 1.11.x
 sudo: false
 matrix:
   include:
@@ -18,9 +18,8 @@ matrix:
     - go install github.com/chihaya/chihaya/cmd/chihaya
     - chihaya --config=example_config.yaml --debug&
     - pid=$!
-    # we move the installation here so chihaya has enough time to start up
-    - go install github.com/chihaya/chihaya/cmd/chihaya-e2e
-    - chihaya-e2e
+    - sleep 2 # wait for chihaya to start up (gross)
+    - chihaya e2e --debug
     - kill $pid
   # Using HEAD of dependencies
   - install:
@@ -35,9 +34,8 @@ matrix:
     - go install github.com/chihaya/chihaya/cmd/chihaya
     - chihaya --config=example_config.yaml --debug&
     - pid=$!
-    # we move the installation here so chihaya has enough time to start up
-    - go install github.com/chihaya/chihaya/cmd/chihaya-e2e
-    - chihaya-e2e
+    - sleep 2 # wait for chihaya to start up (gross)
+    - chihaya e2e --debug
     - kill $pid
   allow_failures:
   # Using HEAD of dependencies
@@ -53,9 +51,8 @@ matrix:
     - go install github.com/chihaya/chihaya/cmd/chihaya
     - chihaya --config=example_config.yaml --debug&
     - pid=$!
-    # we move the installation here so chihaya has enough time to start up
-    - go install github.com/chihaya/chihaya/cmd/chihaya-e2e
-    - chihaya-e2e
+    - sleep 2 # wait for chihaya to start up (gross)
+    - chihaya e2e --debug
     - kill $pid
 notifications:
   irc:
