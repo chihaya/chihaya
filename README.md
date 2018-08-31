@@ -15,48 +15,61 @@ Chihaya is an open source [BitTorrent tracker] written in [Go].
 
 Differentiating features include:
 
-- Protocol-agnostic middleware
-- HTTP and UDP frontends
+- HTTP and UDP protocols
 - IPv4 and IPv6 support
+- Pre/Post middlware hooks
 - [YAML] configuration
 - Metrics via [Prometheus]
 - High Availability via [Redis]
+- Kubernetes deployment via [Helm]
 
 [releases]: https://github.com/chihaya/chihaya/releases
-[BitTorrent tracker]: http://en.wikipedia.org/wiki/BitTorrent_tracker
+[BitTorrent tracker]: https://en.wikipedia.org/wiki/BitTorrent_tracker
 [Go]: https://golang.org
-[YAML]: http://yaml.org
-[Prometheus]: http://prometheus.io
+[YAML]: https://yaml.org
+[Prometheus]: https://prometheus.io
 [Redis]: https://redis.io
+[Helm]: https://helm.sh
 
 ## Why Chihaya?
 
 Chihaya is built for developers looking to integrate BitTorrent into a preexisting production environment.
 Chihaya's pluggable architecture and middleware framework offers a simple and flexible integration point that abstracts the BitTorrent tracker protocols.
-The most common use case for Chihaya is integration with the deployment of cloud software.
-
-[OpenBittorrent]: https://openbittorrent.com
+The most common use case for Chihaya is enabling peer-to-peer cloud software deployments.
 
 ### Production Use
 
 #### Facebook
 
 [Facebook] uses BitTorrent to deploy new versions of their software.
-In order to optimize the flow of traffic within their datacenters, Chihaya is configured to prefer peers within the same subnet.
+In order to optimize the flow of traffic within their datacenters, Facebook uses an alternative Storage driver for Chihaya that is configured to prefer peers within the same subnet.
 Because Facebook organizes their network such that server racks are allocated IP addresses in the same subnet, the vast majority of deployment traffic never impacts the congested areas of their network.
 
 [Facebook]: https://facebook.com
 
-#### CoreOS
+#### Red Hat
 
 [Quay] is a container registry that offers the ability to download containers via BitTorrent in order to speed up large or geographically distant deployments.
 Announce URLs from Quay's torrent files contain a [JWT] in order to allow Chihaya to verify that an infohash was approved by the registry.
-By verifying the infohash, Quay can be sure that only their content is being shared by their tracker.
+By verifying the infohash, Quay can restrict their tracker to only sharing their own content.
 
 [Quay]: https://quay.io
 [JWT]: https://jwt.io
 
 ## Development
+
+### Contributing
+
+Long-term discussion and bug reports are maintained via [GitHub Issues].
+Code review is done via [GitHub Pull Requests].
+Real-time discussion is done via [freenode IRC].
+
+For more information read [CONTRIBUTING.md].
+
+[GitHub Issues]: https://github.com/chihaya/chihaya/issues
+[GitHub Pull Requests]: https://github.com/chihaya/chihaya/pulls
+[freenode IRC]: http://webchat.freenode.net/?channels=chihaya
+[CONTRIBUTING.md]: https://github.com/chihaya/chihaya/blob/master/CONTRIBUTING.md
 
 ### Getting Started
 
@@ -108,45 +121,9 @@ Removing `-bench` will just run unit tests.
 $ go test -bench $(go list ./...)
 ```
 
-### Contributing
-
-Long-term discussion and bug reports are maintained via [GitHub Issues].
-Code review is done via [GitHub Pull Requests].
-Real-time discussion is done via [freenode IRC].
-
-For more information read [CONTRIBUTING.md].
-
-[GitHub Issues]: https://github.com/chihaya/chihaya/issues
-[GitHub Pull Requests]: https://github.com/chihaya/chihaya/pulls
-[freenode IRC]: http://webchat.freenode.net/?channels=chihaya
-[CONTRIBUTING.md]: https://github.com/chihaya/chihaya/blob/master/CONTRIBUTING.md
-
 ### Architecture
 
-```
- +----------------------+
- |  BitTorrent Client   |<--------------+
- +----------------------+               |
-             |                          |
-             |                          |
-             |                          |
-+------------v--------------------------+-------------------+-------------------------+
-|+----------------------+   +----------------------+frontend|                  chihaya|
-||        Parser        |   |        Writer        |        |                         |
-|+----------------------+   +----------------------+        |                         |
-|            |                          ^                   |                         |
-+------------+--------------------------+-------------------+                         |
-+------------v--------------------------+-------------------+                         |
-|+----------------------+   +----------------------+   logic|                         |
-||  PreHook Middleware  |-->|  Response Generator  |<-------|-------------+           |
-|+----------------------+   +----------------------+        |             |           |
-|                                                           |             |           |
-|+----------------------+                                   | +----------------------+|
-|| PostHook Middleware  |-----------------------------------|>|       Storage        ||
-|+----------------------+                                   | +----------------------+|
-|                                                           |                         |
-+-----------------------------------------------------------+-------------------------+
-```
+![](https://user-images.githubusercontent.com/343539/52676700-05c45c80-2ef9-11e9-9887-8366008b4e7e.png)
 
 BitTorrent clients send Announce and Scrape requests to a _Frontend_.
 Frontends parse requests and write responses for the particular protocol they implement.
@@ -155,7 +132,7 @@ A configurable chain of _PreHook_ and _PostHook_ middleware is used to construct
 PreHooks are middleware that are executed before the response has been written.
 After all PreHooks have executed, any missing response fields that are required are filled by reading out of the configured implementation of the _Storage_ interface.
 PostHooks are asynchronous tasks that occur after a response has been delivered to the client.
-Request data is written to the storage asynchronously in one of these PostHooks.
+Because they are unnecessary to for generating a response, updates to the Storage for a particular request are done asynchronously in a PostHook.
 
 ## Related projects
 
