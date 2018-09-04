@@ -164,8 +164,16 @@ func (f *Frontend) listenAndServe() error {
 	f.srv.SetKeepAlivesEnabled(false)
 
 	// Start the HTTP server.
-	if err := f.srv.ListenAndServe(); err != http.ErrServerClosed {
-		return err
+	if f.tlsCfg != nil {
+		// ... using TLS.
+		if err := f.srv.ListenAndServeTLS("", ""); err != http.ErrServerClosed {
+			return err
+		}
+	} else {
+		// ... using plain TCP.
+		if err := f.srv.ListenAndServe(); err != http.ErrServerClosed {
+			return err
+		}
 	}
 
 	return nil
