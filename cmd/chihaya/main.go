@@ -9,6 +9,7 @@ import (
 	"runtime/trace"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -132,9 +133,9 @@ func (r *Run) Stop(keepPeerStore bool) (storage.PeerStore, error) {
 	return r.peerStore, nil
 }
 
-// RunCmdFunc implements a Cobra command that runs an instance of Chihaya and
-// handles reloading and shutdown via process signals.
-func RunCmdFunc(cmd *cobra.Command, args []string) error {
+// RootRunCmdFunc implements a Cobra command that runs an instance of Chihaya
+// and handles reloading and shutdown via process signals.
+func RootRunCmdFunc(cmd *cobra.Command, args []string) error {
 	configFilePath, err := cmd.Flags().GetString("config")
 	if err != nil {
 		return err
@@ -173,8 +174,8 @@ func RunCmdFunc(cmd *cobra.Command, args []string) error {
 	}
 }
 
-// PreRunCmdFunc handles command line flags for the Run command.
-func PreRunCmdFunc(cmd *cobra.Command, args []string) error {
+// RootPreRunCmdFunc handles command line flags for the Run command.
+func RootPreRunCmdFunc(cmd *cobra.Command, args []string) error {
 	noColors, err := cmd.Flags().GetBool("nocolors")
 	if err != nil {
 		return err
@@ -230,9 +231,9 @@ func PreRunCmdFunc(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// PostRunCmdFunc handles clean up of any state initialized by command line
+// RootPostRunCmdFunc handles clean up of any state initialized by command line
 // flags.
-func PostRunCmdFunc(cmd *cobra.Command, args []string) error {
+func RootPostRunCmdFunc(cmd *cobra.Command, args []string) error {
 	// These can be called regardless because it noops when not profiling.
 	pprof.StopCPUProfile()
 	trace.Stop()
@@ -245,21 +246,35 @@ func main() {
 		Use:                "chihaya",
 		Short:              "BitTorrent Tracker",
 		Long:               "A customizable, multi-protocol BitTorrent Tracker",
-		PersistentPreRunE:  PreRunCmdFunc,
-		RunE:               RunCmdFunc,
-		PersistentPostRunE: PostRunCmdFunc,
+		PersistentPreRunE:  RootPreRunCmdFunc,
+		RunE:               RootRunCmdFunc,
+		PersistentPostRunE: RootPostRunCmdFunc,
+	}
+
+	rootCmd.PersistentFlags().String("cpuprofile", "", "location to save a CPU profile")
+	rootCmd.PersistentFlags().String("trace", "", "location to save a trace")
+	rootCmd.PersistentFlags().Bool("debug", false, "enable debug logging")
+	rootCmd.PersistentFlags().Bool("json", false, "enable json logging")
+	if runtime.GOOS == "windows" {
+		rootCmd.PersistentFlags().Bool("nocolors", true, "disable log coloring")
+	} else {
+		rootCmd.PersistentFlags().Bool("nocolors", false, "disable log coloring")
 	}
 
 	rootCmd.Flags().String("config", "/etc/chihaya.yaml", "location of configuration file")
-	rootCmd.Flags().String("cpuprofile", "", "location to save a CPU profile")
-	rootCmd.Flags().String("trace", "", "location to save a trace")
-	rootCmd.Flags().Bool("debug", false, "enable debug logging")
-	rootCmd.Flags().Bool("json", false, "enable json logging")
-	if runtime.GOOS == "windows" {
-		rootCmd.Flags().Bool("nocolors", true, "disable log coloring")
-	} else {
-		rootCmd.Flags().Bool("nocolors", false, "disable log coloring")
+
+	var e2eCmd = &cobra.Command{
+		Use:   "e2e",
+		Short: "exec e2e tests",
+		Long:  "Execute the Chihaya end-to-end test suite",
+		RunE:  EndToEndRunCmdFunc,
 	}
+
+	e2eCmd.Flags().String("httpaddr", "http://127.0.0.1:6969/announce", "address of the HTTP tracker")
+	e2eCmd.Flags().String("udpaddr", "udp://127.0.0.1:6969", "address of the UDP tracker")
+	e2eCmd.Flags().Duration("delay", time.Second, "delay between announces")
+
+	rootCmd.AddCommand(e2eCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal("failed when executing root cobra command: " + err.Error())
