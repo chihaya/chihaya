@@ -13,6 +13,7 @@ import (
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/pkg/log"
+	"github.com/chihaya/chihaya/pkg/stop"
 	"github.com/chihaya/chihaya/pkg/timecache"
 	"github.com/chihaya/chihaya/storage"
 )
@@ -570,8 +571,8 @@ func (ps *peerStore) collectGarbage(cutoff time.Time) error {
 	return nil
 }
 
-func (ps *peerStore) Stop() <-chan error {
-	c := make(chan error)
+func (ps *peerStore) Stop() stop.Result {
+	c := make(stop.Channel)
 	go func() {
 		close(ps.closed)
 		ps.wg.Wait()
@@ -583,10 +584,10 @@ func (ps *peerStore) Stop() <-chan error {
 		}
 		ps.shards = shards
 
-		close(c)
+		c.Done()
 	}()
 
-	return c
+	return c.Result()
 }
 
 func (ps *peerStore) LogFields() log.Fields {

@@ -14,6 +14,7 @@ import (
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/frontend"
 	"github.com/chihaya/chihaya/pkg/log"
+	"github.com/chihaya/chihaya/pkg/stop"
 )
 
 // Config represents all of the configurable options for an HTTP BitTorrent
@@ -122,17 +123,13 @@ func NewFrontend(logic frontend.TrackerLogic, provided Config) (*Frontend, error
 }
 
 // Stop provides a thread-safe way to shutdown a currently running Frontend.
-func (f *Frontend) Stop() <-chan error {
-	c := make(chan error)
+func (f *Frontend) Stop() stop.Result {
+	c := make(stop.Channel)
 	go func() {
-		if err := f.srv.Shutdown(context.Background()); err != nil {
-			c <- err
-		} else {
-			close(c)
-		}
+		c.Done(f.srv.Shutdown(context.Background()))
 	}()
 
-	return c
+	return c.Result()
 }
 
 func (f *Frontend) handler() http.Handler {

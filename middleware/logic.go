@@ -105,7 +105,7 @@ func (l *Logic) AfterScrape(ctx context.Context, req *bittorrent.ScrapeRequest, 
 // Stop stops the Logic.
 //
 // This stops any hooks that implement stop.Stopper.
-func (l *Logic) Stop() []error {
+func (l *Logic) Stop() stop.Result {
 	stopGroup := stop.NewGroup()
 	for _, hook := range l.preHooks {
 		stoppable, ok := hook.(stop.Stopper)

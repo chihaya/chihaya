@@ -113,19 +113,19 @@ func combineErrors(prefix string, errs []error) error {
 // Stop shuts down an instance of Chihaya.
 func (r *Run) Stop(keepPeerStore bool) (storage.PeerStore, error) {
 	log.Debug("stopping frontends and prometheus endpoint")
-	if errs := r.sg.Stop(); len(errs) != 0 {
+	if errs := r.sg.Stop().Wait(); len(errs) != 0 {
 		return nil, combineErrors("failed while shutting down frontends", errs)
 	}
 
 	log.Debug("stopping logic")
-	if errs := r.logic.Stop(); len(errs) != 0 {
+	if errs := r.logic.Stop().Wait(); len(errs) != 0 {
 		return nil, combineErrors("failed while shutting down middleware", errs)
 	}
 
 	if !keepPeerStore {
 		log.Debug("stopping peer store")
-		if err, closed := <-r.peerStore.Stop(); !closed {
-			return nil, err
+		if errs := r.peerStore.Stop().Wait(); len(errs) != 0 {
+			return nil, combineErrors("failed while shutting down peer store", errs)
 		}
 		r.peerStore = nil
 	}
