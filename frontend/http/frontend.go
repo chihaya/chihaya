@@ -22,6 +22,8 @@ type Config struct {
 	Addr                string        `yaml:"addr"`
 	ReadTimeout         time.Duration `yaml:"read_timeout"`
 	WriteTimeout        time.Duration `yaml:"write_timeout"`
+	IdleTimeout         time.Duration `yaml:"idle_timeout"`
+	EnableKeepAlive     bool          `yaml:"enable_keepalive"`
 	TLSCertPath         string        `yaml:"tls_cert_path"`
 	TLSKeyPath          string        `yaml:"tls_key_path"`
 	EnableLegacyPHPURLs bool          `yaml:"enable_legacy_php_urls"`
@@ -35,6 +37,8 @@ func (cfg Config) LogFields() log.Fields {
 		"addr":                cfg.Addr,
 		"readTimeout":         cfg.ReadTimeout,
 		"writeTimeout":        cfg.WriteTimeout,
+		"idleTimeout":         cfg.IdleTimeout,
+		"enableKeepAlive":     cfg.EnableKeepAlive,
 		"tlsCertPath":         cfg.TLSCertPath,
 		"tlsKeyPath":          cfg.TLSKeyPath,
 		"enableLegacyPHPURLs": cfg.EnableLegacyPHPURLs,
@@ -51,6 +55,7 @@ func (cfg Config) LogFields() log.Fields {
 const (
 	defaultReadTimeout  = 2 * time.Second
 	defaultWriteTimeout = 2 * time.Second
+	defaultIdleTimeout  = 30 * time.Second
 )
 
 // Validate sanity checks values set in a config and returns a new config with
@@ -76,6 +81,19 @@ func (cfg Config) Validate() Config {
 			"provided": cfg.WriteTimeout,
 			"default":  validcfg.WriteTimeout,
 		})
+	}
+
+	if cfg.IdleTimeout <= 0 {
+		validcfg.IdleTimeout = defaultIdleTimeout
+
+		if cfg.EnableKeepAlive {
+			// If keepalive is disabled, this configuration isn't used anyway.
+			log.Warn("falling back to default configuration", log.Fields{
+				"name":     "http.IdleTimeout",
+				"provided": cfg.IdleTimeout,
+				"default":  validcfg.IdleTimeout,
+			})
+		}
 	}
 
 	return validcfg
@@ -158,10 +176,10 @@ func (f *Frontend) listenAndServe() error {
 		Handler:      f.handler(),
 		ReadTimeout:  f.ReadTimeout,
 		WriteTimeout: f.WriteTimeout,
+		IdleTimeout:  f.IdleTimeout,
 	}
 
-	// Disable KeepAlives.
-	f.srv.SetKeepAlivesEnabled(false)
+	f.srv.SetKeepAlivesEnabled(f.EnableKeepAlive)
 
 	// Start the HTTP server.
 	if f.tlsCfg != nil {

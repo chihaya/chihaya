@@ -36,6 +36,12 @@ chihaya:
     read_timeout: 5s
     write_timeout: 5s
 
+    # When true, persistent connections will be allowed. Generally this is not
+    # useful for a public tracker, but helps performance in some cases (use of
+    # a reverse proxy, or when there are few clients issuing many requests).
+    enable_keepalive: false
+    idle_timeout: 30s
+
     # Whether to time requests.
     # Disabling this should increase performance/decrease load.
     enable_request_timing: false
