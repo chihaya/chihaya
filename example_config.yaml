@@ -149,3 +149,12 @@ chihaya:
   #    modify_response_probability: 0.2
   #    max_increase_delta: 60
   #    modify_min_interval: true
+
+  # This block defines configuration used for torrent approval, it requires to be given
+  # hashes for whitelist or for blacklist. Hashes are hexadecimal-encoaded.
+  #- name: torrent approval
+  #  options:
+  #    whitelist:
+  #    - "a1b2c3d4e5a1b2c3d4e5a1b2c3d4e5a1b2c3d4e5"
+  #    blacklist:
+  #    - "e1d2c3b4a5e1b2c3b4a5e1d2c3b4e5e1d2c3b4a5"
