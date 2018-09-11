@@ -144,19 +144,19 @@ func (h *hook) updateKeys() error {
 	return nil
 }
 
-func (h *hook) Stop() <-chan error {
+func (h *hook) Stop() stop.Result {
 	log.Debug("attempting to shutdown JWT middleware")
 	select {
 	case <-h.closing:
 		return stop.AlreadyStopped
 	default:
 	}
-	c := make(chan error)
+	c := make(stop.Channel)
 	go func() {
 		close(h.closing)
-		close(c)
+		c.Done()
 	}()
-	return c
+	return c.Result()
 }
 
 func (h *hook) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequest, resp *bittorrent.AnnounceResponse) (context.Context, error) {

@@ -87,26 +87,22 @@ func NewFrontend(logic frontend.TrackerLogic, cfg Config) (*Frontend, error) {
 }
 
 // Stop provides a thread-safe way to shutdown a currently running Frontend.
-func (t *Frontend) Stop() <-chan error {
+func (t *Frontend) Stop() stop.Result {
 	select {
 	case <-t.closing:
 		return stop.AlreadyStopped
 	default:
 	}
 
-	c := make(chan error)
+	c := make(stop.Channel)
 	go func() {
 		close(t.closing)
 		t.socket.SetReadDeadline(time.Now())
 		t.wg.Wait()
-		if err := t.socket.Close(); err != nil {
-			c <- err
-		} else {
-			close(c)
-		}
+		c.Done(t.socket.Close())
 	}()
 
-	return c
+	return c.Result()
 }
 
 // listenAndServe blocks while listening and serving UDP BitTorrent requests
