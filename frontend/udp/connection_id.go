@@ -6,7 +6,9 @@ import (
 	"net"
 	"time"
 
-	sha256 "github.com/minio/sha256-simd"
+	"github.com/minio/sha256-simd"
+
+	"github.com/chihaya/chihaya/pkg/log"
 )
 
 // ttl is the number of seconds a connection ID should be valid according to
@@ -33,12 +35,14 @@ func NewConnectionID(ip net.IP, now time.Time, key string) []byte {
 	macBytes := mac.Sum(nil)[:4]
 	copy(buf[4:], macBytes)
 
+	log.Debug("generated connection ID", log.Fields{"ip": ip, "now": now, "key": key, "connID": buf})
 	return buf
 }
 
 // ValidConnectionID determines whether a connection identifier is legitimate.
 func ValidConnectionID(connectionID []byte, ip net.IP, now time.Time, maxClockSkew time.Duration, key string) bool {
 	ts := time.Unix(int64(binary.BigEndian.Uint32(connectionID[:4])), 0)
+	log.Debug("validating connection ID", log.Fields{"connID": connectionID, "ip": ip, "ts": ts, "now": now, "key": key})
 	if now.After(ts.Add(ttl)) || ts.After(now.Add(maxClockSkew)) {
 		return false
 	}
