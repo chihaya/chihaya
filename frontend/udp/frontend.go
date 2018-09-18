@@ -52,6 +52,8 @@ type Frontend struct {
 	closing chan struct{}
 	wg      sync.WaitGroup
 
+	genPool *sync.Pool
+
 	logic frontend.TrackerLogic
 	Config
 }
@@ -75,6 +77,11 @@ func NewFrontend(logic frontend.TrackerLogic, cfg Config) (*Frontend, error) {
 		closing: make(chan struct{}),
 		logic:   logic,
 		Config:  cfg,
+		genPool: &sync.Pool{
+			New: func() interface{} {
+				return NewConnectionIDGenerator(cfg.PrivateKey)
+			},
+		},
 	}
 
 	go func() {
@@ -211,9 +218,13 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 	actionID := binary.BigEndian.Uint32(r.Packet[8:12])
 	txID := r.Packet[12:16]
 
+	// get a connection ID generator/validator from the pool.
+	gen := t.genPool.Get().(*ConnectionIDGenerator)
+	defer t.genPool.Put(gen)
+
 	// If this isn't requesting a new connection ID and the connection ID is
 	// invalid, then fail.
-	if actionID != connectActionID && !ValidConnectionID(connID, r.IP, timecache.Now(), t.MaxClockSkew, t.PrivateKey) {
+	if actionID != connectActionID && !gen.Validate(connID, r.IP, timecache.Now(), t.MaxClockSkew) {
 		err = errBadConnectionID
 		WriteError(w, txID, err)
 		return
@@ -239,7 +250,7 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 			panic(fmt.Sprintf("udp: invalid IP: neither v4 nor v6, IP: %#v", r.IP))
 		}
 
-		WriteConnectionID(w, txID, NewConnectionID(r.IP, timecache.Now(), t.PrivateKey))
+		WriteConnectionID(w, txID, gen.Generate(r.IP, timecache.Now()))
 
 	case announceActionID, announceV6ActionID:
 		actionName = "announce"
