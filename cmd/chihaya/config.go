@@ -14,6 +14,7 @@ import (
 	// Imported to register as middleware drivers.
 	_ "github.com/chihaya/chihaya/middleware/clientapproval"
 	_ "github.com/chihaya/chihaya/middleware/jwt"
+	_ "github.com/chihaya/chihaya/middleware/torrentapproval"
 	_ "github.com/chihaya/chihaya/middleware/varinterval"
 
 	// Imported to register as storage drivers.
