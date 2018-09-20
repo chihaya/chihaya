@@ -56,6 +56,10 @@ func NewHook(cfg Config) (middleware.Hook, error) {
 		unapproved: make(map[bittorrent.ClientID]struct{}),
 	}
 
+	if len(cfg.Whitelist) > 0 && len(cfg.Blacklist) > 0 {
+		return nil, fmt.Errorf("using both whitelist and blacklist is invalid")
+	}
+
 	for _, cidString := range cfg.Whitelist {
 		cidBytes := []byte(cidString)
 		if len(cidBytes) != 6 {
