@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/stretchr/testify/require"
+
+	"github.com/chihaya/chihaya/bittorrent"
 )
 
 var cases = []struct {
@@ -69,9 +70,9 @@ func TestHandleAnnounce(t *testing.T) {
 			nctx, err := h.HandleAnnounce(ctx, req, resp)
 			require.Equal(t, ctx, nctx)
 			if tt.approved == true {
-				require.Nil(t, err)
+				require.NotEqual(t, err, ErrTorrentUnapproved)
 			} else {
-				require.NotNil(t, err)
+				require.Equal(t, err, ErrTorrentUnapproved)
 			}
 		})
 	}
