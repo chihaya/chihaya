@@ -2,8 +2,7 @@ FROM golang:alpine AS build-env
 LABEL maintainer "Jimmy Zelinskie <jimmyzelinskie+git@gmail.com>"
 
 # Install OS-level dependencies.
-RUN apk update && \
-    apk add curl git
+RUN apk add --no-cache curl git
 
 # Copy our source code into the container.
 WORKDIR /go/src/github.com/chihaya/chihaya
@@ -15,6 +14,7 @@ RUN dep ensure
 RUN CGO_ENABLED=0 go install github.com/chihaya/chihaya/cmd/...
 
 FROM alpine:latest
+RUN apk add --no-cache ca-certificates
 COPY --from=build-env /go/bin/chihaya /chihaya
 
 RUN adduser -D chihaya
