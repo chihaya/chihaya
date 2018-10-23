@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/minio/sha256-simd"
-
 	"github.com/stretchr/testify/require"
 
 	"github.com/chihaya/chihaya/pkg/log"
