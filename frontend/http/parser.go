@@ -153,8 +153,8 @@ func requestedIP(r *http.Request, p bittorrent.Params, opts ParseOptions) (ip ne
 	}
 
 	if opts.RealIPHeader != "" {
-		if ips, ok := r.Header[opts.RealIPHeader]; ok && len(ips) > 0 {
-			return net.ParseIP(ips[0]), false
+		if ip := r.Header.Get(opts.RealIPHeader); ip != "" {
+			return net.ParseIP(ip), false
 		}
 	}
 
