@@ -2,7 +2,6 @@ package memory
 
 import (
 	"testing"
-
 	"time"
 
 	s "github.com/chihaya/chihaya/storage"

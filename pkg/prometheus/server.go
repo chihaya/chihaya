@@ -6,9 +6,10 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/chihaya/chihaya/pkg/log"
 	"github.com/chihaya/chihaya/pkg/stop"
-	"github.com/prometheus/client_golang/prometheus"
 )
 
 // Server represents a standalone HTTP server for serving a Prometheus metrics
