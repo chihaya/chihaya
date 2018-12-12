@@ -20,12 +20,14 @@ Differentiating features include:
 - IPv4 and IPv6 support
 - [YAML] configuration
 - Metrics via [Prometheus]
+- High Availability via [Redis]
 
 [releases]: https://github.com/chihaya/chihaya/releases
 [BitTorrent tracker]: http://en.wikipedia.org/wiki/BitTorrent_tracker
 [Go]: https://golang.org
 [YAML]: http://yaml.org
 [Prometheus]: http://prometheus.io
+[Redis]: https://redis.io
 
 ## Why Chihaya?
 
@@ -154,10 +156,6 @@ PreHooks are middleware that are executed before the response has been written.
 After all PreHooks have executed, any missing response fields that are required are filled by reading out of the configured implementation of the _Storage_ interface.
 PostHooks are asynchronous tasks that occur after a response has been delivered to the client.
 Request data is written to the storage asynchronously in one of these PostHooks.
-
-### HA(High Availability)
-
-Chihaya can achieve high availability by using [redis](https://redis.io/) storage backend.
 
 ## Related projects
 
