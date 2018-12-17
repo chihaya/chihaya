@@ -7,7 +7,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/minio/sha256-simd"
+	sha256 "github.com/minio/sha256-simd"
 
 	"github.com/chihaya/chihaya/pkg/log"
 )
