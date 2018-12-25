@@ -49,6 +49,7 @@ func (cfg Config) LogFields() log.Fields {
 // Frontend holds the state of a UDP BitTorrent Frontend.
 type Frontend struct {
 	socket  *net.UDPConn
+	m       sync.Mutex
 	closing chan struct{}
 	wg      sync.WaitGroup
 
@@ -103,10 +104,20 @@ func (t *Frontend) Stop() stop.Result {
 
 	c := make(stop.Channel)
 	go func() {
+		t.m.Lock()
+		defer t.m.Unlock()
+
 		close(t.closing)
-		t.socket.SetReadDeadline(time.Now())
+		if t.socket != nil {
+			t.socket.SetReadDeadline(time.Now())
+		}
 		t.wg.Wait()
-		c.Done(t.socket.Close())
+
+		var err error
+		if t.socket != nil {
+			err = t.socket.Close()
+		}
+		c.Done(err)
 	}()
 
 	return c.Result()
@@ -120,7 +131,9 @@ func (t *Frontend) listenAndServe() error {
 		return err
 	}
 
+	t.m.Lock()
 	t.socket, err = net.ListenUDP("udp", udpAddr)
+	t.m.Unlock()
 	if err != nil {
 		return err
 	}
