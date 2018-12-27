@@ -117,6 +117,7 @@ func (t *Frontend) Stop() stop.Result {
 	return c.Result()
 }
 
+// listen resolves the address and binds the server socket.
 func (t *Frontend) listen() error {
 	udpAddr, err := net.ResolveUDPAddr("udp", t.Addr)
 	if err != nil {
@@ -126,7 +127,7 @@ func (t *Frontend) listen() error {
 	return err
 }
 
-// listenAndServe blocks while listening and serving UDP BitTorrent requests
+// serve blocks while listening and serving UDP BitTorrent requests
 // until Stop() is called or an error is returned.
 func (t *Frontend) serve() error {
 	pool := bytepool.New(2048)
@@ -138,7 +139,7 @@ func (t *Frontend) serve() error {
 		// Check to see if we need to shutdown.
 		select {
 		case <-t.closing:
-			log.Debug("udp listenAndServe() received shutdown signal")
+			log.Debug("udp serve() received shutdown signal")
 			return nil
 		default:
 		}
