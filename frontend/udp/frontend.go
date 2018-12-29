@@ -84,8 +84,13 @@ func NewFrontend(logic frontend.TrackerLogic, cfg Config) (*Frontend, error) {
 		},
 	}
 
+	err := f.listen()
+	if err != nil {
+		return nil, err
+	}
+
 	go func() {
-		if err := f.listenAndServe(); err != nil {
+		if err := f.serve(); err != nil {
 			log.Fatal("failed while serving udp", log.Err(err))
 		}
 	}()
@@ -112,19 +117,19 @@ func (t *Frontend) Stop() stop.Result {
 	return c.Result()
 }
 
-// listenAndServe blocks while listening and serving UDP BitTorrent requests
-// until Stop() is called or an error is returned.
-func (t *Frontend) listenAndServe() error {
+// listen resolves the address and binds the server socket.
+func (t *Frontend) listen() error {
 	udpAddr, err := net.ResolveUDPAddr("udp", t.Addr)
 	if err != nil {
 		return err
 	}
-
 	t.socket, err = net.ListenUDP("udp", udpAddr)
-	if err != nil {
-		return err
-	}
+	return err
+}
 
+// serve blocks while listening and serving UDP BitTorrent requests
+// until Stop() is called or an error is returned.
+func (t *Frontend) serve() error {
 	pool := bytepool.New(2048)
 
 	t.wg.Add(1)
@@ -134,7 +139,7 @@ func (t *Frontend) listenAndServe() error {
 		// Check to see if we need to shutdown.
 		select {
 		case <-t.closing:
-			log.Debug("udp listenAndServe() received shutdown signal")
+			log.Debug("udp serve() received shutdown signal")
 			return nil
 		default:
 		}
