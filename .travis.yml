@@ -11,7 +11,7 @@ matrix:
     - go get -u golang.org/x/tools/cmd/...
     script:
     - dep ensure
-    - go test -v $(go list ./...)
+    - go test -v -race $(go list ./...)
     - go vet $(go list ./...)
     - diff <(goimports -local github.com/chihaya/chihaya -d $(find . -type f -name '*.go' -not -path "./vendor/*")) <(printf "")
     - (for d in $(go list ./...); do diff <(golint $d) <(printf "") || exit 1;  done)
@@ -27,7 +27,7 @@ matrix:
     - go get -u golang.org/x/lint/golint
     - go get -u golang.org/x/tools/cmd/...
     script:
-    - go test -v $(go list ./...)
+    - go test -v -race $(go list ./...)
     - go vet $(go list ./...)
     - diff <(goimports -local github.com/chihaya/chihaya -d $(find . -type f -name '*.go' -not -path "./vendor/*")) <(printf "")
     - (for d in $(go list ./...); do diff <(golint $d) <(printf "") || exit 1;  done)
@@ -44,7 +44,7 @@ matrix:
     - go get -u golang.org/x/lint/golint
     - go get -u golang.org/x/tools/cmd/...
     script:
-    - go test -v $(go list ./...)
+    - go test -v -race $(go list ./...)
     - go vet $(go list ./...)
     - diff <(goimports -local github.com/chihaya/chihaya -d $(find . -type f -name '*.go' -not -path "./vendor/*")) <(printf "")
     - (for d in $(go list ./...); do diff <(golint $d) <(printf "") || exit 1;  done)
