@@ -146,9 +146,27 @@ func NewFrontend(logic frontend.TrackerLogic, provided Config) (*Frontend, error
 		return nil, errors.New("must specify https_addr when using tls_cert_path and tls_key_path")
 	}
 
+	var listenerHTTP, listenerHTTPS net.Listener
+	var err error
+	if cfg.Addr != "" {
+		listenerHTTP, err = net.Listen("tcp", f.Addr)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if cfg.HTTPSAddr != "" {
+		listenerHTTPS, err = net.Listen("tcp", f.HTTPSAddr)
+		if err != nil {
+			if listenerHTTP != nil {
+				listenerHTTP.Close()
+			}
+			return nil, err
+		}
+	}
+
 	if cfg.Addr != "" {
 		go func() {
-			if err := f.listenAndServe(); err != nil {
+			if err := f.serveHTTP(listenerHTTP); err != nil {
 				log.Fatal("failed while serving http", log.Err(err))
 			}
 		}()
@@ -156,7 +174,7 @@ func NewFrontend(logic frontend.TrackerLogic, provided Config) (*Frontend, error
 
 	if cfg.HTTPSAddr != "" {
 		go func() {
-			if err := f.listenAndServeTLS(); err != nil {
+			if err := f.serveHTTPS(listenerHTTPS); err != nil {
 				log.Fatal("failed while serving https", log.Err(err))
 			}
 		}()
@@ -203,9 +221,9 @@ func (f *Frontend) handler() http.Handler {
 	return router
 }
 
-// listenAndServe blocks while listening and serving non-TLS HTTP BitTorrent
+// serveHTTP blocks while listening and serving non-TLS HTTP BitTorrent
 // requests until Stop() is called or an error is returned.
-func (f *Frontend) listenAndServe() error {
+func (f *Frontend) serveHTTP(l net.Listener) error {
 	f.srv = &http.Server{
 		Addr:         f.Addr,
 		Handler:      f.handler(),
@@ -217,15 +235,15 @@ func (f *Frontend) listenAndServe() error {
 	f.srv.SetKeepAlivesEnabled(f.EnableKeepAlive)
 
 	// Start the HTTP server.
-	if err := f.srv.ListenAndServe(); err != http.ErrServerClosed {
+	if err := f.srv.Serve(l); err != http.ErrServerClosed {
 		return err
 	}
 	return nil
 }
 
-// listenAndServeTLS blocks while listening and serving TLS HTTP BitTorrent
+// serveHTTPS blocks while listening and serving TLS HTTP BitTorrent
 // requests until Stop() is called or an error is returned.
-func (f *Frontend) listenAndServeTLS() error {
+func (f *Frontend) serveHTTPS(l net.Listener) error {
 	f.tlsSrv = &http.Server{
 		Addr:         f.HTTPSAddr,
 		TLSConfig:    f.tlsCfg,
@@ -234,11 +252,10 @@ func (f *Frontend) listenAndServeTLS() error {
 		WriteTimeout: f.WriteTimeout,
 	}
 
-	// Disable KeepAlives.
 	f.tlsSrv.SetKeepAlivesEnabled(f.EnableKeepAlive)
 
 	// Start the HTTP server.
-	if err := f.tlsSrv.ListenAndServeTLS("", ""); err != http.ErrServerClosed {
+	if err := f.tlsSrv.ServeTLS(l, "", ""); err != http.ErrServerClosed {
 		return err
 	}
 	return nil
