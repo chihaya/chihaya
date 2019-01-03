@@ -69,6 +69,18 @@
   name = "gopkg.in/yaml.v2"
   version = "2.2.1"
 
+[[constraint]]
+  name = "gopkg.in/redsync.v1"
+  version = "1.1.1"
+
+[[constraint]]
+  name = "github.com/gomodule/redigo"
+  version = "2.0.0"
+
+[[constraint]]
+  name = "github.com/alicebob/miniredis"
+  version = "2.4.5"
+
 [prune]
   go-tests = true
   unused-packages = true
