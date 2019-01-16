@@ -727,23 +727,34 @@ func (ps *peerStore) collectGarbage(cutoff time.Time) error {
 				return err
 			}
 
+			// use WATCH to avoid race condition
+			// https://redis.io/topics/transactions
+			_, err = conn.Do("WATCH", ihStr)
+			if err != nil {
+				return err
+			}
 			ihLen, err := conn.Do("HLEN", ihStr)
 			if err != nil {
 				return err
 			}
 			if ihLen.(int64) == 0 {
-				_, err := conn.Do("DEL", ihStr)
+				// Empty hashes are not shown among existing keys,
+				// in other words, it's removed automatically after `HDEL` the last field.
+				//_, err := conn.Do("DEL", ihStr)
+
+				conn.Send("MULTI")
+				conn.Send("HDEL", group, ihStr)
+				conn.Send("DECR", ps.infohashCountKey(group))
+				_, err = redis.Values(conn.Do("EXEC"))
 				if err != nil {
-					return err
+					log.Error("storage: Redis EXEC failure, maybe caused by WATCH, ignored", log.Fields{
+						"group":    group,
+						"infohash": ihStr,
+						"error":    err,
+					})
 				}
-				log.Debug("storage: deleting infohash", log.Fields{
-					"Group": group,
-					"Hkey":  ihStr,
-				})
-				_, err = conn.Do("HDEL", group, ihStr)
-				if err != nil {
-					return err
-				}
+			} else {
+				conn.Do("UNWATCH", ihStr)
 			}
 		}
 	}
