@@ -815,9 +815,8 @@ func (ps *peerStore) Stop() stop.Result {
 	go func() {
 		close(ps.closed)
 		ps.wg.Wait()
-		// chihaya does not clear data in redis when exiting.
-		// chihaya keys have prefix `IPv{4,6}_`.
-		close(c)
+		log.Info("storage: exiting. chihaya does not clear data in redis when exiting. chihaya keys have prefix 'IPv{4,6}_'.")
+		c.Done()
 	}()
 
 	return c.Result()
