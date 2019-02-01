@@ -1,6 +1,8 @@
 # Redis Storage
 
-This storage system separates chihaya from storage and stores all peer data in Redis to achieve HA.
+This storage system separates chihaya server from storage service, chihaya server achieves HA by storing all peer data in Redis, the storage service gets HA by creating cluster. If one chihaya node goes down, peer data will still be available in Redis service.
+
+The HA of storage service is not considered here, it's another topic. In case Redis service is a single node, peer data will be unavailable if the node is down. So you should setup a Redis cluster for chihaya server in production.
 
 ## Use Case
 
