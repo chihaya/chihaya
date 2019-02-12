@@ -20,12 +20,14 @@ Differentiating features include:
 - IPv4 and IPv6 support
 - [YAML] configuration
 - Metrics via [Prometheus]
+- High Availability via [Redis]
 
 [releases]: https://github.com/chihaya/chihaya/releases
 [BitTorrent tracker]: http://en.wikipedia.org/wiki/BitTorrent_tracker
 [Go]: https://golang.org
 [YAML]: http://yaml.org
 [Prometheus]: http://prometheus.io
+[Redis]: https://redis.io
 
 ## Why Chihaya?
 
