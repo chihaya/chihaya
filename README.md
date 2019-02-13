@@ -64,33 +64,15 @@ By verifying the infohash, Quay can be sure that only their content is being sha
 
 In order to compile the project, the [latest stable version of Go] and knowledge of a [working Go environment] are required.
 
-**NOTE:** Building in this fashion will download the latest version of all dependencies, which may have introduced breaking changes.
-To produce a build with safe versions of dependencies, follow the instructions for reproducible builds.
-
-
 ```sh
-$ mkdir chihaya && export GOPATH=$PWD/chihaya
-$ go get -t -u github.com/chihaya/chihaya/...
-$ $GOPATH/bin/chihaya --help
+$ git clone git@github.com:chihaya/chihaya.git
+$ cd chihaya
+$ GO111MODULE=on go build ./cmd/chihaya
+$ ./chihaya --help
 ```
 
 [latest stable version of Go]: https://golang.org/dl
 [working Go environment]: https://golang.org/doc/code.html
-
-#### Reproducible Builds
-
-Reproducible builds are handled by using [dep] to vendor dependencies.
-
-```sh
-$ mkdir chihaya && export GOPATH=$PWD/chihaya
-$ git clone git@github.com:chihaya/chihaya.git $GOPATH/src/github.com/chihaya/chihaya
-$ cd $GOPATH/src/github.com/chihaya/chihaya
-$ dep ensure
-$ go install github.com/chihaya/chihaya/cmd/...
-$ $GOPATH/bin/chihaya --help
-```
-
-[dep]: https://github.com/golang/dep
 
 #### Docker
 
