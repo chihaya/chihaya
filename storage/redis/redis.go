@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-redsync/redsync"
 	"github.com/gomodule/redigo/redis"
-	redsync "gopkg.in/redsync.v1"
 )
 
 // redisBackend represents a redis handler.
