@@ -37,17 +37,6 @@ Chihaya is built for developers looking to integrate BitTorrent into a preexisti
 Chihaya's pluggable architecture and middleware framework offers a simple and flexible integration point that abstracts the BitTorrent tracker protocols.
 The most common use case for Chihaya is enabling peer-to-peer cloud software deployments.
 
-### Production Use
-
-#### Red Hat
-
-[Quay] is a container registry that offers the ability to download containers via BitTorrent in order to speed up large or geographically distant deployments.
-Announce URLs from Quay's torrent files contain a [JWT] in order to allow Chihaya to verify that an infohash was approved by the registry.
-By verifying the infohash, Quay can restrict their tracker to only sharing their own content.
-
-[Quay]: https://quay.io
-[JWT]: https://jwt.io
-
 ## Development
 
 ### Contributing
