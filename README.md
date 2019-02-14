@@ -39,14 +39,6 @@ The most common use case for Chihaya is enabling peer-to-peer cloud software dep
 
 ### Production Use
 
-#### Facebook
-
-[Facebook] uses BitTorrent to deploy new versions of their software.
-In order to optimize the flow of traffic within their datacenters, Facebook uses an alternative Storage driver for Chihaya that is configured to prefer peers within the same subnet.
-Because Facebook organizes their network such that server racks are allocated IP addresses in the same subnet, the vast majority of deployment traffic never impacts the congested areas of their network.
-
-[Facebook]: https://facebook.com
-
 #### Red Hat
 
 [Quay] is a container registry that offers the ability to download containers via BitTorrent in order to speed up large or geographically distant deployments.
