@@ -6,16 +6,16 @@ matrix:
   include:
   # Using vendored dependencies
   - install:
-    - go get -u github.com/golang/dep/...
     - go get -u golang.org/x/lint/golint
     - go get -u golang.org/x/tools/cmd/...
     script:
-    - dep ensure
+    - export GO111MODULE=on
+    - go mod download
     - go test -v -race $(go list ./...)
     - go vet $(go list ./...)
-    - diff <(goimports -local github.com/chihaya/chihaya -d $(find . -type f -name '*.go' -not -path "./vendor/*")) <(printf "")
+    - diff <(goimports -local github.com/ProtocolONE/chihaya -d $(find . -type f -name '*.go' -not -path "./vendor/*")) <(printf "")
     - (for d in $(go list ./...); do diff <(golint $d) <(printf "") || exit 1;  done)
-    - go install github.com/chihaya/chihaya/cmd/chihaya
+    - go install github.com/ProtocolONE/chihaya/cmd/chihaya
     - chihaya --config=example_config.yaml --debug&
     - pid=$!
     - sleep 2 # wait for chihaya to start up (gross)
@@ -29,9 +29,9 @@ matrix:
     script:
     - go test -v -race $(go list ./...)
     - go vet $(go list ./...)
-    - diff <(goimports -local github.com/chihaya/chihaya -d $(find . -type f -name '*.go' -not -path "./vendor/*")) <(printf "")
+    - diff <(goimports -local github.com/ProtocolONE/chihaya -d $(find . -type f -name '*.go' -not -path "./vendor/*")) <(printf "")
     - (for d in $(go list ./...); do diff <(golint $d) <(printf "") || exit 1;  done)
-    - go install github.com/chihaya/chihaya/cmd/chihaya
+    - go install github.com/ProtocolONE/chihaya/cmd/chihaya
     - chihaya --config=example_config.yaml --debug&
     - pid=$!
     - sleep 2 # wait for chihaya to start up (gross)
@@ -46,9 +46,9 @@ matrix:
     script:
     - go test -v -race $(go list ./...)
     - go vet $(go list ./...)
-    - diff <(goimports -local github.com/chihaya/chihaya -d $(find . -type f -name '*.go' -not -path "./vendor/*")) <(printf "")
+    - diff <(goimports -local github.com/ProtocolONE/chihaya -d $(find . -type f -name '*.go' -not -path "./vendor/*")) <(printf "")
     - (for d in $(go list ./...); do diff <(golint $d) <(printf "") || exit 1;  done)
-    - go install github.com/chihaya/chihaya/cmd/chihaya
+    - go install github.com/ProtocolONE/chihaya/cmd/chihaya
     - chihaya --config=example_config.yaml --debug&
     - pid=$!
     - sleep 2 # wait for chihaya to start up (gross)

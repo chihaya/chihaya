@@ -14,13 +14,13 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/chihaya/chihaya/frontend/http"
-	"github.com/chihaya/chihaya/frontend/udp"
-	"github.com/chihaya/chihaya/middleware"
-	"github.com/chihaya/chihaya/pkg/log"
-	"github.com/chihaya/chihaya/pkg/prometheus"
-	"github.com/chihaya/chihaya/pkg/stop"
-	"github.com/chihaya/chihaya/storage"
+	"github.com/ProtocolONE/chihaya/frontend/http"
+	"github.com/ProtocolONE/chihaya/frontend/udp"
+	"github.com/ProtocolONE/chihaya/middleware"
+	"github.com/ProtocolONE/chihaya/pkg/log"
+	"github.com/ProtocolONE/chihaya/pkg/prometheus"
+	"github.com/ProtocolONE/chihaya/pkg/stop"
+	"github.com/ProtocolONE/chihaya/storage"
 )
 
 // Run represents the state of a running instance of Chihaya.

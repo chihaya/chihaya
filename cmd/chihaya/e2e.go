@@ -3,15 +3,14 @@ package main
 import (
 	"crypto/rand"
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/anacrolix/torrent/tracker"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/chihaya/chihaya/bittorrent"
-	"github.com/chihaya/chihaya/pkg/log"
+	"github.com/ProtocolONE/chihaya/bittorrent"
+	"github.com/ProtocolONE/chihaya/pkg/log"
 )
 
 // EndToEndRunCmdFunc implements a Cobra command that runs the end-to-end test
@@ -91,7 +90,6 @@ func testWithInfohash(infoHash [20]byte, url string, delay time.Duration) error 
 		TrackerUrl: url,
 		Request:    req,
 		UserAgent:  "chihaya-e2e",
-		HttpClient: &http.Client{},
 	}.Do()
 	if err != nil {
 		return errors.Wrap(err, "announce failed")
@@ -119,7 +117,6 @@ func testWithInfohash(infoHash [20]byte, url string, delay time.Duration) error 
 		TrackerUrl: url,
 		Request:    req,
 		UserAgent:  "chihaya-e2e",
-		HttpClient: &http.Client{},
 	}.Do()
 	if err != nil {
 		return errors.Wrap(err, "announce failed")

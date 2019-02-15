@@ -9,7 +9,7 @@ import (
 
 	sha256 "github.com/minio/sha256-simd"
 
-	"github.com/chihaya/chihaya/pkg/log"
+	"github.com/ProtocolONE/chihaya/pkg/log"
 )
 
 // ttl is the duration a connection ID should be valid according to BEP 15.

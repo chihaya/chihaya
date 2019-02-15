@@ -4,8 +4,8 @@ Long-term discussion and bug reports are maintained via [GitHub Issues].
 Code review is done via [GitHub Pull Requests].
 Real-time discussion is done via [freenode IRC].
 
-[GitHub Issues]: https://github.com/chihaya/chihaya/issues
-[GitHub Pull Requests]: https://github.com/chihaya/chihaya/pulls
+[GitHub Issues]: https://github.com/ProtocolONE/chihaya/issues
+[GitHub Pull Requests]: https://github.com/ProtocolONE/chihaya/pulls
 [freenode IRC]: http://webchat.freenode.net/?channels=chihaya
 
 ## Pull Request Procedure

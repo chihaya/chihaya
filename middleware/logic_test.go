@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/chihaya/chihaya/bittorrent"
+	"github.com/ProtocolONE/chihaya/bittorrent"
 )
 
 // nopHook is a Hook to measure the overhead of a no-operation Hook through

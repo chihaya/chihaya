@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/chihaya/chihaya/bittorrent"
+	"github.com/ProtocolONE/chihaya/bittorrent"
 )
 
 // PeerEqualityFunc is the boolean function to use to check two Peers for

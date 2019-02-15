@@ -28,7 +28,7 @@ var (
 		"/announce?" + "info_hash=%0%a",
 	}
 
-	// See https://github.com/chihaya/chihaya/issues/334.
+	// See https://github.com/ProtocolONE/chihaya/issues/334.
 	shouldNotPanicQueries = []string{
 		"/annnounce?" + "info_hash=" + testPeerID + "&a",
 		"/annnounce?" + "info_hash=" + testPeerID + "&=b?",

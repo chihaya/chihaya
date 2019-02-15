@@ -1,21 +1,29 @@
-package memorybysubnet
+package redis
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
-	s "github.com/chihaya/chihaya/storage"
+	"github.com/alicebob/miniredis"
+
+	s "github.com/ProtocolONE/chihaya/storage"
 )
 
 func createNew() s.PeerStore {
+	rs, err := miniredis.Run()
+	if err != nil {
+		panic(err)
+	}
+	redisURL := fmt.Sprintf("redis://@%s/0", rs.Addr())
 	ps, err := New(Config{
-		ShardCount:                     1024,
-		GarbageCollectionInterval:      10 * time.Minute,
-		PeerLifetime:                   30 * time.Minute,
-		PreferredIPv4SubnetMaskBitsSet: 31,
-		PreferredIPv6SubnetMaskBitsSet: 64,
-		PrometheusReportingInterval:    10 * time.Minute,
-	})
+		GarbageCollectionInterval:   10 * time.Minute,
+		PrometheusReportingInterval: 10 * time.Minute,
+		PeerLifetime:                30 * time.Minute,
+		RedisBroker:                 redisURL,
+		RedisReadTimeout:            10 * time.Second,
+		RedisWriteTimeout:           10 * time.Second,
+		RedisConnectTimeout:         10 * time.Second})
 	if err != nil {
 		panic(err)
 	}

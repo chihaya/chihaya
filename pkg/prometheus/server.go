@@ -8,8 +8,8 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/chihaya/chihaya/pkg/log"
-	"github.com/chihaya/chihaya/pkg/stop"
+	"github.com/ProtocolONE/chihaya/pkg/log"
+	"github.com/ProtocolONE/chihaya/pkg/stop"
 )
 
 // Server represents a standalone HTTP server for serving a Prometheus metrics

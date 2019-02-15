@@ -3,7 +3,7 @@ package random
 import (
 	"encoding/binary"
 
-	"github.com/chihaya/chihaya/bittorrent"
+	"github.com/ProtocolONE/chihaya/bittorrent"
 )
 
 // DeriveEntropyFromRequest generates 2*64 bits of pseudo random state from an

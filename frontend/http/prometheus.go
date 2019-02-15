@@ -5,7 +5,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/chihaya/chihaya/bittorrent"
+	"github.com/ProtocolONE/chihaya/bittorrent"
 )
 
 func init() {

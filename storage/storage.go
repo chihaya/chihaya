@@ -4,9 +4,9 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/chihaya/chihaya/bittorrent"
-	"github.com/chihaya/chihaya/pkg/log"
-	"github.com/chihaya/chihaya/pkg/stop"
+	"github.com/ProtocolONE/chihaya/bittorrent"
+	"github.com/ProtocolONE/chihaya/pkg/log"
+	"github.com/ProtocolONE/chihaya/pkg/stop"
 )
 
 var (

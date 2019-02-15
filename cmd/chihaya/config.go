@@ -7,23 +7,23 @@ import (
 
 	yaml "gopkg.in/yaml.v2"
 
-	"github.com/chihaya/chihaya/frontend/http"
-	"github.com/chihaya/chihaya/frontend/udp"
-	"github.com/chihaya/chihaya/middleware"
+	"github.com/ProtocolONE/chihaya/frontend/http"
+	"github.com/ProtocolONE/chihaya/frontend/udp"
+	"github.com/ProtocolONE/chihaya/middleware"
 )
 
 import (
 	// Imports to register middleware drivers.
-	_ "github.com/chihaya/chihaya/middleware/clientapproval"
-	_ "github.com/chihaya/chihaya/middleware/jwt"
-	_ "github.com/chihaya/chihaya/middleware/torrentapproval"
-	_ "github.com/chihaya/chihaya/middleware/varinterval"
+	_ "github.com/ProtocolONE/chihaya/middleware/clientapproval"
+	_ "github.com/ProtocolONE/chihaya/middleware/jwt"
+	_ "github.com/ProtocolONE/chihaya/middleware/torrentapproval"
+	_ "github.com/ProtocolONE/chihaya/middleware/varinterval"
 )
 
 import (
 	// Imports to register storage drivers.
-	_ "github.com/chihaya/chihaya/storage/memory"
-	_ "github.com/chihaya/chihaya/storage/memorybysubnet"
+	_ "github.com/ProtocolONE/chihaya/storage/memory"
+	_ "github.com/ProtocolONE/chihaya/storage/redis"
 )
 
 type storageConfig struct {

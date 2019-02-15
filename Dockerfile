@@ -5,13 +5,11 @@ LABEL maintainer "Jimmy Zelinskie <jimmyzelinskie+git@gmail.com>"
 RUN apk add --no-cache curl git
 
 # Copy our source code into the container.
-WORKDIR /go/src/github.com/chihaya/chihaya
-COPY . /go/src/github.com/chihaya/chihaya
+WORKDIR /go/src/github.com/ProtocolONE/chihaya
+COPY . /go/src/github.com/ProtocolONE/chihaya
 
 # Install our golang dependencies and compile our binary.
-RUN go get -u github.com/golang/dep/...
-RUN dep ensure
-RUN CGO_ENABLED=0 go install github.com/chihaya/chihaya/cmd/...
+RUN CGO_ENABLED=0 GO111MODULE=on go install github.com/ProtocolONE/chihaya/cmd/...
 
 FROM alpine:latest
 RUN apk add --no-cache ca-certificates
