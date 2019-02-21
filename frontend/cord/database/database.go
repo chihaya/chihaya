@@ -4,6 +4,7 @@ import (
 	"github.com/ProtocolONE/chihaya/frontend/cord/config"
 	"github.com/ProtocolONE/chihaya/frontend/cord/models"
 
+	"sync"
 	"go.uber.org/zap"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -112,13 +113,42 @@ func (manager *TorrentManager) RemoveByInfoHash(infoHash string) error {
 	return nil
 }
 
-func (manager *TorrentManager) FindByInfoHash(name string) ([]*models.Torrent, error) {
+func (manager *TorrentManager) FindByInfoHash(infoHash string) ([]*models.Torrent, error) {
 
 	var dbTorrent []*models.Torrent
-	err := manager.collection.Find(bson.M{"info_hash": name}).All(&dbTorrent)
+	err := manager.collection.Find(bson.M{"info_hash": infoHash}).All(&dbTorrent)
 	if err != nil {
 		return nil, err
 	}
 
 	return dbTorrent, nil
 }
+
+type MemTorrentManager struct {
+	collection *sync.Map
+}
+
+func NewMemTorrentManager() *MemTorrentManager {
+	return &MemTorrentManager{}
+}
+
+func (manager *MemTorrentManager) Insert(torrent *models.Torrent) {
+
+	manager.collection.Store(torrent.InfoHash, torrent)
+}
+
+func (manager *MemTorrentManager) RemoveByInfoHash(infoHash string) {
+
+	manager.collection.Delete(infoHash)
+}
+
+func (manager *MemTorrentManager) FindByInfoHash(infoHash string) *models.Torrent {
+
+	v, ok := manager.collection.Load(infoHash)
+	if !ok  {
+		return nil
+	}
+
+	return v.(*models.Torrent)
+}
+

@@ -19,6 +19,9 @@ func AddTorrent(context echo.Context) error {
 		return context.JSON(http.StatusBadRequest, models.Error{models.ErrorInvalidJSONFormat, "Invalid JSON format: " + err.Error()})
 	}
 
+	memManager := database.NewMemTorrentManager()
+	memManager.Insert(reqTorrent)
+
 	manager := database.NewTorrentManager()
 	torrent, err := manager.FindByInfoHash(reqTorrent.InfoHash)
 	if err != nil {
@@ -46,6 +49,9 @@ func DeleteTorrent(context echo.Context) error {
 	if err != nil {
 		return context.JSON(http.StatusBadRequest, models.Error{models.ErrorInvalidJSONFormat, "Invalid JSON format: " + err.Error()})
 	}
+
+	memManager := database.NewMemTorrentManager()
+	memManager.RemoveByInfoHash(reqTorrent.InfoHash)
 
 	manager := database.NewTorrentManager()
 	err = manager.RemoveByInfoHash(reqTorrent.InfoHash)
