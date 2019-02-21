@@ -1,12 +1,7 @@
 # Chihaya
 
 [![Build Status](https://api.travis-ci.org/ProtocolONE/chihaya.svg?branch=master)](https://travis-ci.org/ProtocolONE/chihaya)
-#[![Docker Repository on Quay.io](https://quay.io/repository/jzelinskie/chihaya/status "Docker Repository on Quay.io")](https://quay.io/repository/jzelinskie/chihaya)
-#[![Go Report Card](https://goreportcard.com/badge/github.com/ProtocolONE/chihaya)](https://goreportcard.com/report/github.com/ProtocolONE/chihaya)
-#[![GoDoc](https://godoc.org/github.com/ProtocolONE/chihaya?status.svg)](https://godoc.org/github.com/ProtocolONE/chihaya)
-#![Lines of Code](https://tokei.rs/b1/github/ProtocolONE/chihaya)
 [![License](https://img.shields.io/badge/license-BSD-blue.svg)](https://en.wikipedia.org/wiki/BSD_licenses#2-clause_license_.28.22Simplified_BSD_License.22_or_.22FreeBSD_License.22.29)
-#[![IRC Channel](https://img.shields.io/badge/freenode-%23chihaya-blue.svg "IRC Channel")](http://webchat.freenode.net/?channels=chihaya)
 
 **Note:** The master branch may be in an unstable or even broken state during development.
 Please use [releases] instead of the master branch in order to get stable binaries.
