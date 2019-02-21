@@ -156,6 +156,10 @@ chihaya:
   # This block defines configuration used for middleware executed before a
   # response has been returned to a BitTorrent client.
   prehooks:
+  - name: cord
+    options:
+      storage: "mongo"
+
   #- name: jwt
   #  options:
   #    issuer: "https://issuer.com"

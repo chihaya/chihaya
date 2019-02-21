@@ -16,11 +16,13 @@ import (
 
 	"github.com/ProtocolONE/chihaya/frontend/http"
 	"github.com/ProtocolONE/chihaya/frontend/udp"
+	"github.com/ProtocolONE/chihaya/frontend/cord"
 	"github.com/ProtocolONE/chihaya/middleware"
 	"github.com/ProtocolONE/chihaya/pkg/log"
 	"github.com/ProtocolONE/chihaya/pkg/prometheus"
 	"github.com/ProtocolONE/chihaya/pkg/stop"
 	"github.com/ProtocolONE/chihaya/storage"
+	cord_hook "github.com/ProtocolONE/chihaya/middleware/cord"
 )
 
 // Run represents the state of a running instance of Chihaya.
@@ -65,6 +67,8 @@ func (r *Run) Start(ps storage.PeerStore) error {
 	}
 	r.peerStore = ps
 
+	cord_hook.Init()
+
 	preHooks, err := middleware.HooksFromHookConfigs(cfg.PreHooks)
 	if err != nil {
 		return errors.New("failed to validate hook config: " + err.Error())
@@ -97,6 +101,13 @@ func (r *Run) Start(ps storage.PeerStore) error {
 		}
 		r.sg.Add(udpfe)
 	}
+
+	log.Info("starting CORD frontend")
+	cordfe, err := cord.NewFrontend(r.logic)
+	if err != nil {
+		return err
+	}
+	r.sg.Add(cordfe)
 
 	return nil
 }
