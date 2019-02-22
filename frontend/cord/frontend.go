@@ -6,7 +6,7 @@ import (
 
 	"github.com/ProtocolONE/chihaya/frontend/cord/config"
 	"github.com/ProtocolONE/chihaya/frontend/cord/routers"
-	"github.com/ProtocolONE/chihaya/frontend/cord/core/utils"
+	"github.com/ProtocolONE/chihaya/frontend/cord/core"
 
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
@@ -31,7 +31,7 @@ func NewFrontend(logic frontend.TrackerLogic) (*Frontend, error) {
 		logic:  logic,
 	}
 
-	err := utils.InitCord()
+	err := core.InitCord()
 	if err != nil {
 		return nil, err
 	}

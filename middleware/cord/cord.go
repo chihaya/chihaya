@@ -10,7 +10,7 @@ import (
 	"github.com/ProtocolONE/chihaya/middleware"
 	"github.com/ProtocolONE/chihaya/pkg/log"
 	"github.com/ProtocolONE/chihaya/frontend/cord/database"
-	"github.com/ProtocolONE/chihaya/frontend/cord/core/utils"
+	"github.com/ProtocolONE/chihaya/frontend/cord/core"
 
 	"go.uber.org/zap"
 )
@@ -56,7 +56,7 @@ type hook struct {
 
 func NewHook(cfg Config) (middleware.Hook, error) {
 
-	err := utils.InitCord()
+	err := core.InitCord()
 	if err != nil {
 		return nil, err
 	}

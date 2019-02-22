@@ -1,4 +1,4 @@
-package utils
+package core
 
 import (
 
@@ -29,7 +29,31 @@ func InitCord() error {
 		return err
 	}
 
+	err = fillMemDB()
+	if err != nil {
+		return err
+	}
+
 	inited = true
 
+	return nil
+}
+
+func fillMemDB() error {
+
+	manager := database.NewTorrentManager()
+
+	torrents, err := manager.FindAll()
+	if err != nil {
+		return err
+	}
+
+	memManager := database.NewMemTorrentManager()
+
+	for _, t := range torrents{
+
+		memManager.Insert(t)
+	}
+	
 	return nil
 }

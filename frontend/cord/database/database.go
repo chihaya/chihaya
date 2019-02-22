@@ -124,6 +124,17 @@ func (manager *TorrentManager) FindByInfoHash(infoHash string) ([]*models.Torren
 	return dbTorrent, nil
 }
 
+func (manager *TorrentManager) FindAll() ([]*models.Torrent, error) {
+
+	var dbTorrent []*models.Torrent
+	err := manager.collection.Find(nil).All(&dbTorrent)
+	if err != nil {
+		return nil, err
+	}
+
+	return dbTorrent, nil
+}
+
 type MemTorrentManager struct {
 	collection sync.Map
 }
