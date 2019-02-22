@@ -125,7 +125,7 @@ func (manager *TorrentManager) FindByInfoHash(infoHash string) ([]*models.Torren
 }
 
 type MemTorrentManager struct {
-	collection *sync.Map
+	collection sync.Map
 }
 
 func NewMemTorrentManager() *MemTorrentManager {
