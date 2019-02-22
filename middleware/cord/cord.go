@@ -7,10 +7,10 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/ProtocolONE/chihaya/bittorrent"
+	"github.com/ProtocolONE/chihaya/frontend/cord/core"
+	"github.com/ProtocolONE/chihaya/frontend/cord/database"
 	"github.com/ProtocolONE/chihaya/middleware"
 	"github.com/ProtocolONE/chihaya/pkg/log"
-	"github.com/ProtocolONE/chihaya/frontend/cord/database"
-	"github.com/ProtocolONE/chihaya/frontend/cord/core"
 
 	"go.uber.org/zap"
 )
@@ -39,13 +39,13 @@ func (d driver) NewHook(optionBytes []byte) (middleware.Hook, error) {
 var ErrTorrentUnapproved = bittorrent.ClientError("unapproved torrent")
 
 type Config struct {
-	Storage            string        `yaml:"storage"`
+	Storage string `yaml:"storage"`
 }
 
 func (cfg Config) LogFields() log.Fields {
-	
+
 	return log.Fields{
-		"storage":            cfg.Storage,
+		"storage": cfg.Storage,
 	}
 }
 
@@ -62,7 +62,7 @@ func NewHook(cfg Config) (middleware.Hook, error) {
 	}
 
 	h := &hook{
-		cfg: cfg,
+		cfg:     cfg,
 		manager: database.NewMemTorrentManager(),
 	}
 

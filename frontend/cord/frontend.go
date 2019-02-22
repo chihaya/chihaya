@@ -1,16 +1,16 @@
 package cord
 
 import (
-	"fmt"
 	"context"
+	"fmt"
 
 	"github.com/ProtocolONE/chihaya/frontend/cord/config"
-	"github.com/ProtocolONE/chihaya/frontend/cord/routers"
 	"github.com/ProtocolONE/chihaya/frontend/cord/core"
+	"github.com/ProtocolONE/chihaya/frontend/cord/routers"
 
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
-	
+
 	"github.com/ProtocolONE/chihaya/frontend"
 	"github.com/ProtocolONE/chihaya/pkg/log"
 	"github.com/ProtocolONE/chihaya/pkg/stop"
@@ -18,7 +18,7 @@ import (
 
 // Frontend represents the state of an HTTP BitTorrent Frontend.
 type Frontend struct {
-	server    *echo.Echo
+	server *echo.Echo
 
 	logic frontend.TrackerLogic
 }
@@ -28,7 +28,7 @@ type Frontend struct {
 func NewFrontend(logic frontend.TrackerLogic) (*Frontend, error) {
 
 	f := &Frontend{
-		logic:  logic,
+		logic: logic,
 	}
 
 	err := core.InitCord()
@@ -77,4 +77,3 @@ func (f *Frontend) makeStopFunc(stopSrv *echo.Echo) stop.Func {
 		return c.Result()
 	}
 }
-

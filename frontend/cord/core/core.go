@@ -1,7 +1,6 @@
 package core
 
 import (
-
 	"github.com/ProtocolONE/chihaya/frontend/cord/config"
 	"github.com/ProtocolONE/chihaya/frontend/cord/database"
 	"go.uber.org/zap"
@@ -50,10 +49,10 @@ func fillMemDB() error {
 
 	memManager := database.NewMemTorrentManager()
 
-	for _, t := range torrents{
+	for _, t := range torrents {
 
 		memManager.Insert(t)
 	}
-	
+
 	return nil
 }

@@ -2,13 +2,13 @@ package authentication
 
 import (
 	"bufio"
-	"github.com/ProtocolONE/chihaya/frontend/cord/config"
-	"github.com/ProtocolONE/chihaya/frontend/cord/database"
-	"github.com/ProtocolONE/chihaya/frontend/cord/models"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"github.com/ProtocolONE/chihaya/frontend/cord/config"
+	"github.com/ProtocolONE/chihaya/frontend/cord/database"
+	"github.com/ProtocolONE/chihaya/frontend/cord/models"
 	jwt "github.com/dgrijalva/jwt-go"
 	"golang.org/x/crypto/bcrypt"
 	"os"

@@ -1,14 +1,13 @@
 package controllers
 
 import (
-
-	"github.com/ProtocolONE/chihaya/frontend/cord/models"
 	"github.com/ProtocolONE/chihaya/frontend/cord/database"
+	"github.com/ProtocolONE/chihaya/frontend/cord/models"
 
 	"fmt"
-	"net/http"
 	"github.com/labstack/echo"
 	"go.uber.org/zap"
+	"net/http"
 )
 
 func AddTorrent(context echo.Context) error {

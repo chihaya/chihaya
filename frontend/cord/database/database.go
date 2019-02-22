@@ -4,10 +4,10 @@ import (
 	"github.com/ProtocolONE/chihaya/frontend/cord/config"
 	"github.com/ProtocolONE/chihaya/frontend/cord/models"
 
-	"sync"
 	"go.uber.org/zap"
 	mgo "gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+	"sync"
 )
 
 type DbConf struct {
@@ -156,10 +156,9 @@ func (manager *MemTorrentManager) RemoveByInfoHash(infoHash string) {
 func (manager *MemTorrentManager) FindByInfoHash(infoHash string) *models.Torrent {
 
 	v, ok := manager.collection.Load(infoHash)
-	if !ok  {
+	if !ok {
 		return nil
 	}
 
 	return v.(*models.Torrent)
 }
-

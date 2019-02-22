@@ -13,8 +13,8 @@ const (
 	ErrorTokenExpired              = 10
 	ErrorInvalidToken              = 11
 	ErrorTorrentAlreadyExists      = 12
-	ErrorAddTorrent		           = 13
-	ErrorDeleteTorrent			   = 14
+	ErrorAddTorrent                = 13
+	ErrorDeleteTorrent             = 14
 )
 
 type AppKey struct {
