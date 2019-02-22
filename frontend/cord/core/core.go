@@ -54,6 +54,6 @@ func fillMemDB() error {
 
 		memManager.Insert(t)
 	}
-	
+
 	return nil
 }
