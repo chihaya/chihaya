@@ -20,7 +20,7 @@ deploy_production:
   script:
     - docker run
       --rm
-      -v $PWD/.helm:/.helm
+      -v $PWD/dist/helm/chihaya:/.helm
       -e "K8S_API_URL=$K8S_API_URL"
       -e "K8S_CI_TOKEN=$K8S_CI_TOKEN"
       -e "P1_PROJECT=$P1_PROJECT"
@@ -41,7 +41,8 @@ deploy_production:
       kubectl config set-context ci --cluster=k8s --user=ci &&
       kubectl config use-context ci &&
       helm init --client-only &&
-      helm upgrade --install $P1_PROJECT ./dist/helm/chihaya
+      helm upgrade --install $P1_PROJECT ./helm
+        --values=custom-values.yaml
         --set image.repository=$CI_REGISTRY_IMAGE
         --set image.tag="$CI_COMMIT_REF_SLUG".$CI_PIPELINE_ID
         --wait
