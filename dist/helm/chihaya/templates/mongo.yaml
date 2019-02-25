@@ -76,12 +76,12 @@ spec:
           - name: MONGO_INITDB_ROOT_USERNAME
             valueFrom:
               secretKeyRef:
-                name: p1chihaya-env
+                name: {{.Release.Name}}-env
                 key: MONGO_USER
           - name: MONGO_INITDB_ROOT_PASSWORD
             valueFrom:
               secretKeyRef:
-                name: p1chihaya-env
+                name: {{.Release.Name}}-env
                 key: MONGO_PASS
         ports:
         - containerPort: 27017
