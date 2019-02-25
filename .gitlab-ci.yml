@@ -41,7 +41,7 @@ deploy_production:
       kubectl config set-context ci --cluster=k8s --user=ci &&
       kubectl config use-context ci &&
       helm init --client-only &&
-      helm upgrade --install $P1_PROJECT ./dist/helm
+      helm upgrade --install $P1_PROJECT ./dist/helm/chihaya
         --set image.repository=$CI_REGISTRY_IMAGE
         --set image.tag="$CI_COMMIT_REF_SLUG".$CI_PIPELINE_ID
         --wait
