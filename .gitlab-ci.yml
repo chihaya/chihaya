@@ -20,7 +20,7 @@ deploy_production:
   script:
     - docker run
       --rm
-      -v $PWD/dist/helm/chihaya:/.helm
+      -v $PWD/dist/helm/chihaya/:/.helm
       -e "K8S_API_URL=$K8S_API_URL"
       -e "K8S_CI_TOKEN=$K8S_CI_TOKEN"
       -e "P1_PROJECT=$P1_PROJECT"
