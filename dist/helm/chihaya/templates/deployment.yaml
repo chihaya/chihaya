@@ -18,7 +18,8 @@ spec:
         configMap:
           name: {{ template "fullname" . }}
       - name: chihayakeys
-        secret: {{ .Release.Name }}-keys
+        secret: 
+          secretName: {{ .Release.Name }}-keys
       containers:
       - name: {{ .Chart.Name }}
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
