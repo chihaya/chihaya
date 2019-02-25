@@ -1,0 +1,53 @@
+variables:
+  P1_PROJECT: p1chihaya
+
+stages:
+  - build
+  - deploy
+
+build:
+  stage: build
+  before_script:
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN $CI_REGISTRY
+  script:
+    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG.$CI_PIPELINE_ID .
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG.$CI_PIPELINE_ID
+
+deploy_production:
+  stage: deploy
+  environment:
+    name: production
+  script:
+    - docker run
+      --rm
+      -v $PWD/.helm:/.helm
+      -e "K8S_API_URL=$K8S_API_URL"
+      -e "K8S_CI_TOKEN=$K8S_CI_TOKEN"
+      -e "P1_PROJECT=$P1_PROJECT"
+      -e "CI_PROJECT_PATH_SLUG=$CI_PROJECT_PATH_SLUG"
+      -e "CI_ENVIRONMENT_NAME=$CI_ENVIRONMENT_NAME"
+      -e "CI_REGISTRY=$CI_REGISTRY"
+      -e "CI_REGISTRY_IMAGE=$CI_REGISTRY_IMAGE"
+      -e "CI_PROJECT_NAMESPACE=$CI_PROJECT_NAMESPACE"
+      -e "CI_PROJECT_NAME=$CI_PROJECT_NAME"
+      -e "CI_COMMIT_REF_SLUG=$CI_COMMIT_REF_SLUG"
+      -e "CI_PIPELINE_ID=$CI_PIPELINE_ID"
+      -e "CI_DEPLOY_USER=$CI_DEPLOY_USER"
+      -e "CI_DEPLOY_PASSWORD=$CI_DEPLOY_PASSWORD"
+      p1hub/kubernetes-helm:2.11.0
+      /bin/sh -c
+      'kubectl config set-cluster k8s --insecure-skip-tls-verify=true --server=$K8S_API_URL &&
+      kubectl config set-credentials ci --token=$K8S_CI_TOKEN &&
+      kubectl config set-context ci --cluster=k8s --user=ci &&
+      kubectl config use-context ci &&
+      helm init --client-only &&
+      helm upgrade --install $P1_PROJECT ./dist/helm
+        --set image.repository=$CI_REGISTRY_IMAGE
+        --set image.tag="$CI_COMMIT_REF_SLUG".$CI_PIPELINE_ID
+        --wait
+        --debug
+        --timeout 180'
+        #|| (helm history --max 2 $P1_PROJECT | head -n 2 | tail -n 1 | awk "{print \$1}" | xargs helm rollback $P1_PROJECT && exit 1)'
+  only:
+  - master
+  when: on_success
