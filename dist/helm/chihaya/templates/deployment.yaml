@@ -38,26 +38,13 @@ spec:
         - name: metrics
           containerPort: {{ $v := .Values.config.chihaya.prometheus_addr | split ":" }}{{ $v._1 }}
         env:
-        - name: MONGO_HOST
-          values: "p1chihaya-mongo:27017"
-        - name: MONGO_DB
-          values: "chihaya"
-        - name: MONGO_USER
-          values: "chihaya"
-        - name: MONGO_PASSWORD
-          values: "chihaya"
-        - name: HTTP_SCHEME
-          values: "http"
-        - name: SERVICE_PORT
-          values: 5001
-        - name: PRIVATE_KEY_PATH
-          values: "/etc/chihaya/ssl/chihaya.key"
-        - name: PUBLIC_KEY_PATH
-          values: "/etc/chihaya/ssl/chihaya.pub"
-        - name: JWT_EXPIRATION_DELTA
-          values: 30
-        - name: JWT_REFRESH_EXPIRATION_DELTA
-          values: 72
+        {{- range .Values.env }}
+        - name: {{ . }}
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-env
+              key: {{ . }}
+        {{- end }}
         livenessProbe:
           httpGet:
             path: /

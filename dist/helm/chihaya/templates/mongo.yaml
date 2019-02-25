@@ -77,12 +77,12 @@ spec:
             valueFrom:
               secretKeyRef:
                 name: p1chihaya-env
-                key: DB_USER
+                key: MONGO_USER
           - name: MONGO_INITDB_ROOT_PASSWORD
             valueFrom:
               secretKeyRef:
                 name: p1chihaya-env
-                key: DB_PASS
+                key: MONGO_PASS
         ports:
         - containerPort: 27017
         volumeMounts:

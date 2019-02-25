@@ -161,3 +161,15 @@ config:
     #    modify_response_probability: 0.2
     #    max_increase_delta: 60
     #    modify_min_interval: true
+
+env:
+ - MONGO_HOST
+ - MONGO_DB
+ - MONGO_USER
+ - MONGO_PASSWORD
+ - HTTP_SCHEME
+ - SERVICE_PORT
+ - PRIVATE_KEY_PATH
+ - PUBLIC_KEY_PATH
+ - JWT_EXPIRATION_DELTA
+ - JWT_REFRESH_EXPIRATION_DELTA
