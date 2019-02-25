@@ -42,7 +42,7 @@ spec:
         - name: {{ . }}
           valueFrom:
             secretKeyRef:
-              name: {{ .Release.Name }}-env
+              name: p1chihaya-env
               key: {{ . }}
         {{- end }}
         livenessProbe:
