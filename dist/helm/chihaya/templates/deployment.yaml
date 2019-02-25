@@ -12,7 +12,7 @@ spec:
         app: {{ template "fullname" . }}
     spec:
       nodeSelector:
-        chihaya: true
+        chihaya: "true"
       volumes:
       - name: config
         configMap:
