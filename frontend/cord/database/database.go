@@ -12,35 +12,35 @@ import (
 
 type DbConf struct {
 	Dbs      *mgo.Session
-	Addrs    []string
 	Database string
-	Username string
-	Password string
 }
 
 var dbConf *DbConf
 
 func Init() error {
+
 	cfg := config.Get().Database
+
 	dbConf = &DbConf{
-		Addrs:    []string{cfg.Host},
 		Database: cfg.Database,
-		Username: cfg.User,
-		Password: cfg.Password,
 	}
-	session, err := mgo.DialWithInfo(&mgo.DialInfo{
-		Addrs:    dbConf.Addrs,
-		Database: dbConf.Database,
-		Username: dbConf.Username,
-		Password: dbConf.Password,
-	})
+
+	session, err := mgo.Dial(cfg.Host)
+	if err != nil {
+		zap.S().Fatal(err)
+		return err
+	}
+
+	db := session.DB(cfg.Database)
+	err = db.Login(cfg.User, cfg.Password)
 	if err != nil {
 		zap.S().Fatal(err)
 		return err
 	}
 
 	dbConf.Dbs = session
-	zap.S().Infof("Connected to DB: \"%s\" [u:\"%s\":p\"%s\"]", dbConf.Database, dbConf.Username, dbConf.Password)
+	zap.S().Infof("Connected to DB: \"%s\" [u:\"%s\":p\"%s\"]", dbConf.Database, cfg.User, cfg.Password)
+
 	return nil
 }
 
