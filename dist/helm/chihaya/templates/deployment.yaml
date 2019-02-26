@@ -11,10 +11,15 @@ spec:
       labels:
         app: {{ template "fullname" . }}
     spec:
+      nodeSelector:
+        chihaya: "true"
       volumes:
       - name: config
         configMap:
           name: {{ template "fullname" . }}
+      - name: chihayakeys
+        secret: 
+          secretName: {{ .Release.Name }}-keys
       containers:
       - name: {{ .Chart.Name }}
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -32,6 +37,14 @@ spec:
           protocol: UDP
         - name: metrics
           containerPort: {{ $v := .Values.config.chihaya.prometheus_addr | split ":" }}{{ $v._1 }}
+        env:
+        {{- range .Values.env }}
+        - name: {{ . }}
+          valueFrom:
+            secretKeyRef:
+              name: p1chihaya-env
+              key: {{ . }}
+        {{- end }}
         livenessProbe:
           httpGet:
             path: /
@@ -39,5 +52,7 @@ spec:
         volumeMounts:
         - name: config
           mountPath: /etc/chihaya
+        - name: chihayakeys
+          mountPath: /etc/chihaya/ssl
         resources:
 {{ toYaml .Values.resources | indent 10 }}

@@ -1,0 +1,92 @@
+{{- if .Values.enableMongo }}
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  annotations:
+    "helm.sh/resource-policy": keep
+  name: {{ .Release.Name }}-mongo
+  labels:
+    app: {{ .Release.Name }}
+    role: mongo
+spec:
+  persistentVolumeReclaimPolicy: Retain
+  capacity:
+    storage: 15Gi
+  accessModes:
+    - ReadWriteOnce
+  nfs:
+    server: nfs-share
+    path: "/home/nfsroot/k8sdata/p1chihaya-mongo"
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: {{ .Release.Name }}-mongo
+spec:
+  storageClassName: ""
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}  
+      role: "mongo"
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-mongo
+  labels:
+    app: {{ .Release.Name }}
+    role: mongo
+spec:
+  ports:
+  - port: 27017
+    protocol: TCP
+  selector:
+    app: {{ .Release.Name }}
+    role: mongo
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-mongo
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Release.Name }}
+      role: mongo
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: {{ .Release.Name }}
+        role: mongo
+    spec:
+      volumes:
+      - name: {{ .Release.Name }}-mongo
+        persistentVolumeClaim:
+          claimName: {{ .Release.Name }}-mongo
+      containers:
+      - name: mongo
+        image: library/mongo:4.1.3
+        env:
+          - name: MONGO_INITDB_ROOT_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: {{.Release.Name}}-env
+                key: MONGO_USER
+          - name: MONGO_INITDB_ROOT_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: {{.Release.Name}}-env
+                key: MONGO_PASS
+        ports:
+        - containerPort: 27017
+        volumeMounts:
+        - name: {{ .Release.Name }}-mongo
+          mountPath: /data/db
+          readOnly: false
+{{- end }}
