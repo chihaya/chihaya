@@ -11,7 +11,7 @@ COPY . /go/src/github.com/ProtocolONE/chihaya
 # Install our golang dependencies and compile our binary.
 RUN CGO_ENABLED=0 GO111MODULE=on go install github.com/ProtocolONE/chihaya/cmd/...
 
-FROM alpine:latest
+FROM alpine:3.9
 RUN apk add --no-cache ca-certificates
 COPY --from=build-env /go/bin/chihaya /chihaya
 
