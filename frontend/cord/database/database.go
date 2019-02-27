@@ -25,17 +25,25 @@ func Init() error {
 		Database: cfg.Database,
 	}
 
-	session, err := mgo.Dial(cfg.Host)
+	session, err := mgo.DialWithInfo(&mgo.DialInfo{
+		Addrs:    []string{cfg.Host},
+		Database: cfg.Database,
+		Username: cfg.User,
+		Password: cfg.Password,
+	})
 	if err != nil {
-		zap.S().Fatal(err)
-		return err
-	}
+		session, err := mgo.Dial(cfg.Host)
+		if err != nil {
+			zap.S().Fatal(err)
+			return err
+		}
 
-	db := session.DB(cfg.Database)
-	err = db.Login(cfg.User, cfg.Password)
-	if err != nil {
-		zap.S().Fatal(err)
-		return err
+		db := session.DB(cfg.Database)
+		err = db.Login(cfg.User, cfg.Password)
+		if err != nil {
+			zap.S().Fatal(err)
+			return err
+		}
 	}
 
 	dbConf.Dbs = session
