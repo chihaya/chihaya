@@ -82,7 +82,7 @@ spec:
             valueFrom:
               secretKeyRef:
                 name: {{.Release.Name}}-env
-                key: MONGO_PASS
+                key: MONGO_PASSWORD
         ports:
         - containerPort: 27017
         volumeMounts:
