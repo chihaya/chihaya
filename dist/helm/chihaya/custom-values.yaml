@@ -41,7 +41,7 @@ config:
     http:
       # The network interface that will bind to an HTTP server for serving
       # BitTorrent traffic.
-      addr: "0.0.0.0:6969"
+      addr: "0.0.0.0:30210"
 
       # The path to the required files to listen via HTTPS.
       tls_cert_path: ""
