@@ -14,10 +14,16 @@ spec:
   - name: bittorrent-http
     port: {{ $v := .Values.config.chihaya.http.addr | split ":" }}{{ $v._1 }}
     targetPort: {{ $v := .Values.config.chihaya.http.addr | split ":" }}{{ $v._1 }}
+    {{ if eq .Values.service.type "NodePort"}}
+    nodePort: {{ .Values.service.tcpNodePort }}
+    {{- end }}
     protocol: TCP
   - name: bittorrent-udp
     port: {{ $v := .Values.config.chihaya.udp.addr | split ":" }}{{ $v._1 }}
     targetPort: {{ $v := .Values.config.chihaya.udp.addr | split ":" }}{{ $v._1 }}
+    {{ if eq .Values.service.type "NodePort"}}
+    nodePort: {{ .Values.service.udpNodePort }}
+    {{- end }}
     protocol: UDP
   - name: metrics
     port: {{ $v := .Values.config.chihaya.prometheus_addr | split ":" }}{{ $v._1 }}

@@ -8,6 +8,8 @@ image:
 service:
   name: chihaya
   type: NodePort
+  udpNodePort: 30209
+  tcpNodePort: 30210
 resources:
   limits:
     cpu: 100m
