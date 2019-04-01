@@ -155,10 +155,11 @@ chihaya:
 
   # This block defines configuration used for middleware executed before a
   # response has been returned to a BitTorrent client.
+
   prehooks:
-  - name: cord
-    options:
-      storage: "mongo"
+  #- name: cord
+  #  options:
+  #    storage: "mongo"
 
   #- name: jwt
   #  options:
@@ -188,3 +189,9 @@ chihaya:
   #    - "a1b2c3d4e5a1b2c3d4e5a1b2c3d4e5a1b2c3d4e5"
   #    blacklist:
   #    - "e1d2c3b4a5e1b2c3b4a5e1d2c3b4e5e1d2c3b4a5"
+  geoip:
+    host: "localhost"
+    port: 6379
+    db: 0
+    key: "ip2location"
+    radius: 1000

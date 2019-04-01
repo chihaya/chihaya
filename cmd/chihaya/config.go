@@ -9,6 +9,7 @@ import (
 
 	"github.com/ProtocolONE/chihaya/frontend/http"
 	"github.com/ProtocolONE/chihaya/frontend/udp"
+	"github.com/ProtocolONE/chihaya/geo"
 	"github.com/ProtocolONE/chihaya/middleware"
 )
 
@@ -40,6 +41,7 @@ type Config struct {
 	Storage                   storageConfig           `yaml:"storage"`
 	PreHooks                  []middleware.HookConfig `yaml:"prehooks"`
 	PostHooks                 []middleware.HookConfig `yaml:"posthooks"`
+	GeoIP                     geo.Config              `yaml:"geoip"`
 }
 
 // PreHookNames returns only the names of the configured middleware.

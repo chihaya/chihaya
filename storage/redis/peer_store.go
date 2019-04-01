@@ -34,6 +34,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/ProtocolONE/chihaya/bittorrent"
+	"github.com/ProtocolONE/chihaya/geo"
 	"github.com/ProtocolONE/chihaya/pkg/log"
 	"github.com/ProtocolONE/chihaya/pkg/stop"
 	"github.com/ProtocolONE/chihaya/pkg/timecache"
@@ -539,6 +540,82 @@ func (ps *peerStore) GraduateLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) 
 	return nil
 }
 
+func findPeers (ih bittorrent.InfoHash, seeder bool, numWant int, announcer bittorrent.Peer, conLeechers, conSeeders []interface{}, useGeo bool) (peers []bittorrent.Peer, err error) {
+	
+	canAdd := true
+
+	if seeder {
+		// Append leechers as possible.
+		for _, pk := range conLeechers {
+			if numWant == 0 {
+				break
+			}
+
+			pear := decodePeerKey(serializedPeer(pk.([]byte)))
+
+			if pear.IP.AddressFamily == bittorrent.IPv4 {
+				canAdd = geo.DefaultGeoClient.IsIPInRadius(announcer.IP.String(), pear.IP.String())
+			}
+
+			canAdd = !(useGeo != canAdd)
+
+			if canAdd {
+				peers = append(peers, pear)
+				numWant--
+			}
+		}
+	} else {
+		// Append as many seeders as possible.
+		for _, pk := range conSeeders {
+			if numWant == 0 {
+				break
+			}
+
+			pear := decodePeerKey(serializedPeer(pk.([]byte)))
+
+			if pear.IP.AddressFamily == bittorrent.IPv4 {
+				canAdd = geo.DefaultGeoClient.IsIPInRadius(announcer.IP.String(), pear.IP.String())
+			}
+
+			canAdd = !(useGeo != canAdd)
+
+			if canAdd {
+				peers = append(peers, pear)
+				numWant--
+			}
+		}
+
+		// Append leechers until we reach numWant.
+		if numWant > 0 {
+			announcerPK := newPeerKey(announcer)
+			for _, pk := range conLeechers {
+				if pk == announcerPK {
+					continue
+				}
+
+				if numWant == 0 {
+					break
+				}
+
+				pear := decodePeerKey(serializedPeer(pk.([]byte)))
+
+				if pear.IP.AddressFamily == bittorrent.IPv4 {
+					canAdd = geo.DefaultGeoClient.IsIPInRadius(announcer.IP.String(), pear.IP.String())
+				}
+
+				canAdd = !(useGeo != canAdd)
+
+				if canAdd {
+					peers = append(peers, pear)
+					numWant--
+				}
+			}
+		}
+	}
+
+	return peers, nil
+}
+
 func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant int, announcer bittorrent.Peer) (peers []bittorrent.Peer, err error) {
 	addressFamily := announcer.IP.AddressFamily.String()
 	log.Debug("storage: AnnouncePeers", log.Fields{
@@ -577,42 +654,19 @@ func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant 
 		return nil, storage.ErrResourceDoesNotExist
 	}
 
-	if seeder {
-		// Append leechers as possible.
-		for _, pk := range conLeechers {
-			if numWant == 0 {
-				break
-			}
+	peers, err = findPeers(ih, seeder, numWant, announcer, conLeechers, conSeeders, true)
+	if err != nil {
+		return nil, err
+	}
 
-			peers = append(peers, decodePeerKey(serializedPeer(pk.([]byte))))
-			numWant--
+	if len(peers) < numWant {
+		peers2, err := findPeers(ih, seeder, numWant - len(peers), announcer, conLeechers, conSeeders, false)
+		if err != nil {
+			return nil, err
 		}
-	} else {
-		// Append as many seeders as possible.
-		for _, pk := range conSeeders {
-			if numWant == 0 {
-				break
-			}
-
-			peers = append(peers, decodePeerKey(serializedPeer(pk.([]byte))))
-			numWant--
-		}
-
-		// Append leechers until we reach numWant.
-		if numWant > 0 {
-			announcerPK := newPeerKey(announcer)
-			for _, pk := range conLeechers {
-				if pk == announcerPK {
-					continue
-				}
-
-				if numWant == 0 {
-					break
-				}
-
-				peers = append(peers, decodePeerKey(serializedPeer(pk.([]byte))))
-				numWant--
-			}
+		
+		for _, p := range peers2 {
+			peers = append(peers, p)
 		}
 	}
 

@@ -12,6 +12,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/ProtocolONE/chihaya/bittorrent"
+	"github.com/ProtocolONE/chihaya/geo"
 	"github.com/ProtocolONE/chihaya/pkg/log"
 	"github.com/ProtocolONE/chihaya/pkg/stop"
 	"github.com/ProtocolONE/chihaya/pkg/timecache"
@@ -423,21 +424,10 @@ func (ps *peerStore) GraduateLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) 
 	return nil
 }
 
-func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant int, announcer bittorrent.Peer) (peers []bittorrent.Peer, err error) {
-	select {
-	case <-ps.closed:
-		panic("attempted to interact with stopped memory store")
-	default:
-	}
+func findPeers (ih bittorrent.InfoHash, seeder bool, numWant int, announcer bittorrent.Peer, shard *peerShard, useGeo bool) (peers []bittorrent.Peer, err error) {
 
-	shard := ps.shards[ps.shardIndex(ih, announcer.IP.AddressFamily)]
-	shard.RLock()
-
-	if _, ok := shard.swarms[ih]; !ok {
-		shard.RUnlock()
-		return nil, storage.ErrResourceDoesNotExist
-	}
-
+	canAdd := true
+	
 	if seeder {
 		// Append leechers as possible.
 		leechers := shard.swarms[ih].leechers
@@ -446,8 +436,18 @@ func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant 
 				break
 			}
 
-			peers = append(peers, decodePeerKey(pk))
-			numWant--
+			pear := decodePeerKey(pk)
+
+			if pear.IP.AddressFamily == bittorrent.IPv4 {
+				canAdd = geo.DefaultGeoClient.IsIPInRadius(announcer.IP.String(), pear.IP.String())
+			}
+
+			canAdd = !(useGeo != canAdd)
+
+			if canAdd {
+				peers = append(peers, pear)
+				numWant--
+			}
 		}
 	} else {
 		// Append as many seeders as possible.
@@ -457,8 +457,18 @@ func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant 
 				break
 			}
 
-			peers = append(peers, decodePeerKey(pk))
-			numWant--
+			pear := decodePeerKey(pk)
+
+			if pear.IP.AddressFamily == bittorrent.IPv4 {
+				canAdd = geo.DefaultGeoClient.IsIPInRadius(announcer.IP.String(), pear.IP.String())
+			}
+
+			canAdd = !(useGeo != canAdd)
+
+			if canAdd {
+				peers = append(peers, pear)
+				numWant--
+			}
 		}
 
 		// Append leechers until we reach numWant.
@@ -474,9 +484,53 @@ func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant 
 					break
 				}
 
-				peers = append(peers, decodePeerKey(pk))
-				numWant--
+				pear := decodePeerKey(pk)
+
+				if pear.IP.AddressFamily == bittorrent.IPv4 {
+					canAdd = geo.DefaultGeoClient.IsIPInRadius(announcer.IP.String(), pear.IP.String())
+				}
+
+				canAdd = !(useGeo != canAdd)
+
+				if canAdd {
+					peers = append(peers, pear)
+					numWant--
+				}
 			}
+		}
+	}
+
+	return peers, nil
+}
+
+func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant int, announcer bittorrent.Peer) (peers []bittorrent.Peer, err error) {
+	select {
+	case <-ps.closed:
+		panic("attempted to interact with stopped memory store")
+	default:
+	}
+
+	shard := ps.shards[ps.shardIndex(ih, announcer.IP.AddressFamily)]
+	shard.RLock()
+
+	if _, ok := shard.swarms[ih]; !ok {
+		shard.RUnlock()
+		return nil, storage.ErrResourceDoesNotExist
+	}
+
+	peers, err = findPeers(ih, seeder, numWant, announcer, shard, true)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(peers) < numWant {
+		peers2, err := findPeers(ih, seeder, numWant - len(peers), announcer, shard, false)
+		if err != nil {
+			return nil, err
+		}
+		
+		for _, p := range peers2 {
+			peers = append(peers, p)
 		}
 	}
 
