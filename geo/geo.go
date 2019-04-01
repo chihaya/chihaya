@@ -3,6 +3,7 @@ package geo
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 
@@ -62,80 +63,74 @@ func (client *GeoClient) IsIPInRadius(targetIP string, IP string) bool {
 	return len(res) > 0
 }
 
-func iPv4ToUint32(iPv4 string) uint32 {
-
-	ipOctets := [4]uint64{}
-
-	for i, v := range strings.SplitN(iPv4, ".", 4) {
-		ipOctets[i], _ = strconv.ParseUint(v, 10, 32)
-	}
-
-	result := (ipOctets[0] << 24) | (ipOctets[1] << 16) | (ipOctets[2] << 8) | ipOctets[3]
-
-	return uint32(result)
-}
-
-func uInt32ToIPv4(iPuInt32 uint32) (iP string) {
-	iP = fmt.Sprintf("%d.%d.%d.%d",
-		iPuInt32>>24,
-		(iPuInt32&0x00FFFFFF)>>16,
-		(iPuInt32&0x0000FFFF)>>8,
-		iPuInt32&0x000000FF)
-	return iP
-}
-
-func cidrRangeToIPv4Range(CIDRs []string) (ipStart string, ipEnd string, err error) {
-
-	var ip uint32  // ip address
-	var ipS uint32 // Start IP address range
-	var ipE uint32 // End IP address range
-
-	for _, CIDR := range CIDRs {
-		cidrParts := strings.Split(CIDR, "/")
-
-		ip = iPv4ToUint32(cidrParts[0])
-		bits, _ := strconv.ParseUint(cidrParts[1], 10, 32)
-
-		if ipS == 0 || ipS > ip {
-			ipS = ip
-		}
-
-		ip = ip | (0xFFFFFFFF >> bits)
-
-		if ipE < ip {
-			ipE = ip
-		}
-	}
-
-	ipStart = uInt32ToIPv4(ipS)
-	ipEnd = uInt32ToIPv4(ipE)
-
-	return ipStart, ipEnd, err
-}
-
 func isDigit(str string) bool {
 
 	_, err := strconv.ParseInt(str, 10, 64)
 	return err == nil
 }
 
-func ipToScore(ip string, cidr bool) int {
+func ipRange(str string) (net.IP, net.IP, error) {
 
-	score := 0
+	_, mask, err := net.ParseCIDR(str)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	first := mask.IP.Mask(mask.Mask).To16()
+	second := make(net.IP, len(first))
+	copy(second, first)
+	ones, _ := mask.Mask.Size()
+
+	if first.To4() != nil {
+		ones += 96
+	}
+
+	lastBytes := (8*16 - ones) / 8
+	lastBits := 8 - ones%8
+	or := 0
+
+	for x := 0; x < lastBits; x++ {
+		or = or*2 + 1
+	}
+
+	for x := 16 - lastBytes; x < 16; x++ {
+		second[x] = 0xff
+	}
+
+	if lastBits < 8 {
+		second[16-lastBytes-1] |= byte(or)
+	}
+
+	return first, second, nil
+}
+
+func ipToScore(ip string, cidr bool) uint64 {
+
+	var score uint64
+	score = 0
 
 	if cidr {
 
-		var err error
-		ip, _, err = cidrRangeToIPv4Range([]string{ip})
+		startIP, _, err := ipRange(ip)
 		if err != nil {
 			return 0
 		}
+
+		ip = startIP.String()
 	}
 
-	for _, v := range strings.Split(ip, ".") {
+	if strings.Index(ip, ".") != -1 {
 
-		n, _ := strconv.Atoi(v)
-		score = score*256 + n
+		// IPv4
+		for _, v := range strings.Split(ip, ".") {
+
+			n, _ := strconv.Atoi(v)
+			score = score*256 + uint64(n)
+		}
+
+	} else if strings.Index(ip, ":") != -1 {
+
+		//IPv6 is not supported
 	}
 
 	return score
@@ -162,7 +157,7 @@ func getCord(client *redis.Client, key string, ip string) (float64, float64, err
 
 	vals, err := client.ZRevRangeByScore(key, redis.ZRangeBy{
 		Min:    "0",
-		Max:    strconv.Itoa(IpId),
+		Max:    strconv.FormatUint(IpId, 10),
 		Offset: 0,
 		Count:  1,
 	}).Result()

@@ -25,6 +25,6 @@ func TestIsIPInRadius(t *testing.T) {
 	t.Logf("target IP: %s, IP: %s, radius: %d, result %t", ip, "91.78.80.18", radius, res)
 	res = client.IsIPInRadius(ip, "91.78.224.24") // true
 	t.Logf("target IP: %s, IP: %s, radius: %d, result %t", ip, "91.78.224.24", radius, res)
-	res = client.IsIPInRadius(ip, "91.75.168.21") // true
+	res = client.IsIPInRadius(ip, "91.75.168.21") // false
 	t.Logf("target IP: %s, IP: %s, radius: %d, result %t", ip, "91.75.168.21", radius, res)
 }
