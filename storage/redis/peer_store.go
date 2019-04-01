@@ -540,8 +540,8 @@ func (ps *peerStore) GraduateLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) 
 	return nil
 }
 
-func findPeers (ih bittorrent.InfoHash, seeder bool, numWant int, announcer bittorrent.Peer, conLeechers, conSeeders []interface{}, useGeo bool) (peers []bittorrent.Peer, err error) {
-	
+func findPeers(ih bittorrent.InfoHash, seeder bool, numWant int, announcer bittorrent.Peer, conLeechers, conSeeders []interface{}, useGeo bool) (peers []bittorrent.Peer, err error) {
+
 	canAdd := true
 
 	if seeder {
@@ -660,11 +660,11 @@ func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant 
 	}
 
 	if len(peers) < numWant {
-		peers2, err := findPeers(ih, seeder, numWant - len(peers), announcer, conLeechers, conSeeders, false)
+		peers2, err := findPeers(ih, seeder, numWant-len(peers), announcer, conLeechers, conSeeders, false)
 		if err != nil {
 			return nil, err
 		}
-		
+
 		for _, p := range peers2 {
 			peers = append(peers, p)
 		}

@@ -7,13 +7,13 @@ import (
 func TestIsIPInRadius(t *testing.T) {
 
 	ip := "91.78.43.197"
-	radius:= 50
+	radius := 50
 
 	client := NewGeoClient(Config{
-		Host: "localhost",
-		Port: 6379,
-		DB: 0,
-		Key: "ip2location",
+		Host:   "localhost",
+		Port:   6379,
+		DB:     0,
+		Key:    "ip2location",
 		Radius: radius,
 	})
 

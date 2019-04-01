@@ -20,10 +20,10 @@ var PeerEqualityFunc = func(p1, p2 bittorrent.Peer) bool { return p1.Equal(p2) }
 func TestPeerStore(t *testing.T, p PeerStore) {
 
 	geo.Init(geo.Config{
-		Host: "localhost",
-		Port: 6379,
-		DB: 0,
-		Key: "ip2location",
+		Host:   "localhost",
+		Port:   6379,
+		DB:     0,
+		Key:    "ip2location",
 		Radius: 100,
 	})
 
