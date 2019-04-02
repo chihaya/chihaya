@@ -2,7 +2,6 @@ package geo
 
 import (
 	"encoding/json"
-	"fmt"
 	"net"
 	"strconv"
 	"strings"
