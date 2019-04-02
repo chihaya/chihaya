@@ -52,7 +52,7 @@ matrix:
     - chihaya --config=example_config.yaml --debug&
     - pid=$!
     - sleep 2 # wait for chihaya to start up (gross)
-    - chihaya e2e --debug
+    #- chihaya e2e --debug
     - kill $pid
 notifications:
   irc:
