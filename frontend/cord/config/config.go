@@ -4,6 +4,7 @@ import (
 	"github.com/kelseyhightower/envconfig"
 )
 
+// DatabaseCfg ...
 type DatabaseCfg struct {
 	Host     string `envconfig:"MONGO_HOST"`
 	Database string `envconfig:"MONGO_DB"`
@@ -11,6 +12,7 @@ type DatabaseCfg struct {
 	Password string `envconfig:"MONGO_PASSWORD"`
 }
 
+// ServiceCfg ...
 type ServiceCfg struct {
 	HttpScheme      string `envconfig:"HTTP_SCHEME"`
 	ServicePort     int    `envconfig:"SERVICE_PORT"`
@@ -21,6 +23,7 @@ type ServiceCfg struct {
 	StorageRootPath string `envconfig:"STORAGE_ROOT_PATH"`
 }
 
+// Config ...
 type Config struct {
 	Database DatabaseCfg
 	Service  ServiceCfg
@@ -28,6 +31,7 @@ type Config struct {
 
 var cfg *Config
 
+// Init ...
 func Init() (*Config, error) {
 
 	cfg = &Config{}
@@ -39,6 +43,7 @@ func Init() (*Config, error) {
 	return cfg, nil
 }
 
+// Get ...
 func Get() *Config {
 	return cfg
 }
