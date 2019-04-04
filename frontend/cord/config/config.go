@@ -14,7 +14,7 @@ type DatabaseCfg struct {
 
 // ServiceCfg ...
 type ServiceCfg struct {
-	HttpScheme      string `envconfig:"HTTP_SCHEME"`
+	HTTPScheme      string `envconfig:"HTTP_SCHEME"`
 	ServicePort     int    `envconfig:"SERVICE_PORT"`
 	PrivateKeyPath  string `envconfig:"PRIVATE_KEY_PATH"`
 	PublicKeyPath   string `envconfig:"PUBLIC_KEY_PATH"`
