@@ -10,6 +10,7 @@ import (
 	"sync"
 )
 
+// DbConf ...
 type DbConf struct {
 	Dbs      *mgo.Session
 	Database string
@@ -17,6 +18,7 @@ type DbConf struct {
 
 var dbConf *DbConf
 
+// Init ...
 func Init() error {
 
 	cfg := config.Get().Database
@@ -52,15 +54,18 @@ func Init() error {
 	return nil
 }
 
+// UserManager ...
 type UserManager struct {
 	collection *mgo.Collection
 }
 
+// NewUserManager ...
 func NewUserManager() *UserManager {
 	session := dbConf.Dbs.Copy()
 	return &UserManager{collection: session.DB(dbConf.Database).C("users")}
 }
 
+// FindByName ...
 func (manager *UserManager) FindByName(name string) ([]*models.User, error) {
 
 	var dbUsers []*models.User
@@ -72,6 +77,7 @@ func (manager *UserManager) FindByName(name string) ([]*models.User, error) {
 	return dbUsers, nil
 }
 
+// RemoveByName ...
 func (manager *UserManager) RemoveByName(name string) error {
 
 	err := manager.collection.Remove(bson.M{"username": name})
@@ -82,6 +88,7 @@ func (manager *UserManager) RemoveByName(name string) error {
 	return nil
 }
 
+// Insert ...
 func (manager *UserManager) Insert(user *models.User) error {
 
 	err := manager.collection.Insert(user)
@@ -92,15 +99,18 @@ func (manager *UserManager) Insert(user *models.User) error {
 	return nil
 }
 
+// TorrentManager ...
 type TorrentManager struct {
 	collection *mgo.Collection
 }
 
+// NewTorrentManager ...
 func NewTorrentManager() *TorrentManager {
 	session := dbConf.Dbs.Copy()
 	return &TorrentManager{collection: session.DB(dbConf.Database).C("torrents")}
 }
 
+// Insert ...
 func (manager *TorrentManager) Insert(torrent *models.Torrent) error {
 
 	err := manager.collection.Insert(torrent)
@@ -111,6 +121,7 @@ func (manager *TorrentManager) Insert(torrent *models.Torrent) error {
 	return nil
 }
 
+// RemoveByInfoHash ...
 func (manager *TorrentManager) RemoveByInfoHash(infoHash string) error {
 
 	err := manager.collection.Remove(bson.M{"info_hash": infoHash})
@@ -121,6 +132,7 @@ func (manager *TorrentManager) RemoveByInfoHash(infoHash string) error {
 	return nil
 }
 
+// FindByInfoHash ...
 func (manager *TorrentManager) FindByInfoHash(infoHash string) ([]*models.Torrent, error) {
 
 	var dbTorrent []*models.Torrent
@@ -132,6 +144,7 @@ func (manager *TorrentManager) FindByInfoHash(infoHash string) ([]*models.Torren
 	return dbTorrent, nil
 }
 
+// FindAll ...
 func (manager *TorrentManager) FindAll() ([]*models.Torrent, error) {
 
 	var dbTorrent []*models.Torrent
@@ -143,26 +156,31 @@ func (manager *TorrentManager) FindAll() ([]*models.Torrent, error) {
 	return dbTorrent, nil
 }
 
+// MemTorrentManager ...
 type MemTorrentManager struct {
 	collection sync.Map
 }
 
-var memTorrentManager *MemTorrentManager = &MemTorrentManager{}
+var memTorrentManager = &MemTorrentManager{}
 
+// NewMemTorrentManager ...
 func NewMemTorrentManager() *MemTorrentManager {
 	return memTorrentManager
 }
 
+// Insert ...
 func (manager *MemTorrentManager) Insert(torrent *models.Torrent) {
 
 	manager.collection.Store(torrent.InfoHash, torrent)
 }
 
+// RemoveByInfoHash ...
 func (manager *MemTorrentManager) RemoveByInfoHash(infoHash string) {
 
 	manager.collection.Delete(infoHash)
 }
 
+// FindByInfoHash ...
 func (manager *MemTorrentManager) FindByInfoHash(infoHash string) *models.Torrent {
 
 	v, ok := manager.collection.Load(infoHash)

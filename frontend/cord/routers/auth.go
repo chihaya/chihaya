@@ -7,6 +7,7 @@ import (
 	"github.com/ProtocolONE/chihaya/frontend/cord/core/authentication"
 )
 
+// InitAuthRoutes ...
 func InitAuthRoutes(e *echo.Echo) {
 
 	e.POST("/api/v1/auth/user", controllers.CreateUser)

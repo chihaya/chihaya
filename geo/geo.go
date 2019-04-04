@@ -11,6 +11,7 @@ import (
 	"github.com/pborman/uuid"
 )
 
+// Config ...
 type Config struct {
 	Host        string `yaml:"host"`
 	Port        int    `yaml:"port"`
@@ -22,8 +23,8 @@ type Config struct {
 	Radius      int    `yaml:"radius"`
 }
 
-// GeoClient ...
-type GeoClient struct {
+// Client ...
+type Client struct {
 	client      *redis.Client
 	keyIPv4     string
 	keyIPv6     string
@@ -32,7 +33,7 @@ type GeoClient struct {
 }
 
 // DefaultGeoClient ...
-var DefaultGeoClient *GeoClient
+var DefaultGeoClient *Client
 
 // Init ...
 func Init(config Config) {
@@ -41,7 +42,7 @@ func Init(config Config) {
 }
 
 // NewGeoClient ...
-func NewGeoClient(config Config) *GeoClient {
+func NewGeoClient(config Config) *Client {
 
 	client := redis.NewClient(&redis.Options{
 		Addr:     config.Host + ":" + strconv.Itoa(config.Port),
@@ -49,7 +50,7 @@ func NewGeoClient(config Config) *GeoClient {
 		DB:       config.DB,
 	})
 
-	return &GeoClient{
+	return &Client{
 		client:      client,
 		keyIPv4:     config.KeyIPv4,
 		keyIPv6:     config.KeyIPv6,
@@ -58,12 +59,12 @@ func NewGeoClient(config Config) *GeoClient {
 }
 
 // SelectIPByRadius ...
-func (client *GeoClient) SelectIPByRadius(targetIP string, IPs []string) ([]string, error) {
+func (client *Client) SelectIPByRadius(targetIP string, IPs []string) ([]string, error) {
 	return selectIPByRadius(client, targetIP, IPs, client.radius)
 }
 
 // IsIPInRadius ...
-func (client *GeoClient) IsIPInRadius(targetIP string, IP string) bool {
+func (client *Client) IsIPInRadius(targetIP string, IP string) bool {
 
 	res, err := selectIPByRadius(client, targetIP, []string{IP}, client.radius)
 	if err != nil {
@@ -274,7 +275,7 @@ func getCord(client *redis.Client, keyV4 string, keyV6 string, keyV6Info string,
 	return longitude, latitude, nil
 }
 
-func selectIPByRadius(client *GeoClient, targetIP string, IPs []string, radius float64) ([]string, error) {
+func selectIPByRadius(client *Client, targetIP string, IPs []string, radius float64) ([]string, error) {
 
 	var result []string
 

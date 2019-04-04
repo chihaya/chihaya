@@ -18,6 +18,7 @@ import (
 // Name is the name by which this middleware is registered with Chihaya.
 const Name = "cord"
 
+// Init ...
 func Init() {
 	middleware.RegisterDriver(Name, driver{})
 }
@@ -36,12 +37,15 @@ func (d driver) NewHook(optionBytes []byte) (middleware.Hook, error) {
 	return NewHook(cfg)
 }
 
+// ErrTorrentUnapproved ...
 var ErrTorrentUnapproved = bittorrent.ClientError("unapproved torrent")
 
+// Config ...
 type Config struct {
 	Storage string `yaml:"storage"`
 }
 
+// LogFields ...
 func (cfg Config) LogFields() log.Fields {
 
 	return log.Fields{
@@ -54,6 +58,7 @@ type hook struct {
 	manager *database.MemTorrentManager
 }
 
+// NewHook ...
 func NewHook(cfg Config) (middleware.Hook, error) {
 
 	err := core.InitCord()
@@ -69,6 +74,7 @@ func NewHook(cfg Config) (middleware.Hook, error) {
 	return h, nil
 }
 
+// HandleAnnounce ...
 func (h *hook) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequest, resp *bittorrent.AnnounceResponse) (context.Context, error) {
 
 	torrent := h.manager.FindByInfoHash(req.InfoHash.String())
@@ -81,6 +87,7 @@ func (h *hook) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceReque
 	return ctx, nil
 }
 
+// HandleScrape ...
 func (h *hook) HandleScrape(ctx context.Context, req *bittorrent.ScrapeRequest, resp *bittorrent.ScrapeResponse) (context.Context, error) {
 	// Scrapes don't require any protection.
 	return ctx, nil

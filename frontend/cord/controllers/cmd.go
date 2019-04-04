@@ -10,6 +10,7 @@ import (
 	"net/http"
 )
 
+// AddTorrent ...
 func AddTorrent(context echo.Context) error {
 
 	reqTorrent := &models.Torrent{}
@@ -41,6 +42,7 @@ func AddTorrent(context echo.Context) error {
 	return context.NoContent(http.StatusOK)
 }
 
+// DeleteTorrent ...
 func DeleteTorrent(context echo.Context) error {
 
 	reqTorrent := &models.Torrent{}

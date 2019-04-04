@@ -8,6 +8,7 @@ import (
 
 var inited = false
 
+// InitCord ...
 func InitCord() error {
 
 	if inited {
