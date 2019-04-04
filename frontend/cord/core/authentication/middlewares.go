@@ -33,7 +33,7 @@ func requireTokenAuthentication(next echo.HandlerFunc, refreshToken bool) echo.H
 		token, err := request.ParseFromRequest(context.Request(), request.OAuth2Extractor, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 				return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
-			} 
+			}
 			return authBackend.PublicKey, nil
 		})
 
@@ -43,7 +43,7 @@ func requireTokenAuthentication(next echo.HandlerFunc, refreshToken bool) echo.H
 				zap.S().Errorw("requireTokenAuthentication failed", zap.String("error", err.Error()))
 				return context.JSON(http.StatusUnauthorized, models.Error{Code: models.ErrorUnauthorized, Message: "requireTokenAuthentication failed, error: " + err.Error()})
 
-			} 
+			}
 			zap.S().Errorw("requireTokenAuthentication failed", zap.String("error", "Authorization failed"))
 			return context.JSON(http.StatusUnauthorized, models.Error{Code: models.ErrorUnauthorized, Message: "requireTokenAuthentication failed, error: Authorization failed"})
 		}
