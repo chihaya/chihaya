@@ -13,7 +13,7 @@ matrix:
     - go mod download
     - go test -v -race $(go list ./...)
     - go vet $(go list ./...)
-    - diff <(goimports -local github.com/ProtocolONE/chihaya -d $(find . -type f -name '*.go' -not -path "./vendor/*")) <(printf "")
+    #- diff <(goimports -local github.com/ProtocolONE/chihaya -d $(find . -type f -name '*.go' -not -path "./vendor/*")) <(printf "")
     - (for d in $(go list ./...); do diff <(golint $d) <(printf "") || exit 1;  done)
     - go install github.com/ProtocolONE/chihaya/cmd/chihaya
     - chihaya --config=example_config.yaml --debug&
@@ -29,7 +29,7 @@ matrix:
     script:
     - go test -v -race $(go list ./...)
     - go vet $(go list ./...)
-    - diff <(goimports -local github.com/ProtocolONE/chihaya -d $(find . -type f -name '*.go' -not -path "./vendor/*")) <(printf "")
+    #- diff <(goimports -local github.com/ProtocolONE/chihaya -d $(find . -type f -name '*.go' -not -path "./vendor/*")) <(printf "")
     - (for d in $(go list ./...); do diff <(golint $d) <(printf "") || exit 1;  done)
     - go install github.com/ProtocolONE/chihaya/cmd/chihaya
     - chihaya --config=example_config.yaml --debug&
@@ -46,7 +46,7 @@ matrix:
     script:
     - go test -v -race $(go list ./...)
     - go vet $(go list ./...)
-    - diff <(goimports -local github.com/ProtocolONE/chihaya -d $(find . -type f -name '*.go' -not -path "./vendor/*")) <(printf "")
+    #- diff <(goimports -local github.com/ProtocolONE/chihaya -d $(find . -type f -name '*.go' -not -path "./vendor/*")) <(printf "")
     - (for d in $(go list ./...); do diff <(golint $d) <(printf "") || exit 1;  done)
     - go install github.com/ProtocolONE/chihaya/cmd/chihaya
     - chihaya --config=example_config.yaml --debug&
