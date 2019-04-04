@@ -553,10 +553,7 @@ func findPeers(ih bittorrent.InfoHash, seeder bool, numWant int, announcer bitto
 
 			pear := decodePeerKey(serializedPeer(pk.([]byte)))
 
-			if pear.IP.AddressFamily == bittorrent.IPv4 {
-				canAdd = geo.DefaultGeoClient.IsIPInRadius(announcer.IP.String(), pear.IP.String())
-			}
-
+			canAdd = geo.DefaultGeoClient.IsIPInRadius(announcer.IP.String(), pear.IP.String())
 			canAdd = !(useGeo != canAdd)
 
 			if canAdd {
@@ -573,10 +570,7 @@ func findPeers(ih bittorrent.InfoHash, seeder bool, numWant int, announcer bitto
 
 			pear := decodePeerKey(serializedPeer(pk.([]byte)))
 
-			if pear.IP.AddressFamily == bittorrent.IPv4 {
-				canAdd = geo.DefaultGeoClient.IsIPInRadius(announcer.IP.String(), pear.IP.String())
-			}
-
+			canAdd = geo.DefaultGeoClient.IsIPInRadius(announcer.IP.String(), pear.IP.String())
 			canAdd = !(useGeo != canAdd)
 
 			if canAdd {
@@ -599,10 +593,7 @@ func findPeers(ih bittorrent.InfoHash, seeder bool, numWant int, announcer bitto
 
 				pear := decodePeerKey(serializedPeer(pk.([]byte)))
 
-				if pear.IP.AddressFamily == bittorrent.IPv4 {
-					canAdd = geo.DefaultGeoClient.IsIPInRadius(announcer.IP.String(), pear.IP.String())
-				}
-
+				canAdd = geo.DefaultGeoClient.IsIPInRadius(announcer.IP.String(), pear.IP.String())
 				canAdd = !(useGeo != canAdd)
 
 				if canAdd {

@@ -192,6 +192,9 @@ chihaya:
   geoip:
     host: "localhost"
     port: 6379
+    password: ""
     db: 0
-    key: "ip2location"
+    key_ipv4: "ipv4_location"
+    key_ipv6: "ipv6_location"
+    key_ipv6_info: "ipv6_location_info"
     radius: 1000
