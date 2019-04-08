@@ -115,25 +115,21 @@ func ipRange(str string) (net.IP, net.IP, error) {
 	return first, second, nil
 }
 
-func iPv6ToString2(ip net.IP) string {
+func iPv6ToString(ip net.IP) string {
 
 	const IPv6len = 16
-	var part uint16
-
-	result := ""
+	var part [8]uint16
 
 	for i := 0; i < IPv6len; i += 2 {
 
-		if i > 0 {
-			result += ":"
-		}
-
-		part = uint16(ip[i])
-		part = part << 8
-		part = part | uint16(ip[i+1])
-
-		result += fmt.Sprintf("%04X", part)
+		part[i / 2] = uint16(ip[i])
+		part[i / 2] = part[i / 2] << 8
+		part[i / 2] = part[i / 2] | uint16(ip[i+1])
 	}
+
+
+	result := fmt.Sprintf("%04X:%04X:%04X:%04X:%04X:%04X:%04X:%04X", 
+		part[0], part[1], part[2], part[3], part[4], part[5], part[6], part[7])
 
 	return result
 }
@@ -149,12 +145,11 @@ func iPv6ToValue(ip string, cidr bool) string {
 			return ""
 		}
 
-		ipv6 = iPv6ToString2(startIP)
+		ipv6 = iPv6ToString(startIP)
 
 	} else {
 
-		ip6 := net.ParseIP(ip)
-		ipv6 = iPv6ToString2(ip6)
+		ipv6 = strings.ToUpper(ip)
 	}
 
 	return ipv6
