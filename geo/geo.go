@@ -122,13 +122,12 @@ func iPv6ToString(ip net.IP) string {
 
 	for i := 0; i < IPv6len; i += 2 {
 
-		part[i / 2] = uint16(ip[i])
-		part[i / 2] = part[i / 2] << 8
-		part[i / 2] = part[i / 2] | uint16(ip[i+1])
+		part[i/2] = uint16(ip[i])
+		part[i/2] = part[i/2] << 8
+		part[i/2] = part[i/2] | uint16(ip[i+1])
 	}
 
-
-	result := fmt.Sprintf("%04X:%04X:%04X:%04X:%04X:%04X:%04X:%04X", 
+	result := fmt.Sprintf("%04X:%04X:%04X:%04X:%04X:%04X:%04X:%04X",
 		part[0], part[1], part[2], part[3], part[4], part[5], part[6], part[7])
 
 	return result
