@@ -20,14 +20,10 @@ var PeerEqualityFunc = func(p1, p2 bittorrent.Peer) bool { return p1.Equal(p2) }
 func TestPeerStore(t *testing.T, p PeerStore) {
 
 	geo.Init(geo.Config{
-		Host:        "localhost",
-		Port:        6379,
-		DB:          0,
-		Password:    "",
-		KeyIPv4:     "ipv4_location",
-		KeyIPv6:     "ipv6_location",
-		KeyIPv6Info: "ipv6_location_info",
-		Radius:      100,
+		Address:  "localhost:6379",
+		Password: "",
+		Database: "D:\\Projects\\Syncopate\\sources\\ProtocolONE\\chihaya\\geo\\data\\GeoLite2-City.mmdb",
+		Radius:   100,
 	})
 
 	testData := []struct {
