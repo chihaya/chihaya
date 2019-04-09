@@ -161,11 +161,9 @@ type MemTorrentManager struct {
 	collection sync.Map
 }
 
-var memTorrentManager = &MemTorrentManager{}
-
 // NewMemTorrentManager ...
 func NewMemTorrentManager() *MemTorrentManager {
-	return memTorrentManager
+	return &MemTorrentManager{}
 }
 
 // Insert ...
