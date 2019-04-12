@@ -15,7 +15,6 @@ import (
 	"time"
 )
 
-// JWTAuthenticationBackend ...
 type JWTAuthenticationBackend struct {
 	privateKey *rsa.PrivateKey
 	PublicKey  *rsa.PublicKey
@@ -28,7 +27,6 @@ const (
 
 var authBackendInstance *JWTAuthenticationBackend
 
-// InitJWTAuthenticationBackend ...
 func InitJWTAuthenticationBackend() *JWTAuthenticationBackend {
 
 	if authBackendInstance == nil {
@@ -40,7 +38,6 @@ func InitJWTAuthenticationBackend() *JWTAuthenticationBackend {
 	return authBackendInstance
 }
 
-// GenerateToken ...
 func (backend *JWTAuthenticationBackend) GenerateToken(clientID string, userUUID string, refreshToken bool) (string, error) {
 
 	token := jwt.New(jwt.SigningMethodRS512)
@@ -74,7 +71,6 @@ func (backend *JWTAuthenticationBackend) GenerateToken(clientID string, userUUID
 	return tokenString, nil
 }
 
-// Authenticate ...
 func (backend *JWTAuthenticationBackend) Authenticate(user *models.Authorization) bool {
 
 	manager := database.NewUserManager()
@@ -86,7 +82,6 @@ func (backend *JWTAuthenticationBackend) Authenticate(user *models.Authorization
 	return len(users) == 1 && user.Username == users[0].Username && bcrypt.CompareHashAndPassword([]byte(users[0].Password), []byte(user.Password)) == nil
 }
 
-// GetTokenRemainingValidity ...
 func (backend *JWTAuthenticationBackend) GetTokenRemainingValidity(token *jwt.Token) int64 {
 
 	claims := token.Claims.(jwt.MapClaims)
@@ -100,13 +95,11 @@ func (backend *JWTAuthenticationBackend) GetTokenRemainingValidity(token *jwt.To
 	return 0
 }
 
-// Logout ...
 func (backend *JWTAuthenticationBackend) Logout(tokenStr string, token *jwt.Token) error {
 
 	return nil
 }
 
-// IsInBlacklist ...
 func (backend *JWTAuthenticationBackend) IsInBlacklist(tokenStr string) bool {
 
 	return false

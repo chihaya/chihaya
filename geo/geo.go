@@ -10,7 +10,6 @@ import (
 	"github.com/oschwald/geoip2-golang"
 )
 
-// Config ...
 type Config struct {
 	Address  string `yaml:"address"`
 	Password string `yaml:"password"`
@@ -18,29 +17,24 @@ type Config struct {
 	Radius   int    `yaml:"radius"`
 }
 
-// Client ...
 type Client struct {
 	client   *redis.Client
 	database *geoip2.Reader
 	radius   float64
 }
 
-// DefaultGeoClient ...
 var DefaultGeoClient *Client
 
-// Init ...
 func Init(config Config) {
 
 	DefaultGeoClient = NewGeoClient(config)
 }
 
-// NewGeoClient ...
 func NewGeoClient(config Config) *Client {
 
 	client := redis.NewClient(&redis.Options{
 		Addr:     config.Address,
 		Password: config.Password,
-		DB:       0,
 	})
 
 	db, err := geoip2.Open(config.Database)
@@ -54,12 +48,10 @@ func NewGeoClient(config Config) *Client {
 		radius:   float64(config.Radius)}
 }
 
-// SelectIPByRadius ...
 func (client *Client) SelectIPByRadius(targetIP string, IPs []string) ([]string, error) {
 	return selectIPByRadius(client, targetIP, IPs)
 }
 
-// IsIPInRadius ...
 func (client *Client) IsIPInRadius(targetIP string, IP string) bool {
 
 	res, err := selectIPByRadius(client, targetIP, []string{IP})

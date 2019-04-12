@@ -13,13 +13,11 @@ import (
 	"github.com/ProtocolONE/chihaya/frontend/cord/models"
 )
 
-// RequireTokenAuthentication ...
 func RequireTokenAuthentication(next echo.HandlerFunc) echo.HandlerFunc {
 
 	return requireTokenAuthentication(next, false)
 }
 
-// RequireRefreshTokenAuthentication ...
 func RequireRefreshTokenAuthentication(next echo.HandlerFunc) echo.HandlerFunc {
 
 	return requireTokenAuthentication(next, true)

@@ -17,7 +17,6 @@ import (
 	"github.com/labstack/echo"
 )
 
-// CreateUser ...
 func CreateUser(context echo.Context) error {
 
 	reqUser := &models.Authorization{}
@@ -48,7 +47,6 @@ func CreateUser(context echo.Context) error {
 	return context.NoContent(http.StatusCreated)
 }
 
-// DeleteUser ...
 func DeleteUser(context echo.Context) error {
 
 	reqUser := &models.Authorization{}
@@ -67,7 +65,6 @@ func DeleteUser(context echo.Context) error {
 	return context.NoContent(http.StatusOK)
 }
 
-// Login ...
 func Login(context echo.Context) error {
 
 	reqUser := &models.Authorization{}
@@ -99,7 +96,6 @@ func Login(context echo.Context) error {
 	return context.JSON(http.StatusOK, models.AuthToken{ClientID: reqUser.Username, Token: token, RefreshToken: refreshToken})
 }
 
-// RefreshToken ...
 func RefreshToken(context echo.Context) error {
 
 	username := context.Request().Header.Get("ClientID")
@@ -124,7 +120,6 @@ func RefreshToken(context echo.Context) error {
 	return context.JSON(http.StatusOK, models.AuthRefresh{Token: token, RefreshToken: refreshToken})
 }
 
-// Logout ...
 func Logout(context echo.Context) error {
 
 	authBackend := authentication.InitJWTAuthenticationBackend()
