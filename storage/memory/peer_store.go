@@ -4,12 +4,12 @@ package memory
 
 import (
 	"encoding/binary"
+	"math"
 	"net"
 	"runtime"
 	"sync"
 	"time"
 	"unsafe"
-	"math"
 
 	yaml "gopkg.in/yaml.v2"
 
@@ -175,12 +175,12 @@ type serializedPeer string
 
 func newPeerKey(p bittorrent.Peer) serializedPeer {
 	float64Size := int(unsafe.Sizeof(float64(0)))
-	b := make([]byte, 20+2+len(p.IP.IP) + float64Size * 2)
+	b := make([]byte, 20+2+len(p.IP.IP)+float64Size*2)
 	copy(b[:20], p.ID[:])
 	binary.BigEndian.PutUint16(b[20:22], p.Port)
-	binary.BigEndian.PutUint64(b[22:22 + float64Size],  math.Float64bits(p.Latitude))
-	binary.BigEndian.PutUint64(b[22 + float64Size: 22  + float64Size * 2],  math.Float64bits(p.Longitude))
-	copy(b[22 + float64Size * 2:], p.IP.IP)
+	binary.BigEndian.PutUint64(b[22:22+float64Size], math.Float64bits(p.Latitude))
+	binary.BigEndian.PutUint64(b[22+float64Size:22+float64Size*2], math.Float64bits(p.Longitude))
+	copy(b[22+float64Size*2:], p.IP.IP)
 
 	return serializedPeer(b)
 }
@@ -188,11 +188,11 @@ func newPeerKey(p bittorrent.Peer) serializedPeer {
 func decodePeerKey(pk serializedPeer) bittorrent.Peer {
 	float64Size := int(unsafe.Sizeof(float64(0)))
 	peer := bittorrent.Peer{
-		ID:   bittorrent.PeerIDFromString(string(pk[:20])),
-		Port: binary.BigEndian.Uint16([]byte(pk[20:22])),
-		Latitude: math.Float64frombits(binary.BigEndian.Uint64([]byte(pk[22:22 + float64Size]))),
-		Longitude: math.Float64frombits(binary.BigEndian.Uint64([]byte(pk[22 + float64Size: 22 + float64Size * 2]))),
-		IP:   bittorrent.IP{IP: net.IP(pk[22 + float64Size * 2:])},
+		ID:        bittorrent.PeerIDFromString(string(pk[:20])),
+		Port:      binary.BigEndian.Uint16([]byte(pk[20:22])),
+		Latitude:  math.Float64frombits(binary.BigEndian.Uint64([]byte(pk[22 : 22+float64Size]))),
+		Longitude: math.Float64frombits(binary.BigEndian.Uint64([]byte(pk[22+float64Size : 22+float64Size*2]))),
+		IP:        bittorrent.IP{IP: net.IP(pk[22+float64Size*2:])},
 	}
 
 	if ip := peer.IP.To4(); ip != nil {

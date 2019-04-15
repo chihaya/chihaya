@@ -1,8 +1,8 @@
 package geo
 
 import (
-	"testing"
 	"net"
+	"testing"
 )
 
 func TestIsIPInRadius(t *testing.T) {

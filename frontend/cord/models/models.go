@@ -1,20 +1,20 @@
 package models
 
 const (
-	ErrorInvalidJSONFormat = 1
-	ErrorReadDataBase = 2
-	ErrorUserAlreadyExists = 3
-	ErrorCreateUser = 4
-	ErrorDeleteUser = 5
+	ErrorInvalidJSONFormat         = 1
+	ErrorReadDataBase              = 2
+	ErrorUserAlreadyExists         = 3
+	ErrorCreateUser                = 4
+	ErrorDeleteUser                = 5
 	ErrorInvalidUsernameOrPassword = 6
-	ErrorGenToken = 7
-	ErrorLogout = 8
-	ErrorUnauthorized = 9
-	ErrorTokenExpired = 10
-	ErrorInvalidToken = 11
-	ErrorTorrentAlreadyExists = 12
-	ErrorAddTorrent = 13
-	ErrorDeleteTorrent = 14
+	ErrorGenToken                  = 7
+	ErrorLogout                    = 8
+	ErrorUnauthorized              = 9
+	ErrorTokenExpired              = 10
+	ErrorInvalidToken              = 11
+	ErrorTorrentAlreadyExists      = 12
+	ErrorAddTorrent                = 13
+	ErrorDeleteTorrent             = 14
 )
 
 type AppKey struct {
