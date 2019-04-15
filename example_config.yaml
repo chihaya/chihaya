@@ -109,49 +109,50 @@ chihaya:
 
 
   # This block defines configuration used for the storage of peer data.
+  #storage:
+  #  name: memory
+  #  config:
+  #    # The frequency which stale peers are removed.
+  #    gc_interval: 3m
+
+  #    # The amount of time until a peer is considered stale.
+  #    # To avoid churn, keep this slightly larger than `announce_interval`
+  #    peer_lifetime: 31m
+
+  #    # The number of partitions data will be divided into in order to provide a
+  #    # higher degree of parallelism.
+  #    shard_count: 1024
+
+  #    # The interval at which metrics about the number of infohashes and peers
+  #    # are collected and posted to Prometheus.
+  #    prometheus_reporting_interval: 1s
+
+  # This block defines configuration used for redis storage.
   storage:
-    name: memory
+    name: redis
     config:
       # The frequency which stale peers are removed.
-      gc_interval: 3m
+      gc_interval: 14m
+
+      # The frequency which metrics are pushed into a local Prometheus endpoint.
+      prometheus_reporting_interval: 1s
 
       # The amount of time until a peer is considered stale.
       # To avoid churn, keep this slightly larger than `announce_interval`
-      peer_lifetime: 31m
+      peer_lifetime: 16m
 
-      # The number of partitions data will be divided into in order to provide a
-      # higher degree of parallelism.
-      shard_count: 1024
+      # The address of redis storage.
+      # redis_broker: "redis://pwd@127.0.0.1:6379/0"
+      redis_broker: "redis://127.0.0.1:6379/0"
 
-      # The interval at which metrics about the number of infohashes and peers
-      # are collected and posted to Prometheus.
-      prometheus_reporting_interval: 1s
+      # The timeout for reading a command reply from redis.
+      redis_read_timeout: 15s
 
-  # This block defines configuration used for redis storage.
-  # storage:
-  #   name: redis
-  #   config:
-  #     # The frequency which stale peers are removed.
-  #     gc_interval: 14m
+      # The timeout for writing a command to redis.
+      redis_write_timeout: 15s
 
-  #     # The frequency which metrics are pushed into a local Prometheus endpoint.
-  #     prometheus_reporting_interval: 1s
-
-  #     # The amount of time until a peer is considered stale.
-  #     # To avoid churn, keep this slightly larger than `announce_interval`
-  #     peer_lifetime: 16m
-
-  #     # The address of redis storage.
-  #     redis_broker: "redis://pwd@127.0.0.1:6379/0"
-
-  #     # The timeout for reading a command reply from redis.
-  #     redis_read_timeout: 15s
-
-  #     # The timeout for writing a command to redis.
-  #     redis_write_timeout: 15s
-
-  #     # The timeout for connecting to redis server.
-  #     redis_connect_timeout: 15s
+      # The timeout for connecting to redis server.
+      redis_connect_timeout: 15s
 
   # This block defines configuration used for middleware executed before a
   # response has been returned to a BitTorrent client.
@@ -190,7 +191,5 @@ chihaya:
   #    blacklist:
   #    - "e1d2c3b4a5e1b2c3b4a5e1d2c3b4e5e1d2c3b4a5"
   geoip:
-    address: "localhost:6379"
-    password: ""
-    database: "D:\Projects\Syncopate\sources\ProtocolONE\chihaya\geo\data\GeoLite2-City.mmdb"
+    database: "D:\\Projects\\Syncopate\\sources\\ProtocolONE\\chihaya\\geo\\data\\GeoLite2-City.mmdb"
     radius: 1000

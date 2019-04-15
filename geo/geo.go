@@ -2,23 +2,18 @@ package geo
 
 import (
 	"net"
+	"math"
 
-	"github.com/go-redis/redis"
-	"github.com/pborman/uuid"
 	"go.uber.org/zap"
-
 	"github.com/oschwald/geoip2-golang"
 )
 
 type Config struct {
-	Address  string `yaml:"address"`
-	Password string `yaml:"password"`
 	Database string `yaml:"database"`
 	Radius   int    `yaml:"radius"`
 }
 
 type Client struct {
-	client   *redis.Client
 	database *geoip2.Reader
 	radius   float64
 }
@@ -32,94 +27,59 @@ func Init(config Config) {
 
 func NewGeoClient(config Config) *Client {
 
-	client := redis.NewClient(&redis.Options{
-		Addr:     config.Address,
-		Password: config.Password,
-	})
-
 	db, err := geoip2.Open(config.Database)
 	if err != nil {
 		zap.S().Warnw("Cannot open geoip2 data file", zap.String("error", err.Error()))
 	}
 
 	return &Client{
-		client:   client,
 		database: db,
 		radius:   float64(config.Radius)}
 }
 
-func (client *Client) SelectIPByRadius(targetIP string, IPs []string) ([]string, error) {
-	return selectIPByRadius(client, targetIP, IPs)
-}
-
-func (client *Client) IsIPInRadius(targetIP string, IP string) bool {
-
-	res, err := selectIPByRadius(client, targetIP, []string{IP})
-	if err != nil {
-		return false
+func CalcDistance(lat1 float64, lng1 float64, lat2 float64, lng2 float64, unit string) float64 {
+	
+	const PI float64 = 3.141592653589793
+	
+	radlat1 := float64(PI * lat1 / 180)
+	radlat2 := float64(PI * lat2 / 180)
+	
+	theta := float64(lng1 - lng2)
+	radtheta := float64(PI * theta / 180)
+	
+	dist := math.Sin(radlat1) * math.Sin(radlat2) + math.Cos(radlat1) * math.Cos(radlat2) * math.Cos(radtheta)
+	
+	if dist > 1 {
+		dist = 1
 	}
-
-	return len(res) > 0
-}
-
-func addGeo(client *redis.Client, key string, ip string, longitude, latitude float64) error {
-
-	_, err := client.GeoAdd(key, &redis.GeoLocation{
-		Name:      ip,
-		Longitude: longitude,
-		Latitude:  latitude,
-	}).Result()
-
-	return err
-}
-
-func selectIPByRadius(client *Client, targetIP string, IPs []string) ([]string, error) {
-
-	var result []string
-
-	nip := net.ParseIP(targetIP)
-	record, err := client.database.City(nip)
-	if err != nil {
-		return result, err
-	}
-
-	targetLongitude := record.Location.Longitude
-	targetLatitude := record.Location.Latitude
-
-	redisKey := uuid.New()
-
-	for _, ip := range IPs {
-
-		nip = net.ParseIP(ip)
-		record, err = client.database.City(nip)
-		if err != nil {
-			return result, err
-		}
-
-		longitude := record.Location.Longitude
-		latitude := record.Location.Latitude
-
-		err = addGeo(client.client, redisKey, ip, longitude, latitude)
-		if err != nil {
-			client.client.Del(redisKey)
-			return result, err
+	
+	dist = math.Acos(dist)
+	dist = dist * 180 / PI
+	dist = dist * 60 * 1.1515
+	
+	if len(unit) > 0 {
+		if unit == "K" {
+			dist = dist * 1.609344
+		} else if unit == "N" {
+			dist = dist * 0.8684
 		}
 	}
-	defer client.client.Del(redisKey)
+	
+	return dist
+}
 
-	geolocs, err := client.client.GeoRadius(redisKey, targetLongitude, targetLatitude, &redis.GeoRadiusQuery{
-		Radius:   client.radius,
-		WithDist: true,
-	}).Result()
+func (client *Client) IsInRadius(lat1 float64, lng1 float64, lat2 float64, lng2 float64) bool {
 
+	dist := CalcDistance(lat1, lng1, lat2, lng2, "K")
+	return client.radius >= dist
+}
+
+func (client *Client) GetLocation(IP net.IP) (float64, float64, error) {
+
+	record, err := client.database.City(IP)
 	if err != nil {
-		return result, err
+		return 0, 0, err
 	}
 
-	for _, gl := range geolocs {
-
-		result = append(result, gl.Name)
-	}
-
-	return result, nil
+	return record.Location.Latitude, record.Location.Longitude, nil
 }

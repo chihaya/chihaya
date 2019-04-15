@@ -8,6 +8,8 @@ import (
 	"runtime"
 	"sync"
 	"time"
+	"unsafe"
+	"math"
 
 	yaml "gopkg.in/yaml.v2"
 
@@ -172,19 +174,26 @@ func New(provided Config) (storage.PeerStore, error) {
 type serializedPeer string
 
 func newPeerKey(p bittorrent.Peer) serializedPeer {
-	b := make([]byte, 20+2+len(p.IP.IP))
+	float64Size := int(unsafe.Sizeof(float64(0)))
+	b := make([]byte, 20+2+len(p.IP.IP) + float64Size * 2)
 	copy(b[:20], p.ID[:])
 	binary.BigEndian.PutUint16(b[20:22], p.Port)
-	copy(b[22:], p.IP.IP)
+	binary.BigEndian.PutUint64(b[22:22 + float64Size],  math.Float64bits(p.Latitude))
+	binary.BigEndian.PutUint64(b[22 + float64Size: 22  + float64Size * 2],  math.Float64bits(p.Longitude))
+	copy(b[22 + float64Size * 2:], p.IP.IP)
 
 	return serializedPeer(b)
 }
 
 func decodePeerKey(pk serializedPeer) bittorrent.Peer {
+	float64Size := int(unsafe.Sizeof(float64(0)))
 	peer := bittorrent.Peer{
 		ID:   bittorrent.PeerIDFromString(string(pk[:20])),
 		Port: binary.BigEndian.Uint16([]byte(pk[20:22])),
-		IP:   bittorrent.IP{IP: net.IP(pk[22:])}}
+		Latitude: math.Float64frombits(binary.BigEndian.Uint64([]byte(pk[22:22 + float64Size]))),
+		Longitude: math.Float64frombits(binary.BigEndian.Uint64([]byte(pk[22 + float64Size: 22 + float64Size * 2]))),
+		IP:   bittorrent.IP{IP: net.IP(pk[22 + float64Size * 2:])},
+	}
 
 	if ip := peer.IP.To4(); ip != nil {
 		peer.IP.IP = ip
@@ -266,6 +275,7 @@ func (ps *peerStore) PutSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) error 
 	default:
 	}
 
+	p.Latitude, p.Longitude, _ = geo.DefaultGeoClient.GetLocation(p.IP.IP)
 	pk := newPeerKey(p)
 
 	shard := ps.shards[ps.shardIndex(ih, p.IP.AddressFamily)]
@@ -297,6 +307,7 @@ func (ps *peerStore) DeleteSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) err
 	default:
 	}
 
+	p.Latitude, p.Longitude, _ = geo.DefaultGeoClient.GetLocation(p.IP.IP)
 	pk := newPeerKey(p)
 
 	shard := ps.shards[ps.shardIndex(ih, p.IP.AddressFamily)]
@@ -330,6 +341,7 @@ func (ps *peerStore) PutLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) error
 	default:
 	}
 
+	p.Latitude, p.Longitude, _ = geo.DefaultGeoClient.GetLocation(p.IP.IP)
 	pk := newPeerKey(p)
 
 	shard := ps.shards[ps.shardIndex(ih, p.IP.AddressFamily)]
@@ -361,6 +373,7 @@ func (ps *peerStore) DeleteLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) er
 	default:
 	}
 
+	p.Latitude, p.Longitude, _ = geo.DefaultGeoClient.GetLocation(p.IP.IP)
 	pk := newPeerKey(p)
 
 	shard := ps.shards[ps.shardIndex(ih, p.IP.AddressFamily)]
@@ -394,6 +407,7 @@ func (ps *peerStore) GraduateLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) 
 	default:
 	}
 
+	p.Latitude, p.Longitude, _ = geo.DefaultGeoClient.GetLocation(p.IP.IP)
 	pk := newPeerKey(p)
 
 	shard := ps.shards[ps.shardIndex(ih, p.IP.AddressFamily)]
@@ -427,6 +441,7 @@ func (ps *peerStore) GraduateLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) 
 func findPeers(ih bittorrent.InfoHash, seeder bool, numWant int, announcer bittorrent.Peer, shard *peerShard, useGeo bool) (peers []bittorrent.Peer, err error) {
 
 	canAdd := true
+	latitude, longitude, _ := geo.DefaultGeoClient.GetLocation(announcer.IP.IP)
 
 	if seeder {
 		// Append leechers as possible.
@@ -438,7 +453,7 @@ func findPeers(ih bittorrent.InfoHash, seeder bool, numWant int, announcer bitto
 
 			pear := decodePeerKey(pk)
 
-			canAdd = geo.DefaultGeoClient.IsIPInRadius(announcer.IP.String(), pear.IP.String())
+			canAdd = geo.DefaultGeoClient.IsInRadius(latitude, longitude, pear.Latitude, pear.Longitude) //IsIPInRadius(announcer.IP.String(), pear.IP.String())
 			canAdd = !(useGeo != canAdd)
 
 			if canAdd {
@@ -456,7 +471,7 @@ func findPeers(ih bittorrent.InfoHash, seeder bool, numWant int, announcer bitto
 
 			pear := decodePeerKey(pk)
 
-			canAdd = geo.DefaultGeoClient.IsIPInRadius(announcer.IP.String(), pear.IP.String())
+			canAdd = geo.DefaultGeoClient.IsInRadius(latitude, longitude, pear.Latitude, pear.Longitude) //IsIPInRadius(announcer.IP.String(), pear.IP.String())
 			canAdd = !(useGeo != canAdd)
 
 			if canAdd {
@@ -468,6 +483,7 @@ func findPeers(ih bittorrent.InfoHash, seeder bool, numWant int, announcer bitto
 		// Append leechers until we reach numWant.
 		if numWant > 0 {
 			leechers := shard.swarms[ih].leechers
+			announcer.Latitude, announcer.Longitude, _ = geo.DefaultGeoClient.GetLocation(announcer.IP.IP)
 			announcerPK := newPeerKey(announcer)
 			for pk := range leechers {
 				if pk == announcerPK {
@@ -480,7 +496,7 @@ func findPeers(ih bittorrent.InfoHash, seeder bool, numWant int, announcer bitto
 
 				pear := decodePeerKey(pk)
 
-				canAdd = geo.DefaultGeoClient.IsIPInRadius(announcer.IP.String(), pear.IP.String())
+				canAdd = geo.DefaultGeoClient.IsInRadius(latitude, longitude, pear.Latitude, pear.Longitude) //IsIPInRadius(announcer.IP.String(), pear.IP.String())
 				canAdd = !(useGeo != canAdd)
 
 				if canAdd {
