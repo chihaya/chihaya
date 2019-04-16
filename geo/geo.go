@@ -74,12 +74,12 @@ func (client *Client) IsInRadius(lat1 float64, lng1 float64, lat2 float64, lng2 
 	return client.radius >= dist
 }
 
-func (client *Client) GetLocation(IP net.IP) (float64, float64, error) {
+func (client *Client) GetLocation(IP net.IP) (float64, float64) {
 
 	record, err := client.database.City(IP)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0
 	}
 
-	return record.Location.Latitude, record.Location.Longitude, nil
+	return record.Location.Latitude, record.Location.Longitude
 }

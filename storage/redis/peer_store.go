@@ -358,7 +358,7 @@ func (ps *peerStore) PutSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) error 
 	default:
 	}
 
-	p.Latitude, p.Longitude, _ = geo.DefaultGeoClient.GetLocation(p.IP.IP)
+	p.Latitude, p.Longitude = geo.DefaultGeoClient.GetLocation(p.IP.IP)
 	pk := newPeerKey(p)
 
 	encodedSeederInfoHash := ps.seederInfohashKey(addressFamily, ih.String())
@@ -406,7 +406,7 @@ func (ps *peerStore) DeleteSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) err
 	default:
 	}
 
-	p.Latitude, p.Longitude, _ = geo.DefaultGeoClient.GetLocation(p.IP.IP)
+	p.Latitude, p.Longitude = geo.DefaultGeoClient.GetLocation(p.IP.IP)
 	pk := newPeerKey(p)
 
 	conn := ps.rb.open()
@@ -443,7 +443,7 @@ func (ps *peerStore) PutLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) error
 
 	// Update the peer in the swarm.
 	encodedLeecherInfoHash := ps.leecherInfohashKey(addressFamily, ih.String())
-	p.Latitude, p.Longitude, _ = geo.DefaultGeoClient.GetLocation(p.IP.IP)
+	p.Latitude, p.Longitude = geo.DefaultGeoClient.GetLocation(p.IP.IP)
 	pk := newPeerKey(p)
 	ct := ps.getClock()
 
@@ -483,7 +483,7 @@ func (ps *peerStore) DeleteLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) er
 	conn := ps.rb.open()
 	defer conn.Close()
 
-	p.Latitude, p.Longitude, _ = geo.DefaultGeoClient.GetLocation(p.IP.IP)
+	p.Latitude, p.Longitude = geo.DefaultGeoClient.GetLocation(p.IP.IP)
 	pk := newPeerKey(p)
 	encodedLeecherInfoHash := ps.leecherInfohashKey(addressFamily, ih.String())
 
@@ -517,7 +517,7 @@ func (ps *peerStore) GraduateLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) 
 	encodedInfoHash := ih.String()
 	encodedLeecherInfoHash := ps.leecherInfohashKey(addressFamily, encodedInfoHash)
 	encodedSeederInfoHash := ps.seederInfohashKey(addressFamily, encodedInfoHash)
-	p.Latitude, p.Longitude, _ = geo.DefaultGeoClient.GetLocation(p.IP.IP)
+	p.Latitude, p.Longitude = geo.DefaultGeoClient.GetLocation(p.IP.IP)
 	pk := newPeerKey(p)
 	ct := ps.getClock()
 
@@ -557,7 +557,7 @@ func (ps *peerStore) GraduateLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) 
 func findPeers(ih bittorrent.InfoHash, seeder bool, numWant int, announcer bittorrent.Peer, conLeechers, conSeeders []interface{}, useGeo bool) (peers []bittorrent.Peer, err error) {
 
 	canAdd := true
-	latitude, longitude, _ := geo.DefaultGeoClient.GetLocation(announcer.IP.IP)
+	latitude, longitude := geo.DefaultGeoClient.GetLocation(announcer.IP.IP)
 
 	if seeder {
 		// Append leechers as possible.
@@ -596,7 +596,7 @@ func findPeers(ih bittorrent.InfoHash, seeder bool, numWant int, announcer bitto
 
 		// Append leechers until we reach numWant.
 		if numWant > 0 {
-			announcer.Latitude, announcer.Longitude, _ = geo.DefaultGeoClient.GetLocation(announcer.IP.IP)
+			announcer.Latitude, announcer.Longitude = geo.DefaultGeoClient.GetLocation(announcer.IP.IP)
 			announcerPK := newPeerKey(announcer)
 			for _, pk := range conLeechers {
 				if pk == announcerPK {
