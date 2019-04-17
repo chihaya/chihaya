@@ -29,7 +29,7 @@ func NewGeoClient(config Config) *Client {
 
 	db, err := geoip2.Open(config.Database)
 	if err != nil {
-		zap.S().Fatalw("Cannot open geoip2 data file", zap.String("error", err.Error()))
+		zap.S().Panicw("Cannot open geoip2 data file", zap.String("error", err.Error()))
 	}
 
 	return &Client{
