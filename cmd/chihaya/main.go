@@ -17,6 +17,7 @@ import (
 	"github.com/ProtocolONE/chihaya/frontend/cord"
 	"github.com/ProtocolONE/chihaya/frontend/http"
 	"github.com/ProtocolONE/chihaya/frontend/udp"
+	"github.com/ProtocolONE/chihaya/geo"
 	"github.com/ProtocolONE/chihaya/middleware"
 	cord_hook "github.com/ProtocolONE/chihaya/middleware/cord"
 	"github.com/ProtocolONE/chihaya/pkg/log"
@@ -68,6 +69,7 @@ func (r *Run) Start(ps storage.PeerStore) error {
 	r.peerStore = ps
 
 	cord_hook.Init()
+	geo.Init(cfg.GeoIP)
 
 	preHooks, err := middleware.HooksFromHookConfigs(cfg.PreHooks)
 	if err != nil {

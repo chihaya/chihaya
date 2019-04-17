@@ -40,13 +40,13 @@ type Authorization struct {
 	Password string `json:"password" form:"password"`
 }
 
-type CreatedId struct {
+type CreatedID struct {
 	Title string `json:"title"`
-	Id    string `json:"id"`
+	ID    string `json:"id"`
 }
 
 type AuthToken struct {
-	ClientId     string `json:"client_id"`
+	ClientID     string `json:"client_id"`
 	Token        string `json:"token"`
 	RefreshToken string `json:"refresh_token"`
 }

@@ -15,7 +15,7 @@ func AddTorrent(context echo.Context) error {
 	reqTorrent := &models.Torrent{}
 	err := context.Bind(reqTorrent)
 	if err != nil {
-		return context.JSON(http.StatusBadRequest, models.Error{models.ErrorInvalidJSONFormat, "Invalid JSON format: " + err.Error()})
+		return context.JSON(http.StatusBadRequest, models.Error{Code: models.ErrorInvalidJSONFormat, Message: "Invalid JSON format: " + err.Error()})
 	}
 
 	memManager := database.NewMemTorrentManager()
@@ -24,16 +24,16 @@ func AddTorrent(context echo.Context) error {
 	manager := database.NewTorrentManager()
 	torrent, err := manager.FindByInfoHash(reqTorrent.InfoHash)
 	if err != nil {
-		return context.JSON(http.StatusBadRequest, models.Error{models.ErrorReadDataBase, fmt.Sprintf("Cannot read from database, error: %s", err.Error())})
+		return context.JSON(http.StatusBadRequest, models.Error{Code: models.ErrorReadDataBase, Message: fmt.Sprintf("Cannot read from database, error: %s", err.Error())})
 	}
 
 	if len(torrent) != 0 {
-		return context.JSON(http.StatusBadRequest, models.Error{models.ErrorTorrentAlreadyExists, fmt.Sprintf("Torrent %s already exists", reqTorrent.InfoHash)})
+		return context.JSON(http.StatusBadRequest, models.Error{Code: models.ErrorTorrentAlreadyExists, Message: fmt.Sprintf("Torrent %s already exists", reqTorrent.InfoHash)})
 	}
 
-	err = manager.Insert(&models.Torrent{reqTorrent.InfoHash})
+	err = manager.Insert(&models.Torrent{InfoHash: reqTorrent.InfoHash})
 	if err != nil {
-		return context.JSON(http.StatusBadRequest, models.Error{models.ErrorAddTorrent, fmt.Sprintf("Cannot add torrent %s, error: %s", reqTorrent.InfoHash, err.Error())})
+		return context.JSON(http.StatusBadRequest, models.Error{Code: models.ErrorAddTorrent, Message: fmt.Sprintf("Cannot add torrent %s, error: %s", reqTorrent.InfoHash, err.Error())})
 	}
 
 	zap.S().Infow("Added new torrent", zap.String("info_hash", reqTorrent.InfoHash))
@@ -46,7 +46,7 @@ func DeleteTorrent(context echo.Context) error {
 	reqTorrent := &models.Torrent{}
 	err := context.Bind(reqTorrent)
 	if err != nil {
-		return context.JSON(http.StatusBadRequest, models.Error{models.ErrorInvalidJSONFormat, "Invalid JSON format: " + err.Error()})
+		return context.JSON(http.StatusBadRequest, models.Error{Code: models.ErrorInvalidJSONFormat, Message: "Invalid JSON format: " + err.Error()})
 	}
 
 	memManager := database.NewMemTorrentManager()
@@ -55,7 +55,7 @@ func DeleteTorrent(context echo.Context) error {
 	manager := database.NewTorrentManager()
 	err = manager.RemoveByInfoHash(reqTorrent.InfoHash)
 	if err != nil {
-		return context.JSON(http.StatusBadRequest, models.Error{models.ErrorDeleteTorrent, fmt.Sprintf("Cannot delete torrent %s, error: %s", reqTorrent.InfoHash, err.Error())})
+		return context.JSON(http.StatusBadRequest, models.Error{Code: models.ErrorDeleteTorrent, Message: fmt.Sprintf("Cannot delete torrent %s, error: %s", reqTorrent.InfoHash, err.Error())})
 	}
 
 	zap.S().Infow("Removed torrent", zap.String("info_hash", reqTorrent.InfoHash))

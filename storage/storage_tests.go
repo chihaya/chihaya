@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ProtocolONE/chihaya/bittorrent"
+	"github.com/ProtocolONE/chihaya/geo"
 )
 
 // PeerEqualityFunc is the boolean function to use to check two Peers for
@@ -17,6 +18,12 @@ var PeerEqualityFunc = func(p1, p2 bittorrent.Peer) bool { return p1.Equal(p2) }
 
 // TestPeerStore tests a PeerStore implementation against the interface.
 func TestPeerStore(t *testing.T, p PeerStore) {
+
+	geo.Init(geo.Config{
+		Database: "D:\\Projects\\Syncopate\\sources\\ProtocolONE\\chihaya\\geo\\data\\GeoLite2-City.mmdb",
+		Radius:   1000,
+	})
+
 	testData := []struct {
 		ih   bittorrent.InfoHash
 		peer bittorrent.Peer

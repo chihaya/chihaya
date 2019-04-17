@@ -25,7 +25,7 @@ const (
 	expireOffset  = 3600
 )
 
-var authBackendInstance *JWTAuthenticationBackend = nil
+var authBackendInstance *JWTAuthenticationBackend
 
 func InitJWTAuthenticationBackend() *JWTAuthenticationBackend {
 
@@ -113,7 +113,7 @@ func getPrivateKey() *rsa.PrivateKey {
 		panic(fmt.Sprintf("Cannot open file \"%s\"", cfg.PrivateKeyPath))
 	}
 	pemfileinfo, _ := privateKeyFile.Stat()
-	var size int64 = pemfileinfo.Size()
+	size := pemfileinfo.Size()
 	pembytes := make([]byte, size)
 
 	buffer := bufio.NewReader(privateKeyFile)
@@ -141,7 +141,7 @@ func getPublicKey() *rsa.PublicKey {
 	}
 
 	pemfileinfo, _ := publicKeyFile.Stat()
-	var size int64 = pemfileinfo.Size()
+	size := pemfileinfo.Size()
 	pembytes := make([]byte, size)
 
 	buffer := bufio.NewReader(publicKeyFile)

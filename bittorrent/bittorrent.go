@@ -220,9 +220,11 @@ func (ip IP) String() string {
 // Peer represents the connection details of a peer that is returned in an
 // announce response.
 type Peer struct {
-	ID   PeerID
-	IP   IP
-	Port uint16
+	ID        PeerID
+	IP        IP
+	Port      uint16
+	Latitude  float64
+	Longitude float64
 }
 
 // String implements fmt.Stringer to return a human-readable representation.

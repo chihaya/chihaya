@@ -31,28 +31,26 @@ func requireTokenAuthentication(next echo.HandlerFunc, refreshToken bool) echo.H
 		token, err := request.ParseFromRequest(context.Request(), request.OAuth2Extractor, func(token *jwt.Token) (interface{}, error) {
 			if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 				return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
-			} else {
-				return authBackend.PublicKey, nil
 			}
+			return authBackend.PublicKey, nil
 		})
 
 		if err != nil || !token.Valid || authBackend.IsInBlacklist(context.Request().Header.Get("Authorization")) {
 
 			if err != nil {
 				zap.S().Errorw("requireTokenAuthentication failed", zap.String("error", err.Error()))
-				return context.JSON(http.StatusUnauthorized, models.Error{models.ErrorUnauthorized, "requireTokenAuthentication failed, error: " + err.Error()})
+				return context.JSON(http.StatusUnauthorized, models.Error{Code: models.ErrorUnauthorized, Message: "requireTokenAuthentication failed, error: " + err.Error()})
 
-			} else {
-				zap.S().Errorw("requireTokenAuthentication failed", zap.String("error", "Authorization failed"))
-				return context.JSON(http.StatusUnauthorized, models.Error{models.ErrorUnauthorized, "requireTokenAuthentication failed, error: Authorization failed"})
 			}
+			zap.S().Errorw("requireTokenAuthentication failed", zap.String("error", "Authorization failed"))
+			return context.JSON(http.StatusUnauthorized, models.Error{Code: models.ErrorUnauthorized, Message: "requireTokenAuthentication failed, error: Authorization failed"})
 		}
 
 		rem := authBackend.GetTokenRemainingValidity(token)
 		if rem <= 0 {
 
 			zap.S().Errorw("requireTokenAuthentication failed", zap.String("error", "Token is expired"))
-			return context.JSON(http.StatusUnauthorized, models.Error{models.ErrorTokenExpired, "Token is expired"})
+			return context.JSON(http.StatusUnauthorized, models.Error{Code: models.ErrorTokenExpired, Message: "Token is expired"})
 		}
 
 		claims := token.Claims.(jwt.MapClaims)
@@ -63,7 +61,7 @@ func requireTokenAuthentication(next echo.HandlerFunc, refreshToken bool) echo.H
 			if !ok || !refresh {
 
 				zap.S().Errorw("requireTokenAuthentication failed", zap.String("error", "Invalid refresh token"))
-				return context.JSON(http.StatusBadRequest, models.Error{models.ErrorInvalidToken, "Invalid refresh token"})
+				return context.JSON(http.StatusBadRequest, models.Error{Code: models.ErrorInvalidToken, Message: "Invalid refresh token"})
 			}
 
 		} else {
@@ -72,7 +70,7 @@ func requireTokenAuthentication(next echo.HandlerFunc, refreshToken bool) echo.H
 			if !ok || !access {
 
 				zap.S().Errorw("requireTokenAuthentication failed", zap.String("error", "Invalid access token"))
-				return context.JSON(http.StatusBadRequest, models.Error{models.ErrorInvalidToken, "Invalid access token"})
+				return context.JSON(http.StatusBadRequest, models.Error{Code: models.ErrorInvalidToken, Message: "Invalid access token"})
 			}
 		}
 
@@ -80,7 +78,7 @@ func requireTokenAuthentication(next echo.HandlerFunc, refreshToken bool) echo.H
 		if !ok || clientID == "" {
 
 			zap.S().Errorw("requireTokenAuthentication failed", zap.String("error", "Invalid token"))
-			return context.JSON(http.StatusBadRequest, models.Error{models.ErrorInvalidToken, "Invalid token"})
+			return context.JSON(http.StatusBadRequest, models.Error{Code: models.ErrorInvalidToken, Message: "Invalid token"})
 		}
 
 		context.Request().Header.Set("ClientID", clientID)
