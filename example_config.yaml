@@ -191,5 +191,5 @@ chihaya:
   #    blacklist:
   #    - "e1d2c3b4a5e1b2c3b4a5e1d2c3b4e5e1d2c3b4a5"
   geoip:
-    database: "D:\\Projects\\Syncopate\\sources\\ProtocolONE\\chihaya\\geo\\data\\GeoLite2-City.mmdb"
+    database: "../../geo/data/GeoLite2-City.mmdb"
     radius: 1000
