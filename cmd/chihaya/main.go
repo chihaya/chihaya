@@ -20,6 +20,7 @@ import (
 	"github.com/ProtocolONE/chihaya/geo"
 	"github.com/ProtocolONE/chihaya/middleware"
 	cord_hook "github.com/ProtocolONE/chihaya/middleware/cord"
+	stat_hook "github.com/ProtocolONE/chihaya/middleware/cord/stat"
 	"github.com/ProtocolONE/chihaya/pkg/log"
 	"github.com/ProtocolONE/chihaya/pkg/prometheus"
 	"github.com/ProtocolONE/chihaya/pkg/stop"
@@ -69,6 +70,7 @@ func (r *Run) Start(ps storage.PeerStore) error {
 	r.peerStore = ps
 
 	cord_hook.Init()
+	stat_hook.Init()
 	geo.Init(cfg.GeoIP)
 
 	preHooks, err := middleware.HooksFromHookConfigs(cfg.PreHooks)

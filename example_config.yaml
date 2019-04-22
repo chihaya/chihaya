@@ -160,7 +160,6 @@ chihaya:
   prehooks:
   #- name: cord
   #  options:
-  #    storage: "mongo"
 
   #- name: jwt
   #  options:
@@ -190,6 +189,12 @@ chihaya:
   #    - "a1b2c3d4e5a1b2c3d4e5a1b2c3d4e5a1b2c3d4e5"
   #    blacklist:
   #    - "e1d2c3b4a5e1b2c3b4a5e1d2c3b4e5e1d2c3b4a5"
+
+  posthooks:
+  - name: stat
+    options:
+      redis_broker: "redis://127.0.0.1:6379/0"
+
   geoip:
     database: "../../geo/data/GeoLite2-City.mmdb"
     radius: 1000
