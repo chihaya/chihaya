@@ -106,9 +106,12 @@ func runBenchmark(b *testing.B, ps ClearablePeerStore, parallel bool, sf setupFu
 // on benchmark results and an estimate of the general performance of the system
 // benchmarked on.
 //
+// Nop creates 1000 infohashes with 10 peers each.
+// This is not measured in the actual benchmark.
+//
 // Nop can run in parallel.
 func Nop(b *testing.B, ps ClearablePeerStore) {
-	runBenchmark(b, ps, true, putPeers, func(i int, ps PeerStore, bd *benchData) error {
+	runBenchmark(b, ps, true, putPeers(10), func(i int, ps PeerStore, bd *benchData) error {
 		return nil
 	})
 }
@@ -372,21 +375,23 @@ func PutGradDelete1kInfohash1k(b *testing.B, ps ClearablePeerStore) {
 	})
 }
 
-func putPeers(ps PeerStore, bd *benchData) error {
-	for i := 0; i < 1000; i++ {
-		for j := 0; j < 1000; j++ {
-			var err error
-			if j < 1000/2 {
-				err = ps.PutLeecher(bd.infohashes[i], bd.peers[j])
-			} else {
-				err = ps.PutSeeder(bd.infohashes[i], bd.peers[j])
-			}
-			if err != nil {
-				return err
+func putPeers(numPeers int) func(PeerStore, *benchData) error {
+	return func(ps PeerStore, bd *benchData) error {
+		for i := 0; i < 1000; i++ {
+			for j := 0; j < numPeers; j++ {
+				var err error
+				if j < numPeers/2 {
+					err = ps.PutLeecher(bd.infohashes[i], bd.peers[j])
+				} else {
+					err = ps.PutSeeder(bd.infohashes[i], bd.peers[j])
+				}
+				if err != nil {
+					return err
+				}
 			}
 		}
+		return nil
 	}
-	return nil
 }
 
 // AnnounceLeecher benchmarks the AnnouncePeers method of a PeerStore for
@@ -395,7 +400,7 @@ func putPeers(ps PeerStore, bd *benchData) error {
 //
 // AnnounceLeecher can run in parallel.
 func AnnounceLeecher(b *testing.B, ps ClearablePeerStore) {
-	runBenchmark(b, ps, true, putPeers, func(i int, ps PeerStore, bd *benchData) error {
+	runBenchmark(b, ps, true, putPeers(1000), func(i int, ps PeerStore, bd *benchData) error {
 		_, err := ps.AnnouncePeers(bd.infohashes[0], false, 50, bd.peers[0])
 		return err
 	})
@@ -406,7 +411,7 @@ func AnnounceLeecher(b *testing.B, ps ClearablePeerStore) {
 //
 // AnnounceLeecher1kInfohash can run in parallel.
 func AnnounceLeecher1kInfohash(b *testing.B, ps ClearablePeerStore) {
-	runBenchmark(b, ps, true, putPeers, func(i int, ps PeerStore, bd *benchData) error {
+	runBenchmark(b, ps, true, putPeers(1000), func(i int, ps PeerStore, bd *benchData) error {
 		_, err := ps.AnnouncePeers(bd.infohashes[i%1000], false, 50, bd.peers[0])
 		return err
 	})
@@ -417,7 +422,7 @@ func AnnounceLeecher1kInfohash(b *testing.B, ps ClearablePeerStore) {
 //
 // AnnounceSeeder can run in parallel.
 func AnnounceSeeder(b *testing.B, ps ClearablePeerStore) {
-	runBenchmark(b, ps, true, putPeers, func(i int, ps PeerStore, bd *benchData) error {
+	runBenchmark(b, ps, true, putPeers(1000), func(i int, ps PeerStore, bd *benchData) error {
 		_, err := ps.AnnouncePeers(bd.infohashes[0], true, 50, bd.peers[0])
 		return err
 	})
@@ -428,7 +433,7 @@ func AnnounceSeeder(b *testing.B, ps ClearablePeerStore) {
 //
 // AnnounceSeeder1kInfohash can run in parallel.
 func AnnounceSeeder1kInfohash(b *testing.B, ps ClearablePeerStore) {
-	runBenchmark(b, ps, true, putPeers, func(i int, ps PeerStore, bd *benchData) error {
+	runBenchmark(b, ps, true, putPeers(1000), func(i int, ps PeerStore, bd *benchData) error {
 		_, err := ps.AnnouncePeers(bd.infohashes[i%1000], true, 50, bd.peers[0])
 		return err
 	})
@@ -439,7 +444,7 @@ func AnnounceSeeder1kInfohash(b *testing.B, ps ClearablePeerStore) {
 //
 // ScrapeSwarm can run in parallel.
 func ScrapeSwarm(b *testing.B, ps ClearablePeerStore) {
-	runBenchmark(b, ps, true, putPeers, func(i int, ps PeerStore, bd *benchData) error {
+	runBenchmark(b, ps, true, putPeers(1000), func(i int, ps PeerStore, bd *benchData) error {
 		ps.ScrapeSwarm(bd.infohashes[0], bittorrent.IPv4)
 		return nil
 	})
@@ -449,7 +454,7 @@ func ScrapeSwarm(b *testing.B, ps ClearablePeerStore) {
 //
 // ScrapeSwarm1kInfohash can run in parallel.
 func ScrapeSwarm1kInfohash(b *testing.B, ps ClearablePeerStore) {
-	runBenchmark(b, ps, true, putPeers, func(i int, ps PeerStore, bd *benchData) error {
+	runBenchmark(b, ps, true, putPeers(1000), func(i int, ps PeerStore, bd *benchData) error {
 		ps.ScrapeSwarm(bd.infohashes[i%1000], bittorrent.IPv4)
 		return nil
 	})
