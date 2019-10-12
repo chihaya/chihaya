@@ -22,9 +22,9 @@ type ParseOptions struct {
 
 // Default parser config constants.
 const (
-	defaultMaxNumWant          uint32 = 100
-	defaultDefaultNumWant      uint32 = 50
-	defaultMaxScrapeInfoHashes uint32 = 50
+	defaultMaxNumWant          = 100
+	defaultDefaultNumWant      = 50
+	defaultMaxScrapeInfoHashes = 50
 )
 
 // ParseAnnounce parses an bittorrent.AnnounceRequest from an http.Request.
