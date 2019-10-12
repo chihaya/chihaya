@@ -394,67 +394,133 @@ func putPeers(numPeers int) func(PeerStore, *benchData) error {
 	}
 }
 
-// AnnounceLeecher benchmarks the AnnouncePeers method of a PeerStore for
+// AnnounceLeecherLarge benchmarks the AnnouncePeers method of a PeerStore for
 // announcing a leecher.
 // The swarm announced to has 500 seeders and 500 leechers.
 //
-// AnnounceLeecher can run in parallel.
-func AnnounceLeecher(b *testing.B, ps ClearablePeerStore) {
+// AnnounceLeecherLarge can run in parallel.
+func AnnounceLeecherLarge(b *testing.B, ps ClearablePeerStore) {
 	runBenchmark(b, ps, true, putPeers(1000), func(i int, ps PeerStore, bd *benchData) error {
 		_, err := ps.AnnouncePeers(bd.infohashes[0], false, 50, bd.peers[0])
 		return err
 	})
 }
 
-// AnnounceLeecher1kInfohash behaves like AnnounceLeecher with one of 1000
+// AnnounceLeecherLarge1kInfohash behaves like AnnounceLeecherLarge with one of 1000
 // infohashes.
 //
-// AnnounceLeecher1kInfohash can run in parallel.
-func AnnounceLeecher1kInfohash(b *testing.B, ps ClearablePeerStore) {
+// AnnounceLeecherLarge1kInfohash can run in parallel.
+func AnnounceLeecherLarge1kInfohash(b *testing.B, ps ClearablePeerStore) {
 	runBenchmark(b, ps, true, putPeers(1000), func(i int, ps PeerStore, bd *benchData) error {
 		_, err := ps.AnnouncePeers(bd.infohashes[i%1000], false, 50, bd.peers[0])
 		return err
 	})
 }
 
-// AnnounceSeeder behaves like AnnounceLeecher with a seeder instead of a
+// AnnounceSeederLarge behaves like AnnounceLeecherLarge with a seeder instead of a
 // leecher.
 //
-// AnnounceSeeder can run in parallel.
-func AnnounceSeeder(b *testing.B, ps ClearablePeerStore) {
+// AnnounceSeederLarge can run in parallel.
+func AnnounceSeederLarge(b *testing.B, ps ClearablePeerStore) {
 	runBenchmark(b, ps, true, putPeers(1000), func(i int, ps PeerStore, bd *benchData) error {
 		_, err := ps.AnnouncePeers(bd.infohashes[0], true, 50, bd.peers[0])
 		return err
 	})
 }
 
-// AnnounceSeeder1kInfohash behaves like AnnounceSeeder with one of 1000
+// AnnounceSeederLarge1kInfohash behaves like AnnounceSeederLarge with one of 1000
 // infohashes.
 //
-// AnnounceSeeder1kInfohash can run in parallel.
-func AnnounceSeeder1kInfohash(b *testing.B, ps ClearablePeerStore) {
+// AnnounceSeederLarge1kInfohash can run in parallel.
+func AnnounceSeederLarge1kInfohash(b *testing.B, ps ClearablePeerStore) {
 	runBenchmark(b, ps, true, putPeers(1000), func(i int, ps PeerStore, bd *benchData) error {
 		_, err := ps.AnnouncePeers(bd.infohashes[i%1000], true, 50, bd.peers[0])
 		return err
 	})
 }
 
-// ScrapeSwarm benchmarks the ScrapeSwarm method of a PeerStore.
+// AnnounceLeecherSmall benchmarks the AnnouncePeers method of a PeerStore for
+// announcing a leecher.
+// The swarm announced to has 5 seeders and 5 leechers.
+//
+// AnnounceLeecherSmall can run in parallel.
+func AnnounceLeecherSmall(b *testing.B, ps ClearablePeerStore) {
+	runBenchmark(b, ps, true, putPeers(10), func(i int, ps PeerStore, bd *benchData) error {
+		_, err := ps.AnnouncePeers(bd.infohashes[0], false, 50, bd.peers[0])
+		return err
+	})
+}
+
+// AnnounceLeecherSmall1kInfohash behaves like AnnounceLeecherSmall with one of 1000
+// infohashes.
+//
+// AnnounceLeecherSmall1kInfohash can run in parallel.
+func AnnounceLeecherSmall1kInfohash(b *testing.B, ps ClearablePeerStore) {
+	runBenchmark(b, ps, true, putPeers(10), func(i int, ps PeerStore, bd *benchData) error {
+		_, err := ps.AnnouncePeers(bd.infohashes[i%1000], false, 50, bd.peers[0])
+		return err
+	})
+}
+
+// AnnounceSeederSmall behaves like AnnounceLeecherSmall with a seeder instead of a
+// leecher.
+//
+// AnnounceSeederSmall can run in parallel.
+func AnnounceSeederSmall(b *testing.B, ps ClearablePeerStore) {
+	runBenchmark(b, ps, true, putPeers(10), func(i int, ps PeerStore, bd *benchData) error {
+		_, err := ps.AnnouncePeers(bd.infohashes[0], true, 50, bd.peers[0])
+		return err
+	})
+}
+
+// AnnounceSeederSmall1kInfohash behaves like AnnounceSeederSmall with one of 1000
+// infohashes.
+//
+// AnnounceSeederSmall1kInfohash can run in parallel.
+func AnnounceSeederSmall1kInfohash(b *testing.B, ps ClearablePeerStore) {
+	runBenchmark(b, ps, true, putPeers(10), func(i int, ps PeerStore, bd *benchData) error {
+		_, err := ps.AnnouncePeers(bd.infohashes[i%1000], true, 50, bd.peers[0])
+		return err
+	})
+}
+
+// ScrapeSwarmLarge benchmarks the ScrapeSwarm method of a PeerStore.
 // The swarm scraped has 500 seeders and 500 leechers.
 //
-// ScrapeSwarm can run in parallel.
-func ScrapeSwarm(b *testing.B, ps ClearablePeerStore) {
+// ScrapeSwarmLarge can run in parallel.
+func ScrapeSwarmLarge(b *testing.B, ps ClearablePeerStore) {
 	runBenchmark(b, ps, true, putPeers(1000), func(i int, ps PeerStore, bd *benchData) error {
 		ps.ScrapeSwarm(bd.infohashes[0], bittorrent.IPv4)
 		return nil
 	})
 }
 
-// ScrapeSwarm1kInfohash behaves like ScrapeSwarm with one of 1000 infohashes.
+// ScrapeSwarmLarge1kInfohash behaves like ScrapeSwarmLarge with one of 1000 infohashes.
 //
-// ScrapeSwarm1kInfohash can run in parallel.
-func ScrapeSwarm1kInfohash(b *testing.B, ps ClearablePeerStore) {
+// ScrapeSwarmLarge1kInfohash can run in parallel.
+func ScrapeSwarmLarge1kInfohash(b *testing.B, ps ClearablePeerStore) {
 	runBenchmark(b, ps, true, putPeers(1000), func(i int, ps PeerStore, bd *benchData) error {
+		ps.ScrapeSwarm(bd.infohashes[i%1000], bittorrent.IPv4)
+		return nil
+	})
+}
+
+// ScrapeSwarmSmall benchmarks the ScrapeSwarm method of a PeerStore.
+// The swarm scraped has 5 seeders and 5 leechers.
+//
+// ScrapeSwarmSmall can run in parallel.
+func ScrapeSwarmSmall(b *testing.B, ps ClearablePeerStore) {
+	runBenchmark(b, ps, true, putPeers(10), func(i int, ps PeerStore, bd *benchData) error {
+		ps.ScrapeSwarm(bd.infohashes[0], bittorrent.IPv4)
+		return nil
+	})
+}
+
+// ScrapeSwarmSmall1kInfohash behaves like ScrapeSwarmSmall with one of 1000 infohashes.
+//
+// ScrapeSwarmSmall1kInfohash can run in parallel.
+func ScrapeSwarmSmall1kInfohash(b *testing.B, ps ClearablePeerStore) {
+	runBenchmark(b, ps, true, putPeers(10), func(i int, ps PeerStore, bd *benchData) error {
 		ps.ScrapeSwarm(bd.infohashes[i%1000], bittorrent.IPv4)
 		return nil
 	})

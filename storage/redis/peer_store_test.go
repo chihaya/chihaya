@@ -53,9 +53,23 @@ func BenchmarkGradNonexist(b *testing.B)               { s.GradNonexist(b, creat
 func BenchmarkGradNonexist1k(b *testing.B)             { s.GradNonexist1k(b, createNew()) }
 func BenchmarkGradNonexist1kInfohash(b *testing.B)     { s.GradNonexist1kInfohash(b, createNew()) }
 func BenchmarkGradNonexist1kInfohash1k(b *testing.B)   { s.GradNonexist1kInfohash1k(b, createNew()) }
-func BenchmarkAnnounceLeecher(b *testing.B)            { s.AnnounceLeecher(b, createNew()) }
-func BenchmarkAnnounceLeecher1kInfohash(b *testing.B)  { s.AnnounceLeecher1kInfohash(b, createNew()) }
-func BenchmarkAnnounceSeeder(b *testing.B)             { s.AnnounceSeeder(b, createNew()) }
-func BenchmarkAnnounceSeeder1kInfohash(b *testing.B)   { s.AnnounceSeeder1kInfohash(b, createNew()) }
-func BenchmarkScrapeSwarm(b *testing.B)                { s.ScrapeSwarm(b, createNew()) }
-func BenchmarkScrapeSwarm1kInfohash(b *testing.B)      { s.ScrapeSwarm1kInfohash(b, createNew()) }
+func BenchmarkAnnounceLeecherLarge(b *testing.B)       { s.AnnounceLeecherLarge(b, createNew()) }
+func BenchmarkAnnounceLeecherLarge1kInfohash(b *testing.B) {
+	s.AnnounceLeecherLarge1kInfohash(b, createNew())
+}
+func BenchmarkAnnounceSeederLarge(b *testing.B) { s.AnnounceSeederLarge(b, createNew()) }
+func BenchmarkAnnounceSeederLarge1kInfohash(b *testing.B) {
+	s.AnnounceSeederLarge1kInfohash(b, createNew())
+}
+func BenchmarkAnnounceLeecherSmall(b *testing.B) { s.AnnounceLeecherSmall(b, createNew()) }
+func BenchmarkAnnounceLeecherSmall1kInfohash(b *testing.B) {
+	s.AnnounceLeecherSmall1kInfohash(b, createNew())
+}
+func BenchmarkAnnounceSeederSmall(b *testing.B) { s.AnnounceSeederSmall(b, createNew()) }
+func BenchmarkAnnounceSeederSmall1kInfohash(b *testing.B) {
+	s.AnnounceSeederSmall1kInfohash(b, createNew())
+}
+func BenchmarkScrapeSwarmLarge(b *testing.B)           { s.ScrapeSwarmLarge(b, createNew()) }
+func BenchmarkScrapeSwarmLarge1kInfohash(b *testing.B) { s.ScrapeSwarmLarge1kInfohash(b, createNew()) }
+func BenchmarkScrapeSwarmSmall(b *testing.B)           { s.ScrapeSwarmSmall(b, createNew()) }
+func BenchmarkScrapeSwarmSmall1kInfohash(b *testing.B) { s.ScrapeSwarmSmall1kInfohash(b, createNew()) }
