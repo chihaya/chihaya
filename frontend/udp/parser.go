@@ -58,6 +58,13 @@ type ParseOptions struct {
 	MaxScrapeInfoHashes uint32 `yaml:"max_scrape_infohashes"`
 }
 
+// Default parser config constants.
+const (
+	defaultMaxNumWant          uint32 = 100
+	defaultDefaultNumWant      uint32 = 50
+	defaultMaxScrapeInfoHashes uint32 = 50
+)
+
 // ParseAnnounce parses an AnnounceRequest from a UDP request.
 //
 // If v6Action is true, the announce is parsed the
