@@ -2,12 +2,15 @@ language: go
 go:
   - 1.13.x
 sudo: false
+services:
+  - redis-server
 matrix:
   include:
   # Using vendored dependencies
   - install:
     - go get -u golang.org/x/lint/golint
     - go get -u golang.org/x/tools/cmd/...
+    - go get gopkg.in/mikefarah/yq.v2
     script:
     - go mod download
     - go test -v -race $(go list ./...)
@@ -15,23 +18,54 @@ matrix:
     - diff <(goimports -local github.com/chihaya/chihaya -d $(find . -type f -name '*.go' -not -path "./vendor/*")) <(printf "")
     - (for d in $(go list ./...); do diff <(golint $d) <(printf "") || exit 1;  done)
     - go install github.com/chihaya/chihaya/cmd/chihaya
+    # Run e2e test with example config.
     - chihaya --config=example_config.yaml --debug&
     - pid=$!
     - sleep 2 # wait for chihaya to start up (gross)
     - chihaya e2e --debug
     - kill $pid
-  # Using HEAD of dependencies
+    # Run e2e test with redis.
+    - |
+      cat << EOF | yq.v2 w -s - example_config.yaml | yq.v2 d - chihaya.storage.config.shard_count >> redis_config.yaml
+      chihaya.storage.name: redis
+      chihaya.storage.config.redis_broker: "redis://localhost:6379/0"
+      chihaya.storage.config.redis_read_timeout: 15s
+      chihaya.storage.config.redis_write_timeout: 15s
+      chihaya.storage.config.redis_connect_timeout: 15s
+      EOF
+    - chihaya --config=redis_config.yaml --debug&
+    - pid=$!
+    - sleep 2 # wait for chihaya to start up (gross)
+    - chihaya e2e --debug
+    - kill $pid
+    # Using HEAD of dependencies
   - install:
     - go get -t -u ./...
     - go get -u golang.org/x/lint/golint
     - go get -u golang.org/x/tools/cmd/...
+    - go get gopkg.in/mikefarah/yq.v2
     script:
     - go test -v -race $(go list ./...)
     - go vet $(go list ./...)
     - diff <(goimports -local github.com/chihaya/chihaya -d $(find . -type f -name '*.go' -not -path "./vendor/*")) <(printf "")
     - (for d in $(go list ./...); do diff <(golint $d) <(printf "") || exit 1;  done)
     - go install github.com/chihaya/chihaya/cmd/chihaya
+      # Run e2e test with example config.
     - chihaya --config=example_config.yaml --debug&
+    - pid=$!
+    - sleep 2 # wait for chihaya to start up (gross)
+    - chihaya e2e --debug
+    - kill $pid
+      # Run e2e test with redis.
+    - |
+      cat << EOF | yq.v2 w -s - example_config.yaml | yq.v2 d - chihaya.storage.config.shard_count >> redis_config.yaml
+      chihaya.storage.name: redis
+      chihaya.storage.config.redis_broker: "redis://localhost:6379/0"
+      chihaya.storage.config.redis_read_timeout: 15s
+      chihaya.storage.config.redis_write_timeout: 15s
+      chihaya.storage.config.redis_connect_timeout: 15s
+      EOF
+    - chihaya --config=redis_config.yaml --debug&
     - pid=$!
     - sleep 2 # wait for chihaya to start up (gross)
     - chihaya e2e --debug
@@ -42,13 +76,29 @@ matrix:
     - go get -t -u ./...
     - go get -u golang.org/x/lint/golint
     - go get -u golang.org/x/tools/cmd/...
+    - go get gopkg.in/mikefarah/yq.v2
     script:
     - go test -v -race $(go list ./...)
     - go vet $(go list ./...)
     - diff <(goimports -local github.com/chihaya/chihaya -d $(find . -type f -name '*.go' -not -path "./vendor/*")) <(printf "")
     - (for d in $(go list ./...); do diff <(golint $d) <(printf "") || exit 1;  done)
     - go install github.com/chihaya/chihaya/cmd/chihaya
+      # Run e2e test with example config.
     - chihaya --config=example_config.yaml --debug&
+    - pid=$!
+    - sleep 2 # wait for chihaya to start up (gross)
+    - chihaya e2e --debug
+    - kill $pid
+      # Run e2e test with redis.
+    - |
+      cat << EOF | yq.v2 w -s - example_config.yaml | yq.v2 d - chihaya.storage.config.shard_count >> redis_config.yaml
+      chihaya.storage.name: redis
+      chihaya.storage.config.redis_broker: "redis://localhost:6379/0"
+      chihaya.storage.config.redis_read_timeout: 15s
+      chihaya.storage.config.redis_write_timeout: 15s
+      chihaya.storage.config.redis_connect_timeout: 15s
+      EOF
+    - chihaya --config=redis_config.yaml --debug&
     - pid=$!
     - sleep 2 # wait for chihaya to start up (gross)
     - chihaya e2e --debug
