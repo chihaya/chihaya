@@ -1,5 +1,7 @@
 module github.com/chihaya/chihaya
 
+go 1.13
+
 require (
 	github.com/SermoDigital/jose v0.0.0-20180104203859-803625baeddc
 	github.com/alicebob/gopher-json v0.0.0-20180125190556-5a6b3ba71ee6 // indirect
