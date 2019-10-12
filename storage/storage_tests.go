@@ -9,6 +9,16 @@ import (
 	"github.com/chihaya/chihaya/bittorrent"
 )
 
+// ClearablePeerStore is a PeerStore that can be cleared.
+// This is only used for testing and benchmarking.
+type ClearablePeerStore interface {
+	PeerStore
+
+	// Clear clears the storage.
+	// It must be called before Stop.
+	Clear() error
+}
+
 // PeerEqualityFunc is the boolean function to use to check two Peers for
 // equality.
 // Depending on the implementation of the PeerStore, this can be changed to
@@ -16,7 +26,7 @@ import (
 var PeerEqualityFunc = func(p1, p2 bittorrent.Peer) bool { return p1.Equal(p2) }
 
 // TestPeerStore tests a PeerStore implementation against the interface.
-func TestPeerStore(t *testing.T, p PeerStore) {
+func TestPeerStore(t *testing.T, p ClearablePeerStore) {
 	testData := []struct {
 		ih   bittorrent.InfoHash
 		peer bittorrent.Peer
@@ -148,6 +158,9 @@ func TestPeerStore(t *testing.T, p PeerStore) {
 		err = p.DeleteSeeder(c.ih, c.peer)
 		require.Equal(t, ErrResourceDoesNotExist, err)
 	}
+
+	err := p.Clear()
+	require.Nil(t, err)
 
 	e := p.Stop()
 	require.Nil(t, <-e)

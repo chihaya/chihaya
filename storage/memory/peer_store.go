@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/pkg/log"
@@ -118,8 +118,7 @@ func (cfg Config) Validate() Config {
 	return validcfg
 }
 
-// New creates a new PeerStore backed by memory.
-func New(provided Config) (storage.PeerStore, error) {
+func build(provided Config) (storage.ClearablePeerStore, error) {
 	cfg := provided.Validate()
 	ps := &peerStore{
 		cfg:    cfg,
@@ -166,6 +165,11 @@ func New(provided Config) (storage.PeerStore, error) {
 	}()
 
 	return ps, nil
+}
+
+// New creates a new PeerStore backed by memory.
+func New(provided Config) (storage.PeerStore, error) {
+	return build(provided)
 }
 
 type serializedPeer string
@@ -571,6 +575,20 @@ func (ps *peerStore) collectGarbage(cutoff time.Time) error {
 	return nil
 }
 
+func (ps *peerStore) Clear() error {
+	log.Debug("storage: clearing storage")
+
+	shards := make([]*peerShard, len(ps.shards))
+	for i := 0; i < len(ps.shards); i++ {
+		shards[i] = &peerShard{swarms: make(map[bittorrent.InfoHash]swarm)}
+	}
+
+	// Let's hope this is atomic.
+	ps.shards = shards
+
+	return nil
+}
+
 func (ps *peerStore) Stop() stop.Result {
 	c := make(stop.Channel)
 	go func() {
@@ -578,11 +596,7 @@ func (ps *peerStore) Stop() stop.Result {
 		ps.wg.Wait()
 
 		// Explicitly deallocate our storage.
-		shards := make([]*peerShard, len(ps.shards))
-		for i := 0; i < len(ps.shards); i++ {
-			shards[i] = &peerShard{swarms: make(map[bittorrent.InfoHash]swarm)}
-		}
-		ps.shards = shards
+		_ = ps.Clear()
 
 		c.Done()
 	}()

@@ -10,13 +10,13 @@ import (
 	s "github.com/chihaya/chihaya/storage"
 )
 
-func createNew() s.PeerStore {
+func createNew() s.ClearablePeerStore {
 	rs, err := miniredis.Run()
 	if err != nil {
 		panic(err)
 	}
 	redisURL := fmt.Sprintf("redis://@%s/0", rs.Addr())
-	ps, err := New(Config{
+	ps, err := build(Config{
 		GarbageCollectionInterval:   10 * time.Minute,
 		PrometheusReportingInterval: 10 * time.Minute,
 		PeerLifetime:                30 * time.Minute,

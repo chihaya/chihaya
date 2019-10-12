@@ -7,8 +7,8 @@ import (
 	s "github.com/chihaya/chihaya/storage"
 )
 
-func createNew() s.PeerStore {
-	ps, err := New(Config{
+func createNew() s.ClearablePeerStore {
+	ps, err := build(Config{
 		ShardCount:                  1024,
 		GarbageCollectionInterval:   10 * time.Minute,
 		PrometheusReportingInterval: 10 * time.Minute,

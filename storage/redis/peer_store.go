@@ -31,7 +31,7 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/pkg/log"
@@ -176,8 +176,7 @@ func (cfg Config) Validate() Config {
 	return validcfg
 }
 
-// New creates a new PeerStore backed by redis.
-func New(provided Config) (storage.PeerStore, error) {
+func build(provided Config) (storage.ClearablePeerStore, error) {
 	cfg := provided.Validate()
 
 	u, err := parseRedisURL(cfg.RedisBroker)
@@ -228,6 +227,11 @@ func New(provided Config) (storage.PeerStore, error) {
 	}()
 
 	return ps, nil
+}
+
+// New creates a new PeerStore backed by redis.
+func New(provided Config) (storage.PeerStore, error) {
+	return build(provided)
 }
 
 type serializedPeer string
@@ -702,7 +706,7 @@ func (ps *peerStore) ScrapeSwarm(ih bittorrent.InfoHash, af bittorrent.AddressFa
 //	 will fail. This is okay, the infohash key will remain in the addressFamily
 //   hash, we will attempt to clean it up the next time 'collectGarbage` runs.
 // - If the change happens after the HLEN, we will not even attempt to make the
-//	 transaction. The infohash key will remain in the addressFamil hash and
+//	 transaction. The infohash key will remain in the addressFamily hash and
 //	 we'll attempt to clean it up the next time collectGarbage runs.
 func (ps *peerStore) collectGarbage(cutoff time.Time) error {
 	select {
@@ -806,6 +810,102 @@ func (ps *peerStore) collectGarbage(cutoff time.Time) error {
 	duration := float64(time.Since(start).Nanoseconds()) / float64(time.Millisecond)
 	log.Debug("storage: recordGCDuration", log.Fields{"timeTaken(ms)": duration})
 	storage.PromGCDurationMilliseconds.Observe(duration)
+
+	return nil
+}
+
+// Clear clears (almost) all data from redis, given that no concurrent
+// operations are taking place.
+// This uses the same logic as collectGarbage, only that all peers,
+// regardless of age, will be deleted.
+// In the end, only the counter keys remain.
+func (ps *peerStore) Clear() error {
+	log.Info("storage: clearing storage")
+
+	conn := ps.rb.open()
+	defer conn.Close()
+
+	start := time.Now()
+
+	for _, group := range ps.groups() {
+		// list all infohashes in the group
+		infohashesList, err := redis.Strings(conn.Do("HKEYS", group))
+		if err != nil {
+			return err
+		}
+
+		for _, ihStr := range infohashesList {
+			isSeeder := len(ihStr) > 5 && ihStr[5:6] == "S"
+
+			// list all (peer, timeout) pairs for the ih
+			ihList, err := redis.Strings(conn.Do("HGETALL", ihStr))
+			if err != nil {
+				return err
+			}
+
+			var pk serializedPeer
+			var removedPeerCount int64
+			for index, ihField := range ihList {
+				if index%2 == 1 { // value
+					ret, err := redis.Int64(conn.Do("HDEL", ihStr, pk))
+					if err != nil {
+						return err
+					}
+
+					removedPeerCount += ret
+				} else { // key
+					pk = serializedPeer([]byte(ihField))
+				}
+			}
+			// DECR seeder/leecher counter
+			decrCounter := ps.leecherCountKey(group)
+			if isSeeder {
+				decrCounter = ps.seederCountKey(group)
+			}
+			if removedPeerCount > 0 {
+				if _, err := conn.Do("DECRBY", decrCounter, removedPeerCount); err != nil {
+					return err
+				}
+			}
+
+			// use WATCH to avoid race condition
+			// https://redis.io/topics/transactions
+			_, err = conn.Do("WATCH", ihStr)
+			if err != nil {
+				return err
+			}
+			ihLen, err := redis.Int64(conn.Do("HLEN", ihStr))
+			if err != nil {
+				return err
+			}
+			if ihLen == 0 {
+				// Empty hashes are not shown among existing keys,
+				// in other words, it's removed automatically after `HDEL` the last field.
+				//_, err := conn.Do("DEL", ihStr)
+
+				conn.Send("MULTI")
+				conn.Send("HDEL", group, ihStr)
+				if isSeeder {
+					conn.Send("DECR", ps.infohashCountKey(group))
+				}
+				_, err = redis.Values(conn.Do("EXEC"))
+				if err != nil && err != redis.ErrNil {
+					log.Error("storage: Redis EXEC failure", log.Fields{
+						"group":    group,
+						"infohash": ihStr,
+						"error":    err,
+					})
+				}
+			} else {
+				if _, err = conn.Do("UNWATCH"); err != nil && err != redis.ErrNil {
+					log.Error("storage: Redis UNWATCH failure", log.Fields{"error": err})
+				}
+			}
+		}
+	}
+
+	duration := float64(time.Since(start).Nanoseconds()) / float64(time.Millisecond)
+	log.Debug("storage: finished clearing", log.Fields{"timeTaken(ms)": duration})
 
 	return nil
 }
