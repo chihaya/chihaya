@@ -1,6 +1,6 @@
 language: go
 go:
-  - 1.11.x
+  - 1.13.x
 sudo: false
 matrix:
   include:
@@ -9,7 +9,6 @@ matrix:
     - go get -u golang.org/x/lint/golint
     - go get -u golang.org/x/tools/cmd/...
     script:
-    - export GO111MODULE=on
     - go mod download
     - go test -v -race $(go list ./...)
     - go vet $(go list ./...)
@@ -23,7 +22,7 @@ matrix:
     - kill $pid
   # Using HEAD of dependencies
   - install:
-    - go get -t ./...
+    - go get -t -u ./...
     - go get -u golang.org/x/lint/golint
     - go get -u golang.org/x/tools/cmd/...
     script:
@@ -40,7 +39,7 @@ matrix:
   allow_failures:
   # Using HEAD of dependencies
   - install:
-    - go get -t ./...
+    - go get -t -u ./...
     - go get -u golang.org/x/lint/golint
     - go get -u golang.org/x/tools/cmd/...
     script:

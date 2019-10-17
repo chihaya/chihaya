@@ -10,17 +10,13 @@ import (
 	"github.com/chihaya/chihaya/frontend/http"
 	"github.com/chihaya/chihaya/frontend/udp"
 	"github.com/chihaya/chihaya/middleware"
-)
 
-import (
 	// Imports to register middleware drivers.
 	_ "github.com/chihaya/chihaya/middleware/clientapproval"
 	_ "github.com/chihaya/chihaya/middleware/jwt"
 	_ "github.com/chihaya/chihaya/middleware/torrentapproval"
 	_ "github.com/chihaya/chihaya/middleware/varinterval"
-)
 
-import (
 	// Imports to register storage drivers.
 	_ "github.com/chihaya/chihaya/storage/memory"
 	_ "github.com/chihaya/chihaya/storage/redis"
