@@ -12,15 +12,6 @@ chihaya:
   # For more info see: https://prometheus.io
   prometheus_addr: "0.0.0.0:6880"
 
-  # The maximum number of peers returned in an announce.
-  max_numwant: 50
-
-  # The default number of peers returned in an announce.
-  default_numwant: 25
-
-  # The number of infohashes a single scrape can request before being truncated.
-  max_scrape_infohashes: 50
-
   # This block defines configuration for the tracker's HTTP interface.
   # If you do not wish to run this, delete this section.
   http:
@@ -113,6 +104,9 @@ chihaya:
     name: memory
     config:
       # The frequency which stale peers are removed.
+      # This balances between
+      # - collecting garbage more often, potentially using more CPU time, but potentially using less memory (lower value)
+      # - collecting garbage less frequently, saving CPU time, but keeping old peers long, thus using more memory (higher value).
       gc_interval: 3m
 
       # The amount of time until a peer is considered stale.
@@ -132,6 +126,9 @@ chihaya:
   #   name: redis
   #   config:
   #     # The frequency which stale peers are removed.
+  #     # This balances between
+  #     # - collecting garbage more often, potentially using more CPU time, but potentially using less memory (lower value)
+  #     # - collecting garbage less frequently, saving CPU time, but keeping old peers long, thus using more memory (higher value).
   #     gc_interval: 14m
 
   #     # The frequency which metrics are pushed into a local Prometheus endpoint.

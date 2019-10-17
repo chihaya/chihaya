@@ -100,6 +100,33 @@ func (cfg Config) Validate() Config {
 		}
 	}
 
+	if cfg.MaxNumWant <= 0 {
+		validcfg.MaxNumWant = defaultMaxNumWant
+		log.Warn("falling back to default configuration", log.Fields{
+			"name":     "http.MaxNumWant",
+			"provided": cfg.MaxNumWant,
+			"default":  validcfg.MaxNumWant,
+		})
+	}
+
+	if cfg.DefaultNumWant <= 0 {
+		validcfg.DefaultNumWant = defaultDefaultNumWant
+		log.Warn("falling back to default configuration", log.Fields{
+			"name":     "http.DefaultNumWant",
+			"provided": cfg.DefaultNumWant,
+			"default":  validcfg.DefaultNumWant,
+		})
+	}
+
+	if cfg.MaxScrapeInfoHashes <= 0 {
+		validcfg.MaxScrapeInfoHashes = defaultMaxScrapeInfoHashes
+		log.Warn("falling back to default configuration", log.Fields{
+			"name":     "http.MaxScrapeInfoHashes",
+			"provided": cfg.MaxScrapeInfoHashes,
+			"default":  validcfg.MaxScrapeInfoHashes,
+		})
+	}
+
 	return validcfg
 }
 

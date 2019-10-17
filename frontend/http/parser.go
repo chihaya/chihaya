@@ -20,6 +20,13 @@ type ParseOptions struct {
 	MaxScrapeInfoHashes uint32 `yaml:"max_scrape_infohashes"`
 }
 
+// Default parser config constants.
+const (
+	defaultMaxNumWant          = 100
+	defaultDefaultNumWant      = 50
+	defaultMaxScrapeInfoHashes = 50
+)
+
 // ParseAnnounce parses an bittorrent.AnnounceRequest from an http.Request.
 func ParseAnnounce(r *http.Request, opts ParseOptions) (*bittorrent.AnnounceRequest, error) {
 	qp, err := bittorrent.ParseURLData(r.RequestURI)

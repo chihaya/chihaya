@@ -46,6 +46,55 @@ func (cfg Config) LogFields() log.Fields {
 	}
 }
 
+// Validate sanity checks values set in a config and returns a new config with
+// default values replacing anything that is invalid.
+//
+// This function warns to the logger when a value is changed.
+func (cfg Config) Validate() Config {
+	validcfg := cfg
+
+	// Generate a private key if one isn't provided by the user.
+	if cfg.PrivateKey == "" {
+		rand.Seed(time.Now().UnixNano())
+		pkeyRunes := make([]rune, 64)
+		for i := range pkeyRunes {
+			pkeyRunes[i] = allowedGeneratedPrivateKeyRunes[rand.Intn(len(allowedGeneratedPrivateKeyRunes))]
+		}
+		validcfg.PrivateKey = string(pkeyRunes)
+
+		log.Warn("UDP private key was not provided, using generated key", log.Fields{"key": validcfg.PrivateKey})
+	}
+
+	if cfg.MaxNumWant <= 0 {
+		validcfg.MaxNumWant = defaultMaxNumWant
+		log.Warn("falling back to default configuration", log.Fields{
+			"name":     "udp.MaxNumWant",
+			"provided": cfg.MaxNumWant,
+			"default":  validcfg.MaxNumWant,
+		})
+	}
+
+	if cfg.DefaultNumWant <= 0 {
+		validcfg.DefaultNumWant = defaultDefaultNumWant
+		log.Warn("falling back to default configuration", log.Fields{
+			"name":     "udp.DefaultNumWant",
+			"provided": cfg.DefaultNumWant,
+			"default":  validcfg.DefaultNumWant,
+		})
+	}
+
+	if cfg.MaxScrapeInfoHashes <= 0 {
+		validcfg.MaxScrapeInfoHashes = defaultMaxScrapeInfoHashes
+		log.Warn("falling back to default configuration", log.Fields{
+			"name":     "udp.MaxScrapeInfoHashes",
+			"provided": cfg.MaxScrapeInfoHashes,
+			"default":  validcfg.MaxScrapeInfoHashes,
+		})
+	}
+
+	return validcfg
+}
+
 // Frontend holds the state of a UDP BitTorrent Frontend.
 type Frontend struct {
 	socket  *net.UDPConn
@@ -60,18 +109,8 @@ type Frontend struct {
 
 // NewFrontend creates a new instance of an UDP Frontend that asynchronously
 // serves requests.
-func NewFrontend(logic frontend.TrackerLogic, cfg Config) (*Frontend, error) {
-	// Generate a private key if one isn't provided by the user.
-	if cfg.PrivateKey == "" {
-		rand.Seed(time.Now().UnixNano())
-		pkeyRunes := make([]rune, 64)
-		for i := range pkeyRunes {
-			pkeyRunes[i] = allowedGeneratedPrivateKeyRunes[rand.Intn(len(allowedGeneratedPrivateKeyRunes))]
-		}
-		cfg.PrivateKey = string(pkeyRunes)
-
-		log.Warn("UDP private key was not provided, using generated key", log.Fields{"key": cfg.PrivateKey})
-	}
+func NewFrontend(logic frontend.TrackerLogic, provided Config) (*Frontend, error) {
+	cfg := provided.Validate()
 
 	f := &Frontend{
 		closing: make(chan struct{}),
