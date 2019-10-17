@@ -129,14 +129,15 @@ chihaya:
   #     # This balances between
   #     # - collecting garbage more often, potentially using more CPU time, but potentially using less memory (lower value)
   #     # - collecting garbage less frequently, saving CPU time, but keeping old peers long, thus using more memory (higher value).
-  #     gc_interval: 14m
+  #     gc_interval: 3m
 
-  #     # The frequency which metrics are pushed into a local Prometheus endpoint.
+  #     # The interval at which metrics about the number of infohashes and peers
+  #     # are collected and posted to Prometheus.
   #     prometheus_reporting_interval: 1s
 
   #     # The amount of time until a peer is considered stale.
   #     # To avoid churn, keep this slightly larger than `announce_interval`
-  #     peer_lifetime: 16m
+  #     peer_lifetime: 31m
 
   #     # The address of redis storage.
   #     redis_broker: "redis://pwd@127.0.0.1:6379/0"
