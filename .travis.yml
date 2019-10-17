@@ -6,28 +6,28 @@ services:
   - redis-server
 matrix:
   include:
-  # Using vendored dependencies
-  - install:
-    - ./dist/travis/install_reproducible.sh
-    script:
-    - ./dist/travis/check.sh
+    # Using vendored dependencies
+    - install:
+        - ./dist/travis/install_reproducible.sh
+      script:
+        - ./dist/travis/check.sh
 
-  # Using HEAD of dependencies
-  - install:
-    - ./dist/travis/install_tip.sh
-    script:
-    - ./dist/travis/check.sh
+    # Using HEAD of dependencies
+    - install:
+        - ./dist/travis/install_tip.sh
+      script:
+        - ./dist/travis/check.sh
 
   allow_failures:
-  # Using HEAD of dependencies
-  - install:
-    - ./dist/travis/install_tip.sh
-    script:
-    - ./dist/travis/check.sh
+    # Using HEAD of dependencies
+    - install:
+        - ./dist/travis/install_tip.sh
+      script:
+        - ./dist/travis/check.sh
 notifications:
   irc:
     channels:
-    - irc.freenode.net#chihaya
+      - irc.freenode.net#chihaya
     use_notice: true
     skip_join: true
     on_success: always

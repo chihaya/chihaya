@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -ex
 
 go test -v -race $(go list ./...)
 go vet $(go list ./...)

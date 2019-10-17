@@ -39,7 +39,7 @@ chihaya:
       gc_interval: 3m
       peer_lifetime: 31m
       prometheus_reporting_interval: 1s
-      redis_broker: "redis://pwd@127.0.0.1:6379/0"
+      redis_broker: "redis://127.0.0.1:6379/0"
       redis_read_timeout: 15s
       redis_write_timeout: 15s
       redis_connect_timeout: 15s
