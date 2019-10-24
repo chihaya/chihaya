@@ -101,6 +101,12 @@ type PeerStore interface {
 	// The Complete and Incomplete fields of the Scrape must be filled,
 	// filling the Snatches field is optional.
 	//
+	// If infoHashes is empty, a fullscrape is requested.
+	// If the implementation supports fullscrapes, scrapes for all infohashes
+	// for the given AddressFamily will be returned.
+	// If the implementation does not support fullscrapes, an empty slice
+	// will be returned.
+	//
 	// If a Swarm does not exist, the scrape at that index will be empty and no
 	// error is returned.
 	ScrapeSwarms(infoHashes []bittorrent.InfoHash, addressFamily bittorrent.AddressFamily) []bittorrent.Scrape

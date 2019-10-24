@@ -484,11 +484,39 @@ func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant 
 	return
 }
 
+func (ps *peerStore) fullscrapeSwarms(addressFamily bittorrent.AddressFamily) (resp []bittorrent.Scrape) {
+	shards := ps.shards[:len(ps.shards)/2]
+	if addressFamily == bittorrent.IPv6 {
+		shards = ps.shards[len(ps.shards)/2:]
+	}
+
+	for _, shard := range shards {
+		shard.RLock()
+		for ih, swarm := range shard.swarms {
+			resp = append(resp, bittorrent.Scrape{
+				InfoHash:   ih,
+				Complete:   uint32(len(swarm.seeders)),
+				Incomplete: uint32(len(swarm.leechers)),
+			})
+		}
+		shard.RUnlock()
+		// Not sure if this helps...
+		runtime.Gosched()
+	}
+
+	return
+}
+
 func (ps *peerStore) ScrapeSwarms(infoHashes []bittorrent.InfoHash, addressFamily bittorrent.AddressFamily) (resp []bittorrent.Scrape) {
 	select {
 	case <-ps.closed:
 		panic("attempted to interact with stopped memory store")
 	default:
+	}
+
+	if len(infoHashes) == 0 {
+		// This is a fullscrape.
+		return ps.fullscrapeSwarms(addressFamily)
 	}
 
 	resp = make([]bittorrent.Scrape, len(infoHashes))
