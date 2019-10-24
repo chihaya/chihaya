@@ -484,26 +484,30 @@ func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant 
 	return
 }
 
-func (ps *peerStore) ScrapeSwarm(ih bittorrent.InfoHash, addressFamily bittorrent.AddressFamily) (resp bittorrent.Scrape) {
+func (ps *peerStore) ScrapeSwarms(infoHashes []bittorrent.InfoHash, addressFamily bittorrent.AddressFamily) (resp []bittorrent.Scrape) {
 	select {
 	case <-ps.closed:
 		panic("attempted to interact with stopped memory store")
 	default:
 	}
 
-	resp.InfoHash = ih
-	shard := ps.shards[ps.shardIndex(ih, addressFamily)]
-	shard.RLock()
+	resp = make([]bittorrent.Scrape, len(infoHashes))
 
-	swarm, ok := shard.swarms[ih]
-	if !ok {
+	for i, ih := range infoHashes {
+		resp[i].InfoHash = ih
+		shard := ps.shards[ps.shardIndex(ih, addressFamily)]
+		shard.RLock()
+
+		swarm, ok := shard.swarms[ih]
+		if !ok {
+			shard.RUnlock()
+			continue
+		}
+
+		resp[i].Incomplete = uint32(len(swarm.leechers))
+		resp[i].Complete = uint32(len(swarm.seeders))
 		shard.RUnlock()
-		return
 	}
-
-	resp.Incomplete = uint32(len(swarm.leechers))
-	resp.Complete = uint32(len(swarm.seeders))
-	shard.RUnlock()
 
 	return
 }

@@ -429,23 +429,23 @@ func AnnounceSeeder1kInfohash(b *testing.B, ps PeerStore) {
 	})
 }
 
-// ScrapeSwarm benchmarks the ScrapeSwarm method of a PeerStore.
+// ScrapeSwarms benchmarks the ScrapeSwarms method of a PeerStore.
 // The swarm scraped has 500 seeders and 500 leechers.
 //
-// ScrapeSwarm can run in parallel.
-func ScrapeSwarm(b *testing.B, ps PeerStore) {
+// ScrapeSwarms can run in parallel.
+func ScrapeSwarms(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, putPeers, func(i int, ps PeerStore, bd *benchData) error {
-		ps.ScrapeSwarm(bd.infohashes[0], bittorrent.IPv4)
+		ps.ScrapeSwarms(bd.infohashes[:1], bittorrent.IPv4)
 		return nil
 	})
 }
 
-// ScrapeSwarm1kInfohash behaves like ScrapeSwarm with one of 1000 infohashes.
+// ScrapeSwarm1kInfohash behaves like ScrapeSwarms with one of 1000 infohashes.
 //
 // ScrapeSwarm1kInfohash can run in parallel.
 func ScrapeSwarm1kInfohash(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, putPeers, func(i int, ps PeerStore, bd *benchData) error {
-		ps.ScrapeSwarm(bd.infohashes[i%1000], bittorrent.IPv4)
+		ps.ScrapeSwarms(bd.infohashes[i%1000:(i%1000)+1], bittorrent.IPv4)
 		return nil
 	})
 }

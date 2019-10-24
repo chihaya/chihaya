@@ -47,5 +47,5 @@ func BenchmarkAnnounceLeecher(b *testing.B)            { s.AnnounceLeecher(b, cr
 func BenchmarkAnnounceLeecher1kInfohash(b *testing.B)  { s.AnnounceLeecher1kInfohash(b, createNew()) }
 func BenchmarkAnnounceSeeder(b *testing.B)             { s.AnnounceSeeder(b, createNew()) }
 func BenchmarkAnnounceSeeder1kInfohash(b *testing.B)   { s.AnnounceSeeder1kInfohash(b, createNew()) }
-func BenchmarkScrapeSwarm(b *testing.B)                { s.ScrapeSwarm(b, createNew()) }
+func BenchmarkScrapeSwarm(b *testing.B)                { s.ScrapeSwarms(b, createNew()) }
 func BenchmarkScrapeSwarm1kInfohash(b *testing.B)      { s.ScrapeSwarm1kInfohash(b, createNew()) }

@@ -50,11 +50,12 @@ func TestPeerStore(t *testing.T, p PeerStore) {
 		_, err = p.AnnouncePeers(c.ih, false, 50, peer)
 		require.Equal(t, ErrResourceDoesNotExist, err)
 
-		// Test empty scrape response for non-existent swarms.
-		scrape := p.ScrapeSwarm(c.ih, c.peer.IP.AddressFamily)
-		require.Equal(t, uint32(0), scrape.Complete)
-		require.Equal(t, uint32(0), scrape.Incomplete)
-		require.Equal(t, uint32(0), scrape.Snatches)
+		// Test empty scrapes response for non-existent swarms.
+		scrapes := p.ScrapeSwarms([]bittorrent.InfoHash{c.ih}, c.peer.IP.AddressFamily)
+		require.Equal(t, 1, len(scrapes))
+		require.Equal(t, uint32(0), scrapes[0].Complete)
+		require.Equal(t, uint32(0), scrapes[0].Incomplete)
+		require.Equal(t, uint32(0), scrapes[0].Snatches)
 
 		// Insert dummy Peer to keep swarm active
 		// Has the same address family as c.peer
@@ -79,9 +80,10 @@ func TestPeerStore(t *testing.T, p PeerStore) {
 		require.Nil(t, err)
 		require.True(t, containsPeer(peers, c.peer))
 
-		scrape = p.ScrapeSwarm(c.ih, c.peer.IP.AddressFamily)
-		require.Equal(t, uint32(2), scrape.Incomplete)
-		require.Equal(t, uint32(0), scrape.Complete)
+		scrapes = p.ScrapeSwarms([]bittorrent.InfoHash{c.ih}, c.peer.IP.AddressFamily)
+		require.Equal(t, 1, len(scrapes))
+		require.Equal(t, uint32(2), scrapes[0].Incomplete)
+		require.Equal(t, uint32(0), scrapes[0].Complete)
 
 		err = p.DeleteLeecher(c.ih, c.peer)
 		require.Nil(t, err)
@@ -100,9 +102,10 @@ func TestPeerStore(t *testing.T, p PeerStore) {
 		require.Nil(t, err)
 		require.True(t, containsPeer(peers, c.peer))
 
-		scrape = p.ScrapeSwarm(c.ih, c.peer.IP.AddressFamily)
-		require.Equal(t, uint32(1), scrape.Incomplete)
-		require.Equal(t, uint32(1), scrape.Complete)
+		scrapes = p.ScrapeSwarms([]bittorrent.InfoHash{c.ih}, c.peer.IP.AddressFamily)
+		require.Equal(t, 1, len(scrapes))
+		require.Equal(t, uint32(1), scrapes[0].Incomplete)
+		require.Equal(t, uint32(1), scrapes[0].Complete)
 
 		err = p.DeleteSeeder(c.ih, c.peer)
 		require.Nil(t, err)
