@@ -1,0 +1,45 @@
+# This config file is used by travis for end-to-end testing.
+# See example_config.yaml for a commented, more complete configuration!
+
+chihaya:
+  announce_interval: 30m
+  min_announce_interval: 15m
+  prometheus_addr: "0.0.0.0:6880"
+
+  http:
+    addr: "0.0.0.0:6969"
+    https_addr: ""
+    tls_cert_path: ""
+    tls_key_path: ""
+    read_timeout: 5s
+    write_timeout: 5s
+    enable_keepalive: false
+    idle_timeout: 30s
+    enable_request_timing: false
+    enable_legacy_php_urls: false
+    allow_ip_spoofing: false
+    real_ip_header: "x-real-ip"
+    max_numwant: 100
+    default_numwant: 50
+    max_scrape_infohashes: 50
+
+  udp:
+    addr: "0.0.0.0:6969"
+    max_clock_skew: 10s
+    private_key: "paste a random string here that will be used to hmac connection IDs"
+    enable_request_timing: false
+    allow_ip_spoofing: false
+    max_numwant: 100
+    default_numwant: 50
+    max_scrape_infohashes: 50
+
+  storage:
+    name: redis
+    config:
+      gc_interval: 3m
+      peer_lifetime: 31m
+      prometheus_reporting_interval: 1s
+      redis_broker: "redis://127.0.0.1:6379/0"
+      redis_read_timeout: 15s
+      redis_write_timeout: 15s
+      redis_connect_timeout: 15s
