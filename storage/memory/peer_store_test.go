@@ -20,7 +20,8 @@ func createNew() s.PeerStore {
 	return ps
 }
 
-func TestPeerStore(t *testing.T) { s.TestPeerStore(t, createNew()) }
+func TestPeerStore(t *testing.T)  { s.TestPeerStore(t, createNew()) }
+func TestFullscrape(t *testing.T) { s.TestFullscrape(t, createNew()) }
 
 func BenchmarkNop(b *testing.B)                        { s.Nop(b, createNew()) }
 func BenchmarkPut(b *testing.B)                        { s.Put(b, createNew()) }

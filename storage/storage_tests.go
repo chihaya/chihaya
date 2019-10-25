@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"bytes"
 	"net"
 	"testing"
 
@@ -163,4 +164,128 @@ func containsPeer(peers []bittorrent.Peer, p bittorrent.Peer) bool {
 		}
 	}
 	return false
+}
+
+// TestFullscrape tests whether a storage implementation correctly implements
+// fullscrapes.
+func TestFullscrape(t *testing.T, ps PeerStore) {
+	testData := []struct {
+		ih           bittorrent.InfoHash
+		seeders      []bittorrent.Peer
+		leechers     []bittorrent.Peer
+		v4Complete   uint32
+		v6Complete   uint32
+		v4Incomplete uint32
+		v6Incomplete uint32
+	}{
+		{
+			bittorrent.InfoHashFromString("00000000000000000001"),
+			[]bittorrent.Peer{
+				{
+					ID:   bittorrent.PeerIDFromString("00000000000000000001"),
+					Port: 1,
+					IP: bittorrent.IP{
+						IP:            net.ParseIP("1.1.1.1").To4(),
+						AddressFamily: bittorrent.IPv4}},
+				{
+					ID:   bittorrent.PeerIDFromString("00000000000000000002"),
+					Port: 2,
+					IP: bittorrent.IP{
+						IP:            net.ParseIP("1.1.1.2").To4(),
+						AddressFamily: bittorrent.IPv4}},
+			},
+			[]bittorrent.Peer{
+				{
+					ID:   bittorrent.PeerIDFromString("00000000000000000003"),
+					Port: 3,
+					IP: bittorrent.IP{
+						IP:            net.ParseIP("1.1.1.3").To4(),
+						AddressFamily: bittorrent.IPv4}},
+			},
+			2,
+			0,
+			1,
+			0,
+		},
+		{
+			bittorrent.InfoHashFromString("00000000000000000002"),
+			[]bittorrent.Peer{
+				{
+					ID:   bittorrent.PeerIDFromString("00000000000000000001"),
+					Port: 1,
+					IP: bittorrent.IP{
+						IP:            net.ParseIP("1.1.1.1").To4(),
+						AddressFamily: bittorrent.IPv4}},
+				{
+					ID:   bittorrent.PeerIDFromString("00000000000000000002"),
+					Port: 2,
+					IP: bittorrent.IP{
+						IP:            net.ParseIP("abab::0001"),
+						AddressFamily: bittorrent.IPv6}},
+			},
+			[]bittorrent.Peer{
+				{
+					ID:   bittorrent.PeerIDFromString("00000000000000000003"),
+					Port: 3,
+					IP: bittorrent.IP{
+						IP:            net.ParseIP("abab::0003"),
+						AddressFamily: bittorrent.IPv6}},
+			},
+			1,
+			1,
+			0,
+			1,
+		},
+	}
+
+	for _, td := range testData {
+		for _, seeder := range td.seeders {
+			err := ps.PutSeeder(td.ih, seeder)
+			require.Nil(t, err)
+		}
+		for _, leecher := range td.leechers {
+			err := ps.PutLeecher(td.ih, leecher)
+			require.Nil(t, err)
+		}
+	}
+
+	v4Full := ps.ScrapeSwarms(nil, bittorrent.IPv4)
+	require.Len(t, v4Full, 2)
+	v6Full := ps.ScrapeSwarms(nil, bittorrent.IPv6)
+	require.Len(t, v6Full, 1)
+
+	for _, scrape := range v4Full {
+		for _, td := range testData {
+			if bytes.Equal(td.ih[:], scrape.InfoHash[:]) {
+				require.Equal(t, td.v4Complete, scrape.Complete)
+				require.Equal(t, td.v4Incomplete, scrape.Incomplete)
+				break
+			}
+		}
+	}
+
+	for _, scrape := range v6Full {
+		for _, td := range testData {
+			if bytes.Equal(td.ih[:], scrape.InfoHash[:]) {
+				require.Equal(t, td.v6Complete, scrape.Complete)
+				require.Equal(t, td.v6Incomplete, scrape.Incomplete)
+				break
+			}
+		}
+	}
+
+	// Clean up
+	for _, td := range testData {
+		for _, seeder := range td.seeders {
+			err := ps.DeleteSeeder(td.ih, seeder)
+			require.Nil(t, err)
+		}
+		for _, leecher := range td.leechers {
+			err := ps.DeleteLeecher(td.ih, leecher)
+			require.Nil(t, err)
+		}
+	}
+
+	e := ps.Stop()
+	require.Nil(t, <-e)
 }
