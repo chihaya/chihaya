@@ -243,6 +243,11 @@ func recordGCDuration(duration time.Duration) {
 	storage.PromGCDurationMilliseconds.Observe(float64(duration.Nanoseconds()) / float64(time.Millisecond))
 }
 
+// recordFullscrapeDuration records the duration of collecting a fullscrape.
+func recordFullscrapeDuration(duration time.Duration) {
+	storage.PromFullscrapeDurationMilliseconds.Observe(float64(duration.Nanoseconds()) / float64(time.Millisecond))
+}
+
 func (ps *peerStore) getClock() int64 {
 	return timecache.NowUnixNano()
 }
@@ -516,7 +521,10 @@ func (ps *peerStore) ScrapeSwarms(infoHashes []bittorrent.InfoHash, addressFamil
 
 	if len(infoHashes) == 0 {
 		// This is a fullscrape.
-		return ps.fullscrapeSwarms(addressFamily)
+		start := time.Now()
+		resp = ps.fullscrapeSwarms(addressFamily)
+		recordFullscrapeDuration(time.Since(start))
+		return
 	}
 
 	resp = make([]bittorrent.Scrape, len(infoHashes))
