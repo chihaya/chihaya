@@ -440,10 +440,10 @@ func ScrapeSwarms(b *testing.B, ps PeerStore) {
 	})
 }
 
-// ScrapeSwarm1kInfohash behaves like ScrapeSwarms with one of 1000 infohashes.
+// ScrapeSwarms1kInfohash behaves like ScrapeSwarms with one of 1000 infohashes.
 //
-// ScrapeSwarm1kInfohash can run in parallel.
-func ScrapeSwarm1kInfohash(b *testing.B, ps PeerStore) {
+// ScrapeSwarms1kInfohash can run in parallel.
+func ScrapeSwarms1kInfohash(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, putPeers, func(i int, ps PeerStore, bd *benchData) error {
 		ps.ScrapeSwarms(bd.infohashes[i%1000:(i%1000)+1], bittorrent.IPv4)
 		return nil
