@@ -15,12 +15,39 @@ import (
 // If RealIPHeader is not empty string, the value of the first HTTP Header with
 // that name will be used.
 type ParseOptions struct {
-	AllowIPSpoofing          bool     `yaml:"allow_ip_spoofing"`
-	RealIPHeader             string   `yaml:"real_ip_header"`
-	MaxNumWant               uint32   `yaml:"max_numwant"`
-	DefaultNumWant           uint32   `yaml:"default_numwant"`
-	MaxScrapeInfoHashes      uint32   `yaml:"max_scrape_infohashes"`
-	FullScrapeWhitelistedIPs []net.IP `yaml:"fullscrape_whitelisted_ips"`
+	AllowIPSpoofing               bool       `yaml:"allow_ip_spoofing"`
+	RealIPHeader                  string     `yaml:"real_ip_header"`
+	MaxNumWant                    uint32     `yaml:"max_numwant"`
+	DefaultNumWant                uint32     `yaml:"default_numwant"`
+	MaxScrapeInfoHashes           uint32     `yaml:"max_scrape_infohashes"`
+	FullScrapeWhitelistedNetworks []cidrMask `yaml:"fullscrape_whitelisted_networks"`
+}
+
+// cidrMask is a wrapper around net.IPNet that allows us to YAML unmarshal it.
+type cidrMask struct {
+	net net.IPNet
+}
+
+func (c cidrMask) String() string {
+	return c.net.String()
+}
+
+func (c *cidrMask) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var cidrString string
+	err := unmarshal(&cidrString)
+	if err != nil {
+		return err
+	}
+
+	_, network, err := net.ParseCIDR(cidrString)
+	if err != nil {
+		return err
+	}
+
+	c.net.Mask = network.Mask
+	c.net.IP = network.IP
+
+	return nil
 }
 
 // Default parser config constants.
@@ -143,8 +170,8 @@ func ParseScrape(r *http.Request, opts ParseOptions) (*bittorrent.ScrapeRequest,
 		}
 
 		found := false
-		for _, whitelistedIP := range opts.FullScrapeWhitelistedIPs {
-			if remoteIP.Equal(whitelistedIP) {
+		for _, network := range opts.FullScrapeWhitelistedNetworks {
+			if network.net.Contains(remoteIP) {
 				found = true
 				break
 			}

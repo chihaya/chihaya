@@ -37,22 +37,22 @@ type Config struct {
 // LogFields renders the current config as a set of Logrus fields.
 func (cfg Config) LogFields() log.Fields {
 	return log.Fields{
-		"addr":                     cfg.Addr,
-		"httpsAddr":                cfg.HTTPSAddr,
-		"readTimeout":              cfg.ReadTimeout,
-		"writeTimeout":             cfg.WriteTimeout,
-		"idleTimeout":              cfg.IdleTimeout,
-		"enableKeepAlive":          cfg.EnableKeepAlive,
-		"tlsCertPath":              cfg.TLSCertPath,
-		"tlsKeyPath":               cfg.TLSKeyPath,
-		"enableLegacyPHPURLs":      cfg.EnableLegacyPHPURLs,
-		"enableRequestTiming":      cfg.EnableRequestTiming,
-		"allowIPSpoofing":          cfg.AllowIPSpoofing,
-		"realIPHeader":             cfg.RealIPHeader,
-		"maxNumWant":               cfg.MaxNumWant,
-		"defaultNumWant":           cfg.DefaultNumWant,
-		"maxScrapeInfoHashes":      cfg.MaxScrapeInfoHashes,
-		"fullscrapeWhitelistedIPs": cfg.FullScrapeWhitelistedIPs,
+		"addr":                          cfg.Addr,
+		"httpsAddr":                     cfg.HTTPSAddr,
+		"readTimeout":                   cfg.ReadTimeout,
+		"writeTimeout":                  cfg.WriteTimeout,
+		"idleTimeout":                   cfg.IdleTimeout,
+		"enableKeepAlive":               cfg.EnableKeepAlive,
+		"tlsCertPath":                   cfg.TLSCertPath,
+		"tlsKeyPath":                    cfg.TLSKeyPath,
+		"enableLegacyPHPURLs":           cfg.EnableLegacyPHPURLs,
+		"enableRequestTiming":           cfg.EnableRequestTiming,
+		"allowIPSpoofing":               cfg.AllowIPSpoofing,
+		"realIPHeader":                  cfg.RealIPHeader,
+		"maxNumWant":                    cfg.MaxNumWant,
+		"defaultNumWant":                cfg.DefaultNumWant,
+		"maxScrapeInfoHashes":           cfg.MaxScrapeInfoHashes,
+		"fullscrapeWhitelistedNetworks": cfg.FullScrapeWhitelistedNetworks,
 	}
 }
 

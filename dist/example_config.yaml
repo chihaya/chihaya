@@ -68,12 +68,12 @@ chihaya:
     # The maximum number of infohashes that can be scraped in one request.
     max_scrape_infohashes: 50
 
-    # The IP addresses from which a fullscrape will be allowed.
+    # The networks in CIDR notation from which a fullscrape will be allowed.
     # Note: Fullscrapes are potentially expensive and may slow the tracker down.
-    # It is recommended to only allow this from trusted IPs.
+    # It is recommended to only allow this from trusted networks.
     # Whether fullscrapes are supported depends on the storage implementation.
-    fullscrape_whitelisted_ips:
-      - "127.0.0.1"
+    fullscrape_whitelisted_networks:
+      - "127.0.0.1/8"
 
   # This block defines configuration for the tracker's UDP interface.
   # If you do not wish to run this, delete this section.
