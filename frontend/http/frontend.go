@@ -29,7 +29,8 @@ type Config struct {
 	EnableKeepAlive     bool          `yaml:"enable_keepalive"`
 	TLSCertPath         string        `yaml:"tls_cert_path"`
 	TLSKeyPath          string        `yaml:"tls_key_path"`
-	EnableLegacyPHPURLs bool          `yaml:"enable_legacy_php_urls"`
+	AnnounceRoutes      []string      `yaml:"announce_routes"`
+	ScrapeRoutes        []string      `yaml:"scrape_routes"`
 	EnableRequestTiming bool          `yaml:"enable_request_timing"`
 	ParseOptions        `yaml:",inline"`
 }
@@ -45,7 +46,8 @@ func (cfg Config) LogFields() log.Fields {
 		"enableKeepAlive":     cfg.EnableKeepAlive,
 		"tlsCertPath":         cfg.TLSCertPath,
 		"tlsKeyPath":          cfg.TLSKeyPath,
-		"enableLegacyPHPURLs": cfg.EnableLegacyPHPURLs,
+		"announceRoutes":      cfg.AnnounceRoutes,
+		"scrapeRoutes":        cfg.ScrapeRoutes,
 		"enableRequestTiming": cfg.EnableRequestTiming,
 		"allowIPSpoofing":     cfg.AllowIPSpoofing,
 		"realIPHeader":        cfg.RealIPHeader,
@@ -154,6 +156,10 @@ func NewFrontend(logic frontend.TrackerLogic, provided Config) (*Frontend, error
 		return nil, errors.New("must specify addr or https_addr or both")
 	}
 
+	if len(cfg.AnnounceRoutes) < 1 || len(cfg.ScrapeRoutes) < 1 {
+		return nil, errors.New("must specify routes")
+	}
+
 	// If TLS is enabled, create a key pair.
 	if cfg.TLSCertPath != "" && cfg.TLSKeyPath != "" {
 		var err error
@@ -236,15 +242,12 @@ func (f *Frontend) makeStopFunc(stopSrv *http.Server) stop.Func {
 
 func (f *Frontend) handler() http.Handler {
 	router := httprouter.New()
-	router.GET("/announce", f.announceRoute)
-	router.GET("/scrape", f.scrapeRoute)
-
-	if f.EnableLegacyPHPURLs {
-		log.Info("http: enabling legacy PHP URLs")
-		router.GET("/announce.php", f.announceRoute)
-		router.GET("/scrape.php", f.scrapeRoute)
+	for _, route := range f.AnnounceRoutes {
+		router.GET(route, f.announceRoute)
 	}
-
+	for _, route := range f.ScrapeRoutes {
+		router.GET(route, f.scrapeRoute)
+	}
 	return router
 }
 
@@ -288,8 +291,16 @@ func (f *Frontend) serveHTTPS(l net.Listener) error {
 	return nil
 }
 
+func injectRouteParamsToContext(ctx context.Context, ps httprouter.Params) context.Context {
+	rp := bittorrent.RouteParams{}
+	for _, p := range ps {
+		rp = append(rp, bittorrent.RouteParam{Key: p.Key, Value: p.Value})
+	}
+	return context.WithValue(ctx, bittorrent.RouteParamsKey, rp)
+}
+
 // announceRoute parses and responds to an Announce.
-func (f *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func (f *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	var err error
 	var start time.Time
 	if f.EnableRequestTiming {
@@ -312,7 +323,8 @@ func (f *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, _ httpr
 	af = new(bittorrent.AddressFamily)
 	*af = req.IP.AddressFamily
 
-	ctx, resp, err := f.logic.HandleAnnounce(context.Background(), req)
+	ctx := injectRouteParamsToContext(context.Background(), ps)
+	ctx, resp, err := f.logic.HandleAnnounce(ctx, req)
 	if err != nil {
 		WriteError(w, err)
 		return
@@ -329,7 +341,7 @@ func (f *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, _ httpr
 }
 
 // scrapeRoute parses and responds to a Scrape.
-func (f *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func (f *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	var err error
 	var start time.Time
 	if f.EnableRequestTiming {
@@ -370,7 +382,8 @@ func (f *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprou
 	af = new(bittorrent.AddressFamily)
 	*af = req.AddressFamily
 
-	ctx, resp, err := f.logic.HandleScrape(context.Background(), req)
+	ctx := injectRouteParamsToContext(context.Background(), ps)
+	ctx, resp, err := f.logic.HandleScrape(ctx, req)
 	if err != nil {
 		WriteError(w, err)
 		return

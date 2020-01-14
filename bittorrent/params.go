@@ -54,6 +54,22 @@ type QueryParams struct {
 	infoHashes []InfoHash
 }
 
+type routeParamsKey struct{}
+
+// RouteParamsKey is a key for the context of a request that
+// contains the named parameters from the http router
+var RouteParamsKey = routeParamsKey{}
+
+// RouteParam is a type that contains the values from the named parameters
+// on the route
+type RouteParam struct {
+	Key   string
+	Value string
+}
+
+// RouteParams is a collection of RouteParam instances
+type RouteParams []RouteParam
+
 // ParseURLData parses a request URL or UDP URLData as defined in BEP41.
 // It expects a concatenated string of the request's path and query parts as
 // defined in RFC 3986. As both the udp: and http: scheme used by BitTorrent
