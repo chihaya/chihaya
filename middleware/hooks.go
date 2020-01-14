@@ -95,7 +95,7 @@ func (h *responseHook) HandleAnnounce(ctx context.Context, req *bittorrent.Annou
 	}
 
 	// Add the Scrape data to the response.
-	s := h.store.ScrapeSwarm(req.InfoHash, req.IP.AddressFamily)
+	s := h.store.ScrapeSwarms([]bittorrent.InfoHash{req.InfoHash}, req.IP.AddressFamily)[0]
 	resp.Incomplete = s.Incomplete
 	resp.Complete = s.Complete
 
@@ -138,9 +138,7 @@ func (h *responseHook) HandleScrape(ctx context.Context, req *bittorrent.ScrapeR
 		return ctx, nil
 	}
 
-	for _, infoHash := range req.InfoHashes {
-		resp.Files = append(resp.Files, h.store.ScrapeSwarm(infoHash, req.AddressFamily))
-	}
+	resp.Files = h.store.ScrapeSwarms(req.InfoHashes, req.AddressFamily)
 
 	return ctx, nil
 }

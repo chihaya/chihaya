@@ -20,7 +20,8 @@ func createNew() s.PeerStore {
 	return ps
 }
 
-func TestPeerStore(t *testing.T) { s.TestPeerStore(t, createNew()) }
+func TestPeerStore(t *testing.T)  { s.TestPeerStore(t, createNew()) }
+func TestFullscrape(t *testing.T) { s.TestFullscrape(t, createNew()) }
 
 func BenchmarkNop(b *testing.B)                        { s.Nop(b, createNew()) }
 func BenchmarkPut(b *testing.B)                        { s.Put(b, createNew()) }
@@ -47,5 +48,5 @@ func BenchmarkAnnounceLeecher(b *testing.B)            { s.AnnounceLeecher(b, cr
 func BenchmarkAnnounceLeecher1kInfohash(b *testing.B)  { s.AnnounceLeecher1kInfohash(b, createNew()) }
 func BenchmarkAnnounceSeeder(b *testing.B)             { s.AnnounceSeeder(b, createNew()) }
 func BenchmarkAnnounceSeeder1kInfohash(b *testing.B)   { s.AnnounceSeeder1kInfohash(b, createNew()) }
-func BenchmarkScrapeSwarm(b *testing.B)                { s.ScrapeSwarm(b, createNew()) }
-func BenchmarkScrapeSwarm1kInfohash(b *testing.B)      { s.ScrapeSwarm1kInfohash(b, createNew()) }
+func BenchmarkScrapeSwarms(b *testing.B)               { s.ScrapeSwarms(b, createNew()) }
+func BenchmarkScrapeSwarms1kInfohash(b *testing.B)     { s.ScrapeSwarms1kInfohash(b, createNew()) }

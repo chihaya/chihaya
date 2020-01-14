@@ -13,11 +13,19 @@ func init() {
 }
 
 var (
-	// PromGCDurationMilliseconds is a histogram used by storage to record the
-	// durations of execution time required for removing expired peers.
+	// PromGCDurationMilliseconds is a histogram used by the storage to record
+	// the durations of execution time required for removing expired peers.
 	PromGCDurationMilliseconds = prometheus.NewHistogram(prometheus.HistogramOpts{
 		Name:    "chihaya_storage_gc_duration_milliseconds",
 		Help:    "The time it takes to perform storage garbage collection",
+		Buckets: prometheus.ExponentialBuckets(9.375, 2, 10),
+	})
+
+	// PromFullscrapeDurationMilliseconds is a histogram used by the storage to
+	// record the execution time of fullscrapes.
+	PromFullscrapeDurationMilliseconds = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Name:    "chihaya_storage_fullscrape_duration_milliseconds",
+		Help:    "The time it takes to fullfill a fullscrape request",
 		Buckets: prometheus.ExponentialBuckets(9.375, 2, 10),
 	})
 

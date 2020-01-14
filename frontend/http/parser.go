@@ -1,10 +1,12 @@
 package http
 
 import (
+	"errors"
 	"net"
 	"net/http"
 
 	"github.com/chihaya/chihaya/bittorrent"
+	"github.com/chihaya/chihaya/pkg/log"
 )
 
 // ParseOptions is the configuration used to parse an Announce Request.
@@ -13,11 +15,39 @@ import (
 // If RealIPHeader is not empty string, the value of the first HTTP Header with
 // that name will be used.
 type ParseOptions struct {
-	AllowIPSpoofing     bool   `yaml:"allow_ip_spoofing"`
-	RealIPHeader        string `yaml:"real_ip_header"`
-	MaxNumWant          uint32 `yaml:"max_numwant"`
-	DefaultNumWant      uint32 `yaml:"default_numwant"`
-	MaxScrapeInfoHashes uint32 `yaml:"max_scrape_infohashes"`
+	AllowIPSpoofing               bool       `yaml:"allow_ip_spoofing"`
+	RealIPHeader                  string     `yaml:"real_ip_header"`
+	MaxNumWant                    uint32     `yaml:"max_numwant"`
+	DefaultNumWant                uint32     `yaml:"default_numwant"`
+	MaxScrapeInfoHashes           uint32     `yaml:"max_scrape_infohashes"`
+	FullScrapeWhitelistedNetworks []cidrMask `yaml:"fullscrape_whitelisted_networks"`
+}
+
+// cidrMask is a wrapper around net.IPNet that allows us to YAML unmarshal it.
+type cidrMask struct {
+	net net.IPNet
+}
+
+func (c cidrMask) String() string {
+	return c.net.String()
+}
+
+func (c *cidrMask) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	var cidrString string
+	err := unmarshal(&cidrString)
+	if err != nil {
+		return err
+	}
+
+	_, network, err := net.ParseCIDR(cidrString)
+	if err != nil {
+		return err
+	}
+
+	c.net.Mask = network.Mask
+	c.net.IP = network.IP
+
+	return nil
 }
 
 // Default parser config constants.
@@ -27,7 +57,7 @@ const (
 	defaultMaxScrapeInfoHashes = 50
 )
 
-// ParseAnnounce parses an bittorrent.AnnounceRequest from an http.Request.
+// ParseAnnounce parses a bittorrent.AnnounceRequest from an http.Request.
 func ParseAnnounce(r *http.Request, opts ParseOptions) (*bittorrent.AnnounceRequest, error) {
 	qp, err := bittorrent.ParseURLData(r.RequestURI)
 	if err != nil {
@@ -119,7 +149,7 @@ func ParseAnnounce(r *http.Request, opts ParseOptions) (*bittorrent.AnnounceRequ
 	return request, nil
 }
 
-// ParseScrape parses an bittorrent.ScrapeRequest from an http.Request.
+// ParseScrape parses a bittorrent.ScrapeRequest from an http.Request.
 func ParseScrape(r *http.Request, opts ParseOptions) (*bittorrent.ScrapeRequest, error) {
 	qp, err := bittorrent.ParseURLData(r.RequestURI)
 	if err != nil {
@@ -128,7 +158,31 @@ func ParseScrape(r *http.Request, opts ParseOptions) (*bittorrent.ScrapeRequest,
 
 	infoHashes := qp.InfoHashes()
 	if len(infoHashes) < 1 {
-		return nil, bittorrent.ClientError("no info_hash parameter supplied")
+		// This is a potential fullscrape. Determine the origin IP and check if
+		// it's whitelisted.
+		host, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			return nil, err
+		}
+		remoteIP := net.ParseIP(host)
+		if remoteIP == nil {
+			return nil, errors.New("unable to parse HTTP remote address as IP")
+		}
+
+		found := false
+		for _, network := range opts.FullScrapeWhitelistedNetworks {
+			if network.net.Contains(remoteIP) {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			log.Debug("blocking fullscrape", log.Fields{"remoteIP": remoteIP})
+			return nil, bittorrent.ClientError("no info_hash parameter supplied")
+		}
+
+		log.Debug("allowing fullscrape", log.Fields{"remoteIP": remoteIP})
 	}
 
 	request := &bittorrent.ScrapeRequest{

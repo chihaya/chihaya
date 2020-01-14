@@ -619,42 +619,46 @@ func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant 
 	return
 }
 
-func (ps *peerStore) ScrapeSwarm(ih bittorrent.InfoHash, af bittorrent.AddressFamily) (resp bittorrent.Scrape) {
+func (ps *peerStore) ScrapeSwarms(infoHashes []bittorrent.InfoHash, af bittorrent.AddressFamily) (resp []bittorrent.Scrape) {
 	select {
 	case <-ps.closed:
 		panic("attempted to interact with stopped redis store")
 	default:
 	}
 
-	resp.InfoHash = ih
-	addressFamily := af.String()
-	encodedInfoHash := ih.String()
-	encodedLeecherInfoHash := ps.leecherInfohashKey(addressFamily, encodedInfoHash)
-	encodedSeederInfoHash := ps.seederInfohashKey(addressFamily, encodedInfoHash)
+	resp = make([]bittorrent.Scrape, len(infoHashes))
 
 	conn := ps.rb.open()
 	defer conn.Close()
 
-	leechersLen, err := redis.Int64(conn.Do("HLEN", encodedLeecherInfoHash))
-	if err != nil {
-		log.Error("storage: Redis HLEN failure", log.Fields{
-			"Hkey":  encodedLeecherInfoHash,
-			"error": err,
-		})
-		return
-	}
+	for i, ih := range infoHashes {
+		resp[i].InfoHash = ih
+		addressFamily := af.String()
+		encodedInfoHash := ih.String()
+		encodedLeecherInfoHash := ps.leecherInfohashKey(addressFamily, encodedInfoHash)
+		encodedSeederInfoHash := ps.seederInfohashKey(addressFamily, encodedInfoHash)
 
-	seedersLen, err := redis.Int64(conn.Do("HLEN", encodedSeederInfoHash))
-	if err != nil {
-		log.Error("storage: Redis HLEN failure", log.Fields{
-			"Hkey":  encodedSeederInfoHash,
-			"error": err,
-		})
-		return
-	}
+		leechersLen, err := redis.Int64(conn.Do("HLEN", encodedLeecherInfoHash))
+		if err != nil {
+			log.Error("storage: Redis HLEN failure", log.Fields{
+				"Hkey":  encodedLeecherInfoHash,
+				"error": err,
+			})
+			return
+		}
 
-	resp.Incomplete = uint32(leechersLen)
-	resp.Complete = uint32(seedersLen)
+		seedersLen, err := redis.Int64(conn.Do("HLEN", encodedSeederInfoHash))
+		if err != nil {
+			log.Error("storage: Redis HLEN failure", log.Fields{
+				"Hkey":  encodedSeederInfoHash,
+				"error": err,
+			})
+			return
+		}
+
+		resp[i].Incomplete = uint32(leechersLen)
+		resp[i].Complete = uint32(seedersLen)
+	}
 
 	return
 }

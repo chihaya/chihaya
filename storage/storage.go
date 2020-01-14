@@ -41,7 +41,7 @@ var ErrDriverDoesNotExist = errors.New("peer store driver with that name does no
 //     durations involved should be configurable.
 // - IPv4 and IPv6 swarms must be isolated from each other.
 //     A PeerStore must be able to transparently handle IPv4 and IPv6 Peers, but
-//     must separate them. AnnouncePeers and ScrapeSwarm must return information
+//     must separate them. AnnouncePeers and ScrapeSwarms must return information
 //     about the Swarm matching the given AddressFamily only.
 //
 // Implementations can be tested against this interface using the tests in
@@ -94,15 +94,22 @@ type PeerStore interface {
 	// Returns ErrResourceDoesNotExist if the provided InfoHash is not tracked.
 	AnnouncePeers(infoHash bittorrent.InfoHash, seeder bool, numWant int, p bittorrent.Peer) (peers []bittorrent.Peer, err error)
 
-	// ScrapeSwarm returns information required to answer a Scrape request
-	// about a Swarm identified by the given InfoHash.
-	// The AddressFamily indicates whether or not the IPv6 swarm should be
+	// ScrapeSwarms returns information required to answer a Scrape request
+	// about Swarms identified by the given InfoHashes.
+	// The AddressFamily indicates whether or not the IPv6 Swarms should be
 	// scraped.
 	// The Complete and Incomplete fields of the Scrape must be filled,
 	// filling the Snatches field is optional.
 	//
-	// If the Swarm does not exist, an empty Scrape and no error is returned.
-	ScrapeSwarm(infoHash bittorrent.InfoHash, addressFamily bittorrent.AddressFamily) bittorrent.Scrape
+	// If infoHashes is empty, a fullscrape is requested.
+	// If the implementation supports fullscrapes, scrapes for all infohashes
+	// for the given AddressFamily will be returned.
+	// If the implementation does not support fullscrapes, an empty slice
+	// will be returned.
+	//
+	// If a Swarm does not exist, the scrape at that index will be empty and no
+	// error is returned.
+	ScrapeSwarms(infoHashes []bittorrent.InfoHash, addressFamily bittorrent.AddressFamily) []bittorrent.Scrape
 
 	// stop.Stopper is an interface that expects a Stop method to stop the
 	// PeerStore.

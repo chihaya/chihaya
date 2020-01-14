@@ -243,6 +243,11 @@ func recordGCDuration(duration time.Duration) {
 	storage.PromGCDurationMilliseconds.Observe(float64(duration.Nanoseconds()) / float64(time.Millisecond))
 }
 
+// recordFullscrapeDuration records the duration of collecting a fullscrape.
+func recordFullscrapeDuration(duration time.Duration) {
+	storage.PromFullscrapeDurationMilliseconds.Observe(float64(duration.Nanoseconds()) / float64(time.Millisecond))
+}
+
 func (ps *peerStore) getClock() int64 {
 	return timecache.NowUnixNano()
 }
@@ -484,26 +489,61 @@ func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant 
 	return
 }
 
-func (ps *peerStore) ScrapeSwarm(ih bittorrent.InfoHash, addressFamily bittorrent.AddressFamily) (resp bittorrent.Scrape) {
+func (ps *peerStore) fullscrapeSwarms(addressFamily bittorrent.AddressFamily) (resp []bittorrent.Scrape) {
+	shards := ps.shards[:len(ps.shards)/2]
+	if addressFamily == bittorrent.IPv6 {
+		shards = ps.shards[len(ps.shards)/2:]
+	}
+
+	for _, shard := range shards {
+		shard.RLock()
+		for ih, swarm := range shard.swarms {
+			resp = append(resp, bittorrent.Scrape{
+				InfoHash:   ih,
+				Complete:   uint32(len(swarm.seeders)),
+				Incomplete: uint32(len(swarm.leechers)),
+			})
+		}
+		shard.RUnlock()
+		// Not sure if this helps...
+		runtime.Gosched()
+	}
+
+	return
+}
+
+func (ps *peerStore) ScrapeSwarms(infoHashes []bittorrent.InfoHash, addressFamily bittorrent.AddressFamily) (resp []bittorrent.Scrape) {
 	select {
 	case <-ps.closed:
 		panic("attempted to interact with stopped memory store")
 	default:
 	}
 
-	resp.InfoHash = ih
-	shard := ps.shards[ps.shardIndex(ih, addressFamily)]
-	shard.RLock()
-
-	swarm, ok := shard.swarms[ih]
-	if !ok {
-		shard.RUnlock()
+	if len(infoHashes) == 0 {
+		// This is a fullscrape.
+		start := time.Now()
+		resp = ps.fullscrapeSwarms(addressFamily)
+		recordFullscrapeDuration(time.Since(start))
 		return
 	}
 
-	resp.Incomplete = uint32(len(swarm.leechers))
-	resp.Complete = uint32(len(swarm.seeders))
-	shard.RUnlock()
+	resp = make([]bittorrent.Scrape, len(infoHashes))
+
+	for i, ih := range infoHashes {
+		resp[i].InfoHash = ih
+		shard := ps.shards[ps.shardIndex(ih, addressFamily)]
+		shard.RLock()
+
+		swarm, ok := shard.swarms[ih]
+		if !ok {
+			shard.RUnlock()
+			continue
+		}
+
+		resp[i].Incomplete = uint32(len(swarm.leechers))
+		resp[i].Complete = uint32(len(swarm.seeders))
+		shard.RUnlock()
+	}
 
 	return
 }
