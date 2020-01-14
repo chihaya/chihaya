@@ -318,6 +318,7 @@ func (f *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, _ httpr
 		return
 	}
 
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	err = WriteAnnounceResponse(w, resp)
 	if err != nil {
 		WriteError(w, err)
@@ -375,6 +376,7 @@ func (f *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, _ httprou
 		return
 	}
 
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	err = WriteScrapeResponse(w, resp)
 	if err != nil {
 		WriteError(w, err)
