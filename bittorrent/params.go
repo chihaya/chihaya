@@ -57,17 +57,17 @@ type QueryParams struct {
 type routeParamsKey struct{}
 
 // RouteParamsKey is a key for the context of a request that
-// contains the named parameters from the http router
+// contains the named parameters from the http router.
 var RouteParamsKey = routeParamsKey{}
 
 // RouteParam is a type that contains the values from the named parameters
-// on the route
+// on the route.
 type RouteParam struct {
 	Key   string
 	Value string
 }
 
-// RouteParams is a collection of RouteParam instances
+// RouteParams is a collection of RouteParam instances.
 type RouteParams []RouteParam
 
 // ParseURLData parses a request URL or UDP URLData as defined in BEP41.
