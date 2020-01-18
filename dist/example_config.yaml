@@ -41,15 +41,25 @@ chihaya:
     # Disabling this should increase performance/decrease load.
     enable_request_timing: false
 
-    # Whether to listen on /announce.php and /scrape.php in addition to their
-    # non-.php counterparts.
-    # This is an option for compatibility with (very) old clients or otherwise
-    # outdated systems.
-    # This might be useful to retracker.local users, for more information see
-    # http://rutracker.wiki/Оптимизация_обмена_битторрент_траффиком_в_локальных_сетях
-    # and
-    # http://rutracker.wiki/Retracker.local
-    enable_legacy_php_urls: false
+    # An array of routes to listen on for announce requests. This is an option
+    # to support trackers that do not listen for /announce or need to listen
+    # on multiple routes.
+    #
+    # This supports named parameters and catch-all parameters as described at
+    # https://github.com/julienschmidt/httprouter#named-parameters
+    announce_routes:
+      - "/announce"
+      # - "/announce.php"
+
+    # An array of routes to listen on for scrape requests. This is an option
+    # to support trackers that do not listen for /scrape or need to listen
+    # on multiple routes.
+    #
+    # This supports named parameters and catch-all parameters as described at
+    # https://github.com/julienschmidt/httprouter#named-parameters
+    scrape_routes:
+      - "/scrape"
+      # - "/scrape.php"
 
     # When enabled, the IP address used to connect to the tracker will not
     # override the value clients advertise as their IP address.

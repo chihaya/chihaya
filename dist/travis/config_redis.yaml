@@ -16,7 +16,10 @@ chihaya:
     enable_keepalive: false
     idle_timeout: 30s
     enable_request_timing: false
-    enable_legacy_php_urls: false
+    announce_routes:
+      - "/announce"
+    scrape_routes:
+      - "/scrape"
     allow_ip_spoofing: false
     real_ip_header: "x-real-ip"
     max_numwant: 100
