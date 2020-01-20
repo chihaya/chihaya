@@ -72,6 +72,10 @@ type RouteParams []RouteParam
 
 // ByName returns the value of the first RouteParam that matches the given
 // name. If no matching RouteParam is found, an empty string is returned.
+// In the event that a "catch-all" parameter is provided on the route and
+// no value is matched, an empty string is returned. For example: a route of
+// "/announce/*param" matches on "/announce/". However, ByName("param") will
+// return an empty string.
 func (rp RouteParams) ByName(name string) string {
 	for _, p := range rp {
 		if p.Key == name {
