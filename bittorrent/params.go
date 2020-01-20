@@ -70,6 +70,17 @@ type RouteParam struct {
 // RouteParams is a collection of RouteParam instances.
 type RouteParams []RouteParam
 
+// ByName returns the value of the first RouteParam that matches the given
+// name. If no matching RouteParam is found, an empty string is returned.
+func (rp RouteParams) ByName(name string) string {
+	for _, p := range rp {
+		if p.Key == name {
+			return p.Value
+		}
+	}
+	return ""
+}
+
 // ParseURLData parses a request URL or UDP URLData as defined in BEP41.
 // It expects a concatenated string of the request's path and query parts as
 // defined in RFC 3986. As both the udp: and http: scheme used by BitTorrent
