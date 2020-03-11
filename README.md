@@ -1,6 +1,6 @@
 # Chihaya
 
-[![Build Status](https://github.com/chihaya/chihaya/actions)](https://github.com/chihaya/chihaya/workflows/CI/badge.svg)
+[![Build Status](https://github.com/chihaya/chihaya/workflows/CI/badge.svg)](https://github.com/chihaya/chihaya/actions)
 [![Docker Repository on Quay.io](https://quay.io/repository/jzelinskie/chihaya/status "Docker Repository on Quay.io")](https://quay.io/repository/jzelinskie/chihaya)
 [![Go Report Card](https://goreportcard.com/badge/github.com/chihaya/chihaya)](https://goreportcard.com/report/github.com/chihaya/chihaya)
 [![GoDoc](https://godoc.org/github.com/chihaya/chihaya?status.svg)](https://godoc.org/github.com/chihaya/chihaya)
