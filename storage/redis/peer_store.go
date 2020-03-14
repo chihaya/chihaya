@@ -1,32 +1,38 @@
 // Package redis implements the storage interface for a Chihaya
-// BitTorrent tracker keeping peer data in redis with hash.
-// There two categories of hash:
+// BitTorrent tracker to keep peer data in redis.
 //
-// - IPv{4,6}_{L,S}_infohash
-//	To save peers that hold the infohash, used for fast searching,
-//  deleting, and timeout handling
+// In general, each swarm is tracked in two hashes per address family:
 //
-// - IPv{4,6}
-//  To save all the infohashes, used for garbage collection,
-//	metrics aggregation and leecher graduation
+// - s<20 byte infohash><one byte address family><one byte seeder/leecher marker> -> <peer key> -> <last modified time>
+// Holds peers for the swarm identified by <infohash> with their last-active
+// time.
+// Garbage collection should periodically check the peers for expiration.
+// They all have a s prefix so that we can SCAN over them.
 //
-// Tree keys are used to record the count of swarms, seeders
-// and leechers for each group (IPv4, IPv6).
+// In addition to that, we use one hash per address family to track the number
+// of swarms:
 //
-// - IPv{4,6}_infohash_count
-//	To record the number of infohashes.
+// - <address family string>_swarm_counts -> <20-byte infohash> counter
+// Counts the number of peers per swarm, as the sum of seeders and leechers.
+// This is used to get the total number of swarms.
 //
-// - IPv{4,6}_S_count
-//	To record the number of seeders.
+// Additionally, two keys per address family are used to track the number of
+// seeders and leechers separately.
 //
-// - IPv{4,6}_L_count
-//	To record the number of leechers.
+// - <address family string>_seeder_count
+//	Counts the number of seeders.
+//
+// - <address family string>_leecher_count
+//	Counts the number of leechers.
 package redis
 
 import (
 	"encoding/binary"
+	"errors"
+	"fmt"
 	"net"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -58,6 +64,10 @@ func init() {
 	// Register the storage driver.
 	storage.RegisterDriver(Name, driver{})
 }
+
+// ErrInternalError is returned if something fails within the driver that is
+// not the fault of a client.
+var ErrInternalError = errors.New("internal error")
 
 type driver struct{}
 
@@ -186,8 +196,14 @@ func New(provided Config) (storage.PeerStore, error) {
 	}
 
 	ps := &peerStore{
-		cfg:    cfg,
-		rb:     newRedisBackend(&provided, u, ""),
+		cfg: cfg,
+		rb:  newRedisBackend(&provided, u, ""),
+		scripts: scripts{
+			putPeer:      newPutPeerScript(),
+			deletePeer:   newDeletePeerScript(),
+			graduatePeer: newGraduatePeerScript(),
+			gcPeer:       newGCPeerScript(),
+		},
 		closed: make(chan struct{}),
 	}
 
@@ -230,18 +246,18 @@ func New(provided Config) (storage.PeerStore, error) {
 	return ps, nil
 }
 
-type serializedPeer string
+type peerKey string
 
-func newPeerKey(p bittorrent.Peer) serializedPeer {
+func makePeerKey(p bittorrent.Peer) peerKey {
 	b := make([]byte, 20+2+len(p.IP.IP))
 	copy(b[:20], p.ID[:])
 	binary.BigEndian.PutUint16(b[20:22], p.Port)
 	copy(b[22:], p.IP.IP)
 
-	return serializedPeer(b)
+	return peerKey(b)
 }
 
-func decodePeerKey(pk serializedPeer) bittorrent.Peer {
+func decodePeerKey(pk peerKey) bittorrent.Peer {
 	peer := bittorrent.Peer{
 		ID:   bittorrent.PeerIDFromString(string(pk[:20])),
 		Port: binary.BigEndian.Uint16([]byte(pk[20:22])),
@@ -263,32 +279,103 @@ type peerStore struct {
 	cfg Config
 	rb  *redisBackend
 
+	scripts scripts
+
 	closed chan struct{}
 	wg     sync.WaitGroup
 }
 
-func (ps *peerStore) groups() []string {
-	return []string{bittorrent.IPv4.String(), bittorrent.IPv6.String()}
+func addressFamilies() []bittorrent.AddressFamily {
+	return []bittorrent.AddressFamily{bittorrent.IPv4, bittorrent.IPv6}
 }
 
-func (ps *peerStore) leecherInfohashKey(af, ih string) string {
-	return af + "_L_" + ih
+// Constants used for constructing/deconstructing swarm keys.
+const (
+	swarmPrefix               = "s"
+	seedersSuffix             = byte(0)
+	leechersSuffix            = byte(1)
+	seederLeecherSuffixLength = 1
+	// We encode address families as a single byte.
+	addressFamilyLength              = 1
+	swarmKeyLength                   = len(swarmPrefix) + 20 + addressFamilyLength + seederLeecherSuffixLength
+	swarmKeyInfohashStart            = len(swarmPrefix)
+	swarmKeyInfohashEnd              = swarmKeyInfohashStart + 20
+	swarmKeyAddressFamilyIndex       = swarmKeyInfohashEnd
+	swarmKeySeederLeecherSuffixIndex = swarmKeyAddressFamilyIndex + 1
+)
+
+// Counting key constants.
+const (
+	swarmCountsSuffix   = "_swarm_counts"
+	seedersCountSuffix  = "_seeders_count"
+	leechersCountSuffix = "_leechers_count"
+)
+
+// leecherSwarmKey derives a key for the leecher-side of the swarm for the
+// given infohash and address family, in the form
+// s<infohash bytes><address family byte><1 byte>
+func leecherSwarmKey(addressFamily bittorrent.AddressFamily, infoHash bittorrent.InfoHash) string {
+	var b strings.Builder
+	b.Grow(swarmKeyLength)
+
+	b.WriteString(swarmPrefix)
+	b.Write(infoHash[:])
+	b.WriteByte(byte(addressFamily))
+	b.WriteByte(leechersSuffix)
+
+	return b.String()
 }
 
-func (ps *peerStore) seederInfohashKey(af, ih string) string {
-	return af + "_S_" + ih
+// seederSwarmKey derives a key for the seeder-side of the swarm for the
+// given infohash and address family, in the form
+// s<infohash bytes><address family byte><0 byte>.
+func seederSwarmKey(addressFamily bittorrent.AddressFamily, infoHash bittorrent.InfoHash) string {
+	var b strings.Builder
+	b.Grow(swarmKeyLength)
+
+	b.WriteString(swarmPrefix)
+	b.Write(infoHash[:])
+	b.WriteByte(byte(addressFamily))
+	b.WriteByte(seedersSuffix)
+
+	return b.String()
 }
 
-func (ps *peerStore) infohashCountKey(af string) string {
-	return af + "_infohash_count"
+func deconstructSwarmKey(swarmKey string) (bittorrent.InfoHash, bittorrent.AddressFamily, bool) {
+	if len(swarmKey) < swarmKeyLength {
+		// don't print the key as a string, it probably contains a binary
+		// infohash
+		panic(fmt.Sprintf("invalid swarmKey: %#v", swarmKey[:]))
+	}
+
+	infohashPart := swarmKey[swarmKeyInfohashStart:swarmKeyInfohashEnd]
+	addressFamilyByte := swarmKey[swarmKeyAddressFamilyIndex]
+	seeder := swarmKey[swarmKeySeederLeecherSuffixIndex] == seedersSuffix
+
+	return bittorrent.InfoHashFromString(infohashPart), bittorrent.AddressFamily(addressFamilyByte), seeder
 }
 
-func (ps *peerStore) seederCountKey(af string) string {
-	return af + "_S_count"
+func addressFamiliedKey(addressFamily bittorrent.AddressFamily, suffix string) string {
+	var b strings.Builder
+	addressFamilyString := addressFamily.String()
+
+	b.Grow(len(addressFamilyString) + len(suffix))
+	b.WriteString(addressFamilyString)
+	b.WriteString(suffix)
+
+	return b.String()
 }
 
-func (ps *peerStore) leecherCountKey(af string) string {
-	return af + "_L_count"
+func swarmCountsKey(addressFamily bittorrent.AddressFamily) string {
+	return addressFamiliedKey(addressFamily, swarmCountsSuffix)
+}
+
+func seederCountKey(addressFamily bittorrent.AddressFamily) string {
+	return addressFamiliedKey(addressFamily, seedersCountSuffix)
+}
+
+func leecherCountKey(addressFamily bittorrent.AddressFamily) string {
+	return addressFamiliedKey(addressFamily, leechersCountSuffix)
 }
 
 // populateProm aggregates metrics over all groups and then posts them to
@@ -299,26 +386,26 @@ func (ps *peerStore) populateProm() {
 	conn := ps.rb.open()
 	defer conn.Close()
 
-	for _, group := range ps.groups() {
-		if n, err := redis.Int64(conn.Do("GET", ps.infohashCountKey(group))); err != nil && err != redis.ErrNil {
-			log.Error("storage: GET counter failure", log.Fields{
-				"key":   ps.infohashCountKey(group),
+	for _, addressFamily := range addressFamilies() {
+		if n, err := redis.Int64(conn.Do("HLEN", swarmCountsKey(addressFamily))); err != nil && err != redis.ErrNil {
+			log.Error("storage: HLEN failed", log.Fields{
+				"key":   swarmCountsKey(addressFamily),
 				"error": err,
 			})
 		} else {
 			numInfohashes += n
 		}
-		if n, err := redis.Int64(conn.Do("GET", ps.seederCountKey(group))); err != nil && err != redis.ErrNil {
-			log.Error("storage: GET counter failure", log.Fields{
-				"key":   ps.seederCountKey(group),
+		if n, err := redis.Int64(conn.Do("GET", seederCountKey(addressFamily))); err != nil && err != redis.ErrNil {
+			log.Error("storage: GET failed", log.Fields{
+				"key":   seederCountKey(addressFamily),
 				"error": err,
 			})
 		} else {
 			numSeeders += n
 		}
-		if n, err := redis.Int64(conn.Do("GET", ps.leecherCountKey(group))); err != nil && err != redis.ErrNil {
-			log.Error("storage: GET counter failure", log.Fields{
-				"key":   ps.leecherCountKey(group),
+		if n, err := redis.Int64(conn.Do("GET", leecherCountKey(addressFamily))); err != nil && err != redis.ErrNil {
+			log.Error("storage: GET failed", log.Fields{
+				"key":   leecherCountKey(addressFamily),
 				"error": err,
 			})
 		} else {
@@ -336,7 +423,6 @@ func (ps *peerStore) getClock() int64 {
 }
 
 func (ps *peerStore) PutSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) error {
-	addressFamily := p.IP.AddressFamily.String()
 	log.Debug("storage: PutSeeder", log.Fields{
 		"InfoHash": ih.String(),
 		"Peer":     p,
@@ -348,42 +434,21 @@ func (ps *peerStore) PutSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) error 
 	default:
 	}
 
-	pk := newPeerKey(p)
-
-	encodedSeederInfoHash := ps.seederInfohashKey(addressFamily, ih.String())
-	ct := ps.getClock()
-
 	conn := ps.rb.open()
 	defer conn.Close()
 
-	conn.Send("MULTI")
-	conn.Send("HSET", encodedSeederInfoHash, pk, ct)
-	conn.Send("HSET", addressFamily, encodedSeederInfoHash, ct)
-	reply, err := redis.Int64s(conn.Do("EXEC"))
+	err := ps.scripts.putPeer.execute(conn, p, ps.getClock(), ih, true)
 	if err != nil {
-		return err
-	}
-
-	// pk is a new field.
-	if reply[0] == 1 {
-		_, err = conn.Do("INCR", ps.seederCountKey(addressFamily))
-		if err != nil {
-			return err
-		}
-	}
-	// encodedSeederInfoHash is a new field.
-	if reply[1] == 1 {
-		_, err = conn.Do("INCR", ps.infohashCountKey(addressFamily))
-		if err != nil {
-			return err
-		}
+		log.Error("storage: putPeer script execution failed", log.Fields{
+			"error": err,
+		})
+		return ErrInternalError
 	}
 
 	return nil
 }
 
 func (ps *peerStore) DeleteSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) error {
-	addressFamily := p.IP.AddressFamily.String()
 	log.Debug("storage: DeleteSeeder", log.Fields{
 		"InfoHash": ih.String(),
 		"Peer":     p,
@@ -395,29 +460,24 @@ func (ps *peerStore) DeleteSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) err
 	default:
 	}
 
-	pk := newPeerKey(p)
-
 	conn := ps.rb.open()
 	defer conn.Close()
 
-	encodedSeederInfoHash := ps.seederInfohashKey(addressFamily, ih.String())
-
-	delNum, err := redis.Int64(conn.Do("HDEL", encodedSeederInfoHash, pk))
+	numDeleted, err := ps.scripts.deletePeer.execute(conn, p, ih, true)
 	if err != nil {
-		return err
+		log.Error("storage: deletePeer script execution failed", log.Fields{
+			"error": err,
+		})
+		return ErrInternalError
 	}
-	if delNum == 0 {
+	if numDeleted == 0 {
 		return storage.ErrResourceDoesNotExist
-	}
-	if _, err := conn.Do("DECR", ps.seederCountKey(addressFamily)); err != nil {
-		return err
 	}
 
 	return nil
 }
 
 func (ps *peerStore) PutLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) error {
-	addressFamily := p.IP.AddressFamily.String()
 	log.Debug("storage: PutLeecher", log.Fields{
 		"InfoHash": ih.String(),
 		"Peer":     p,
@@ -429,33 +489,20 @@ func (ps *peerStore) PutLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) error
 	default:
 	}
 
-	// Update the peer in the swarm.
-	encodedLeecherInfoHash := ps.leecherInfohashKey(addressFamily, ih.String())
-	pk := newPeerKey(p)
-	ct := ps.getClock()
-
 	conn := ps.rb.open()
 	defer conn.Close()
 
-	conn.Send("MULTI")
-	conn.Send("HSET", encodedLeecherInfoHash, pk, ct)
-	conn.Send("HSET", addressFamily, encodedLeecherInfoHash, ct)
-	reply, err := redis.Int64s(conn.Do("EXEC"))
+	err := ps.scripts.putPeer.execute(conn, p, ps.getClock(), ih, false)
 	if err != nil {
-		return err
-	}
-	// pk is a new field.
-	if reply[0] == 1 {
-		_, err = conn.Do("INCR", ps.leecherCountKey(addressFamily))
-		if err != nil {
-			return err
-		}
+		log.Error("storage: putPeer script execution failed", log.Fields{
+			"error": err,
+		})
+		return ErrInternalError
 	}
 	return nil
 }
 
 func (ps *peerStore) DeleteLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) error {
-	addressFamily := p.IP.AddressFamily.String()
 	log.Debug("storage: DeleteLeecher", log.Fields{
 		"InfoHash": ih.String(),
 		"Peer":     p,
@@ -470,25 +517,21 @@ func (ps *peerStore) DeleteLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) er
 	conn := ps.rb.open()
 	defer conn.Close()
 
-	pk := newPeerKey(p)
-	encodedLeecherInfoHash := ps.leecherInfohashKey(addressFamily, ih.String())
-
-	delNum, err := redis.Int64(conn.Do("HDEL", encodedLeecherInfoHash, pk))
+	numDeleted, err := ps.scripts.deletePeer.execute(conn, p, ih, false)
 	if err != nil {
-		return err
+		log.Error("storage: deletePeer script execution failed", log.Fields{
+			"error": err,
+		})
+		return ErrInternalError
 	}
-	if delNum == 0 {
+	if numDeleted == 0 {
 		return storage.ErrResourceDoesNotExist
-	}
-	if _, err := conn.Do("DECR", ps.leecherCountKey(addressFamily)); err != nil {
-		return err
 	}
 
 	return nil
 }
 
 func (ps *peerStore) GraduateLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) error {
-	addressFamily := p.IP.AddressFamily.String()
 	log.Debug("storage: GraduateLeecher", log.Fields{
 		"InfoHash": ih.String(),
 		"Peer":     p,
@@ -500,47 +543,20 @@ func (ps *peerStore) GraduateLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) 
 	default:
 	}
 
-	encodedInfoHash := ih.String()
-	encodedLeecherInfoHash := ps.leecherInfohashKey(addressFamily, encodedInfoHash)
-	encodedSeederInfoHash := ps.seederInfohashKey(addressFamily, encodedInfoHash)
-	pk := newPeerKey(p)
-	ct := ps.getClock()
-
 	conn := ps.rb.open()
 	defer conn.Close()
 
-	conn.Send("MULTI")
-	conn.Send("HDEL", encodedLeecherInfoHash, pk)
-	conn.Send("HSET", encodedSeederInfoHash, pk, ct)
-	conn.Send("HSET", addressFamily, encodedSeederInfoHash, ct)
-	reply, err := redis.Int64s(conn.Do("EXEC"))
+	err := ps.scripts.graduatePeer.execute(conn, p, ps.getClock(), ih)
 	if err != nil {
-		return err
+		log.Error("storage: graduatePeer script execution failed", log.Fields{
+			"error": err,
+		})
+		return ErrInternalError
 	}
-	if reply[0] == 1 {
-		_, err = conn.Do("DECR", ps.leecherCountKey(addressFamily))
-		if err != nil {
-			return err
-		}
-	}
-	if reply[1] == 1 {
-		_, err = conn.Do("INCR", ps.seederCountKey(addressFamily))
-		if err != nil {
-			return err
-		}
-	}
-	if reply[2] == 1 {
-		_, err = conn.Do("INCR", ps.infohashCountKey(addressFamily))
-		if err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
 func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant int, announcer bittorrent.Peer) (peers []bittorrent.Peer, err error) {
-	addressFamily := announcer.IP.AddressFamily.String()
 	log.Debug("storage: AnnouncePeers", log.Fields{
 		"InfoHash": ih.String(),
 		"seeder":   seeder,
@@ -554,22 +570,29 @@ func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant 
 	default:
 	}
 
-	encodedInfoHash := ih.String()
-	encodedLeecherInfoHash := ps.leecherInfohashKey(addressFamily, encodedInfoHash)
-	encodedSeederInfoHash := ps.seederInfohashKey(addressFamily, encodedInfoHash)
+	encodedLeecherInfoHash := leecherSwarmKey(announcer.IP.AddressFamily, ih)
+	encodedSeederInfoHash := seederSwarmKey(announcer.IP.AddressFamily, ih)
 
 	conn := ps.rb.open()
 	defer conn.Close()
 
 	leechers, err := conn.Do("HKEYS", encodedLeecherInfoHash)
 	if err != nil {
-		return nil, err
+		log.Error("storage: HKEYS failed", log.Fields{
+			"key":   encodedLeecherInfoHash,
+			"error": err,
+		})
+		return nil, ErrInternalError
 	}
 	conLeechers := leechers.([]interface{})
 
 	seeders, err := conn.Do("HKEYS", encodedSeederInfoHash)
 	if err != nil {
-		return nil, err
+		log.Error("storage: HKEYS failed", log.Fields{
+			"key":   encodedSeederInfoHash,
+			"error": err,
+		})
+		return nil, ErrInternalError
 	}
 	conSeeders := seeders.([]interface{})
 
@@ -584,7 +607,7 @@ func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant 
 				break
 			}
 
-			peers = append(peers, decodePeerKey(serializedPeer(pk.([]byte))))
+			peers = append(peers, decodePeerKey(peerKey(pk.([]byte))))
 			numWant--
 		}
 	} else {
@@ -594,13 +617,13 @@ func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant 
 				break
 			}
 
-			peers = append(peers, decodePeerKey(serializedPeer(pk.([]byte))))
+			peers = append(peers, decodePeerKey(peerKey(pk.([]byte))))
 			numWant--
 		}
 
 		// Append leechers until we reach numWant.
 		if numWant > 0 {
-			announcerPK := newPeerKey(announcer)
+			announcerPK := makePeerKey(announcer)
 			for _, pk := range conLeechers {
 				if pk == announcerPK {
 					continue
@@ -610,7 +633,7 @@ func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant 
 					break
 				}
 
-				peers = append(peers, decodePeerKey(serializedPeer(pk.([]byte))))
+				peers = append(peers, decodePeerKey(peerKey(pk.([]byte))))
 				numWant--
 			}
 		}
@@ -627,18 +650,16 @@ func (ps *peerStore) ScrapeSwarm(ih bittorrent.InfoHash, af bittorrent.AddressFa
 	}
 
 	resp.InfoHash = ih
-	addressFamily := af.String()
-	encodedInfoHash := ih.String()
-	encodedLeecherInfoHash := ps.leecherInfohashKey(addressFamily, encodedInfoHash)
-	encodedSeederInfoHash := ps.seederInfohashKey(addressFamily, encodedInfoHash)
+	encodedLeecherInfoHash := leecherSwarmKey(af, ih)
+	encodedSeederInfoHash := seederSwarmKey(af, ih)
 
 	conn := ps.rb.open()
 	defer conn.Close()
 
 	leechersLen, err := redis.Int64(conn.Do("HLEN", encodedLeecherInfoHash))
 	if err != nil {
-		log.Error("storage: Redis HLEN failure", log.Fields{
-			"Hkey":  encodedLeecherInfoHash,
+		log.Error("storage: HLEN failed", log.Fields{
+			"key":   encodedLeecherInfoHash,
 			"error": err,
 		})
 		return
@@ -646,8 +667,8 @@ func (ps *peerStore) ScrapeSwarm(ih bittorrent.InfoHash, af bittorrent.AddressFa
 
 	seedersLen, err := redis.Int64(conn.Do("HLEN", encodedSeederInfoHash))
 	if err != nil {
-		log.Error("storage: Redis HLEN failure", log.Fields{
-			"Hkey":  encodedSeederInfoHash,
+		log.Error("storage: HLEN failed", log.Fields{
+			"key":   encodedSeederInfoHash,
 			"error": err,
 		})
 		return
@@ -659,51 +680,63 @@ func (ps *peerStore) ScrapeSwarm(ih bittorrent.InfoHash, af bittorrent.AddressFa
 	return
 }
 
+func (ps *peerStore) collectGarbageInner(conn redis.Conn, cutoffUnix int64, swarmKeys []string) error {
+	for _, swarmKey := range swarmKeys {
+		// TODO doing this gives us safety, but might cost performance?
+		infoHash, _, isSeeder := deconstructSwarmKey(swarmKey)
+
+		// list all (peer, modified time) pairs for the infohash
+		// TODO use SCAN for this too?
+		peerList, err := redis.Strings(conn.Do("HGETALL", swarmKey))
+		if err != nil {
+			log.Error("storage: HGETALL failed", log.Fields{
+				"key":   swarmKey,
+				"error": err,
+			})
+			return err
+		}
+
+		var pk peerKey
+		for index, field := range peerList {
+			// Redis sends back a zipped list with alternating keys and values.
+			if index%2 == 0 { // Even indices are keys.
+				pk = peerKey([]byte(field))
+			} else { // Odd indices are values.
+				mtime, err := strconv.ParseInt(field, 10, 64)
+				if err != nil {
+					return err
+				}
+				if mtime <= cutoffUnix {
+					peer := decodePeerKey(pk)
+					log.Debug("storage: deleting peer", log.Fields{
+						"infoHash": infoHash.String(),
+						"isSeeder": isSeeder,
+						"peer":     peer.String(),
+					})
+
+					_, err := ps.scripts.gcPeer.execute(conn, peer, mtime, infoHash, isSeeder)
+					if err != nil {
+						log.Error("storage: gcPeer script execution failed", log.Fields{
+							"error": err,
+						})
+						return err
+					}
+
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
 // collectGarbage deletes all Peers from the PeerStore which are older than the
 // cutoff time.
 //
 // This function must be able to execute while other methods on this interface
 // are being executed in parallel.
 //
-// - The Delete(Seeder|Leecher) and GraduateLeecher methods never delete an
-//	 infohash key from an addressFamily hash. They also never decrement the
-//	 infohash counter.
-// - The Put(Seeder|Leecher) and GraduateLeecher methods only ever add infohash
-//	 keys to addressFamily hashes and increment the infohash counter.
-// - The only method that deletes from the addressFamily hashes is
-//	 collectGarbage, which also decrements the counters. That means that,
-//	 even if a Delete(Seeder|Leecher) call removes the last peer from a swarm,
-//	 the infohash counter is not changed and the infohash is left in the
-//	 addressFamily hash until it will be cleaned up by collectGarbage.
-// - collectGarbage must run regularly.
-// - A WATCH ... MULTI ... EXEC block fails, if between the WATCH and the 'EXEC'
-// 	 any of the watched keys have changed. The location of the 'MULTI' doesn't
-//	 matter.
-//
-// We have to analyze four cases to prove our algorithm works. I'll characterize
-// them by a tuple (number of peers in a swarm before WATCH, number of peers in
-// the swarm during the transaction).
-//
-// 1. (0,0), the easy case: The swarm is empty, we watch the key, we execute
-//	  HLEN and find it empty. We remove it and decrement the counter. It stays
-//	  empty the entire time, the transaction goes through.
-// 2. (1,n > 0): The swarm is not empty, we watch the key, we find it non-empty,
-//	  we unwatch the key. All good. No transaction is made, no transaction fails.
-// 3. (0,1): We have to analyze this in two ways.
-// - If the change happens before the HLEN call, we will see that the swarm is
-//	 not empty and start no transaction.
-// - If the change happens after the HLEN, we will attempt a transaction and it
-//   will fail. This is okay, the swarm is not empty, we will try cleaning it up
-//   next time collectGarbage runs.
-// 4. (1,0): Again, two ways:
-// - If the change happens before the HLEN, we will see an empty swarm. This
-//   situation happens if a call to Delete(Seeder|Leecher) removed the last
-//	 peer asynchronously. We will attempt a transaction, but the transaction
-//	 will fail. This is okay, the infohash key will remain in the addressFamily
-//   hash, we will attempt to clean it up the next time 'collectGarbage` runs.
-// - If the change happens after the HLEN, we will not even attempt to make the
-//	 transaction. The infohash key will remain in the addressFamil hash and
-//	 we'll attempt to clean it up the next time collectGarbage runs.
+// It uses atomic scripts and a CAS logic to do that.
 func (ps *peerStore) collectGarbage(cutoff time.Time) error {
 	select {
 	case <-ps.closed:
@@ -717,89 +750,39 @@ func (ps *peerStore) collectGarbage(cutoff time.Time) error {
 	cutoffUnix := cutoff.UnixNano()
 	start := time.Now()
 
-	for _, group := range ps.groups() {
-		// list all infohashes in the group
-		infohashesList, err := redis.Strings(conn.Do("HKEYS", group))
+	var (
+		cursor int64
+		items  []string
+	)
+
+	// SCAN through all of our swarm keys.
+	for {
+		values, err := redis.Values(conn.Do("SCAN", cursor, "MATCH", fmt.Sprintf("%s*", swarmPrefix), "COUNT", 50))
 		if err != nil {
+			log.Error("storage: SCAN failed", log.Fields{
+				"error": err,
+			})
 			return err
 		}
 
-		for _, ihStr := range infohashesList {
-			isSeeder := len(ihStr) > 5 && ihStr[5:6] == "S"
+		values, err = redis.Scan(values, &cursor, &items)
+		if err != nil {
+			log.Error("storage: unable to parse redis response", log.Fields{
+				"error": err,
+			})
+			return err
+		}
 
-			// list all (peer, timeout) pairs for the ih
-			ihList, err := redis.Strings(conn.Do("HGETALL", ihStr))
-			if err != nil {
-				return err
-			}
+		err = ps.collectGarbageInner(conn, cutoffUnix, items)
+		if err != nil {
+			log.Error("storage: collectGarbageInner failed", log.Fields{
+				"error": err,
+			})
+			return err
+		}
 
-			var pk serializedPeer
-			var removedPeerCount int64
-			for index, ihField := range ihList {
-				if index%2 == 1 { // value
-					mtime, err := strconv.ParseInt(ihField, 10, 64)
-					if err != nil {
-						return err
-					}
-					if mtime <= cutoffUnix {
-						log.Debug("storage: deleting peer", log.Fields{
-							"Peer": decodePeerKey(pk).String(),
-						})
-						ret, err := redis.Int64(conn.Do("HDEL", ihStr, pk))
-						if err != nil {
-							return err
-						}
-
-						removedPeerCount += ret
-					}
-				} else { // key
-					pk = serializedPeer([]byte(ihField))
-				}
-			}
-			// DECR seeder/leecher counter
-			decrCounter := ps.leecherCountKey(group)
-			if isSeeder {
-				decrCounter = ps.seederCountKey(group)
-			}
-			if removedPeerCount > 0 {
-				if _, err := conn.Do("DECRBY", decrCounter, removedPeerCount); err != nil {
-					return err
-				}
-			}
-
-			// use WATCH to avoid race condition
-			// https://redis.io/topics/transactions
-			_, err = conn.Do("WATCH", ihStr)
-			if err != nil {
-				return err
-			}
-			ihLen, err := redis.Int64(conn.Do("HLEN", ihStr))
-			if err != nil {
-				return err
-			}
-			if ihLen == 0 {
-				// Empty hashes are not shown among existing keys,
-				// in other words, it's removed automatically after `HDEL` the last field.
-				//_, err := conn.Do("DEL", ihStr)
-
-				conn.Send("MULTI")
-				conn.Send("HDEL", group, ihStr)
-				if isSeeder {
-					conn.Send("DECR", ps.infohashCountKey(group))
-				}
-				_, err = redis.Values(conn.Do("EXEC"))
-				if err != nil && err != redis.ErrNil {
-					log.Error("storage: Redis EXEC failure", log.Fields{
-						"group":    group,
-						"infohash": ihStr,
-						"error":    err,
-					})
-				}
-			} else {
-				if _, err = conn.Do("UNWATCH"); err != nil && err != redis.ErrNil {
-					log.Error("storage: Redis UNWATCH failure", log.Fields{"error": err})
-				}
-			}
+		if cursor == 0 {
+			break
 		}
 	}
 
@@ -815,7 +798,7 @@ func (ps *peerStore) Stop() stop.Result {
 	go func() {
 		close(ps.closed)
 		ps.wg.Wait()
-		log.Info("storage: exiting. chihaya does not clear data in redis when exiting. chihaya keys have prefix 'IPv{4,6}_'.")
+		log.Info("storage: exiting. Chihaya does not clear data in redis when exiting. Consult the Chihaya documentation for information about redis keys.")
 		c.Done()
 	}()
 
