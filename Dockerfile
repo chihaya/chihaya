@@ -9,7 +9,7 @@ WORKDIR /go/src/github.com/chihaya/chihaya
 COPY . /go/src/github.com/chihaya/chihaya
 
 # Install our golang dependencies and compile our binary.
-RUN CGO_ENABLED=0 go install github.com/chihaya/chihaya/cmd/...
+RUN CGO_ENABLED=0 go install ./cmd/chihaya
 
 FROM alpine:latest
 RUN apk add --no-cache ca-certificates
