@@ -13,7 +13,7 @@ require (
 	github.com/julienschmidt/httprouter v1.2.0
 	github.com/mendsley/gojwk v0.0.0-20141217222730-4d5ec6e58103
 	github.com/minio/sha256-simd v0.0.0-20190131020904-2d45a736cd16
-	github.com/pkg/errors v0.8.1
+	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v0.9.2
 	github.com/sirupsen/logrus v1.3.0
 	github.com/spf13/cobra v0.0.3
