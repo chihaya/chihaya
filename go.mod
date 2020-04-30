@@ -7,7 +7,7 @@ require (
 	github.com/alicebob/gopher-json v0.0.0-20180125190556-5a6b3ba71ee6 // indirect
 	github.com/alicebob/miniredis v2.5.0+incompatible
 	github.com/anacrolix/torrent v1.0.0
-	github.com/go-redsync/redsync v1.1.1
+	github.com/go-redsync/redsync v1.4.2
 	github.com/gomodule/redigo v2.0.0+incompatible
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/julienschmidt/httprouter v1.2.0
