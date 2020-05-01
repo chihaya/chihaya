@@ -6,7 +6,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/chihaya/chihaya/pkg/log"
 	"github.com/chihaya/chihaya/pkg/stop"
@@ -34,7 +34,7 @@ func NewServer(addr string) *Server {
 	s := &Server{
 		srv: &http.Server{
 			Addr:    addr,
-			Handler: prometheus.Handler(),
+			Handler: promhttp.Handler(),
 		},
 	}
 
