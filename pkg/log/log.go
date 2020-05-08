@@ -50,7 +50,10 @@ type err struct {
 
 // LogFields provides Fields for logging.
 func (e err) LogFields() Fields {
-	return Fields{"error": e.e.Error()}
+	return Fields{
+		"error": e.e.Error(),
+		"type":  fmt.Sprintf("%T", e.e),
+	}
 }
 
 // Err is a wrapper around errors that implements Fielder.
