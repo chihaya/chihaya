@@ -22,7 +22,7 @@ Source1:  https://github.com/idcm/chihaya/releases/download/latest/chihaya
 Source2:  chihaya.sysconfig
 Source3:  example_config.yaml
 
-Buildroot: %{_tmppath}/%{name}-%{version}-%{release}-root
+Buildroot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 BuildRequires:     systemd
 Requires(post):    systemd
 Requires(preun):   systemd
