@@ -1,0 +1,14 @@
+[Unit]
+Description=Chihaya Bittorent Tracker
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+EnvironmentFile=/etc/sysconfig/chihaya
+User=chihaya
+Group=chihaya
+WorkingDirectory=/usr/
+ExecStart=/usr/bin/chihaya --config=$CONFIGFILE
+
+[Install]
+WantedBy=multi-user.target

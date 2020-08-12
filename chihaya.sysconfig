@@ -1,0 +1,3 @@
+CONFIGFILE=/etc/chihaya/chihaya.yaml
+USER=chihaya
+GROUP=chihaya
