@@ -9,7 +9,7 @@
 
 Name:     chihaya
 Version:  2.0.0
-Release:  1%{?dist}
+Release:  2%{?dist}
 Summary:  Chihaya Bittorrent Tracker Written in GoLang
 Epoch:    7
 Packager: Eliezer Croitoru <eliezer@ngtech.co.il>
