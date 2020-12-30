@@ -14,58 +14,33 @@ jobs:
     name: Build & Lint
     runs-on: ubuntu-latest
     steps:
-
-    - name: Set up Go 1.14
-      uses: actions/setup-go@v1
-      with:
-        go-version: 1.14
-      id: go
-
-    - name: Set GOPATH
-      run: |
-        # temporary fix for https://github.com/actions/setup-go/issues/14
-        echo "##[set-env name=GOPATH;]$(dirname $GITHUB_WORKSPACE)"
-        echo "##[add-path]$(dirname $GITHUB_WORKSPACE)/bin"
-
-    - name: Check out code into the Go module directory
+    - name: Checkout
       uses: actions/checkout@v2
-
+    - name: Setup
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^1.15
     - name: Build
       run: go build -v ./cmd/...
-
     - name: Vet
       run: go vet ./...
-
+    - name: Imports
+      uses: Jerome1337/goimports-action@v1.0.2
     - name: Format
-      run: |
-        go install golang.org/x/tools/cmd/goimports
-        diff <(goimports -local github.com/chihaya/chihaya -d $(find . -type f -name '*.go' -not -path "./vendor/*")) <(printf "")
-
+      uses: Jerome1337/gofmt-action@v1.0.2
     - name: Lint
-      run: |
-        go install golang.org/x/lint/golint
-        (for d in $(go list ./...); do diff <(golint $d) <(printf "") || exit 1; done)
+      uses: Jerome1337/golint-action@v1.0.2
 
   unit:
     name: Unit Tests
     runs-on: ubuntu-latest
     steps:
-
-    - name: Set up Go 1.14
-      uses: actions/setup-go@v1
-      with:
-        go-version: 1.14
-      id: go
-
-    - name: Set GOPATH
-      run: |
-        # temporary fix for https://github.com/actions/setup-go/issues/14
-        echo "##[set-env name=GOPATH;]$(dirname $GITHUB_WORKSPACE)"
-        echo "##[add-path]$(dirname $GITHUB_WORKSPACE)/bin"
-
-    - name: Check out code into the Go module directory
+    - name: Checkout
       uses: actions/checkout@v2
-
+    - name: Setup
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^1.15
     - name: Unit Tests
       run: go test -v -race $(go list ./...)
 
@@ -73,25 +48,15 @@ jobs:
     name: E2E Tests (Memory Storage)
     runs-on: ubuntu-latest
     steps:
-
-    - name: Set up Go 1.14
-      uses: actions/setup-go@v1
-      with:
-        go-version: 1.14
-      id: go
-
-    - name: Set GOPATH
-      run: |
-        # temporary fix for https://github.com/actions/setup-go/issues/14
-        echo "##[set-env name=GOPATH;]$(dirname $GITHUB_WORKSPACE)"
-        echo "##[add-path]$(dirname $GITHUB_WORKSPACE)/bin"
-
-    - name: Check out code into the Go module directory
+    - name: Checkout
       uses: actions/checkout@v2
-
-    - name: Test
+    - name: Setup
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^1.15
+    - name: End-to-End Test
       run: |
-        go install github.com/chihaya/chihaya/cmd/chihaya
+        go install ./cmd/chihaya
         cat ./dist/example_config.yaml
         chihaya --config=./dist/example_config.yaml --debug &
         pid=$!
@@ -108,32 +73,21 @@ jobs:
         ports: ["6379:6379"]
         options: --entrypoint redis-server
     steps:
-
-    - name: Set up Go 1.14
-      uses: actions/setup-go@v1
-      with:
-        go-version: 1.14
-      id: go
-
-    - name: Set GOPATH
-      run: |
-        # temporary fix for https://github.com/actions/setup-go/issues/14
-        echo "##[set-env name=GOPATH;]$(dirname $GITHUB_WORKSPACE)"
-        echo "##[add-path]$(dirname $GITHUB_WORKSPACE)/bin"
-
-    - name: Check out code into the Go module directory
+    - name: Checkout
       uses: actions/checkout@v2
-
+    - name: Setup
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^1.15
     - name: Configure redis storage
       run: |
         curl -LO https://github.com/jzelinskie/faq/releases/download/0.0.6/faq-linux-amd64
         chmod +x faq-linux-amd64
         ./faq-linux-amd64 '.chihaya.storage = {"config":{"gc_interval":"3m","peer_lifetime":"31m","prometheus_reporting_interval":"1s","redis_broker":"redis://127.0.0.1:6379/0","redis_connect_timeout":"15s","redis_read_timeout":"15s","redis_write_timeout":"15s"},"name":"redis"}' ./dist/example_config.yaml > ./dist/example_redis_config.yaml
         cat ./dist/example_redis_config.yaml
-
-    - name: Test
+    - name: End-to-End Test
       run: |
-        go install github.com/chihaya/chihaya/cmd/chihaya
+        go install ./cmd/chihaya
         chihaya --config=./dist/example_redis_config.yaml --debug &
         pid=$!
         sleep 2
