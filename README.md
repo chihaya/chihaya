@@ -17,7 +17,7 @@ Differentiating features include:
 
 - HTTP and UDP protocols
 - IPv4 and IPv6 support
-- Pre/Post middlware hooks
+- Pre/Post middleware hooks
 - [YAML] configuration
 - Metrics via [Prometheus]
 - High Availability via [Redis]
