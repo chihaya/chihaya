@@ -6,8 +6,8 @@ metadata:
     chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
   annotations:
     prometheus.io/scrape: "true"
-    prometheus.io/path: "/"
-    prometheus.io/port: {{ $v := .Values.config.chihaya.prometheus_addr | split ":" }}{{ $v._1 | quote }}
+    prometheus.io/path: "/metrics"
+    prometheus.io/port: {{ $v := .Values.config.chihaya.metrics_addr | split ":" }}{{ $v._1 | quote }}
 spec:
   type: {{ .Values.service.type }}
   ports:
@@ -20,8 +20,8 @@ spec:
     targetPort: {{ $v := .Values.config.chihaya.udp.addr | split ":" }}{{ $v._1 }}
     protocol: UDP
   - name: metrics
-    port: {{ $v := .Values.config.chihaya.prometheus_addr | split ":" }}{{ $v._1 }}
-    targetPort: {{ $v := .Values.config.chihaya.prometheus_addr | split ":" }}{{ $v._1 }}
+    port: {{ $v := .Values.config.chihaya.metrics_addr | split ":" }}{{ $v._1 }}
+    targetPort: {{ $v := .Values.config.chihaya.metrics_addr | split ":" }}{{ $v._1 }}
     protocol: TCP
   selector:
     app: {{ template "fullname" . }}

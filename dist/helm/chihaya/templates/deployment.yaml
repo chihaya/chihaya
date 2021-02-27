@@ -31,11 +31,11 @@ spec:
           containerPort: {{ $v := .Values.config.chihaya.udp.addr | split ":" }}{{ $v._1 }}
           protocol: UDP
         - name: metrics
-          containerPort: {{ $v := .Values.config.chihaya.prometheus_addr | split ":" }}{{ $v._1 }}
+          containerPort: {{ $v := .Values.config.chihaya.metrics_addr | split ":" }}{{ $v._1 }}
         livenessProbe:
           httpGet:
             path: /
-            port: {{ $v := .Values.config.chihaya.prometheus_addr | split ":" }}{{ $v._1 }}
+            port: {{ $v := .Values.config.chihaya.metrics_addr | split ":" }}{{ $v._1 }}
         volumeMounts:
         - name: config
           mountPath: /etc/chihaya
