@@ -5,8 +5,6 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	"runtime/pprof"
-	"runtime/trace"
 	"strings"
 	"syscall"
 	"time"
@@ -18,7 +16,7 @@ import (
 	"github.com/chihaya/chihaya/frontend/udp"
 	"github.com/chihaya/chihaya/middleware"
 	"github.com/chihaya/chihaya/pkg/log"
-	"github.com/chihaya/chihaya/pkg/prometheus"
+	"github.com/chihaya/chihaya/pkg/metrics"
 	"github.com/chihaya/chihaya/pkg/stop"
 	"github.com/chihaya/chihaya/storage"
 )
@@ -52,8 +50,8 @@ func (r *Run) Start(ps storage.PeerStore) error {
 
 	r.sg = stop.NewGroup()
 
-	log.Info("starting Prometheus server", log.Fields{"addr": cfg.PrometheusAddr})
-	r.sg.Add(prometheus.NewServer(cfg.PrometheusAddr))
+	log.Info("starting metrics server", log.Fields{"addr": cfg.MetricsAddr})
+	r.sg.Add(metrics.NewServer(cfg.MetricsAddr))
 
 	if ps == nil {
 		log.Info("starting storage", log.Fields{"name": cfg.Storage.Name})
@@ -112,7 +110,7 @@ func combineErrors(prefix string, errs []error) error {
 
 // Stop shuts down an instance of Chihaya.
 func (r *Run) Stop(keepPeerStore bool) (storage.PeerStore, error) {
-	log.Debug("stopping frontends and prometheus endpoint")
+	log.Debug("stopping frontends and metrics server")
 	if errs := r.sg.Stop().Wait(); len(errs) != 0 {
 		return nil, combineErrors("failed while shutting down frontends", errs)
 	}
@@ -202,42 +200,12 @@ func RootPreRunCmdFunc(cmd *cobra.Command, args []string) error {
 		log.Info("enabled debug logging")
 	}
 
-	tracePath, err := cmd.Flags().GetString("trace")
-	if err != nil {
-		return err
-	}
-	if tracePath != "" {
-		f, err := os.Create(tracePath)
-		if err != nil {
-			return err
-		}
-		trace.Start(f)
-		log.Info("enabled tracing", log.Fields{"path": tracePath})
-	}
-
-	cpuProfilePath, err := cmd.Flags().GetString("cpuprofile")
-	if err != nil {
-		return err
-	}
-	if cpuProfilePath != "" {
-		f, err := os.Create(cpuProfilePath)
-		if err != nil {
-			return err
-		}
-		pprof.StartCPUProfile(f)
-		log.Info("enabled CPU profiling", log.Fields{"path": cpuProfilePath})
-	}
-
 	return nil
 }
 
 // RootPostRunCmdFunc handles clean up of any state initialized by command line
 // flags.
 func RootPostRunCmdFunc(cmd *cobra.Command, args []string) error {
-	// These can be called regardless because it noops when not profiling.
-	pprof.StopCPUProfile()
-	trace.Stop()
-
 	return nil
 }
 
@@ -251,8 +219,6 @@ func main() {
 		PersistentPostRunE: RootPostRunCmdFunc,
 	}
 
-	rootCmd.PersistentFlags().String("cpuprofile", "", "location to save a CPU profile")
-	rootCmd.PersistentFlags().String("trace", "", "location to save a trace")
 	rootCmd.PersistentFlags().Bool("debug", false, "enable debug logging")
 	rootCmd.PersistentFlags().Bool("json", false, "enable json logging")
 	if runtime.GOOS == "windows" {
