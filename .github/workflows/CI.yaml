@@ -93,3 +93,23 @@ jobs:
         sleep 2
         chihaya e2e --debug
         kill $pid
+
+  dist:
+    name: Helm Template
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: Install Helm
+      uses: engineerd/configurator@v0.0.5
+      with:
+        name: helm
+        pathInArchive: linux-amd64/helm
+        fromGitHubReleases: true
+        repo: helm/helm
+        version: ^v3
+        urlTemplate: https://get.helm.sh/helm-{{version}}-linux-amd64.tar.gz
+        token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Helm Template
+      working-directory: ./dist/helm/chihaya
+      run: helm template . --debug
