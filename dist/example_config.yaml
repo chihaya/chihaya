@@ -8,9 +8,11 @@ chihaya:
   min_announce_interval: 15m
 
   # The network interface that will bind to an HTTP endpoint that can be
-  # scraped by an instance of the Prometheus time series database.
-  # For more info see: https://prometheus.io
-  prometheus_addr: "0.0.0.0:6880"
+  # scraped by programs collecting metrics.
+  # 
+  # /metrics serves metrics in the Prometheus format
+  # /debug/pprof/{cmdline,profile,symbol,trace} serves profiles in the pprof format
+  metrics_addr: "0.0.0.0:6880"
 
   # This block defines configuration for the tracker's HTTP interface.
   # If you do not wish to run this, delete this section.

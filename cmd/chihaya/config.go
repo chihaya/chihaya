@@ -30,7 +30,7 @@ type storageConfig struct {
 // Config represents the configuration used for executing Chihaya.
 type Config struct {
 	middleware.ResponseConfig `yaml:",inline"`
-	PrometheusAddr            string                  `yaml:"prometheus_addr"`
+	MetricsAddr               string                  `yaml:"metrics_addr"`
 	HTTPConfig                http.Config             `yaml:"http"`
 	UDPConfig                 udp.Config              `yaml:"udp"`
 	Storage                   storageConfig           `yaml:"storage"`
