@@ -53,12 +53,13 @@ func benchHookListV6(b *testing.B, hooks hookList) {
 
 func benchHookList(b *testing.B, hooks hookList, req *bittorrent.AnnounceRequest) {
 	ctx := context.Background()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		resp, err := hooks.handleAnnounce(ctx, req)
-		require.Nil(b, err)
-		require.NotNil(b, resp)
-	}
+	b.Run("HandleAnnounce", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			resp, err := hooks.handleAnnounce(ctx, req)
+			require.Nil(b, err)
+			require.NotNil(b, resp)
+		}
+	})
 }
 
 func BenchmarkHookOverhead(b *testing.B) {
