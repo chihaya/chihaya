@@ -67,27 +67,27 @@ func runBenchmark(b *testing.B, ps PeerStore, parallel bool, sf setupFunc, ef ex
 	}
 	offset := int32(0)
 
-	b.ResetTimer()
-	if parallel {
-		b.RunParallel(func(pb *testing.PB) {
-			i := int(atomic.AddInt32(&offset, spacing))
-			for pb.Next() {
+	b.Run("bench", func(b *testing.B) {
+		if parallel {
+			b.RunParallel(func(pb *testing.PB) {
+				i := int(atomic.AddInt32(&offset, spacing))
+				for pb.Next() {
+					err := ef(i, ps, bd)
+					if err != nil {
+						b.Fatal(err)
+					}
+					i++
+				}
+			})
+		} else {
+			for i := 0; i < b.N; i++ {
 				err := ef(i, ps, bd)
 				if err != nil {
 					b.Fatal(err)
 				}
-				i++
-			}
-		})
-	} else {
-		for i := 0; i < b.N; i++ {
-			err := ef(i, ps, bd)
-			if err != nil {
-				b.Fatal(err)
 			}
 		}
-	}
-	b.StopTimer()
+	})
 
 	errChan := ps.Stop()
 	for err := range errChan {
