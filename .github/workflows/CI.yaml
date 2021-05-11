@@ -27,7 +27,7 @@ jobs:
     - name: Imports
       uses: Jerome1337/goimports-action@v1.0.2
     - name: Format
-      uses: Jerome1337/gofmt-action@v1.0.2
+      uses: Jerome1337/gofmt-action@v1.0.4
     - name: Lint
       uses: Jerome1337/golint-action@v1.0.2
 
