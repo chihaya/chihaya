@@ -2,14 +2,9 @@
 
 [![Build Status](https://github.com/chihaya/chihaya/workflows/CI/badge.svg)](https://github.com/chihaya/chihaya/actions)
 [![Docker Repository on Quay.io](https://quay.io/repository/jzelinskie/chihaya/status "Docker Repository on Quay.io")](https://quay.io/repository/jzelinskie/chihaya)
-[![Go Report Card](https://goreportcard.com/badge/github.com/chihaya/chihaya)](https://goreportcard.com/report/github.com/chihaya/chihaya)
 [![GoDoc](https://godoc.org/github.com/chihaya/chihaya?status.svg)](https://godoc.org/github.com/chihaya/chihaya)
-![Lines of Code](https://tokei.rs/b1/github/chihaya/chihaya)
 [![License](https://img.shields.io/badge/license-BSD-blue.svg)](https://en.wikipedia.org/wiki/BSD_licenses#2-clause_license_.28.22Simplified_BSD_License.22_or_.22FreeBSD_License.22.29)
-[![IRC Channel](https://img.shields.io/badge/freenode-%23chihaya-blue.svg "IRC Channel")](http://webchat.freenode.net/?channels=chihaya)
-
-**Note:** The master branch may be in an unstable or even broken state during development.
-Please use [releases] instead of the master branch in order to get stable binaries.
+[![IRC Channel](https://img.shields.io/badge/IRC-%23chihaya-%235555ff.svg "IRC Channel")](https://web.libera.chat/#chihaya)
 
 Chihaya is an open source [BitTorrent tracker] written in [Go].
 
@@ -22,6 +17,9 @@ Differentiating features include:
 - Metrics via [Prometheus]
 - High Availability via [Redis]
 - Kubernetes deployment via [Helm]
+
+**Note:** The master branch may be in an unstable or even broken state during development.
+Please use [releases] instead of the master branch in order to get stable binaries.
 
 [releases]: https://github.com/chihaya/chihaya/releases
 [BitTorrent tracker]: https://en.wikipedia.org/wiki/BitTorrent_tracker
