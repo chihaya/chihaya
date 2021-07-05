@@ -19,4 +19,5 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/yuin/gopher-lua v0.0.0-20191220021717-ab39c6098bdb // indirect
 	gopkg.in/yaml.v2 v2.4.0
+	inet.af/netaddr v0.0.0-20210704172029-d1acf45c3514
 )

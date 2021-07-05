@@ -4,12 +4,12 @@ package memory
 
 import (
 	"encoding/binary"
-	"net"
 	"runtime"
 	"sync"
 	"time"
 
 	yaml "gopkg.in/yaml.v2"
+	"inet.af/netaddr"
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/pkg/log"
@@ -168,35 +168,6 @@ func New(provided Config) (storage.PeerStore, error) {
 	return ps, nil
 }
 
-type serializedPeer string
-
-func newPeerKey(p bittorrent.Peer) serializedPeer {
-	b := make([]byte, 20+2+len(p.IP.IP))
-	copy(b[:20], p.ID[:])
-	binary.BigEndian.PutUint16(b[20:22], p.Port)
-	copy(b[22:], p.IP.IP)
-
-	return serializedPeer(b)
-}
-
-func decodePeerKey(pk serializedPeer) bittorrent.Peer {
-	peer := bittorrent.Peer{
-		ID:   bittorrent.PeerIDFromString(string(pk[:20])),
-		Port: binary.BigEndian.Uint16([]byte(pk[20:22])),
-		IP:   bittorrent.IP{IP: net.IP(pk[22:])}}
-
-	if ip := peer.IP.To4(); ip != nil {
-		peer.IP.IP = ip
-		peer.IP.AddressFamily = bittorrent.IPv4
-	} else if len(peer.IP.IP) == net.IPv6len { // implies toReturn.IP.To4() == nil
-		peer.IP.AddressFamily = bittorrent.IPv6
-	} else {
-		panic("IP is neither v4 nor v6")
-	}
-
-	return peer
-}
-
 type peerShard struct {
 	swarms      map[bittorrent.InfoHash]swarm
 	numSeeders  uint64
@@ -206,8 +177,8 @@ type peerShard struct {
 
 type swarm struct {
 	// map serialized peer to mtime
-	seeders  map[serializedPeer]int64
-	leechers map[serializedPeer]int64
+	seeders  map[string]int64
+	leechers map[string]int64
 }
 
 type peerStore struct {
@@ -243,16 +214,12 @@ func recordGCDuration(duration time.Duration) {
 	storage.PromGCDurationMilliseconds.Observe(float64(duration.Nanoseconds()) / float64(time.Millisecond))
 }
 
-func (ps *peerStore) getClock() int64 {
-	return timecache.NowUnixNano()
-}
-
-func (ps *peerStore) shardIndex(infoHash bittorrent.InfoHash, af bittorrent.AddressFamily) uint32 {
+func (ps *peerStore) shardIndex(infoHash bittorrent.InfoHash, ip netaddr.IP) uint32 {
 	// There are twice the amount of shards specified by the user, the first
 	// half is dedicated to IPv4 swarms and the second half is dedicated to
 	// IPv6 swarms.
 	idx := binary.BigEndian.Uint32(infoHash[:4]) % (uint32(len(ps.shards)) / 2)
-	if af == bittorrent.IPv6 {
+	if ip.Is6() {
 		idx += uint32(len(ps.shards) / 2)
 	}
 	return idx
@@ -265,15 +232,16 @@ func (ps *peerStore) PutSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) error 
 	default:
 	}
 
-	pk := newPeerKey(p)
+	pk := p.RawString()
+	now := timecache.NowUnixNano()
 
-	shard := ps.shards[ps.shardIndex(ih, p.IP.AddressFamily)]
+	shard := ps.shards[ps.shardIndex(ih, p.IPPort.IP())]
 	shard.Lock()
 
 	if _, ok := shard.swarms[ih]; !ok {
 		shard.swarms[ih] = swarm{
-			seeders:  make(map[serializedPeer]int64),
-			leechers: make(map[serializedPeer]int64),
+			seeders:  make(map[string]int64),
+			leechers: make(map[string]int64),
 		}
 	}
 
@@ -283,7 +251,7 @@ func (ps *peerStore) PutSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) error 
 	}
 
 	// Update the peer in the swarm.
-	shard.swarms[ih].seeders[pk] = ps.getClock()
+	shard.swarms[ih].seeders[pk] = now
 
 	shard.Unlock()
 	return nil
@@ -296,9 +264,9 @@ func (ps *peerStore) DeleteSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) err
 	default:
 	}
 
-	pk := newPeerKey(p)
+	pk := p.RawString()
 
-	shard := ps.shards[ps.shardIndex(ih, p.IP.AddressFamily)]
+	shard := ps.shards[ps.shardIndex(ih, p.IPPort.IP())]
 	shard.Lock()
 
 	if _, ok := shard.swarms[ih]; !ok {
@@ -329,15 +297,16 @@ func (ps *peerStore) PutLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) error
 	default:
 	}
 
-	pk := newPeerKey(p)
+	pk := p.RawString()
+	now := timecache.NowUnixNano()
 
-	shard := ps.shards[ps.shardIndex(ih, p.IP.AddressFamily)]
+	shard := ps.shards[ps.shardIndex(ih, p.IPPort.IP())]
 	shard.Lock()
 
 	if _, ok := shard.swarms[ih]; !ok {
 		shard.swarms[ih] = swarm{
-			seeders:  make(map[serializedPeer]int64),
-			leechers: make(map[serializedPeer]int64),
+			seeders:  make(map[string]int64),
+			leechers: make(map[string]int64),
 		}
 	}
 
@@ -347,7 +316,7 @@ func (ps *peerStore) PutLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) error
 	}
 
 	// Update the peer in the swarm.
-	shard.swarms[ih].leechers[pk] = ps.getClock()
+	shard.swarms[ih].leechers[pk] = now
 
 	shard.Unlock()
 	return nil
@@ -360,9 +329,9 @@ func (ps *peerStore) DeleteLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) er
 	default:
 	}
 
-	pk := newPeerKey(p)
+	pk := p.RawString()
 
-	shard := ps.shards[ps.shardIndex(ih, p.IP.AddressFamily)]
+	shard := ps.shards[ps.shardIndex(ih, p.IPPort.IP())]
 	shard.Lock()
 
 	if _, ok := shard.swarms[ih]; !ok {
@@ -393,15 +362,16 @@ func (ps *peerStore) GraduateLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) 
 	default:
 	}
 
-	pk := newPeerKey(p)
+	pk := p.RawString()
+	now := timecache.NowUnixNano()
 
-	shard := ps.shards[ps.shardIndex(ih, p.IP.AddressFamily)]
+	shard := ps.shards[ps.shardIndex(ih, p.IPPort.IP())]
 	shard.Lock()
 
 	if _, ok := shard.swarms[ih]; !ok {
 		shard.swarms[ih] = swarm{
-			seeders:  make(map[serializedPeer]int64),
-			leechers: make(map[serializedPeer]int64),
+			seeders:  make(map[string]int64),
+			leechers: make(map[string]int64),
 		}
 	}
 
@@ -417,7 +387,7 @@ func (ps *peerStore) GraduateLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) 
 	}
 
 	// Update the peer in the swarm.
-	shard.swarms[ih].seeders[pk] = ps.getClock()
+	shard.swarms[ih].seeders[pk] = now
 
 	shard.Unlock()
 	return nil
@@ -430,7 +400,7 @@ func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant 
 	default:
 	}
 
-	shard := ps.shards[ps.shardIndex(ih, announcer.IP.AddressFamily)]
+	shard := ps.shards[ps.shardIndex(ih, announcer.IPPort.IP())]
 	shard.RLock()
 
 	if _, ok := shard.swarms[ih]; !ok {
@@ -446,7 +416,7 @@ func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant 
 				break
 			}
 
-			peers = append(peers, decodePeerKey(pk))
+			peers = append(peers, bittorrent.PeerFromRawString(pk))
 			numWant--
 		}
 	} else {
@@ -457,14 +427,14 @@ func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant 
 				break
 			}
 
-			peers = append(peers, decodePeerKey(pk))
+			peers = append(peers, bittorrent.PeerFromRawString(pk))
 			numWant--
 		}
 
 		// Append leechers until we reach numWant.
 		if numWant > 0 {
 			leechers := shard.swarms[ih].leechers
-			announcerPK := newPeerKey(announcer)
+			announcerPK := announcer.RawString()
 			for pk := range leechers {
 				if pk == announcerPK {
 					continue
@@ -474,7 +444,7 @@ func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant 
 					break
 				}
 
-				peers = append(peers, decodePeerKey(pk))
+				peers = append(peers, bittorrent.PeerFromRawString(pk))
 				numWant--
 			}
 		}
@@ -484,7 +454,7 @@ func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant 
 	return
 }
 
-func (ps *peerStore) ScrapeSwarm(ih bittorrent.InfoHash, addressFamily bittorrent.AddressFamily) (resp bittorrent.Scrape) {
+func (ps *peerStore) ScrapeSwarm(ih bittorrent.InfoHash, ip netaddr.IP) (resp bittorrent.Scrape) {
 	select {
 	case <-ps.closed:
 		panic("attempted to interact with stopped memory store")
@@ -492,7 +462,7 @@ func (ps *peerStore) ScrapeSwarm(ih bittorrent.InfoHash, addressFamily bittorren
 	}
 
 	resp.InfoHash = ih
-	shard := ps.shards[ps.shardIndex(ih, addressFamily)]
+	shard := ps.shards[ps.shardIndex(ih, ip)]
 	shard.RLock()
 
 	swarm, ok := shard.swarms[ih]

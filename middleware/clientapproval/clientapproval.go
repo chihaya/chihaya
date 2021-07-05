@@ -84,7 +84,7 @@ func NewHook(cfg Config) (middleware.Hook, error) {
 }
 
 func (h *hook) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequest, resp *bittorrent.AnnounceResponse) (context.Context, error) {
-	clientID := bittorrent.NewClientID(req.Peer.ID)
+	clientID := req.Peer.ID.ClientID()
 
 	if len(h.approved) > 0 {
 		if _, found := h.approved[clientID]; !found {

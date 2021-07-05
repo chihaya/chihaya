@@ -2,10 +2,11 @@ package storage
 
 import (
 	"math/rand"
-	"net"
 	"runtime"
 	"sync/atomic"
 	"testing"
+
+	"inet.af/netaddr"
 
 	"github.com/chihaya/chihaya/bittorrent"
 )
@@ -32,8 +33,8 @@ func generateInfohashes() (a [1000]bittorrent.InfoHash) {
 func generatePeers() (a [1000]bittorrent.Peer) {
 	r := rand.New(rand.NewSource(0))
 	for i := range a {
-		ip := make([]byte, 4)
-		n, err := r.Read(ip)
+		var ip [4]byte
+		n, err := r.Read(ip[:])
 		if err != nil || n != 4 {
 			panic("unable to create random bytes")
 		}
@@ -44,9 +45,8 @@ func generatePeers() (a [1000]bittorrent.Peer) {
 		}
 		port := uint16(r.Uint32())
 		a[i] = bittorrent.Peer{
-			ID:   bittorrent.PeerID(id),
-			IP:   bittorrent.IP{IP: net.IP(ip), AddressFamily: bittorrent.IPv4},
-			Port: port,
+			ID:     bittorrent.PeerID(id),
+			IPPort: netaddr.IPPortFrom(netaddr.IPFrom4(ip), port),
 		}
 	}
 
@@ -435,7 +435,7 @@ func AnnounceSeeder1kInfohash(b *testing.B, ps PeerStore) {
 // ScrapeSwarm can run in parallel.
 func ScrapeSwarm(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, putPeers, func(i int, ps PeerStore, bd *benchData) error {
-		ps.ScrapeSwarm(bd.infohashes[0], bittorrent.IPv4)
+		ps.ScrapeSwarm(bd.infohashes[0], bd.peers[0].IPPort.IP())
 		return nil
 	})
 }
@@ -445,7 +445,7 @@ func ScrapeSwarm(b *testing.B, ps PeerStore) {
 // ScrapeSwarm1kInfohash can run in parallel.
 func ScrapeSwarm1kInfohash(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, putPeers, func(i int, ps PeerStore, bd *benchData) error {
-		ps.ScrapeSwarm(bd.infohashes[i%1000], bittorrent.IPv4)
+		ps.ScrapeSwarm(bd.infohashes[i%1000], bd.peers[0].IPPort.IP())
 		return nil
 	})
 }

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
+	"inet.af/netaddr"
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/frontend"
@@ -306,12 +307,12 @@ func (f *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, ps http
 	if f.EnableRequestTiming {
 		start = time.Now()
 	}
-	var af *bittorrent.AddressFamily
+	var ip netaddr.IP
 	defer func() {
 		if f.EnableRequestTiming {
-			recordResponseDuration("announce", af, err, time.Since(start))
+			recordResponseDuration("announce", ip, err, time.Since(start))
 		} else {
-			recordResponseDuration("announce", af, err, time.Duration(0))
+			recordResponseDuration("announce", ip, err, time.Duration(0))
 		}
 	}()
 
@@ -320,8 +321,7 @@ func (f *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, ps http
 		WriteError(w, err)
 		return
 	}
-	af = new(bittorrent.AddressFamily)
-	*af = req.IP.AddressFamily
+	ip = req.IPPort.IP()
 
 	ctx := injectRouteParamsToContext(context.Background(), ps)
 	ctx, resp, err := f.logic.HandleAnnounce(ctx, req)
@@ -347,12 +347,12 @@ func (f *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, ps httpro
 	if f.EnableRequestTiming {
 		start = time.Now()
 	}
-	var af *bittorrent.AddressFamily
+	var ip netaddr.IP
 	defer func() {
 		if f.EnableRequestTiming {
-			recordResponseDuration("scrape", af, err, time.Since(start))
+			recordResponseDuration("scrape", ip, err, time.Since(start))
 		} else {
-			recordResponseDuration("scrape", af, err, time.Duration(0))
+			recordResponseDuration("scrape", ip, err, time.Duration(0))
 		}
 	}()
 
@@ -369,18 +369,11 @@ func (f *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, ps httpro
 		return
 	}
 
-	reqIP := net.ParseIP(host)
-	if reqIP.To4() != nil {
-		req.AddressFamily = bittorrent.IPv4
-	} else if len(reqIP) == net.IPv6len { // implies reqIP.To4() == nil
-		req.AddressFamily = bittorrent.IPv6
-	} else {
-		log.Error("http: invalid IP: neither v4 nor v6", log.Fields{"RemoteAddr": r.RemoteAddr})
+	ip, err = netaddr.ParseIP(host)
+	if ip.IsZero() {
+		log.Error("http: invalid IP: IP is zero", log.Fields{"RemoteAddr": r.RemoteAddr})
 		WriteError(w, bittorrent.ErrInvalidIP)
-		return
 	}
-	af = new(bittorrent.AddressFamily)
-	*af = req.AddressFamily
 
 	ctx := injectRouteParamsToContext(context.Background(), ps)
 	ctx, resp, err := f.logic.HandleScrape(ctx, req)
