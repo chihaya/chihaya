@@ -17,7 +17,6 @@ func WriteError(w http.ResponseWriter, err error) error {
 		log.Error("http: internal error", log.Err(err))
 	}
 
-	w.WriteHeader(http.StatusOK)
 	return bencode.NewEncoder(w).Encode(bencode.Dict{
 		"failure reason": message,
 	})
