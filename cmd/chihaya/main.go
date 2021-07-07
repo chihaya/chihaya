@@ -210,7 +210,7 @@ func RootPostRunCmdFunc(cmd *cobra.Command, args []string) error {
 }
 
 func main() {
-	var rootCmd = &cobra.Command{
+	rootCmd := &cobra.Command{
 		Use:                "chihaya",
 		Short:              "BitTorrent Tracker",
 		Long:               "A customizable, multi-protocol BitTorrent Tracker",
@@ -229,7 +229,7 @@ func main() {
 
 	rootCmd.Flags().String("config", "/etc/chihaya.yaml", "location of configuration file")
 
-	var e2eCmd = &cobra.Command{
+	e2eCmd := &cobra.Command{
 		Use:   "e2e",
 		Short: "exec e2e tests",
 		Long:  "Execute the Chihaya end-to-end test suite",

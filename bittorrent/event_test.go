@@ -8,7 +8,7 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	var table = []struct {
+	table := []struct {
 		data        string
 		expected    Event
 		expectedErr error

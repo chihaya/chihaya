@@ -14,22 +14,32 @@ jobs:
     name: Build & Lint
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout
-      uses: actions/checkout@v2
-    - name: Setup
-      uses: actions/setup-go@v2
+    - uses: actions/checkout@v2
+    - uses: actions/setup-go@v2
       with:
-        go-version: ^1.15
+        go-version: ^1.16
+    - name: Tidy
+      run: |
+        GO_MOD_OUPUT="$(go mod tidy -v 2>&1)"
+        if [[ $GO_MOD_OUPUT == *"unused"* ]]; then
+          echo "${GO_MOD_OUPUT}"
+          exit 1
+        fi
+    - name: Format
+      run: |
+        go install mvdan.cc/gofumpt/gofumports@latest
+        GOFUMPT_OUTPUT="$(gofumports -d .)"
+        if [ -n "$GOFUMPT_OUTPUT" ]; then
+          echo "All the following files are not correctly formatted"
+          echo "${GOFUMPT_OUTPUT}"
+          exit 1
+        fi
+    - name: Lint
+      run: |
+        go install github.com/mgechev/revive@latest
+        revive ./...
     - name: Build
       run: go build -v ./cmd/...
-    - name: Vet
-      run: go vet ./...
-    - name: Imports
-      uses: Jerome1337/goimports-action@v1.0.3
-    - name: Format
-      uses: Jerome1337/gofmt-action@v1.0.4
-    - name: Lint
-      uses: Jerome1337/golint-action@v1.0.2
 
   unit:
     name: Unit Tests
@@ -40,7 +50,7 @@ jobs:
     - name: Setup
       uses: actions/setup-go@v2
       with:
-        go-version: ^1.15
+        go-version: ^1.16
     - name: Unit Tests
       run: go test -v -race $(go list ./...)
 
@@ -53,7 +63,7 @@ jobs:
     - name: Setup
       uses: actions/setup-go@v2
       with:
-        go-version: ^1.15
+        go-version: ^1.16
     - name: End-to-End Test
       run: |
         go install ./cmd/chihaya
@@ -78,7 +88,7 @@ jobs:
     - name: Setup
       uses: actions/setup-go@v2
       with:
-        go-version: ^1.15
+        go-version: ^1.16
     - name: Configure redis storage
       run: |
         curl -LO https://github.com/jzelinskie/faq/releases/download/0.0.6/faq-linux-amd64

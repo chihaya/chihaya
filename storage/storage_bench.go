@@ -53,8 +53,10 @@ func generatePeers() (a [1000]bittorrent.Peer) {
 	return
 }
 
-type executionFunc func(int, PeerStore, *benchData) error
-type setupFunc func(PeerStore, *benchData) error
+type (
+	executionFunc func(int, PeerStore, *benchData) error
+	setupFunc     func(PeerStore, *benchData) error
+)
 
 func runBenchmark(b *testing.B, ps PeerStore, parallel bool, sf setupFunc, ef executionFunc) {
 	bd := &benchData{generateInfohashes(), generatePeers()}
