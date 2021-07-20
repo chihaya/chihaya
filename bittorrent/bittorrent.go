@@ -14,6 +14,7 @@ import (
 	"inet.af/netaddr"
 
 	"github.com/chihaya/chihaya/pkg/log"
+	"github.com/jzelinskie/stringz"
 )
 
 // PeerID represents a peer ID.
@@ -88,7 +89,7 @@ func PeerIDFromRawString(s string) PeerID {
 // It panics if s is not 40 bytes long.
 func PeerIDFromHexString(s string) PeerID {
 	if len(s) != 40 {
-		panic("peer ID must be 20 bytes")
+		panic("peer ID must be 40 bytes")
 	}
 
 	var buf [20]byte
@@ -251,6 +252,22 @@ func PeerFromRawString(s string) Peer {
 	return Peer{
 		ID:     PeerIDFromRawString(s[:20]),
 		IPPort: netaddr.IPPortFrom(ip, binary.BigEndian.Uint16([]byte(s[20:22]))),
+	}
+}
+
+// PeerFromString parses a Peer from a human-friendly string representation of
+// a Peer.
+//
+// This function panics is the string fails to parse.
+func PeerFromString(s string) Peer {
+	var hexPeerID, ipport string
+	if err := stringz.Unpack(strings.Split(s, "@"), &hexPeerID, &ipport); err != nil {
+		panic("failed to scan peer string: " + err.Error())
+	}
+
+	return Peer{
+		ID:     PeerIDFromHexString(hexPeerID),
+		IPPort: netaddr.MustParseIPPort(ipport),
 	}
 }
 
