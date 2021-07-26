@@ -11,10 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"inet.af/netaddr"
-
-	"github.com/chihaya/chihaya/pkg/log"
 	"github.com/jzelinskie/stringz"
+	"github.com/rs/zerolog"
+	"inet.af/netaddr"
 )
 
 // PeerID represents a peer ID.
@@ -154,22 +153,19 @@ type AnnounceRequest struct {
 	Params
 }
 
-// LogFields renders the current response as a set of log fields.
-func (r AnnounceRequest) LogFields() log.Fields {
-	return log.Fields{
-		"event":           r.Event,
-		"infoHash":        r.InfoHash,
-		"compact":         r.Compact,
-		"eventProvided":   r.EventProvided,
-		"numWantProvided": r.NumWantProvided,
-		"ipProvided":      r.IPProvided,
-		"numWant":         r.NumWant,
-		"left":            r.Left,
-		"downloaded":      r.Downloaded,
-		"uploaded":        r.Uploaded,
-		"peer":            r.Peer,
-		"params":          r.Params,
-	}
+func (r AnnounceRequest) MarshalZerologObject(e *zerolog.Event) {
+	e.Stringer("event", r.Event).
+		Stringer("infoHash", r.InfoHash).
+		Bool("compact", r.Compact).
+		Bool("eventProvided", r.EventProvided).
+		Bool("numWantProvided", r.NumWantProvided).
+		Bool("ipProvided", r.IPProvided).
+		Uint32("numWant", r.NumWant).
+		Uint64("left", r.Left).
+		Uint64("downloaded", r.Downloaded).
+		Uint64("uploaded", r.Uploaded).
+		EmbedObject(r.Peer).
+		EmbedObject(r.Params)
 }
 
 // AnnounceResponse represents the parameters used to create an announce
@@ -184,16 +180,13 @@ type AnnounceResponse struct {
 	IPv6Peers   []Peer
 }
 
-// LogFields renders the current response as a set of log fields.
-func (r AnnounceResponse) LogFields() log.Fields {
-	return log.Fields{
-		"compact":     r.Compact,
-		"complete":    r.Complete,
-		"interval":    r.Interval,
-		"minInterval": r.MinInterval,
-		"ipv4Peers":   r.IPv4Peers,
-		"ipv6Peers":   r.IPv6Peers,
-	}
+func (r AnnounceResponse) MarshalZerologObject(e *zerolog.Event) {
+	e.Bool("compact", r.Compact).
+		Uint32("complete", r.Complete).
+		Stringer("interval", r.Interval).
+		Stringer("minInterval", r.MinInterval).
+		Interface("ipv4Peers", r.IPv4Peers).
+		Interface("ipv6Peers", r.IPv6Peers)
 }
 
 // ScrapeRequest represents the parsed parameters from a scrape request.
@@ -203,13 +196,15 @@ type ScrapeRequest struct {
 	Peer
 }
 
-// LogFields renders the current response as a set of log fields.
-func (r ScrapeRequest) LogFields() log.Fields {
-	return log.Fields{
-		"peer":       r.Peer,
-		"infoHashes": r.InfoHashes,
-		"params":     r.Params,
+func (r ScrapeRequest) MarshalZerologObject(e *zerolog.Event) {
+	e.EmbedObject(r.Peer).
+		EmbedObject(r.Params)
+
+	infoHashes := make([]string, 0, len(r.InfoHashes))
+	for _, ih := range r.InfoHashes {
+		infoHashes = append(infoHashes, ih.String())
 	}
+	e.Strs("infoHashes", infoHashes)
 }
 
 // ScrapeResponse represents the parameters used to create a scrape response.
@@ -220,11 +215,8 @@ type ScrapeResponse struct {
 	Files []Scrape
 }
 
-// LogFields renders the current response as a set of Logrus fields.
-func (sr ScrapeResponse) LogFields() log.Fields {
-	return log.Fields{
-		"files": sr.Files,
-	}
+func (r ScrapeResponse) MarshalZerologObject(e *zerolog.Event) {
+	e.Interface("files", r.Files)
 }
 
 // Scrape represents the state of a swarm that is returned in a scrape response.
@@ -314,13 +306,10 @@ func (p Peer) RawString() string {
 	return b.String()
 }
 
-// LogFields renders the current peer as a set of Logrus fields.
-func (p Peer) LogFields() log.Fields {
-	return log.Fields{
-		"id":   p.ID,
-		"ip":   p.IPPort.IP(),
-		"port": p.IPPort.Port(),
-	}
+func (p Peer) MarshalZerologObject(e *zerolog.Event) {
+	e.Stringer("id", p.ID).
+		Stringer("ip", p.IPPort.IP()).
+		Uint16("port", p.IPPort.Port())
 }
 
 // Equal reports whether p and x are the same.

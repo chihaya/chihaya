@@ -11,12 +11,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"inet.af/netaddr"
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/frontend"
 	"github.com/chihaya/chihaya/frontend/udp/bytepool"
-	"github.com/chihaya/chihaya/pkg/log"
 	"github.com/chihaya/chihaya/pkg/stop"
 	"github.com/chihaya/chihaya/pkg/timecache"
 )
@@ -33,18 +34,15 @@ type Config struct {
 	ParseOptions        `yaml:",inline"`
 }
 
-// LogFields renders the current config as a set of Logrus fields.
-func (cfg Config) LogFields() log.Fields {
-	return log.Fields{
-		"addr":                cfg.Addr,
-		"privateKey":          cfg.PrivateKey,
-		"maxClockSkew":        cfg.MaxClockSkew,
-		"enableRequestTiming": cfg.EnableRequestTiming,
-		"allowIPSpoofing":     cfg.AllowIPSpoofing,
-		"maxNumWant":          cfg.MaxNumWant,
-		"defaultNumWant":      cfg.DefaultNumWant,
-		"maxScrapeInfoHashes": cfg.MaxScrapeInfoHashes,
-	}
+func (cfg Config) MarshalZerologObject(e *zerolog.Event) {
+	e.Str("addr", cfg.Addr).
+		Str("privateKey", cfg.PrivateKey).
+		Stringer("maxClockSkew", cfg.MaxClockSkew).
+		Bool("enableRequestTiming", cfg.EnableRequestTiming).
+		Bool("allowIPSpoofing", cfg.AllowIPSpoofing).
+		Uint32("maxNumWant", cfg.MaxNumWant).
+		Uint32("defaultNumWant", cfg.DefaultNumWant).
+		Uint32("maxScrapeInfoHashes", cfg.MaxScrapeInfoHashes)
 }
 
 // Validate sanity checks values set in a config and returns a new config with
@@ -63,34 +61,36 @@ func (cfg Config) Validate() Config {
 		}
 		validcfg.PrivateKey = string(pkeyRunes)
 
-		log.Warn("UDP private key was not provided, using generated key", log.Fields{"key": validcfg.PrivateKey})
+		log.Warn().
+			Str("key", validcfg.PrivateKey).
+			Msg("UDP private key was not provided, using generated key")
 	}
 
 	if cfg.MaxNumWant <= 0 {
 		validcfg.MaxNumWant = defaultMaxNumWant
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     "udp.MaxNumWant",
-			"provided": cfg.MaxNumWant,
-			"default":  validcfg.MaxNumWant,
-		})
+		log.Warn().
+			Str("name", "udp.MaxNumWant").
+			Uint32("provided", cfg.MaxNumWant).
+			Uint32("default", validcfg.MaxNumWant).
+			Msg("falling back to default configuration")
 	}
 
 	if cfg.DefaultNumWant <= 0 {
 		validcfg.DefaultNumWant = defaultDefaultNumWant
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     "udp.DefaultNumWant",
-			"provided": cfg.DefaultNumWant,
-			"default":  validcfg.DefaultNumWant,
-		})
+		log.Warn().
+			Str("name", "udp.DefaultNumWant").
+			Uint32("provided", cfg.DefaultNumWant).
+			Uint32("default", validcfg.DefaultNumWant).
+			Msg("falling back to default configuration")
 	}
 
 	if cfg.MaxScrapeInfoHashes <= 0 {
 		validcfg.MaxScrapeInfoHashes = defaultMaxScrapeInfoHashes
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     "udp.MaxScrapeInfoHashes",
-			"provided": cfg.MaxScrapeInfoHashes,
-			"default":  validcfg.MaxScrapeInfoHashes,
-		})
+		log.Warn().
+			Str("name", "udp.MaxScrapeInfoHashes").
+			Uint32("provided", cfg.MaxScrapeInfoHashes).
+			Uint32("default", validcfg.MaxScrapeInfoHashes).
+			Msg("falling back to default configuration")
 	}
 
 	return validcfg
@@ -131,7 +131,7 @@ func NewFrontend(logic frontend.TrackerLogic, provided Config) (*Frontend, error
 
 	go func() {
 		if err := f.serve(); err != nil {
-			log.Fatal("failed while serving udp", log.Err(err))
+			log.Fatal().Err(err).Msg("failed while serving udp")
 		}
 	}()
 
@@ -179,7 +179,7 @@ func (t *Frontend) serve() error {
 		// Check to see if we need to shutdown.
 		select {
 		case <-t.closing:
-			log.Debug("udp serve() received shutdown signal")
+			log.Debug().Msg("udp serve() received shutdown signal")
 			return nil
 		default:
 		}

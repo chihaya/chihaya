@@ -8,11 +8,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	yaml "gopkg.in/yaml.v2"
 	"inet.af/netaddr"
 
 	"github.com/chihaya/chihaya/bittorrent"
-	"github.com/chihaya/chihaya/pkg/log"
 	"github.com/chihaya/chihaya/pkg/stop"
 	"github.com/chihaya/chihaya/pkg/timecache"
 	"github.com/chihaya/chihaya/storage"
@@ -61,15 +62,12 @@ type Config struct {
 	ShardCount                  int           `yaml:"shard_count"`
 }
 
-// LogFields renders the current config as a set of Logrus fields.
-func (cfg Config) LogFields() log.Fields {
-	return log.Fields{
-		"name":               Name,
-		"gcInterval":         cfg.GarbageCollectionInterval,
-		"promReportInterval": cfg.PrometheusReportingInterval,
-		"peerLifetime":       cfg.PeerLifetime,
-		"shardCount":         cfg.ShardCount,
-	}
+func (cfg Config) MarshalZerologObject(e *zerolog.Event) {
+	e.Str("name", Name).
+		Stringer("gcInterval", cfg.GarbageCollectionInterval).
+		Stringer("promReportInterval", cfg.PrometheusReportingInterval).
+		Stringer("peerLifetime", cfg.PeerLifetime).
+		Int("shardCount", cfg.ShardCount)
 }
 
 // Validate sanity checks values set in a config and returns a new config with
@@ -81,38 +79,38 @@ func (cfg Config) Validate() Config {
 
 	if cfg.ShardCount <= 0 {
 		validcfg.ShardCount = defaultShardCount
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     Name + ".ShardCount",
-			"provided": cfg.ShardCount,
-			"default":  validcfg.ShardCount,
-		})
+		log.Warn().
+			Str("name", Name+".ShardCount").
+			Int("provided", cfg.ShardCount).
+			Int("default", validcfg.ShardCount).
+			Msg("falling back to default configuration")
 	}
 
 	if cfg.GarbageCollectionInterval <= 0 {
 		validcfg.GarbageCollectionInterval = defaultGarbageCollectionInterval
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     Name + ".GarbageCollectionInterval",
-			"provided": cfg.GarbageCollectionInterval,
-			"default":  validcfg.GarbageCollectionInterval,
-		})
+		log.Warn().
+			Str("name", Name+".GarbageCollectionInterval").
+			Stringer("provided", cfg.GarbageCollectionInterval).
+			Stringer("default", validcfg.GarbageCollectionInterval).
+			Msg("falling back to default configuration")
 	}
 
 	if cfg.PrometheusReportingInterval <= 0 {
 		validcfg.PrometheusReportingInterval = defaultPrometheusReportingInterval
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     Name + ".PrometheusReportingInterval",
-			"provided": cfg.PrometheusReportingInterval,
-			"default":  validcfg.PrometheusReportingInterval,
-		})
+		log.Warn().
+			Str("name", Name+".PrometheusReportingInterval").
+			Stringer("provided", cfg.PrometheusReportingInterval).
+			Stringer("default", validcfg.PrometheusReportingInterval).
+			Msg("falling back to default configuration")
 	}
 
 	if cfg.PeerLifetime <= 0 {
 		validcfg.PeerLifetime = defaultPeerLifetime
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     Name + ".PeerLifetime",
-			"provided": cfg.PeerLifetime,
-			"default":  validcfg.PeerLifetime,
-		})
+		log.Warn().
+			Str("name", Name+".PeerLifetime").
+			Stringer("provided", cfg.PeerLifetime).
+			Stringer("default", validcfg.PeerLifetime).
+			Msg("falling back to default configuration")
 	}
 
 	return validcfg
@@ -141,7 +139,7 @@ func New(provided Config) (storage.PeerStore, error) {
 				return
 			case <-time.After(cfg.GarbageCollectionInterval):
 				before := time.Now().Add(-cfg.PeerLifetime)
-				log.Debug("storage: purging peers with no announces since", log.Fields{"before": before})
+				log.Debug().Stringer("before", before).Msg("storage: purging peers with no announces since")
 				ps.collectGarbage(before)
 			}
 		}
@@ -160,7 +158,7 @@ func New(provided Config) (storage.PeerStore, error) {
 			case <-t.C:
 				before := time.Now()
 				ps.populateProm()
-				log.Debug("storage: populateProm() finished", log.Fields{"timeTaken": time.Since(before)})
+				log.Debug().Stringer("timeTaken", time.Since(before)).Msg("storage: populateProm() finished")
 			}
 		}
 	}()
@@ -560,6 +558,4 @@ func (ps *peerStore) Stop() stop.Result {
 	return c.Result()
 }
 
-func (ps *peerStore) LogFields() log.Fields {
-	return ps.cfg.LogFields()
-}
+func (ps *peerStore) MarshalZerologObject(e *zerolog.Event) { e.EmbedObject(ps.cfg) }

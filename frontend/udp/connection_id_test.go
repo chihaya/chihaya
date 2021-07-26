@@ -9,10 +9,9 @@ import (
 	"time"
 
 	sha256 "github.com/minio/sha256-simd"
+	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 	"inet.af/netaddr"
-
-	"github.com/chihaya/chihaya/pkg/log"
 )
 
 var golden = []struct {
@@ -45,9 +44,12 @@ func simpleNewConnectionID(ip netaddr.IP, now time.Time, key string) []byte {
 	macBytes := mac.Sum(nil)[:4]
 	copy(buf[4:], macBytes)
 
-	// this is just in here because logging impacts performance and we benchmark
-	// this version too.
-	log.Debug("manually generated connection ID", log.Fields{"ip": ip, "now": now, "connID": buf})
+	// Because this is benchmarked, we log here to simulate production.
+	log.Debug().
+		Stringer("ip", ip).
+		Stringer("now", now).
+		Bytes("connID", buf).
+		Msg("manually generated connection ID")
 	return buf
 }
 

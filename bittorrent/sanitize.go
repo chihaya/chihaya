@@ -3,7 +3,7 @@ package bittorrent
 import (
 	"inet.af/netaddr"
 
-	"github.com/chihaya/chihaya/pkg/log"
+	"github.com/rs/zerolog/log"
 )
 
 // ErrInvalidIP indicates an invalid IP for an Announce.
@@ -36,10 +36,10 @@ func SanitizeAnnounce(r *AnnounceRequest, maxNumWant, defaultNumWant uint32) err
 		r.IPPort = r.IPPort.WithIP(netaddr.IPFrom4(ip.As4()))
 	}
 
-	log.Debug("sanitized announce", r, log.Fields{
-		"maxNumWant":     maxNumWant,
-		"defaultNumWant": defaultNumWant,
-	})
+	log.Debug().
+		Uint32("maxNumWant", maxNumWant).
+		Uint32("defaultNumWant", defaultNumWant).
+		Msg("sanitized announce")
 	return nil
 }
 
@@ -50,8 +50,6 @@ func SanitizeScrape(r *ScrapeRequest, maxScrapeInfoHashes uint32) error {
 		r.InfoHashes = r.InfoHashes[:maxScrapeInfoHashes]
 	}
 
-	log.Debug("sanitized scrape", r, log.Fields{
-		"maxScrapeInfoHashes": maxScrapeInfoHashes,
-	})
+	log.Debug().Uint32("maxScrapeInfoHashes", maxScrapeInfoHashes).Msg("sanitized scrape")
 	return nil
 }

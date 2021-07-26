@@ -3,9 +3,10 @@ package http
 import (
 	"net/http"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/frontend/http/bencode"
-	"github.com/chihaya/chihaya/pkg/log"
 )
 
 // WriteError communicates an error to a BitTorrent client over HTTP.
@@ -14,7 +15,7 @@ func WriteError(w http.ResponseWriter, err error) error {
 	if _, clientErr := err.(bittorrent.ClientError); clientErr {
 		message = err.Error()
 	} else {
-		log.Error("http: internal error", log.Err(err))
+		log.Error().Err(err).Msg("http: internal error")
 	}
 
 	return bencode.NewEncoder(w).Encode(bencode.Dict{

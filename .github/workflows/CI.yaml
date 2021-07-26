@@ -68,10 +68,10 @@ jobs:
       run: |
         go install ./cmd/chihaya
         cat ./dist/example_config.yaml
-        chihaya --config=./dist/example_config.yaml --debug &
+        chihaya --config=./dist/example_config.yaml --log-level debug &
         pid=$!
         sleep 2
-        chihaya e2e --debug
+        chihaya e2e --log-level debug
         kill $pid
 
   e2e-redis:
@@ -98,10 +98,10 @@ jobs:
     - name: End-to-End Test
       run: |
         go install ./cmd/chihaya
-        chihaya --config=./dist/example_redis_config.yaml --debug &
+        chihaya --config=./dist/example_redis_config.yaml --log-level debug &
         pid=$!
         sleep 2
-        chihaya e2e --debug
+        chihaya e2e --log-level debug
         kill $pid
 
   dist:

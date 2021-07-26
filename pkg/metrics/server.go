@@ -8,8 +8,8 @@ import (
 	"net/http/pprof"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/rs/zerolog/log"
 
-	"github.com/chihaya/chihaya/pkg/log"
 	"github.com/chihaya/chihaya/pkg/stop"
 )
 
@@ -50,7 +50,7 @@ func NewServer(addr string) *Server {
 
 	go func() {
 		if err := s.srv.ListenAndServe(); err != http.ErrServerClosed {
-			log.Fatal("failed while serving prometheus", log.Err(err))
+			log.Fatal().Err(err).Msg("failed while serving prometheus")
 		}
 	}()
 

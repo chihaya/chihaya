@@ -7,9 +7,8 @@ import (
 	"time"
 
 	sha256 "github.com/minio/sha256-simd"
+	"github.com/rs/zerolog/log"
 	"inet.af/netaddr"
-
-	"github.com/chihaya/chihaya/pkg/log"
 )
 
 // ttl is the duration a connection ID should be valid according to BEP 15.
@@ -100,14 +99,23 @@ func (g *ConnectionIDGenerator) Generate(ip netaddr.IP, now time.Time) []byte {
 	g.scratch = g.mac.Sum(g.scratch)
 	copy(g.connID[4:8], g.scratch[:4])
 
-	log.Debug("generated connection ID", log.Fields{"ip": ip, "now": now, "connID": g.connID})
+	log.Debug().
+		Stringer("ip", ip).
+		Stringer("now", now).
+		Bytes("connID", g.connID).
+		Msg("generated connection ID")
 	return g.connID
 }
 
 // Validate validates the given connection ID for an IP and the current time.
 func (g *ConnectionIDGenerator) Validate(connectionID []byte, ip netaddr.IP, now time.Time, maxClockSkew time.Duration) bool {
 	ts := time.Unix(int64(binary.BigEndian.Uint32(connectionID[:4])), 0)
-	log.Debug("validating connection ID", log.Fields{"connID": connectionID, "ip": ip, "ts": ts, "now": now})
+	log.Debug().
+		Stringer("ip", ip).
+		Stringer("now", now).
+		Stringer("connTime", ts).
+		Bytes("connID", connectionID).
+		Msg("validating connection ID")
 	if now.After(ts.Add(ttl)) || ts.After(now.Add(maxClockSkew)) {
 		return false
 	}
