@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	sha256 "github.com/minio/sha256-simd"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 	"inet.af/netaddr"
@@ -32,7 +31,7 @@ func simpleNewConnectionID(ip netaddr.IP, now time.Time, key string) []byte {
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint32(buf, uint32(now.Unix()))
 
-	mac := hmac.New(sha256.New, []byte(key))
+	mac := hmac.New(hashfn, []byte(key))
 	mac.Write(buf[:4])
 
 	ipBytes, err := ip.MarshalBinary()

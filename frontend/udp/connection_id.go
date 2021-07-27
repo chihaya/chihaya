@@ -6,7 +6,7 @@ import (
 	"hash"
 	"time"
 
-	sha256 "github.com/minio/sha256-simd"
+	"github.com/cespare/xxhash/v2"
 	"github.com/rs/zerolog/log"
 	"inet.af/netaddr"
 )
@@ -52,10 +52,12 @@ type ConnectionIDGenerator struct {
 	scratch []byte
 }
 
+func hashfn() hash.Hash { return xxhash.New() }
+
 // NewConnectionIDGenerator creates a new connection ID generator.
 func NewConnectionIDGenerator(key string) *ConnectionIDGenerator {
 	return &ConnectionIDGenerator{
-		mac:     hmac.New(sha256.New, []byte(key)),
+		mac:     hmac.New(hashfn, []byte(key)),
 		connID:  make([]byte, 8),
 		scratch: make([]byte, 32),
 	}
