@@ -4,11 +4,16 @@
 package bittorrent
 
 import (
+	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
-	"github.com/chihaya/chihaya/pkg/log"
+	"github.com/jzelinskie/stringz"
+	"github.com/rs/zerolog"
+	"inet.af/netaddr"
 )
 
 // PeerID represents a peer ID.
@@ -27,26 +32,68 @@ func PeerIDFromBytes(b []byte) PeerID {
 	return PeerID(buf)
 }
 
-// String implements fmt.Stringer, returning the base16 encoded PeerID.
+// String implements fmt.Stringer, returning a string of hex encoded bytes.
 func (p PeerID) String() string {
-	return fmt.Sprintf("%x", p[:])
+	var b strings.Builder
+	b.Grow(40) // 2 chars * 20 bytes
+
+	w := hex.NewEncoder(&b)
+	w.Write(p[:])
+
+	return b.String()
 }
 
-// RawString returns a 20-byte string of the raw bytes of the ID.
+// RawString implements returns the bytes of a PeerID interpretted as a string.
+// of the ID.
 func (p PeerID) RawString() string {
 	return string(p[:])
 }
 
-// PeerIDFromString creates a PeerID from a string.
+// ClientID represents the part of a PeerID that identifies a Peer's client
+// software.
+type ClientID [6]byte
+
+// ClientID returns the client-identifying section of a PeerID.
+func (p PeerID) ClientID() ClientID {
+	var cid ClientID
+	length := len(p)
+	if length >= 6 {
+		if p[0] == '-' {
+			if length >= 7 {
+				copy(cid[:], p[1:7])
+			}
+		} else {
+			copy(cid[:], p[:6])
+		}
+	}
+
+	return cid
+}
+
+// PeerIDFromRawString creates a PeerID from a string.
 //
 // It panics if s is not 20 bytes long.
-func PeerIDFromString(s string) PeerID {
+func PeerIDFromRawString(s string) PeerID {
 	if len(s) != 20 {
 		panic("peer ID must be 20 bytes")
 	}
 
 	var buf [20]byte
 	copy(buf[:], s)
+	return PeerID(buf)
+}
+
+// PeerIDFromHexString creates a PeerID from a hex string.
+//
+// It panics if s is not 40 bytes long.
+func PeerIDFromHexString(s string) PeerID {
+	if len(s) != 40 {
+		panic("peer ID must be 40 bytes")
+	}
+
+	var buf [20]byte
+	hex.Decode(buf[:], []byte(s))
+
 	return PeerID(buf)
 }
 
@@ -106,22 +153,19 @@ type AnnounceRequest struct {
 	Params
 }
 
-// LogFields renders the current response as a set of log fields.
-func (r AnnounceRequest) LogFields() log.Fields {
-	return log.Fields{
-		"event":           r.Event,
-		"infoHash":        r.InfoHash,
-		"compact":         r.Compact,
-		"eventProvided":   r.EventProvided,
-		"numWantProvided": r.NumWantProvided,
-		"ipProvided":      r.IPProvided,
-		"numWant":         r.NumWant,
-		"left":            r.Left,
-		"downloaded":      r.Downloaded,
-		"uploaded":        r.Uploaded,
-		"peer":            r.Peer,
-		"params":          r.Params,
-	}
+func (r AnnounceRequest) MarshalZerologObject(e *zerolog.Event) {
+	e.Stringer("event", r.Event).
+		Stringer("infoHash", r.InfoHash).
+		Bool("compact", r.Compact).
+		Bool("eventProvided", r.EventProvided).
+		Bool("numWantProvided", r.NumWantProvided).
+		Bool("ipProvided", r.IPProvided).
+		Uint32("numWant", r.NumWant).
+		Uint64("left", r.Left).
+		Uint64("downloaded", r.Downloaded).
+		Uint64("uploaded", r.Uploaded).
+		EmbedObject(r.Peer).
+		EmbedObject(r.Params)
 }
 
 // AnnounceResponse represents the parameters used to create an announce
@@ -136,32 +180,31 @@ type AnnounceResponse struct {
 	IPv6Peers   []Peer
 }
 
-// LogFields renders the current response as a set of log fields.
-func (r AnnounceResponse) LogFields() log.Fields {
-	return log.Fields{
-		"compact":     r.Compact,
-		"complete":    r.Complete,
-		"interval":    r.Interval,
-		"minInterval": r.MinInterval,
-		"ipv4Peers":   r.IPv4Peers,
-		"ipv6Peers":   r.IPv6Peers,
-	}
+func (r AnnounceResponse) MarshalZerologObject(e *zerolog.Event) {
+	e.Bool("compact", r.Compact).
+		Uint32("complete", r.Complete).
+		Stringer("interval", r.Interval).
+		Stringer("minInterval", r.MinInterval).
+		Interface("ipv4Peers", r.IPv4Peers).
+		Interface("ipv6Peers", r.IPv6Peers)
 }
 
 // ScrapeRequest represents the parsed parameters from a scrape request.
 type ScrapeRequest struct {
-	AddressFamily AddressFamily
-	InfoHashes    []InfoHash
-	Params        Params
+	InfoHashes []InfoHash
+	Params     Params
+	Peer
 }
 
-// LogFields renders the current response as a set of log fields.
-func (r ScrapeRequest) LogFields() log.Fields {
-	return log.Fields{
-		"addressFamily": r.AddressFamily,
-		"infoHashes":    r.InfoHashes,
-		"params":        r.Params,
+func (r ScrapeRequest) MarshalZerologObject(e *zerolog.Event) {
+	e.EmbedObject(r.Peer).
+		EmbedObject(r.Params)
+
+	infoHashes := make([]string, 0, len(r.InfoHashes))
+	for _, ih := range r.InfoHashes {
+		infoHashes = append(infoHashes, ih.String())
 	}
+	e.Strs("infoHashes", infoHashes)
 }
 
 // ScrapeResponse represents the parameters used to create a scrape response.
@@ -172,11 +215,8 @@ type ScrapeResponse struct {
 	Files []Scrape
 }
 
-// LogFields renders the current response as a set of Logrus fields.
-func (sr ScrapeResponse) LogFields() log.Fields {
-	return log.Fields{
-		"files": sr.Files,
-	}
+func (r ScrapeResponse) MarshalZerologObject(e *zerolog.Event) {
+	e.Interface("files", r.Files)
 }
 
 // Scrape represents the state of a swarm that is returned in a scrape response.
@@ -187,65 +227,98 @@ type Scrape struct {
 	Incomplete uint32
 }
 
-// AddressFamily is the address family of an IP address.
-type AddressFamily uint8
-
-func (af AddressFamily) String() string {
-	switch af {
-	case IPv4:
-		return "IPv4"
-	case IPv6:
-		return "IPv6"
-	default:
-		panic("tried to print unknown AddressFamily")
-	}
-}
-
-// AddressFamily constants.
-const (
-	IPv4 AddressFamily = iota
-	IPv6
-)
-
-// IP is a net.IP with an AddressFamily.
-type IP struct {
-	net.IP
-	AddressFamily
-}
-
-func (ip IP) String() string {
-	return ip.IP.String()
-}
-
 // Peer represents the connection details of a peer that is returned in an
 // announce response.
 type Peer struct {
-	ID   PeerID
-	IP   IP
-	Port uint16
+	ID     PeerID
+	IPPort netaddr.IPPort
 }
 
-// String implements fmt.Stringer to return a human-readable representation.
-// The string will have the format <PeerID>@[<IP>]:<port>, for example
-// "0102030405060708090a0b0c0d0e0f1011121314@[10.11.12.13]:1234"
-func (p Peer) String() string {
-	return fmt.Sprintf("%s@[%s]:%d", p.ID.String(), p.IP.String(), p.Port)
-}
-
-// LogFields renders the current peer as a set of Logrus fields.
-func (p Peer) LogFields() log.Fields {
-	return log.Fields{
-		"ID":   p.ID,
-		"IP":   p.IP,
-		"port": p.Port,
+// PeerFromRawString parses a Peer from its raw string representation.
+func PeerFromRawString(s string) Peer {
+	ip, ok := netaddr.FromStdIP(net.IP(s[22:]))
+	if !ok {
+		panic("failed to parse IP")
 	}
+
+	return Peer{
+		ID:     PeerIDFromRawString(s[:20]),
+		IPPort: netaddr.IPPortFrom(ip, binary.BigEndian.Uint16([]byte(s[20:22]))),
+	}
+}
+
+// PeerFromString parses a Peer from a human-friendly string representation of
+// a Peer.
+//
+// This function panics is the string fails to parse.
+func PeerFromString(s string) Peer {
+	var hexPeerID, ipport string
+	if err := stringz.Unpack(strings.Split(s, "@"), &hexPeerID, &ipport); err != nil {
+		panic("failed to scan peer string: " + err.Error())
+	}
+
+	return Peer{
+		ID:     PeerIDFromHexString(hexPeerID),
+		IPPort: netaddr.MustParseIPPort(ipport),
+	}
+}
+
+// String implements fmt.Stringer for a human-friendly representation of a
+// Peer.
+func (p Peer) String() string {
+	return fmt.Sprintf("%s@%s", p.ID, p.IPPort)
+}
+
+// RawString implements a memory-efficient representation of a Peer.
+//
+// The format is:
+//    20-byte PeerID
+//    2-byte Big Endian Port
+//    4-byte or 16-byte IP address
+func (p Peer) RawString() string {
+	var b strings.Builder
+	ip := p.IPPort.IP()
+	switch {
+	case ip.Is4(), ip.Is4in6():
+		b.Grow(20 + 2 + 4) // PeerID + Port + IPv4
+	case ip.Is6():
+		b.Grow(20 + 2 + 16) // PeerID + Port + IPv6
+	default:
+		panic("unknown IP version")
+	}
+
+	if _, err := b.WriteString(p.ID.RawString()); err != nil {
+		panic("failed to write peer ID to strings.Builder: " + err.Error())
+	}
+
+	if err := binary.Write(&b, binary.BigEndian, p.IPPort.Port()); err != nil {
+		panic("failed to write port to strings.Builder: " + err.Error())
+	}
+
+	binaryIP, err := ip.MarshalBinary()
+	if err != nil {
+		panic("netaddr.IP.MarshalBinary() returned an error: " + err.Error())
+	}
+	if _, err := b.Write(binaryIP); err != nil {
+		panic("failed to write binary IP to strings.Builder: " + err.Error())
+	}
+
+	return b.String()
+}
+
+func (p Peer) MarshalZerologObject(e *zerolog.Event) {
+	e.Stringer("id", p.ID).
+		Stringer("ip", p.IPPort.IP()).
+		Uint16("port", p.IPPort.Port())
 }
 
 // Equal reports whether p and x are the same.
 func (p Peer) Equal(x Peer) bool { return p.EqualEndpoint(x) && p.ID == x.ID }
 
 // EqualEndpoint reports whether p and x have the same endpoint.
-func (p Peer) EqualEndpoint(x Peer) bool { return p.Port == x.Port && p.IP.Equal(x.IP.IP) }
+func (p Peer) EqualEndpoint(x Peer) bool {
+	return p.IPPort.Port() == x.IPPort.Port() && p.IPPort.IP().Compare(x.IPPort.IP()) == 0
+}
 
 // ClientError represents an error that should be exposed to the client over
 // the BitTorrent protocol implementation.

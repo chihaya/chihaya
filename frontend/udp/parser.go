@@ -7,6 +7,8 @@ import (
 	"net"
 	"sync"
 
+	"inet.af/netaddr"
+
 	"github.com/chihaya/chihaya/bittorrent"
 )
 
@@ -91,15 +93,18 @@ func ParseAnnounce(r Request, v6Action bool, opts ParseOptions) (*bittorrent.Ann
 		return nil, errMalformedEvent
 	}
 
-	ip := r.IP
+	ip := r.IPPort.IP()
 	ipProvided := false
 	ipbytes := r.Packet[84:ipEnd]
 	if opts.AllowIPSpoofing {
-		// Make sure the bytes are copied to a new slice.
-		copy(ip, net.IP(ipbytes))
+		var ok bool
+		ip, ok = netaddr.FromStdIP(net.IP(ipbytes))
+		if !ok {
+			return nil, errMalformedIP
+		}
 		ipProvided = true
 	}
-	if !opts.AllowIPSpoofing && r.IP == nil {
+	if !opts.AllowIPSpoofing && ip.IsZero() {
 		// We have no IP address to fallback on.
 		return nil, errMalformedIP
 	}
@@ -123,9 +128,8 @@ func ParseAnnounce(r Request, v6Action bool, opts ParseOptions) (*bittorrent.Ann
 		NumWantProvided: true,
 		EventProvided:   true,
 		Peer: bittorrent.Peer{
-			ID:   bittorrent.PeerIDFromBytes(peerID),
-			IP:   bittorrent.IP{IP: ip},
-			Port: port,
+			ID:     bittorrent.PeerIDFromBytes(peerID),
+			IPPort: netaddr.IPPortFrom(ip, port),
 		},
 		Params: params,
 	}
@@ -161,7 +165,7 @@ func handleOptionalParameters(packet []byte) (bittorrent.Params, error) {
 		return bittorrent.ParseURLData("")
 	}
 
-	var buf = newBuffer()
+	buf := newBuffer()
 	defer buf.free()
 
 	for i := 0; i < len(packet); {

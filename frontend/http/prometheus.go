@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"inet.af/netaddr"
 
 	"github.com/chihaya/chihaya/bittorrent"
 )
@@ -23,7 +24,7 @@ var promResponseDurationMilliseconds = prometheus.NewHistogramVec(
 
 // recordResponseDuration records the duration of time to respond to a Request
 // in milliseconds.
-func recordResponseDuration(action string, af *bittorrent.AddressFamily, err error, duration time.Duration) {
+func recordResponseDuration(action string, ip netaddr.IP, err error, duration time.Duration) {
 	var errString string
 	if err != nil {
 		if _, ok := err.(bittorrent.ClientError); ok {
@@ -33,16 +34,19 @@ func recordResponseDuration(action string, af *bittorrent.AddressFamily, err err
 		}
 	}
 
-	var afString string
-	if af == nil {
-		afString = "Unknown"
-	} else if *af == bittorrent.IPv4 {
-		afString = "IPv4"
-	} else if *af == bittorrent.IPv6 {
-		afString = "IPv6"
+	var addressFamily string
+	switch {
+	case ip.IsZero(), ip.IsUnspecified():
+		addressFamily = "Unknown"
+	case ip.Is4(), ip.Is4in6():
+		addressFamily = "IPv4"
+	case ip.Is6():
+		addressFamily = "IPv6"
+	default:
+		addressFamily = "Unknown"
 	}
 
 	promResponseDurationMilliseconds.
-		WithLabelValues(action, afString, errString).
+		WithLabelValues(action, addressFamily, errString).
 		Observe(float64(duration.Nanoseconds()) / float64(time.Millisecond))
 }

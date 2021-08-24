@@ -1,10 +1,10 @@
 package storage
 
 import (
-	"net"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"inet.af/netaddr"
 
 	"github.com/chihaya/chihaya/bittorrent"
 )
@@ -23,20 +23,26 @@ func TestPeerStore(t *testing.T, p PeerStore) {
 	}{
 		{
 			bittorrent.InfoHashFromString("00000000000000000001"),
-			bittorrent.Peer{ID: bittorrent.PeerIDFromString("00000000000000000001"), Port: 1, IP: bittorrent.IP{IP: net.ParseIP("1.1.1.1").To4(), AddressFamily: bittorrent.IPv4}},
+			bittorrent.Peer{
+				ID:     bittorrent.PeerIDFromRawString("00000000000000000001"),
+				IPPort: netaddr.MustParseIPPort("1.1.1.1:1"),
+			},
 		},
 		{
 			bittorrent.InfoHashFromString("00000000000000000002"),
-			bittorrent.Peer{ID: bittorrent.PeerIDFromString("00000000000000000002"), Port: 2, IP: bittorrent.IP{IP: net.ParseIP("abab::0001"), AddressFamily: bittorrent.IPv6}},
+			bittorrent.Peer{
+				ID:     bittorrent.PeerIDFromRawString("00000000000000000002"),
+				IPPort: netaddr.MustParseIPPort("[abab::0001]:2"),
+			},
 		},
 	}
 
-	v4Peer := bittorrent.Peer{ID: bittorrent.PeerIDFromString("99999999999999999994"), IP: bittorrent.IP{IP: net.ParseIP("99.99.99.99").To4(), AddressFamily: bittorrent.IPv4}, Port: 9994}
-	v6Peer := bittorrent.Peer{ID: bittorrent.PeerIDFromString("99999999999999999996"), IP: bittorrent.IP{IP: net.ParseIP("fc00::0001"), AddressFamily: bittorrent.IPv6}, Port: 9996}
+	v4Peer := bittorrent.Peer{ID: bittorrent.PeerIDFromRawString("99999999999999999994"), IPPort: netaddr.MustParseIPPort("99.99.99.99:9994")}
+	v6Peer := bittorrent.Peer{ID: bittorrent.PeerIDFromRawString("99999999999999999996"), IPPort: netaddr.MustParseIPPort("[fc00::0001]:9996")}
 
 	for _, c := range testData {
 		peer := v4Peer
-		if c.peer.IP.AddressFamily == bittorrent.IPv6 {
+		if c.peer.IPPort.IP().Is6() {
 			peer = v6Peer
 		}
 
@@ -51,7 +57,7 @@ func TestPeerStore(t *testing.T, p PeerStore) {
 		require.Equal(t, ErrResourceDoesNotExist, err)
 
 		// Test empty scrape response for non-existent swarms.
-		scrape := p.ScrapeSwarm(c.ih, c.peer.IP.AddressFamily)
+		scrape := p.ScrapeSwarm(c.ih, c.peer.IPPort.IP())
 		require.Equal(t, uint32(0), scrape.Complete)
 		require.Equal(t, uint32(0), scrape.Incomplete)
 		require.Equal(t, uint32(0), scrape.Snatches)
@@ -79,7 +85,7 @@ func TestPeerStore(t *testing.T, p PeerStore) {
 		require.Nil(t, err)
 		require.True(t, containsPeer(peers, c.peer))
 
-		scrape = p.ScrapeSwarm(c.ih, c.peer.IP.AddressFamily)
+		scrape = p.ScrapeSwarm(c.ih, c.peer.IPPort.IP())
 		require.Equal(t, uint32(2), scrape.Incomplete)
 		require.Equal(t, uint32(0), scrape.Complete)
 
@@ -100,7 +106,7 @@ func TestPeerStore(t *testing.T, p PeerStore) {
 		require.Nil(t, err)
 		require.True(t, containsPeer(peers, c.peer))
 
-		scrape = p.ScrapeSwarm(c.ih, c.peer.IP.AddressFamily)
+		scrape = p.ScrapeSwarm(c.ih, c.peer.IPPort.IP())
 		require.Equal(t, uint32(1), scrape.Incomplete)
 		require.Equal(t, uint32(1), scrape.Complete)
 

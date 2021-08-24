@@ -1,8 +1,9 @@
 package http
 
 import (
-	"net"
 	"net/http"
+
+	"inet.af/netaddr"
 
 	"github.com/chihaya/chihaya/bittorrent"
 )
@@ -70,7 +71,7 @@ func ParseAnnounce(r *http.Request, opts ParseOptions) (*bittorrent.AnnounceRequ
 	if len(peerID) != 20 {
 		return nil, bittorrent.ClientError("failed to provide valid peer_id")
 	}
-	request.Peer.ID = bittorrent.PeerIDFromString(peerID)
+	request.Peer.ID = bittorrent.PeerIDFromRawString(peerID)
 
 	// Determine the number of remaining bytes for the client.
 	request.Left, err = qp.Uint64("left")
@@ -104,13 +105,15 @@ func ParseAnnounce(r *http.Request, opts ParseOptions) (*bittorrent.AnnounceRequ
 	if err != nil {
 		return nil, bittorrent.ClientError("failed to parse parameter: port")
 	}
-	request.Peer.Port = uint16(port)
+	request.IPPort = request.IPPort.WithPort(uint16(port))
 
 	// Parse the IP address where the client is listening.
-	request.Peer.IP.IP, request.IPProvided = requestedIP(r, qp, opts)
-	if request.Peer.IP.IP == nil {
+	discoveredIP, spoofed, err := requestedIP(r, qp, opts)
+	if err != nil {
 		return nil, bittorrent.ClientError("failed to parse peer IP address")
 	}
+	request.IPPort = request.IPPort.WithIP(discoveredIP)
+	request.IPProvided = spoofed
 
 	if err := bittorrent.SanitizeAnnounce(request, opts.MaxNumWant, opts.DefaultNumWant); err != nil {
 		return nil, err
@@ -144,27 +147,31 @@ func ParseScrape(r *http.Request, opts ParseOptions) (*bittorrent.ScrapeRequest,
 }
 
 // requestedIP determines the IP address for a BitTorrent client request.
-func requestedIP(r *http.Request, p bittorrent.Params, opts ParseOptions) (ip net.IP, provided bool) {
+func requestedIP(r *http.Request, p bittorrent.Params, opts ParseOptions) (_ netaddr.IP, spoofed bool, err error) {
 	if opts.AllowIPSpoofing {
 		if ipstr, ok := p.String("ip"); ok {
-			return net.ParseIP(ipstr), true
+			ip, err := netaddr.ParseIP(ipstr)
+			return ip, true, err
 		}
 
 		if ipstr, ok := p.String("ipv4"); ok {
-			return net.ParseIP(ipstr), true
+			ip, err := netaddr.ParseIP(ipstr)
+			return ip, true, err
 		}
 
 		if ipstr, ok := p.String("ipv6"); ok {
-			return net.ParseIP(ipstr), true
+			ip, err := netaddr.ParseIP(ipstr)
+			return ip, true, err
 		}
 	}
 
 	if opts.RealIPHeader != "" {
-		if ip := r.Header.Get(opts.RealIPHeader); ip != "" {
-			return net.ParseIP(ip), false
+		if ipstr := r.Header.Get(opts.RealIPHeader); ipstr != "" {
+			ip, err := netaddr.ParseIP(ipstr)
+			return ip, true, err
 		}
 	}
 
-	host, _, _ := net.SplitHostPort(r.RemoteAddr)
-	return net.ParseIP(host), false
+	ipport, err := netaddr.ParseIPPort(r.RemoteAddr)
+	return ipport.IP(), false, err
 }

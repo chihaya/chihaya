@@ -7,10 +7,10 @@ import (
 
 	"github.com/anacrolix/torrent/tracker"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
 	"github.com/chihaya/chihaya/bittorrent"
-	"github.com/chihaya/chihaya/pkg/log"
 )
 
 // EndToEndRunCmdFunc implements a Cobra command that runs the end-to-end test
@@ -28,12 +28,12 @@ func EndToEndRunCmdFunc(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(httpAddr) != 0 {
-		log.Info("testing HTTP...")
+		log.Info().Msg("testing HTTP...")
 		err := test(httpAddr, delay)
 		if err != nil {
 			return err
 		}
-		log.Info("success")
+		log.Info().Msg("success")
 	}
 
 	// Test the UDP tracker.
@@ -43,12 +43,12 @@ func EndToEndRunCmdFunc(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(udpAddr) != 0 {
-		log.Info("testing UDP...")
+		log.Info().Msg("testing UDP...")
 		err := test(udpAddr, delay)
 		if err != nil {
 			return err
 		}
-		log.Info("success")
+		log.Info().Msg("success")
 	}
 
 	return nil

@@ -4,8 +4,10 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/rs/zerolog"
+	"inet.af/netaddr"
+
 	"github.com/chihaya/chihaya/bittorrent"
-	"github.com/chihaya/chihaya/pkg/log"
 	"github.com/chihaya/chihaya/pkg/stop"
 )
 
@@ -102,16 +104,14 @@ type PeerStore interface {
 	// filling the Snatches field is optional.
 	//
 	// If the Swarm does not exist, an empty Scrape and no error is returned.
-	ScrapeSwarm(infoHash bittorrent.InfoHash, addressFamily bittorrent.AddressFamily) bittorrent.Scrape
+	ScrapeSwarm(infoHash bittorrent.InfoHash, ip netaddr.IP) bittorrent.Scrape
 
 	// stop.Stopper is an interface that expects a Stop method to stop the
 	// PeerStore.
 	// For more details see the documentation in the stop package.
 	stop.Stopper
 
-	// log.Fielder returns a loggable version of the data used to configure and
-	// operate a particular PeerStore.
-	log.Fielder
+	zerolog.LogObjectMarshaler
 }
 
 // RegisterDriver makes a Driver available by the provided name.

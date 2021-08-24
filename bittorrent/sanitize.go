@@ -1,9 +1,9 @@
 package bittorrent
 
 import (
-	"net"
+	"inet.af/netaddr"
 
-	"github.com/chihaya/chihaya/pkg/log"
+	"github.com/rs/zerolog/log"
 )
 
 // ErrInvalidIP indicates an invalid IP for an Announce.
@@ -15,7 +15,7 @@ var ErrInvalidPort = ClientError("invalid port")
 // SanitizeAnnounce enforces a max and default NumWant and coerces the peer's
 // IP address into the proper format.
 func SanitizeAnnounce(r *AnnounceRequest, maxNumWant, defaultNumWant uint32) error {
-	if r.Port == 0 {
+	if r.IPPort.Port() == 0 {
 		return ErrInvalidPort
 	}
 
@@ -25,19 +25,21 @@ func SanitizeAnnounce(r *AnnounceRequest, maxNumWant, defaultNumWant uint32) err
 		r.NumWant = maxNumWant
 	}
 
-	if ip := r.Peer.IP.To4(); ip != nil {
-		r.Peer.IP.IP = ip
-		r.Peer.IP.AddressFamily = IPv4
-	} else if len(r.Peer.IP.IP) == net.IPv6len { // implies r.Peer.IP.To4() == nil
-		r.Peer.IP.AddressFamily = IPv6
-	} else {
+	ip := r.IPPort.IP()
+
+	if ip.IsZero() || ip.IsUnspecified() {
 		return ErrInvalidIP
 	}
 
-	log.Debug("sanitized announce", r, log.Fields{
-		"maxNumWant":     maxNumWant,
-		"defaultNumWant": defaultNumWant,
-	})
+	// If it's an IPv4 address in in IPv6 form, convert to IPv4, for ubiquity.
+	if ip.Is4in6() {
+		r.IPPort = r.IPPort.WithIP(netaddr.IPFrom4(ip.As4()))
+	}
+
+	log.Debug().
+		Uint32("maxNumWant", maxNumWant).
+		Uint32("defaultNumWant", defaultNumWant).
+		Msg("sanitized announce")
 	return nil
 }
 
@@ -48,8 +50,6 @@ func SanitizeScrape(r *ScrapeRequest, maxScrapeInfoHashes uint32) error {
 		r.InfoHashes = r.InfoHashes[:maxScrapeInfoHashes]
 	}
 
-	log.Debug("sanitized scrape", r, log.Fields{
-		"maxScrapeInfoHashes": maxScrapeInfoHashes,
-	})
+	log.Debug().Uint32("maxScrapeInfoHashes", maxScrapeInfoHashes).Msg("sanitized scrape")
 	return nil
 }

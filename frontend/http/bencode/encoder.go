@@ -90,7 +90,7 @@ func marshal(w io.Writer, data interface{}) (err error) {
 		err = marshalList(w, v)
 
 	case []Dict:
-		var interfaceSlice = make([]interface{}, len(v))
+		interfaceSlice := make([]interface{}, len(v))
 		for i, d := range v {
 			interfaceSlice[i] = d
 		}

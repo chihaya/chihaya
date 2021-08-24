@@ -80,7 +80,7 @@ func (rc *redisConnector) NewPool() *redis.Pool {
 
 // Open a new Redis connection
 func (rc *redisConnector) open() (redis.Conn, error) {
-	var opts = []redis.DialOption{
+	opts := []redis.DialOption{
 		redis.DialDatabase(rc.URL.DB),
 		redis.DialReadTimeout(rc.ReadTimeout),
 		redis.DialWriteTimeout(rc.WriteTimeout),
@@ -119,7 +119,7 @@ func parseRedisURL(target string) (*redisURL, error) {
 		return nil, errors.New("no redis scheme found")
 	}
 
-	db := 0 //default redis db
+	db := 0 // default redis db
 	parts := strings.Split(u.Path, "/")
 	if len(parts) != 1 {
 		db, err = strconv.Atoi(parts[1])

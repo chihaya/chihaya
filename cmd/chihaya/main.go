@@ -4,18 +4,19 @@ import (
 	"errors"
 	"os"
 	"os/signal"
-	"runtime"
 	"strings"
 	"syscall"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"github.com/jzelinskie/cobrautil"
+	"github.com/mattn/go-isatty"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
 	"github.com/chihaya/chihaya/frontend/http"
 	"github.com/chihaya/chihaya/frontend/udp"
 	"github.com/chihaya/chihaya/middleware"
-	"github.com/chihaya/chihaya/pkg/log"
 	"github.com/chihaya/chihaya/pkg/metrics"
 	"github.com/chihaya/chihaya/pkg/stop"
 	"github.com/chihaya/chihaya/storage"
@@ -50,16 +51,16 @@ func (r *Run) Start(ps storage.PeerStore) error {
 
 	r.sg = stop.NewGroup()
 
-	log.Info("starting metrics server", log.Fields{"addr": cfg.MetricsAddr})
+	log.Info().Str("addr", cfg.MetricsAddr).Msg("starting metrics server")
 	r.sg.Add(metrics.NewServer(cfg.MetricsAddr))
 
 	if ps == nil {
-		log.Info("starting storage", log.Fields{"name": cfg.Storage.Name})
+		log.Info().Str("name", cfg.Storage.Name).Msg("starting storage")
 		ps, err = storage.NewPeerStore(cfg.Storage.Name, cfg.Storage.Config)
 		if err != nil {
 			return errors.New("failed to create storage: " + err.Error())
 		}
-		log.Info("started storage", ps)
+		log.Info().EmbedObject(ps).Msg("started storage")
 	}
 	r.peerStore = ps
 
@@ -72,14 +73,14 @@ func (r *Run) Start(ps storage.PeerStore) error {
 		return errors.New("failed to validate hook config: " + err.Error())
 	}
 
-	log.Info("starting tracker logic", log.Fields{
-		"prehooks":  cfg.PreHookNames(),
-		"posthooks": cfg.PostHookNames(),
-	})
+	log.Info().
+		Strs("prehooks", cfg.PreHookNames()).
+		Strs("posthooks", cfg.PostHookNames()).
+		Msg("starting tracker logic")
 	r.logic = middleware.NewLogic(cfg.ResponseConfig, r.peerStore, preHooks, postHooks)
 
 	if cfg.HTTPConfig.Addr != "" {
-		log.Info("starting HTTP frontend", cfg.HTTPConfig)
+		log.Info().EmbedObject(cfg.HTTPConfig).Msg("starting HTTP frontend")
 		httpfe, err := http.NewFrontend(r.logic, cfg.HTTPConfig)
 		if err != nil {
 			return err
@@ -88,7 +89,7 @@ func (r *Run) Start(ps storage.PeerStore) error {
 	}
 
 	if cfg.UDPConfig.Addr != "" {
-		log.Info("starting UDP frontend", cfg.UDPConfig)
+		log.Info().EmbedObject(cfg.UDPConfig).Msg("starting UDP frontend")
 		udpfe, err := udp.NewFrontend(r.logic, cfg.UDPConfig)
 		if err != nil {
 			return err
@@ -110,18 +111,18 @@ func combineErrors(prefix string, errs []error) error {
 
 // Stop shuts down an instance of Chihaya.
 func (r *Run) Stop(keepPeerStore bool) (storage.PeerStore, error) {
-	log.Debug("stopping frontends and metrics server")
+	log.Debug().Msg("stopping frontends and metrics server")
 	if errs := r.sg.Stop().Wait(); len(errs) != 0 {
 		return nil, combineErrors("failed while shutting down frontends", errs)
 	}
 
-	log.Debug("stopping logic")
+	log.Debug().Msg("stopping logic")
 	if errs := r.logic.Stop().Wait(); len(errs) != 0 {
 		return nil, combineErrors("failed while shutting down middleware", errs)
 	}
 
 	if !keepPeerStore {
-		log.Debug("stopping peer store")
+		log.Debug().Msg("stopping peer store")
 		if errs := r.peerStore.Stop().Wait(); len(errs) != 0 {
 			return nil, combineErrors("failed while shutting down peer store", errs)
 		}
@@ -152,7 +153,7 @@ func RootRunCmdFunc(cmd *cobra.Command, args []string) error {
 	for {
 		select {
 		case <-reload:
-			log.Info("reloading; received SIGUSR1")
+			log.Info().Msg("reloading; received SIGUSR1")
 			peerStore, err := r.Stop(true)
 			if err != nil {
 				return err
@@ -162,7 +163,7 @@ func RootRunCmdFunc(cmd *cobra.Command, args []string) error {
 				return err
 			}
 		case <-quit:
-			log.Info("shutting down; received SIGINT/SIGTERM")
+			log.Info().Msg("shutting down; received SIGINT/SIGTERM")
 			if _, err := r.Stop(false); err != nil {
 				return err
 			}
@@ -172,64 +173,31 @@ func RootRunCmdFunc(cmd *cobra.Command, args []string) error {
 	}
 }
 
-// RootPreRunCmdFunc handles command line flags for the Run command.
-func RootPreRunCmdFunc(cmd *cobra.Command, args []string) error {
-	noColors, err := cmd.Flags().GetBool("nocolors")
-	if err != nil {
-		return err
+func prettyLogPreRunE(cmd *cobra.Command, args []string) error {
+	if isatty.IsTerminal(os.Stdout.Fd()) && !cobrautil.MustGetBool(cmd, "json") {
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stdout})
 	}
-	if noColors {
-		log.SetFormatter(&logrus.TextFormatter{DisableColors: true})
-	}
-
-	jsonLog, err := cmd.Flags().GetBool("json")
-	if err != nil {
-		return err
-	}
-	if jsonLog {
-		log.SetFormatter(&logrus.JSONFormatter{})
-		log.Info("enabled JSON logging")
-	}
-
-	debugLog, err := cmd.Flags().GetBool("debug")
-	if err != nil {
-		return err
-	}
-	if debugLog {
-		log.SetDebug(true)
-		log.Info("enabled debug logging")
-	}
-
-	return nil
-}
-
-// RootPostRunCmdFunc handles clean up of any state initialized by command line
-// flags.
-func RootPostRunCmdFunc(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
 func main() {
-	var rootCmd = &cobra.Command{
-		Use:                "chihaya",
-		Short:              "BitTorrent Tracker",
-		Long:               "A customizable, multi-protocol BitTorrent Tracker",
-		PersistentPreRunE:  RootPreRunCmdFunc,
-		RunE:               RootRunCmdFunc,
-		PersistentPostRunE: RootPostRunCmdFunc,
+	rootCmd := &cobra.Command{
+		Use:   "chihaya",
+		Short: "BitTorrent Tracker",
+		Long:  "A customizable, multi-protocol BitTorrent Tracker",
+		RunE:  RootRunCmdFunc,
+		PersistentPreRunE: cobrautil.CommandStack(
+			cobrautil.SyncViperPreRunE("CHIHAYA"),
+			prettyLogPreRunE,
+			cobrautil.ZeroLogPreRunE,
+		),
 	}
 
-	rootCmd.PersistentFlags().Bool("debug", false, "enable debug logging")
-	rootCmd.PersistentFlags().Bool("json", false, "enable json logging")
-	if runtime.GOOS == "windows" {
-		rootCmd.PersistentFlags().Bool("nocolors", true, "disable log coloring")
-	} else {
-		rootCmd.PersistentFlags().Bool("nocolors", false, "disable log coloring")
-	}
-
+	cobrautil.RegisterZeroLogFlags(rootCmd.PersistentFlags())
+	rootCmd.PersistentFlags().Bool("json", false, "enable JSON logging")
 	rootCmd.Flags().String("config", "/etc/chihaya.yaml", "location of configuration file")
 
-	var e2eCmd = &cobra.Command{
+	e2eCmd := &cobra.Command{
 		Use:   "e2e",
 		Short: "exec e2e tests",
 		Long:  "Execute the Chihaya end-to-end test suite",
@@ -243,6 +211,6 @@ func main() {
 	rootCmd.AddCommand(e2eCmd)
 
 	if err := rootCmd.Execute(); err != nil {
-		log.Fatal("failed when executing root cobra command: " + err.Error())
+		log.Fatal().Err(err).Msg("failed when executing root cobra command")
 	}
 }

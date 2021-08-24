@@ -4,12 +4,11 @@ import (
 	"crypto/hmac"
 	"encoding/binary"
 	"hash"
-	"net"
 	"time"
 
-	sha256 "github.com/minio/sha256-simd"
-
-	"github.com/chihaya/chihaya/pkg/log"
+	"github.com/cespare/xxhash/v2"
+	"github.com/rs/zerolog/log"
+	"inet.af/netaddr"
 )
 
 // ttl is the duration a connection ID should be valid according to BEP 15.
@@ -19,14 +18,14 @@ const ttl = 2 * time.Minute
 // described by BEP 15.
 // This is a wrapper around creating a new ConnectionIDGenerator and generating
 // an ID. It is recommended to use the generator for performance.
-func NewConnectionID(ip net.IP, now time.Time, key string) []byte {
+func NewConnectionID(ip netaddr.IP, now time.Time, key string) []byte {
 	return NewConnectionIDGenerator(key).Generate(ip, now)
 }
 
 // ValidConnectionID determines whether a connection identifier is legitimate.
 // This is a wrapper around creating a new ConnectionIDGenerator and validating
 // the ID. It is recommended to use the generator for performance.
-func ValidConnectionID(connectionID []byte, ip net.IP, now time.Time, maxClockSkew time.Duration, key string) bool {
+func ValidConnectionID(connectionID []byte, ip netaddr.IP, now time.Time, maxClockSkew time.Duration, key string) bool {
 	return NewConnectionIDGenerator(key).Validate(connectionID, ip, now, maxClockSkew)
 }
 
@@ -53,10 +52,12 @@ type ConnectionIDGenerator struct {
 	scratch []byte
 }
 
+func hashfn() hash.Hash { return xxhash.New() }
+
 // NewConnectionIDGenerator creates a new connection ID generator.
 func NewConnectionIDGenerator(key string) *ConnectionIDGenerator {
 	return &ConnectionIDGenerator{
-		mac:     hmac.New(sha256.New, []byte(key)),
+		mac:     hmac.New(hashfn, []byte(key)),
 		connID:  make([]byte, 8),
 		scratch: make([]byte, 32),
 	}
@@ -85,32 +86,51 @@ func (g *ConnectionIDGenerator) reset() {
 // The generated ID is written to g.connID, which is also returned. g.connID
 // will be reused, so it must not be referenced after returning the generator
 // to a pool and will be overwritten be subsequent calls to Generate!
-func (g *ConnectionIDGenerator) Generate(ip net.IP, now time.Time) []byte {
+func (g *ConnectionIDGenerator) Generate(ip netaddr.IP, now time.Time) []byte {
 	g.reset()
 
 	binary.BigEndian.PutUint32(g.connID, uint32(now.Unix()))
-
 	g.mac.Write(g.connID[:4])
-	g.mac.Write(ip)
+
+	ipBytes, err := ip.MarshalBinary()
+	if err != nil {
+		panic("netaddr.IP.MarshalBinary() returned an error: " + err.Error())
+	}
+	g.mac.Write(ipBytes)
+
 	g.scratch = g.mac.Sum(g.scratch)
 	copy(g.connID[4:8], g.scratch[:4])
 
-	log.Debug("generated connection ID", log.Fields{"ip": ip, "now": now, "connID": g.connID})
+	log.Debug().
+		Stringer("ip", ip).
+		Stringer("now", now).
+		Bytes("connID", g.connID).
+		Msg("generated connection ID")
 	return g.connID
 }
 
 // Validate validates the given connection ID for an IP and the current time.
-func (g *ConnectionIDGenerator) Validate(connectionID []byte, ip net.IP, now time.Time, maxClockSkew time.Duration) bool {
+func (g *ConnectionIDGenerator) Validate(connectionID []byte, ip netaddr.IP, now time.Time, maxClockSkew time.Duration) bool {
 	ts := time.Unix(int64(binary.BigEndian.Uint32(connectionID[:4])), 0)
-	log.Debug("validating connection ID", log.Fields{"connID": connectionID, "ip": ip, "ts": ts, "now": now})
+	log.Debug().
+		Stringer("ip", ip).
+		Stringer("now", now).
+		Stringer("connTime", ts).
+		Bytes("connID", connectionID).
+		Msg("validating connection ID")
 	if now.After(ts.Add(ttl)) || ts.After(now.Add(maxClockSkew)) {
 		return false
 	}
 
 	g.reset()
-
 	g.mac.Write(connectionID[:4])
-	g.mac.Write(ip)
+
+	ipBytes, err := ip.MarshalBinary()
+	if err != nil {
+		panic("netaddr.IP.MarshalBinary() returned an error: " + err.Error())
+	}
+	g.mac.Write(ipBytes)
+
 	g.scratch = g.mac.Sum(g.scratch)
 	return hmac.Equal(g.scratch[:4], connectionID[4:])
 }

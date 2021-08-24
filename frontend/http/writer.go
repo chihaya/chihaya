@@ -3,9 +3,10 @@ package http
 import (
 	"net/http"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/frontend/http/bencode"
-	"github.com/chihaya/chihaya/pkg/log"
 )
 
 // WriteError communicates an error to a BitTorrent client over HTTP.
@@ -14,10 +15,9 @@ func WriteError(w http.ResponseWriter, err error) error {
 	if _, clientErr := err.(bittorrent.ClientError); clientErr {
 		message = err.Error()
 	} else {
-		log.Error("http: internal error", log.Err(err))
+		log.Error().Err(err).Msg("http: internal error")
 	}
 
-	w.WriteHeader(http.StatusOK)
 	return bencode.NewEncoder(w).Encode(bencode.Dict{
 		"failure reason": message,
 	})
@@ -86,31 +86,27 @@ func WriteScrapeResponse(w http.ResponseWriter, resp *bittorrent.ScrapeResponse)
 }
 
 func compact4(peer bittorrent.Peer) (buf []byte) {
-	if ip := peer.IP.To4(); ip == nil {
-		panic("non-IPv4 IP for Peer in IPv4Peers")
-	} else {
-		buf = []byte(ip)
-	}
-	buf = append(buf, byte(peer.Port>>8))
-	buf = append(buf, byte(peer.Port&0xff))
+	ip := peer.IPPort.IP().As4()
+	buf = append(buf, ip[:]...)
+	port := peer.IPPort.Port()
+	buf = append(buf, byte(port>>8))
+	buf = append(buf, byte(port&0xff))
 	return
 }
 
 func compact6(peer bittorrent.Peer) (buf []byte) {
-	if ip := peer.IP.To16(); ip == nil {
-		panic("non-IPv6 IP for Peer in IPv6Peers")
-	} else {
-		buf = []byte(ip)
-	}
-	buf = append(buf, byte(peer.Port>>8))
-	buf = append(buf, byte(peer.Port&0xff))
+	ip := peer.IPPort.IP().As16()
+	buf = append(buf, ip[:]...)
+	port := peer.IPPort.Port()
+	buf = append(buf, byte(port>>8))
+	buf = append(buf, byte(port&0xff))
 	return
 }
 
 func dict(peer bittorrent.Peer) bencode.Dict {
 	return bencode.Dict{
 		"peer id": string(peer.ID[:]),
-		"ip":      peer.IP.String(),
-		"port":    peer.Port,
+		"ip":      peer.IPPort.IP().String(),
+		"port":    peer.IPPort.Port(),
 	}
 }

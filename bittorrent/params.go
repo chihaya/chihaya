@@ -6,7 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/chihaya/chihaya/pkg/log"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 // Params is used to fetch (optional) request parameters from an Announce.
@@ -31,6 +32,8 @@ type Params interface {
 	// For a request of the form "/announce?port=1234" this would return
 	// "port=1234"
 	RawQuery() string
+
+	zerolog.LogObjectMarshaler
 }
 
 // ErrKeyNotFound is returned when a provided key has no value associated with
@@ -52,6 +55,10 @@ type QueryParams struct {
 	query      string
 	params     map[string]string
 	infoHashes []InfoHash
+}
+
+func (p QueryParams) MarshalZerologObject(e *zerolog.Event) {
+	e.Str("path", p.RawPath()+"?"+p.RawQuery())
 }
 
 type routeParamsKey struct{}
@@ -154,7 +161,7 @@ func parseQuery(query string) (q *QueryParams, err error) {
 			// But frontends record these errors to prometheus, which generates
 			// a lot of time series.
 			// We log it here for debugging instead.
-			log.Debug("failed to unescape query param key", log.Err(err))
+			log.Debug().Err(err).Msg("failed to unescape query param key")
 			return nil, ErrInvalidQueryEscape
 		}
 		value, err = url.QueryUnescape(value)
@@ -163,7 +170,7 @@ func parseQuery(query string) (q *QueryParams, err error) {
 			// But frontends record these errors to prometheus, which generates
 			// a lot of time series.
 			// We log it here for debugging instead.
-			log.Debug("failed to unescape query param value", log.Err(err))
+			log.Debug().Err(err).Msg("failed to unescape query param value")
 			return nil, ErrInvalidQueryEscape
 		}
 

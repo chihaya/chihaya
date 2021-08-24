@@ -3,10 +3,10 @@ package middleware
 import (
 	"context"
 	"fmt"
-	"net"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"inet.af/netaddr"
 
 	"github.com/chihaya/chihaya/bittorrent"
 )
@@ -42,12 +42,12 @@ func (hooks hookList) handleAnnounce(ctx context.Context, req *bittorrent.Announ
 }
 
 func benchHookListV4(b *testing.B, hooks hookList) {
-	req := &bittorrent.AnnounceRequest{Peer: bittorrent.Peer{IP: bittorrent.IP{IP: net.ParseIP("1.2.3.4"), AddressFamily: bittorrent.IPv4}}}
+	req := &bittorrent.AnnounceRequest{Peer: bittorrent.Peer{IPPort: netaddr.MustParseIPPort("1.2.3.4:6969")}}
 	benchHookList(b, hooks, req)
 }
 
 func benchHookListV6(b *testing.B, hooks hookList) {
-	req := &bittorrent.AnnounceRequest{Peer: bittorrent.Peer{IP: bittorrent.IP{IP: net.ParseIP("fc00::0001"), AddressFamily: bittorrent.IPv6}}}
+	req := &bittorrent.AnnounceRequest{Peer: bittorrent.Peer{IPPort: netaddr.MustParseIPPort("[fc00::0001]:6969")}}
 	benchHookList(b, hooks, req)
 }
 

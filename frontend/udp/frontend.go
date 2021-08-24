@@ -6,16 +6,18 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"fmt"
 	"math/rand"
 	"net"
 	"sync"
 	"time"
 
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"inet.af/netaddr"
+
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/frontend"
 	"github.com/chihaya/chihaya/frontend/udp/bytepool"
-	"github.com/chihaya/chihaya/pkg/log"
 	"github.com/chihaya/chihaya/pkg/stop"
 	"github.com/chihaya/chihaya/pkg/timecache"
 )
@@ -32,18 +34,15 @@ type Config struct {
 	ParseOptions        `yaml:",inline"`
 }
 
-// LogFields renders the current config as a set of Logrus fields.
-func (cfg Config) LogFields() log.Fields {
-	return log.Fields{
-		"addr":                cfg.Addr,
-		"privateKey":          cfg.PrivateKey,
-		"maxClockSkew":        cfg.MaxClockSkew,
-		"enableRequestTiming": cfg.EnableRequestTiming,
-		"allowIPSpoofing":     cfg.AllowIPSpoofing,
-		"maxNumWant":          cfg.MaxNumWant,
-		"defaultNumWant":      cfg.DefaultNumWant,
-		"maxScrapeInfoHashes": cfg.MaxScrapeInfoHashes,
-	}
+func (cfg Config) MarshalZerologObject(e *zerolog.Event) {
+	e.Str("addr", cfg.Addr).
+		Str("privateKey", cfg.PrivateKey).
+		Stringer("maxClockSkew", cfg.MaxClockSkew).
+		Bool("enableRequestTiming", cfg.EnableRequestTiming).
+		Bool("allowIPSpoofing", cfg.AllowIPSpoofing).
+		Uint32("maxNumWant", cfg.MaxNumWant).
+		Uint32("defaultNumWant", cfg.DefaultNumWant).
+		Uint32("maxScrapeInfoHashes", cfg.MaxScrapeInfoHashes)
 }
 
 // Validate sanity checks values set in a config and returns a new config with
@@ -62,34 +61,36 @@ func (cfg Config) Validate() Config {
 		}
 		validcfg.PrivateKey = string(pkeyRunes)
 
-		log.Warn("UDP private key was not provided, using generated key", log.Fields{"key": validcfg.PrivateKey})
+		log.Warn().
+			Str("key", validcfg.PrivateKey).
+			Msg("UDP private key was not provided, using generated key")
 	}
 
 	if cfg.MaxNumWant <= 0 {
 		validcfg.MaxNumWant = defaultMaxNumWant
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     "udp.MaxNumWant",
-			"provided": cfg.MaxNumWant,
-			"default":  validcfg.MaxNumWant,
-		})
+		log.Warn().
+			Str("name", "udp.MaxNumWant").
+			Uint32("provided", cfg.MaxNumWant).
+			Uint32("default", validcfg.MaxNumWant).
+			Msg("falling back to default configuration")
 	}
 
 	if cfg.DefaultNumWant <= 0 {
 		validcfg.DefaultNumWant = defaultDefaultNumWant
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     "udp.DefaultNumWant",
-			"provided": cfg.DefaultNumWant,
-			"default":  validcfg.DefaultNumWant,
-		})
+		log.Warn().
+			Str("name", "udp.DefaultNumWant").
+			Uint32("provided", cfg.DefaultNumWant).
+			Uint32("default", validcfg.DefaultNumWant).
+			Msg("falling back to default configuration")
 	}
 
 	if cfg.MaxScrapeInfoHashes <= 0 {
 		validcfg.MaxScrapeInfoHashes = defaultMaxScrapeInfoHashes
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     "udp.MaxScrapeInfoHashes",
-			"provided": cfg.MaxScrapeInfoHashes,
-			"default":  validcfg.MaxScrapeInfoHashes,
-		})
+		log.Warn().
+			Str("name", "udp.MaxScrapeInfoHashes").
+			Uint32("provided", cfg.MaxScrapeInfoHashes).
+			Uint32("default", validcfg.MaxScrapeInfoHashes).
+			Msg("falling back to default configuration")
 	}
 
 	return validcfg
@@ -130,7 +131,7 @@ func NewFrontend(logic frontend.TrackerLogic, provided Config) (*Frontend, error
 
 	go func() {
 		if err := f.serve(); err != nil {
-			log.Fatal("failed while serving udp", log.Err(err))
+			log.Fatal().Err(err).Msg("failed while serving udp")
 		}
 	}()
 
@@ -178,7 +179,7 @@ func (t *Frontend) serve() error {
 		// Check to see if we need to shutdown.
 		select {
 		case <-t.closing:
-			log.Debug("udp serve() received shutdown signal")
+			log.Debug().Msg("udp serve() received shutdown signal")
 			return nil
 		default:
 		}
@@ -206,8 +207,9 @@ func (t *Frontend) serve() error {
 			defer t.wg.Done()
 			defer pool.Put(buffer)
 
-			if ip := addr.IP.To4(); ip != nil {
-				addr.IP = ip
+			ipp, ok := netaddr.FromStdAddr(addr.IP, addr.Port, addr.Zone)
+			if !ok {
+				panic("received data from invalid addr")
 			}
 
 			// Handle the request.
@@ -215,15 +217,15 @@ func (t *Frontend) serve() error {
 			if t.EnableRequestTiming {
 				start = time.Now()
 			}
-			action, af, err := t.handleRequest(
-				// Make sure the IP is copied, not referenced.
-				Request{buffer[:n], append([]byte{}, addr.IP...)},
+			action, err := t.handleRequest(
+				Request{buffer[:n], ipp},
 				ResponseWriter{t.socket, addr},
 			)
+
 			if t.EnableRequestTiming {
-				recordResponseDuration(action, af, err, time.Since(start))
+				recordResponseDuration(action, ipp.IP(), err, time.Since(start))
 			} else {
-				recordResponseDuration(action, af, err, time.Duration(0))
+				recordResponseDuration(action, ipp.IP(), err, time.Duration(0))
 			}
 		}()
 	}
@@ -232,7 +234,7 @@ func (t *Frontend) serve() error {
 // Request represents a UDP payload received by a Tracker.
 type Request struct {
 	Packet []byte
-	IP     net.IP
+	IPPort netaddr.IPPort
 }
 
 // ResponseWriter implements the ability to respond to a Request via the
@@ -249,7 +251,7 @@ func (w ResponseWriter) Write(b []byte) (int, error) {
 }
 
 // handleRequest parses and responds to a UDP Request.
-func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string, af *bittorrent.AddressFamily, err error) {
+func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string, err error) {
 	if len(r.Packet) < 16 {
 		// Malformed, no client packets are less than 16 bytes.
 		// We explicitly return nothing in case this is a DoS attempt.
@@ -268,7 +270,8 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 
 	// If this isn't requesting a new connection ID and the connection ID is
 	// invalid, then fail.
-	if actionID != connectActionID && !gen.Validate(connID, r.IP, timecache.Now(), t.MaxClockSkew) {
+	ip := r.IPPort.IP()
+	if actionID != connectActionID && !gen.Validate(connID, ip, timecache.Now(), t.MaxClockSkew) {
 		err = errBadConnectionID
 		WriteError(w, txID, err)
 		return
@@ -284,17 +287,7 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 			return
 		}
 
-		af = new(bittorrent.AddressFamily)
-		if r.IP.To4() != nil {
-			*af = bittorrent.IPv4
-		} else if len(r.IP) == net.IPv6len { // implies r.IP.To4() == nil
-			*af = bittorrent.IPv6
-		} else {
-			// Should never happen - we got the IP straight from the UDP packet.
-			panic(fmt.Sprintf("udp: invalid IP: neither v4 nor v6, IP: %#v", r.IP))
-		}
-
-		WriteConnectionID(w, txID, gen.Generate(r.IP, timecache.Now()))
+		WriteConnectionID(w, txID, gen.Generate(ip, timecache.Now()))
 
 	case announceActionID, announceV6ActionID:
 		actionName = "announce"
@@ -305,8 +298,6 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 			WriteError(w, txID, err)
 			return
 		}
-		af = new(bittorrent.AddressFamily)
-		*af = req.IP.AddressFamily
 
 		var ctx context.Context
 		var resp *bittorrent.AnnounceResponse
@@ -316,7 +307,7 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 			return
 		}
 
-		WriteAnnounce(w, txID, resp, actionID == announceV6ActionID, req.IP.AddressFamily == bittorrent.IPv6)
+		WriteAnnounce(w, txID, resp, actionID == announceV6ActionID, ip.Is6())
 
 		go t.logic.AfterAnnounce(ctx, req, resp)
 
@@ -329,17 +320,6 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 			WriteError(w, txID, err)
 			return
 		}
-
-		if r.IP.To4() != nil {
-			req.AddressFamily = bittorrent.IPv4
-		} else if len(r.IP) == net.IPv6len { // implies r.IP.To4() == nil
-			req.AddressFamily = bittorrent.IPv6
-		} else {
-			// Should never happen - we got the IP straight from the UDP packet.
-			panic(fmt.Sprintf("udp: invalid IP: neither v4 nor v6, IP: %#v", r.IP))
-		}
-		af = new(bittorrent.AddressFamily)
-		*af = req.AddressFamily
 
 		var ctx context.Context
 		var resp *bittorrent.ScrapeResponse

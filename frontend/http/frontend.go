@@ -11,10 +11,12 @@ import (
 	"time"
 
 	"github.com/julienschmidt/httprouter"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"inet.af/netaddr"
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/frontend"
-	"github.com/chihaya/chihaya/pkg/log"
 	"github.com/chihaya/chihaya/pkg/stop"
 )
 
@@ -35,26 +37,23 @@ type Config struct {
 	ParseOptions        `yaml:",inline"`
 }
 
-// LogFields renders the current config as a set of Logrus fields.
-func (cfg Config) LogFields() log.Fields {
-	return log.Fields{
-		"addr":                cfg.Addr,
-		"httpsAddr":           cfg.HTTPSAddr,
-		"readTimeout":         cfg.ReadTimeout,
-		"writeTimeout":        cfg.WriteTimeout,
-		"idleTimeout":         cfg.IdleTimeout,
-		"enableKeepAlive":     cfg.EnableKeepAlive,
-		"tlsCertPath":         cfg.TLSCertPath,
-		"tlsKeyPath":          cfg.TLSKeyPath,
-		"announceRoutes":      cfg.AnnounceRoutes,
-		"scrapeRoutes":        cfg.ScrapeRoutes,
-		"enableRequestTiming": cfg.EnableRequestTiming,
-		"allowIPSpoofing":     cfg.AllowIPSpoofing,
-		"realIPHeader":        cfg.RealIPHeader,
-		"maxNumWant":          cfg.MaxNumWant,
-		"defaultNumWant":      cfg.DefaultNumWant,
-		"maxScrapeInfoHashes": cfg.MaxScrapeInfoHashes,
-	}
+func (cfg Config) MarshalZerologObject(e *zerolog.Event) {
+	e.Str("addr", cfg.Addr).
+		Str("httpsAddr", cfg.HTTPSAddr).
+		Stringer("readTimeout", cfg.ReadTimeout).
+		Stringer("writeTimeout", cfg.WriteTimeout).
+		Stringer("idleTimeout", cfg.IdleTimeout).
+		Bool("enableKeepAlive", cfg.EnableKeepAlive).
+		Str("tlsCertPath", cfg.TLSCertPath).
+		Str("tlsKeyPath", cfg.TLSKeyPath).
+		Strs("announceRoutes", cfg.AnnounceRoutes).
+		Strs("scrapeRoutes", cfg.ScrapeRoutes).
+		Bool("enableRequestTiming", cfg.EnableRequestTiming).
+		Bool("allowIPSpoofing", cfg.AllowIPSpoofing).
+		Str("realIPHeader", cfg.RealIPHeader).
+		Uint32("maxNumWant", cfg.MaxNumWant).
+		Uint32("defaultNumWant", cfg.DefaultNumWant).
+		Uint32("maxScrapeInfoHashes", cfg.MaxScrapeInfoHashes)
 }
 
 // Default config constants.
@@ -73,20 +72,20 @@ func (cfg Config) Validate() Config {
 
 	if cfg.ReadTimeout <= 0 {
 		validcfg.ReadTimeout = defaultReadTimeout
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     "http.ReadTimeout",
-			"provided": cfg.ReadTimeout,
-			"default":  validcfg.ReadTimeout,
-		})
+		log.Warn().
+			Str("name", "http.ReadTimeout").
+			Stringer("provided", cfg.ReadTimeout).
+			Stringer("default", validcfg.ReadTimeout).
+			Msg("falling back to default configuration")
 	}
 
 	if cfg.WriteTimeout <= 0 {
 		validcfg.WriteTimeout = defaultWriteTimeout
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     "http.WriteTimeout",
-			"provided": cfg.WriteTimeout,
-			"default":  validcfg.WriteTimeout,
-		})
+		log.Warn().
+			Str("name", "http.WriteTimeout").
+			Stringer("provided", cfg.WriteTimeout).
+			Stringer("default", validcfg.WriteTimeout).
+			Msg("falling back to default configuration")
 	}
 
 	if cfg.IdleTimeout <= 0 {
@@ -94,39 +93,39 @@ func (cfg Config) Validate() Config {
 
 		if cfg.EnableKeepAlive {
 			// If keepalive is disabled, this configuration isn't used anyway.
-			log.Warn("falling back to default configuration", log.Fields{
-				"name":     "http.IdleTimeout",
-				"provided": cfg.IdleTimeout,
-				"default":  validcfg.IdleTimeout,
-			})
+			log.Warn().
+				Str("name", "http.IdleTimeout").
+				Stringer("provided", cfg.IdleTimeout).
+				Stringer("default", validcfg.IdleTimeout).
+				Msg("falling back to default configuration")
 		}
 	}
 
 	if cfg.MaxNumWant <= 0 {
 		validcfg.MaxNumWant = defaultMaxNumWant
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     "http.MaxNumWant",
-			"provided": cfg.MaxNumWant,
-			"default":  validcfg.MaxNumWant,
-		})
+		log.Warn().
+			Str("name", "http.MaxNumWant").
+			Uint32("provided", cfg.MaxNumWant).
+			Uint32("default", validcfg.MaxNumWant).
+			Msg("falling back to default configuration")
 	}
 
 	if cfg.DefaultNumWant <= 0 {
 		validcfg.DefaultNumWant = defaultDefaultNumWant
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     "http.DefaultNumWant",
-			"provided": cfg.DefaultNumWant,
-			"default":  validcfg.DefaultNumWant,
-		})
+		log.Warn().
+			Str("name", "http.DefaultNumWant").
+			Uint32("provided", cfg.DefaultNumWant).
+			Uint32("default", validcfg.DefaultNumWant).
+			Msg("falling back to default configuration")
 	}
 
 	if cfg.MaxScrapeInfoHashes <= 0 {
 		validcfg.MaxScrapeInfoHashes = defaultMaxScrapeInfoHashes
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     "http.MaxScrapeInfoHashes",
-			"provided": cfg.MaxScrapeInfoHashes,
-			"default":  validcfg.MaxScrapeInfoHashes,
-		})
+		log.Warn().
+			Str("name", "http.MaxScrapeInfoHashes").
+			Uint32("provided", cfg.MaxScrapeInfoHashes).
+			Uint32("default", validcfg.MaxScrapeInfoHashes).
+			Msg("falling back to default configuration")
 	}
 
 	return validcfg
@@ -200,7 +199,7 @@ func NewFrontend(logic frontend.TrackerLogic, provided Config) (*Frontend, error
 	if cfg.Addr != "" {
 		go func() {
 			if err := f.serveHTTP(listenerHTTP); err != nil {
-				log.Fatal("failed while serving http", log.Err(err))
+				log.Fatal().Err(err).Msg("failed while serving http")
 			}
 		}()
 	}
@@ -208,7 +207,7 @@ func NewFrontend(logic frontend.TrackerLogic, provided Config) (*Frontend, error
 	if cfg.HTTPSAddr != "" {
 		go func() {
 			if err := f.serveHTTPS(listenerHTTPS); err != nil {
-				log.Fatal("failed while serving https", log.Err(err))
+				log.Fatal().Err(err).Msg("failed while serving https")
 			}
 		}()
 	}
@@ -306,12 +305,12 @@ func (f *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, ps http
 	if f.EnableRequestTiming {
 		start = time.Now()
 	}
-	var af *bittorrent.AddressFamily
+	var ip netaddr.IP
 	defer func() {
 		if f.EnableRequestTiming {
-			recordResponseDuration("announce", af, err, time.Since(start))
+			recordResponseDuration("announce", ip, err, time.Since(start))
 		} else {
-			recordResponseDuration("announce", af, err, time.Duration(0))
+			recordResponseDuration("announce", ip, err, time.Duration(0))
 		}
 	}()
 
@@ -320,8 +319,7 @@ func (f *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, ps http
 		WriteError(w, err)
 		return
 	}
-	af = new(bittorrent.AddressFamily)
-	*af = req.IP.AddressFamily
+	ip = req.IPPort.IP()
 
 	ctx := injectRouteParamsToContext(context.Background(), ps)
 	ctx, resp, err := f.logic.HandleAnnounce(ctx, req)
@@ -347,12 +345,12 @@ func (f *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, ps httpro
 	if f.EnableRequestTiming {
 		start = time.Now()
 	}
-	var af *bittorrent.AddressFamily
+	var ip netaddr.IP
 	defer func() {
 		if f.EnableRequestTiming {
-			recordResponseDuration("scrape", af, err, time.Since(start))
+			recordResponseDuration("scrape", ip, err, time.Since(start))
 		} else {
-			recordResponseDuration("scrape", af, err, time.Duration(0))
+			recordResponseDuration("scrape", ip, err, time.Duration(0))
 		}
 	}()
 
@@ -364,23 +362,16 @@ func (f *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, ps httpro
 
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
-		log.Error("http: unable to determine remote address for scrape", log.Err(err))
+		log.Error().Err(err).Msg("http: unable to determine remote address for scrape")
 		WriteError(w, err)
 		return
 	}
 
-	reqIP := net.ParseIP(host)
-	if reqIP.To4() != nil {
-		req.AddressFamily = bittorrent.IPv4
-	} else if len(reqIP) == net.IPv6len { // implies reqIP.To4() == nil
-		req.AddressFamily = bittorrent.IPv6
-	} else {
-		log.Error("http: invalid IP: neither v4 nor v6", log.Fields{"RemoteAddr": r.RemoteAddr})
+	ip, err = netaddr.ParseIP(host)
+	if ip.IsZero() {
+		log.Error().Str("remoteAddr", r.RemoteAddr).Msg("http: invalid IP: IP is zero")
 		WriteError(w, bittorrent.ErrInvalidIP)
-		return
 	}
-	af = new(bittorrent.AddressFamily)
-	*af = req.AddressFamily
 
 	ctx := injectRouteParamsToContext(context.Background(), ps)
 	ctx, resp, err := f.logic.HandleScrape(ctx, req)
