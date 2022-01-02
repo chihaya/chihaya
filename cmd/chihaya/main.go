@@ -1,8 +1,8 @@
 package main
 
 import (
+	"context"
 	"errors"
-	"os"
 	"os/signal"
 	"runtime"
 	"strings"
@@ -144,15 +144,13 @@ func RootRunCmdFunc(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	quit := make(chan os.Signal)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-
-	reload := makeReloadChan()
+	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	reload, _ := signal.NotifyContext(context.Background(), ReloadSignals...)
 
 	for {
 		select {
-		case <-reload:
-			log.Info("reloading; received SIGUSR1")
+		case <-reload.Done():
+			log.Info("reloading; received reload signal")
 			peerStore, err := r.Stop(true)
 			if err != nil {
 				return err
@@ -161,8 +159,8 @@ func RootRunCmdFunc(cmd *cobra.Command, args []string) error {
 			if err := r.Start(peerStore); err != nil {
 				return err
 			}
-		case <-quit:
-			log.Info("shutting down; received SIGINT/SIGTERM")
+		case <-ctx.Done():
+			log.Info("shutting down; received shutdown signal")
 			if _, err := r.Stop(false); err != nil {
 				return err
 			}
@@ -210,7 +208,7 @@ func RootPostRunCmdFunc(cmd *cobra.Command, args []string) error {
 }
 
 func main() {
-	var rootCmd = &cobra.Command{
+	rootCmd := &cobra.Command{
 		Use:                "chihaya",
 		Short:              "BitTorrent Tracker",
 		Long:               "A customizable, multi-protocol BitTorrent Tracker",
@@ -229,7 +227,7 @@ func main() {
 
 	rootCmd.Flags().String("config", "/etc/chihaya.yaml", "location of configuration file")
 
-	var e2eCmd = &cobra.Command{
+	e2eCmd := &cobra.Command{
 		Use:   "e2e",
 		Short: "exec e2e tests",
 		Long:  "Execute the Chihaya end-to-end test suite",

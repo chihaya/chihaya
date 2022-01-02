@@ -1,3 +1,4 @@
+//go:build windows
 // +build windows
 
 package main
@@ -8,8 +9,6 @@ import (
 	"syscall"
 )
 
-func makeReloadChan() <-chan os.Signal {
-	reload := make(chan os.Signal)
-	signal.Notify(reload, syscall.SIGHUP)
-	return reload
+var ReloadSignals = []os.Signal{
+	syscall.SIGHUP,
 }
