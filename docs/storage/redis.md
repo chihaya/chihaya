@@ -52,36 +52,35 @@ chihaya:
 
 ## Implementation
 
-Seeders and Leechers for a particular InfoHash are stored within a redis hash.
-The InfoHash is used as key, _peer keys_ are the fields, last modified times are values.
+Seeders and Leechers for a particular swarm are stored within a redis hash each.
+The keys are derived from the InfoHash, _peer keys_ are the fields, last modified times are values.
 Peer keys are derived from peers and contain Peer ID, IP, and Port.
-All the InfoHashes (swarms) are also stored in a redis hash, with IP family as the key, infohash as field, and last modified time as value.
+Additionally, a count of peers per swarms is also kept under a hash for each address family.
 
 Here is an example:
 
 ```
-- IPv4
-  - IPv4_S_<infohash 1>: <modification time>
-  - IPv4_L_<infohash 1>: <modification time>
-  - IPv4_S_<infohash 2>: <modification time>
-- IPv4_S_<infohash 1>
+- IPv4_swarm_counts
+  - <20-byte infohash 1>: 3
+  - <20-byte infohash 2>: 1
+- s<20-byte infohash 1><IPv4 marker byte><0x00 (seeder marker)>
   - <peer 1 key>: <modification time>
   - <peer 2 key>: <modification time>
-- IPv4_L_<infohash 1>
+- s<20-byte infohash 1><IPv4 marker byte><0x01 (seeder marker)>
   - <peer 3 key>: <modification time>
-- IPv4_S_<infohash 2>
+- s<20-byte infohash 2><IPv4 marker byte><0x00 (seeder marker)>
   - <peer 3 key>: <modification time>
 ```
 
 
-In this case, prometheus would record two swarms, three seeders, and one leecher.
-These three keys per address family are used to record the count of swarms, seeders, and leechers.
+In this case, prometheus would record two swarms, two seeders, and two leechers.
+These two keys per address family are used to record the count of seeders and leechers:
 
 ```
-- IPv4_infohash_count: 2
-- IPv4_S_count: 3
-- IPv4_L_count: 1
+- IPv4_seeder_count: 2
+- IPv4_leecher_count: 2
 ```
 
-Note: IPv4_infohash_count has a different meaning compared to the `memory` storage:
-It represents the number of infohashes reported by seeder, meaning that infohashes without seeders are not counted.
+Most interactions with redis are implemented using scripts.
+
+The GoDoc of the `storage/redis` package may have more information.
