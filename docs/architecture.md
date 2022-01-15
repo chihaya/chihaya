@@ -1,6 +1,6 @@
 # Architecture
 
-### Overview
+## Overview
 
 BitTorrent clients send Announce and Scrape requests to a _Frontend_.
 Frontends parse requests and write responses for the particular protocol they implement.
@@ -11,6 +11,6 @@ After all PreHooks have executed, any missing response fields that are required 
 PostHooks are asynchronous tasks that occur after a response has been delivered to the client.
 Because they are unnecessary to for generating a response, updates to the Storage for a particular request are done asynchronously in a PostHook.
 
-### Diagram
+## Diagram
 
-![](https://user-images.githubusercontent.com/343539/52676700-05c45c80-2ef9-11e9-9887-8366008b4e7e.png)
+![architecture diagram](https://user-images.githubusercontent.com/343539/52676700-05c45c80-2ef9-11e9-9887-8366008b4e7e.png)
