@@ -11,7 +11,7 @@ type BytePool struct {
 func New(length int) *BytePool {
 	var bp BytePool
 	bp.Pool.New = func() interface{} {
-		return make([]byte, length, length)
+		return make([]byte, length)
 	}
 	return &bp
 }

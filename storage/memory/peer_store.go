@@ -142,7 +142,7 @@ func New(provided Config) (storage.PeerStore, error) {
 			case <-time.After(cfg.GarbageCollectionInterval):
 				before := time.Now().Add(-cfg.PeerLifetime)
 				log.Debug("storage: purging peers with no announces since", log.Fields{"before": before})
-				ps.collectGarbage(before)
+				_ = ps.collectGarbage(before)
 			}
 		}
 	}()
@@ -183,7 +183,8 @@ func decodePeerKey(pk serializedPeer) bittorrent.Peer {
 	peer := bittorrent.Peer{
 		ID:   bittorrent.PeerIDFromString(string(pk[:20])),
 		Port: binary.BigEndian.Uint16([]byte(pk[20:22])),
-		IP:   bittorrent.IP{IP: net.IP(pk[22:])}}
+		IP:   bittorrent.IP{IP: net.IP(pk[22:])},
+	}
 
 	if ip := peer.IP.To4(); ip != nil {
 		peer.IP.IP = ip

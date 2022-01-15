@@ -46,8 +46,8 @@ func BenchmarkUnmarshalScalar(b *testing.B) {
 	d2 := NewDecoder(&bufferLoop{"i42e"})
 
 	for i := 0; i < b.N; i++ {
-		d1.Decode()
-		d2.Decode()
+		_, _ = d1.Decode()
+		_, _ = d2.Decode()
 	}
 }
 
@@ -79,6 +79,6 @@ func BenchmarkUnmarshalLarge(b *testing.B) {
 	dec := NewDecoder(&bufferLoop{string(buf)})
 
 	for i := 0; i < b.N; i++ {
-		dec.Decode()
+		_, _ = dec.Decode()
 	}
 }

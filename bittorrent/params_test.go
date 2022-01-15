@@ -92,7 +92,7 @@ func TestParseInvalidURLData(t *testing.T) {
 
 func TestParseShouldNotPanicURLData(t *testing.T) {
 	for _, parseStr := range shouldNotPanicQueries {
-		ParseURLData(parseStr)
+		_, _ = ParseURLData(parseStr)
 	}
 }
 

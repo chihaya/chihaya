@@ -105,7 +105,7 @@ func NewHook(cfg Config) (middleware.Hook, error) {
 				return
 			case <-time.After(cfg.JWKUpdateInterval):
 				log.Debug("performing fetch of JWKs")
-				h.updateKeys()
+				_ = h.updateKeys()
 			}
 		}
 	}()

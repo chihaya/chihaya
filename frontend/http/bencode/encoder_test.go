@@ -50,8 +50,8 @@ func BenchmarkMarshalScalar(b *testing.B) {
 	encoder := NewEncoder(buf)
 
 	for i := 0; i < b.N; i++ {
-		encoder.Encode("test")
-		encoder.Encode(123)
+		_ = encoder.Encode("test")
+		_ = encoder.Encode(123)
 	}
 }
 
@@ -67,6 +67,6 @@ func BenchmarkMarshalLarge(b *testing.B) {
 	encoder := NewEncoder(buf)
 
 	for i := 0; i < b.N; i++ {
-		encoder.Encode(data)
+		_ = encoder.Encode(data)
 	}
 }
