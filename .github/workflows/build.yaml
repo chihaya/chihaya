@@ -34,21 +34,21 @@ jobs:
     name: "E2E Memory Tests"
     runs-on: "ubuntu-latest"
     steps:
-    - uses: "actions/checkout@v2"
-    - uses: "actions/setup-go@v2"
-      with:
-        go-version: ^1.17
-    - name: "Install and configure chihaya"
-      run: |
-        go install ./cmd/chihaya
-        cat ./dist/example_config.yaml
-    - name: "Run end-to-end tests"
-      run: |
-        chihaya --config=./dist/example_config.yaml --debug &
-        pid=$!
-        sleep 2
-        chihaya e2e --debug
-        kill $pid
+      - uses: "actions/checkout@v2"
+      - uses: "actions/setup-go@v2"
+        with:
+          go-version: "^1.17"
+      - name: "Install and configure chihaya"
+        run: |
+          go install ./cmd/chihaya
+          cat ./dist/example_config.yaml
+      - name: "Run end-to-end tests"
+        run: |
+          chihaya --config=./dist/example_config.yaml --debug &
+          pid=$!
+          sleep 2
+          chihaya e2e --debug
+          kill $pid
 
   e2e-redis:
     name: "E2E Redis Tests"
@@ -59,24 +59,24 @@ jobs:
         ports: ["6379:6379"]
         options: "--entrypoint redis-server"
     steps:
-    - uses: "actions/checkout@v2"
-    - uses: "actions/setup-go@v2"
-      with:
-        go-version: ^1.17
-    - name: "Install and configure chihaya"
-      run: |
-        go install ./cmd/chihaya
-        curl -LO https://github.com/jzelinskie/faq/releases/download/0.0.6/faq-linux-amd64
-        chmod +x faq-linux-amd64
-        ./faq-linux-amd64 '.chihaya.storage = {"config":{"gc_interval":"3m","peer_lifetime":"31m","prometheus_reporting_interval":"1s","redis_broker":"redis://127.0.0.1:6379/0","redis_connect_timeout":"15s","redis_read_timeout":"15s","redis_write_timeout":"15s"},"name":"redis"}' ./dist/example_config.yaml > ./dist/example_redis_config.yaml
-        cat ./dist/example_redis_config.yaml
-    - name: "Run end-to-end tests"
-      run: |
-        chihaya --config=./dist/example_redis_config.yaml --debug &
-        pid=$!
-        sleep 2
-        chihaya e2e --debug
-        kill $pid
+      - uses: "actions/checkout@v2"
+      - uses: "actions/setup-go@v2"
+        with:
+          go-version: "^1.17"
+      - name: "Install and configure chihaya"
+        run: |
+          go install ./cmd/chihaya
+          curl -LO https://github.com/jzelinskie/faq/releases/download/0.0.6/faq-linux-amd64
+          chmod +x faq-linux-amd64
+          ./faq-linux-amd64 '.chihaya.storage = {"config":{"gc_interval":"3m","peer_lifetime":"31m","prometheus_reporting_interval":"1s","redis_broker":"redis://127.0.0.1:6379/0","redis_connect_timeout":"15s","redis_read_timeout":"15s","redis_write_timeout":"15s"},"name":"redis"}' ./dist/example_config.yaml > ./dist/example_redis_config.yaml
+          cat ./dist/example_redis_config.yaml
+      - name: "Run end-to-end tests"
+        run: |
+          chihaya --config=./dist/example_redis_config.yaml --debug &
+          pid=$!
+          sleep 2
+          chihaya e2e --debug
+          kill $pid
 
   image-build:
     name: "Docker Build"
@@ -96,17 +96,17 @@ jobs:
     name: "Helm Template"
     runs-on: "ubuntu-latest"
     steps:
-    - uses: "actions/checkout@v2"
-    - name: "Install Helm"
-      uses: "engineerd/configurator@v0.0.5"
-      with:
-        name: "helm"
-        pathInArchive: "linux-amd64/helm"
-        fromGitHubReleases: true
-        repo: "helm/helm"
-        version: "^v3"
-        urlTemplate: "https://get.helm.sh/helm-{{version}}-linux-amd64.tar.gz"
-        token: "${{ secrets.GITHUB_TOKEN }}"
-    - name: "Run `helm template`"
-      working-directory: "./dist/helm/chihaya"
-      run: "helm template . --debug"
+      - uses: "actions/checkout@v2"
+      - name: "Install Helm"
+        uses: "engineerd/configurator@v0.0.5"
+        with:
+          name: "helm"
+          pathInArchive: "linux-amd64/helm"
+          fromGitHubReleases: true
+          repo: "helm/helm"
+          version: "^v3"
+          urlTemplate: "https://get.helm.sh/helm-{{version}}-linux-amd64.tar.gz"
+          token: "${{ secrets.GITHUB_TOKEN }}"
+      - name: "Run `helm template`"
+        working-directory: "./dist/helm/chihaya"
+        run: "helm template . --debug"
