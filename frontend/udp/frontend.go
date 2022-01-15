@@ -185,7 +185,7 @@ func (t *Frontend) serve() error {
 
 		// Read a UDP packet into a reusable buffer.
 		buffer := pool.Get()
-		n, addr, err := t.socket.ReadFromUDP(buffer)
+		n, addr, err := t.socket.ReadFromUDP(*buffer)
 		if err != nil {
 			pool.Put(buffer)
 			if netErr, ok := err.(net.Error); ok && netErr.Temporary() {
@@ -217,7 +217,7 @@ func (t *Frontend) serve() error {
 			}
 			action, af, err := t.handleRequest(
 				// Make sure the IP is copied, not referenced.
-				Request{buffer[:n], append([]byte{}, addr.IP...)},
+				Request{(*buffer)[:n], append([]byte{}, addr.IP...)},
 				ResponseWriter{t.socket, addr},
 			)
 			if t.EnableRequestTiming {
