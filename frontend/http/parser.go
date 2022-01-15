@@ -73,25 +73,25 @@ func ParseAnnounce(r *http.Request, opts ParseOptions) (*bittorrent.AnnounceRequ
 	request.Peer.ID = bittorrent.PeerIDFromString(peerID)
 
 	// Determine the number of remaining bytes for the client.
-	request.Left, err = qp.Uint64("left")
+	request.Left, err = qp.Uint64("left", 64)
 	if err != nil {
 		return nil, bittorrent.ClientError("failed to parse parameter: left")
 	}
 
 	// Determine the number of bytes downloaded by the client.
-	request.Downloaded, err = qp.Uint64("downloaded")
+	request.Downloaded, err = qp.Uint64("downloaded", 64)
 	if err != nil {
 		return nil, bittorrent.ClientError("failed to parse parameter: downloaded")
 	}
 
 	// Determine the number of bytes shared by the client.
-	request.Uploaded, err = qp.Uint64("uploaded")
+	request.Uploaded, err = qp.Uint64("uploaded", 64)
 	if err != nil {
 		return nil, bittorrent.ClientError("failed to parse parameter: uploaded")
 	}
 
 	// Determine the number of peers the client wants in the response.
-	numwant, err := qp.Uint64("numwant")
+	numwant, err := qp.Uint64("numwant", 32)
 	if err != nil && err != bittorrent.ErrKeyNotFound {
 		return nil, bittorrent.ClientError("failed to parse parameter: numwant")
 	}
@@ -100,7 +100,7 @@ func ParseAnnounce(r *http.Request, opts ParseOptions) (*bittorrent.AnnounceRequ
 	request.NumWant = uint32(numwant)
 
 	// Parse the port where the client is listening.
-	port, err := qp.Uint64("port")
+	port, err := qp.Uint64("port", 16)
 	if err != nil {
 		return nil, bittorrent.ClientError("failed to parse parameter: port")
 	}
