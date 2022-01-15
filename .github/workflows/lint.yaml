@@ -1,0 +1,86 @@
+---
+name: "Lint"
+on:
+  push:
+    branches:
+      - "!dependabot/*"
+      - "main"
+  pull_request:
+    branches: ["*"]
+jobs:
+  go-mod-tidy:
+    name: "Lint Go Modules"
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: "actions/checkout@v2"
+      - uses: "actions/setup-go@v2"
+        with:
+          go-version: "^1.17"
+      - name: "Run `go mod tidy`"
+        run: "go mod tidy && bash -c '[ $(git status --porcelain | tee /dev/fd/2 | wc -c) -eq 0 ]'"
+
+  go-fmt:
+    name: "Format Go"
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: "actions/checkout@v2"
+      - uses: "actions/setup-go@v2"
+        with:
+          go-version: "^1.17"
+      - name: "Install gofumpt"
+        run: "go install mvdan.cc/gofumpt@latest"
+      - name: "Run `gofumpt`"
+        run: |
+          GOFUMPT_OUTPUT="$(find . -iname '*.go' -type f | xargs gofumpt -d)"
+          if [ -n "$GOFUMPT_OUTPUT" ]; then
+            echo "The following files are not correctly formatted:"
+            echo "${GOFUMPT_OUTPUT}"
+            exit 1
+          fi
+
+  go-lint:
+    name: "Lint Go"
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: "actions/checkout@v2"
+      - uses: "actions/setup-go@v2"
+        with:
+          go-version: "^1.17"
+      - uses: "golangci/golangci-lint-action@v2"
+        with:
+          version: "v1.43"
+          skip-go-installation: true
+          skip-pkg-cache: true
+          skip-build-cache: false
+
+  extra-lint:
+    name: "Lint YAML & Markdown"
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: "actions/checkout@v2"
+      - uses: "bewuethr/yamllint-action@v1.1.1"
+        with:
+          config-file: ".yamllint"
+      - uses: "nosborn/github-action-markdown-cli@v2.0.0"
+        with:
+          files: "."
+          config_file: ".markdownlint.yaml"
+
+  codeql:
+    name: "Analyze with CodeQL"
+    runs-on: "ubuntu-latest"
+    permissions:
+      actions: "read"
+      contents: "read"
+      security-events: "write"
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ["go"]
+    steps:
+      - uses: "actions/checkout@v2"
+      - uses: "github/codeql-action/init@v1"
+        with:
+          languages: "${{ matrix.language }}"
+      - uses: "github/codeql-action/autobuild@v1"
+      - uses: "github/codeql-action/analyze@v1"
