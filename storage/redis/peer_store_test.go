@@ -23,7 +23,8 @@ func createNew() s.PeerStore {
 		RedisBroker:                 redisURL,
 		RedisReadTimeout:            10 * time.Second,
 		RedisWriteTimeout:           10 * time.Second,
-		RedisConnectTimeout:         10 * time.Second})
+		RedisConnectTimeout:         10 * time.Second,
+	})
 	if err != nil {
 		panic(err)
 	}
