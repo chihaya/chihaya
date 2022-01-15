@@ -4,6 +4,7 @@ package memory
 
 import (
 	"encoding/binary"
+	"math"
 	"net"
 	"runtime"
 	"sync"
@@ -79,7 +80,7 @@ func (cfg Config) LogFields() log.Fields {
 func (cfg Config) Validate() Config {
 	validcfg := cfg
 
-	if cfg.ShardCount <= 0 {
+	if cfg.ShardCount <= 0 || cfg.ShardCount > (math.MaxInt/2) {
 		validcfg.ShardCount = defaultShardCount
 		log.Warn("falling back to default configuration", log.Fields{
 			"name":     Name + ".ShardCount",
