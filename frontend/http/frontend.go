@@ -164,6 +164,7 @@ func NewFrontend(logic frontend.TrackerLogic, provided Config) (*Frontend, error
 	if cfg.TLSCertPath != "" && cfg.TLSKeyPath != "" {
 		var err error
 		f.tlsCfg = &tls.Config{
+			MinVersion:   tls.VersionTLS12,
 			Certificates: make([]tls.Certificate, 1),
 		}
 		f.tlsCfg.Certificates[0], err = tls.LoadX509KeyPair(cfg.TLSCertPath, cfg.TLSKeyPath)
@@ -265,7 +266,7 @@ func (f *Frontend) serveHTTP(l net.Listener) error {
 	f.srv.SetKeepAlivesEnabled(f.EnableKeepAlive)
 
 	// Start the HTTP server.
-	if err := f.srv.Serve(l); err != http.ErrServerClosed {
+	if err := f.srv.Serve(l); !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
 	return nil
@@ -285,7 +286,7 @@ func (f *Frontend) serveHTTPS(l net.Listener) error {
 	f.tlsSrv.SetKeepAlivesEnabled(f.EnableKeepAlive)
 
 	// Start the HTTP server.
-	if err := f.tlsSrv.ServeTLS(l, "", ""); err != http.ErrServerClosed {
+	if err := f.tlsSrv.ServeTLS(l, "", ""); !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
 	return nil

@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net"
@@ -123,8 +124,7 @@ func NewFrontend(logic frontend.TrackerLogic, provided Config) (*Frontend, error
 		},
 	}
 
-	err := f.listen()
-	if err != nil {
+	if err := f.listen(); err != nil {
 		return nil, err
 	}
 
@@ -188,7 +188,8 @@ func (t *Frontend) serve() error {
 		n, addr, err := t.socket.ReadFromUDP(*buffer)
 		if err != nil {
 			pool.Put(buffer)
-			if netErr, ok := err.(net.Error); ok && netErr.Temporary() {
+			var netErr net.Error
+			if errors.As(err, &netErr); netErr.Temporary() {
 				// A temporary failure is not fatal; just pretend it never happened.
 				continue
 			}

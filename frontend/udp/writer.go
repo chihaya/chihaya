@@ -2,6 +2,7 @@ package udp
 
 import (
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -12,8 +13,9 @@ import (
 // WriteError writes the failure reason as a null-terminated string.
 func WriteError(w io.Writer, txID []byte, err error) {
 	// If the client wasn't at fault, acknowledge it.
-	if _, ok := err.(bittorrent.ClientError); !ok {
-		err = fmt.Errorf("internal error occurred: %s", err.Error())
+	var clientErr bittorrent.ClientError
+	if !errors.As(err, &clientErr) {
+		err = fmt.Errorf("internal error occurred: %w", err)
 	}
 
 	buf := newBuffer()

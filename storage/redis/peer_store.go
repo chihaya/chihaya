@@ -25,6 +25,7 @@ package redis
 
 import (
 	"encoding/binary"
+	"errors"
 	"net"
 	"strconv"
 	"sync"
@@ -301,7 +302,7 @@ func (ps *peerStore) populateProm() {
 	defer conn.Close()
 
 	for _, group := range ps.groups() {
-		if n, err := redis.Int64(conn.Do("GET", ps.infohashCountKey(group))); err != nil && err != redis.ErrNil {
+		if n, err := redis.Int64(conn.Do("GET", ps.infohashCountKey(group))); err != nil && !errors.Is(err, redis.ErrNil) {
 			log.Error("storage: GET counter failure", log.Fields{
 				"key":   ps.infohashCountKey(group),
 				"error": err,
@@ -309,7 +310,7 @@ func (ps *peerStore) populateProm() {
 		} else {
 			numInfohashes += n
 		}
-		if n, err := redis.Int64(conn.Do("GET", ps.seederCountKey(group))); err != nil && err != redis.ErrNil {
+		if n, err := redis.Int64(conn.Do("GET", ps.seederCountKey(group))); err != nil && !errors.Is(err, redis.ErrNil) {
 			log.Error("storage: GET counter failure", log.Fields{
 				"key":   ps.seederCountKey(group),
 				"error": err,
@@ -317,7 +318,7 @@ func (ps *peerStore) populateProm() {
 		} else {
 			numSeeders += n
 		}
-		if n, err := redis.Int64(conn.Do("GET", ps.leecherCountKey(group))); err != nil && err != redis.ErrNil {
+		if n, err := redis.Int64(conn.Do("GET", ps.leecherCountKey(group))); err != nil && !errors.Is(err, redis.ErrNil) {
 			log.Error("storage: GET counter failure", log.Fields{
 				"key":   ps.leecherCountKey(group),
 				"error": err,
@@ -789,7 +790,7 @@ func (ps *peerStore) collectGarbage(cutoff time.Time) error {
 					_ = conn.Send("DECR", ps.infohashCountKey(group))
 				}
 				_, err = redis.Values(conn.Do("EXEC"))
-				if err != nil && err != redis.ErrNil {
+				if err != nil && !errors.Is(err, redis.ErrNil) {
 					log.Error("storage: Redis EXEC failure", log.Fields{
 						"group":    group,
 						"infohash": ihStr,
@@ -797,7 +798,7 @@ func (ps *peerStore) collectGarbage(cutoff time.Time) error {
 					})
 				}
 			} else {
-				if _, err = conn.Do("UNWATCH"); err != nil && err != redis.ErrNil {
+				if _, err = conn.Do("UNWATCH"); err != nil && !errors.Is(err, redis.ErrNil) {
 					log.Error("storage: Redis UNWATCH failure", log.Fields{"error": err})
 				}
 			}

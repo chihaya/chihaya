@@ -115,7 +115,7 @@ func ParseAnnounce(r Request, v6Action bool, opts ParseOptions) (*bittorrent.Ann
 	request := &bittorrent.AnnounceRequest{
 		Event:           eventIDs[eventID],
 		InfoHash:        bittorrent.InfoHashFromBytes(infohash),
-		NumWant:         uint32(numWant),
+		NumWant:         numWant,
 		Left:            left,
 		Downloaded:      downloaded,
 		Uploaded:        uploaded,

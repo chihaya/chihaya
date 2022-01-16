@@ -69,7 +69,7 @@ func (rc *redisConnector) NewPool() *redis.Pool {
 		},
 		// PINGs connections that have been idle more than 10 seconds
 		TestOnBorrow: func(c redis.Conn, t time.Time) error {
-			if time.Since(t) < time.Duration(10*time.Second) {
+			if time.Since(t) < 10*time.Second {
 				return nil
 			}
 			_, err := c.Do("PING")

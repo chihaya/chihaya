@@ -44,7 +44,7 @@ func (d driver) NewHook(optionBytes []byte) (middleware.Hook, error) {
 	var cfg Config
 	err := yaml.Unmarshal(optionBytes, &cfg)
 	if err != nil {
-		return nil, fmt.Errorf("invalid options for middleware %s: %s", Name, err)
+		return nil, fmt.Errorf("invalid options for middleware %s: %w", Name, err)
 	}
 
 	return NewHook(cfg)
@@ -93,8 +93,7 @@ func NewHook(cfg Config) (middleware.Hook, error) {
 	}
 
 	log.Debug("performing initial fetch of JWKs")
-	err := h.updateKeys()
-	if err != nil {
+	if err := h.updateKeys(); err != nil {
 		return nil, errors.New("failed to fetch initial JWK Set: " + err.Error())
 	}
 

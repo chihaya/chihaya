@@ -1,6 +1,7 @@
 package udp
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 )
@@ -51,7 +52,7 @@ func TestHandleOptionalParameters(t *testing.T) {
 	for _, tt := range table {
 		t.Run(fmt.Sprintf("%#v as %#v", tt.data, tt.values), func(t *testing.T) {
 			params, err := handleOptionalParameters(tt.data)
-			if err != tt.err {
+			if !errors.Is(err, tt.err) {
 				if tt.err == nil {
 					t.Fatalf("expected no parsing error for %x but got %s", tt.data, err)
 				} else {

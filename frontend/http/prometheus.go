@@ -1,6 +1,7 @@
 package http
 
 import (
+	"errors"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -26,8 +27,9 @@ var promResponseDurationMilliseconds = prometheus.NewHistogramVec(
 func recordResponseDuration(action string, af *bittorrent.AddressFamily, err error, duration time.Duration) {
 	var errString string
 	if err != nil {
-		if _, ok := err.(bittorrent.ClientError); ok {
-			errString = err.Error()
+		var clientErr bittorrent.ClientError
+		if errors.As(err, &clientErr) {
+			errString = clientErr.Error()
 		} else {
 			errString = "internal error"
 		}
