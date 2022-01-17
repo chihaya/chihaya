@@ -189,7 +189,7 @@ func (qp *QueryParams) String(key string) (string, bool) {
 
 // Uint64 returns a uint parsed from a query. After being called, it is safe to
 // cast the uint64 to your desired length.
-func (qp *QueryParams) Uint64(key string, bitSize int) (uint64, error) {
+func (qp *QueryParams) Uint(key string, bitSize int) (uint64, error) {
 	str, exists := qp.params[key]
 	if !exists {
 		return 0, ErrKeyNotFound
