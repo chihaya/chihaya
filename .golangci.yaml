@@ -8,7 +8,7 @@ linters-settings:
     local-prefixes: "github.com/chihaya/chihaya"
   gosec:
     excludes:
-      - "G404" # Allow the usage of math/rand
+      - "G404"  # Allow the usage of math/rand
 linters:
   enable:
     - "bidichk"
@@ -41,3 +41,10 @@ linters:
     - "varcheck"
     - "wastedassign"
     - "whitespace"
+issues:
+  include:
+    - "EXC0012"  # Exported should have comment
+    - "EXC0012"  # Exported should have comment
+    - "EXC0013"  # Package comment should be of form
+    - "EXC0014"  # Comment on exported should be of form
+    - "EXC0015"  # Should have a package comment
