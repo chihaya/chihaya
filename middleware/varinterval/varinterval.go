@@ -29,7 +29,7 @@ func (d driver) NewHook(optionBytes []byte) (middleware.Hook, error) {
 	var cfg Config
 	err := yaml.Unmarshal(optionBytes, &cfg)
 	if err != nil {
-		return nil, fmt.Errorf("invalid options for middleware %s: %s", Name, err)
+		return nil, fmt.Errorf("invalid options for middleware %s: %w", Name, err)
 	}
 
 	return NewHook(cfg)
@@ -77,8 +77,7 @@ type hook struct {
 // NewHook creates a middleware to randomly modify the announce interval from
 // the given config.
 func NewHook(cfg Config) (middleware.Hook, error) {
-	err := checkConfig(cfg)
-	if err != nil {
+	if err := checkConfig(cfg); err != nil {
 		return nil, err
 	}
 
@@ -96,12 +95,12 @@ func (h *hook) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceReque
 	if h.cfg.ModifyResponseProbability == 1 || p < h.cfg.ModifyResponseProbability {
 		// Generate the increase delta.
 		v, _, _ = random.Intn(s0, s1, h.cfg.MaxIncreaseDelta)
-		addSeconds := time.Duration(v+1) * time.Second
+		deltaDuration := time.Duration(v+1) * time.Second
 
-		resp.Interval += addSeconds
+		resp.Interval += deltaDuration
 
 		if h.cfg.ModifyMinInterval {
-			resp.MinInterval += addSeconds
+			resp.MinInterval += deltaDuration
 		}
 
 		return ctx, nil

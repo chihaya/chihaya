@@ -1,3 +1,5 @@
+# How to Contribute
+
 ## Discussion
 
 Long-term discussion and bug reports are maintained via [GitHub Issues].
@@ -55,7 +57,7 @@ All files should have `gofmt` executed on them and code should strive to have fu
 We follow a rough convention for commit messages that is designed to answer two questions: what changed and why.
 The subject line should feature the what and the body of the commit should describe the why.
 
-```
+```git
 scripts: add the test-cluster command
 
 this uses tmux to setup a test cluster that you can easily kill and
@@ -66,7 +68,7 @@ Fixes #38
 
 The format can be described more formally as follows:
 
-```
+```git
 <subsystem>: <what changed>
 <BLANK LINE>
 <why this change was made>

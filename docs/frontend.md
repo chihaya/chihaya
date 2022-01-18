@@ -44,11 +44,11 @@ The typical control flow of handling announces, in more detail, is:
 6. Send the response to the Client.
 7. Pass the request and response to the `TrackerLogic`'s `AfterAnnounce` or `AfterScrape` method.
 8. Finish, accept next request.
-9. For invalid requests or errors during processing: Send an error response to the client. 
-    This step may be skipped for suspected denial-of-service attacks.
-    The error response may contain information about the cause of the error.
-    Only errors where the Client is at fault should be explained, internal server errors should be returned without explanation. 
-    Then finish, and accept the next request.
+9. For invalid requests or errors during processing: Send an error response to the client.
+   This step may be skipped for suspected denial-of-service attacks.
+   The error response may contain information about the cause of the error.
+   Only errors where the Client is at fault should be explained, internal server errors should be returned without explanation.
+   Then finish, and accept the next request.
 
 #### Configuration
 
@@ -62,20 +62,22 @@ Frontends may provide runtime metrics, such as the number of requests or their d
 Metrics must be reported using [Prometheus].
 
 A frontend should provide at least the following metrics:
+
 - The number of valid and invalid requests handled
 - The average time it takes to handle a single request.
-    This request timing should be made optional using a config entry.
+  This request timing should be made optional using a config entry.
 
 Requests should be separated by type, i.e. Scrapes, Announces, and other protocol-specific requests.
 If the frontend serves multiple transports or networks, metrics for them should be separable.
 
 It is recommended to publish one Prometheus `HistogramVec` with:
+
 - A name like `chihaya_PROTOCOL_response_duration_milliseconds`
 - A value holding the duration in milliseconds of the reported request
 - Labels for:
-    - `action` (= `announce`, `scrape`, ...)
-    - `address_family` (= `Unknown`, `IPv4`, `IPv6`, ...), if applicable
-     - `error` (= A textual representation of the error encountered during processing.)
+  - `action` (= `announce`, `scrape`, ...)
+  - `address_family` (= `Unknown`, `IPv4`, `IPv6`, ...), if applicable
+  - `error` (= A textual representation of the error encountered during processing.)
     Because `error` is expected to hold the textual representation of any error that occurred during the request, great care must be taken to ensure all error messages are static.
     `error` must not contain any information directly taken from the request, e.g. the value of an invalid parameter.
     This would cause this dimension of prometheus to explode, which slows down prometheus clients and reporters.

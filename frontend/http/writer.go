@@ -1,6 +1,7 @@
 package http
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/chihaya/chihaya/bittorrent"
@@ -11,8 +12,9 @@ import (
 // WriteError communicates an error to a BitTorrent client over HTTP.
 func WriteError(w http.ResponseWriter, err error) error {
 	message := "internal server error"
-	if _, clientErr := err.(bittorrent.ClientError); clientErr {
-		message = err.Error()
+	var clientErr bittorrent.ClientError
+	if errors.As(err, &clientErr) {
+		message = clientErr.Error()
 	} else {
 		log.Error("http: internal error", log.Err(err))
 	}
@@ -57,7 +59,7 @@ func WriteAnnounceResponse(w http.ResponseWriter, resp *bittorrent.AnnounceRespo
 	}
 
 	// Add the peers to the dictionary.
-	var peers []bencode.Dict
+	peers := make([]bencode.Dict, 0, len(resp.IPv4Peers)+len(resp.IPv6Peers))
 	for _, peer := range resp.IPv4Peers {
 		peers = append(peers, dict(peer))
 	}

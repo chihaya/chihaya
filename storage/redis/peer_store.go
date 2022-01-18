@@ -25,6 +25,7 @@ package redis
 
 import (
 	"encoding/binary"
+	"errors"
 	"net"
 	"strconv"
 	"sync"
@@ -245,7 +246,8 @@ func decodePeerKey(pk serializedPeer) bittorrent.Peer {
 	peer := bittorrent.Peer{
 		ID:   bittorrent.PeerIDFromString(string(pk[:20])),
 		Port: binary.BigEndian.Uint16([]byte(pk[20:22])),
-		IP:   bittorrent.IP{IP: net.IP(pk[22:])}}
+		IP:   bittorrent.IP{IP: net.IP(pk[22:])},
+	}
 
 	if ip := peer.IP.To4(); ip != nil {
 		peer.IP.IP = ip
@@ -300,7 +302,7 @@ func (ps *peerStore) populateProm() {
 	defer conn.Close()
 
 	for _, group := range ps.groups() {
-		if n, err := redis.Int64(conn.Do("GET", ps.infohashCountKey(group))); err != nil && err != redis.ErrNil {
+		if n, err := redis.Int64(conn.Do("GET", ps.infohashCountKey(group))); err != nil && !errors.Is(err, redis.ErrNil) {
 			log.Error("storage: GET counter failure", log.Fields{
 				"key":   ps.infohashCountKey(group),
 				"error": err,
@@ -308,7 +310,7 @@ func (ps *peerStore) populateProm() {
 		} else {
 			numInfohashes += n
 		}
-		if n, err := redis.Int64(conn.Do("GET", ps.seederCountKey(group))); err != nil && err != redis.ErrNil {
+		if n, err := redis.Int64(conn.Do("GET", ps.seederCountKey(group))); err != nil && !errors.Is(err, redis.ErrNil) {
 			log.Error("storage: GET counter failure", log.Fields{
 				"key":   ps.seederCountKey(group),
 				"error": err,
@@ -316,7 +318,7 @@ func (ps *peerStore) populateProm() {
 		} else {
 			numSeeders += n
 		}
-		if n, err := redis.Int64(conn.Do("GET", ps.leecherCountKey(group))); err != nil && err != redis.ErrNil {
+		if n, err := redis.Int64(conn.Do("GET", ps.leecherCountKey(group))); err != nil && !errors.Is(err, redis.ErrNil) {
 			log.Error("storage: GET counter failure", log.Fields{
 				"key":   ps.leecherCountKey(group),
 				"error": err,
@@ -356,9 +358,9 @@ func (ps *peerStore) PutSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) error 
 	conn := ps.rb.open()
 	defer conn.Close()
 
-	conn.Send("MULTI")
-	conn.Send("HSET", encodedSeederInfoHash, pk, ct)
-	conn.Send("HSET", addressFamily, encodedSeederInfoHash, ct)
+	_ = conn.Send("MULTI")
+	_ = conn.Send("HSET", encodedSeederInfoHash, pk, ct)
+	_ = conn.Send("HSET", addressFamily, encodedSeederInfoHash, ct)
 	reply, err := redis.Int64s(conn.Do("EXEC"))
 	if err != nil {
 		return err
@@ -437,9 +439,9 @@ func (ps *peerStore) PutLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) error
 	conn := ps.rb.open()
 	defer conn.Close()
 
-	conn.Send("MULTI")
-	conn.Send("HSET", encodedLeecherInfoHash, pk, ct)
-	conn.Send("HSET", addressFamily, encodedLeecherInfoHash, ct)
+	_ = conn.Send("MULTI")
+	_ = conn.Send("HSET", encodedLeecherInfoHash, pk, ct)
+	_ = conn.Send("HSET", addressFamily, encodedLeecherInfoHash, ct)
 	reply, err := redis.Int64s(conn.Do("EXEC"))
 	if err != nil {
 		return err
@@ -509,10 +511,10 @@ func (ps *peerStore) GraduateLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) 
 	conn := ps.rb.open()
 	defer conn.Close()
 
-	conn.Send("MULTI")
-	conn.Send("HDEL", encodedLeecherInfoHash, pk)
-	conn.Send("HSET", encodedSeederInfoHash, pk, ct)
-	conn.Send("HSET", addressFamily, encodedSeederInfoHash, ct)
+	_ = conn.Send("MULTI")
+	_ = conn.Send("HDEL", encodedLeecherInfoHash, pk)
+	_ = conn.Send("HSET", encodedSeederInfoHash, pk, ct)
+	_ = conn.Send("HSET", addressFamily, encodedSeederInfoHash, ct)
 	reply, err := redis.Int64s(conn.Do("EXEC"))
 	if err != nil {
 		return err
@@ -782,13 +784,13 @@ func (ps *peerStore) collectGarbage(cutoff time.Time) error {
 				// in other words, it's removed automatically after `HDEL` the last field.
 				//_, err := conn.Do("DEL", ihStr)
 
-				conn.Send("MULTI")
-				conn.Send("HDEL", group, ihStr)
+				_ = conn.Send("MULTI")
+				_ = conn.Send("HDEL", group, ihStr)
 				if isSeeder {
-					conn.Send("DECR", ps.infohashCountKey(group))
+					_ = conn.Send("DECR", ps.infohashCountKey(group))
 				}
 				_, err = redis.Values(conn.Do("EXEC"))
-				if err != nil && err != redis.ErrNil {
+				if err != nil && !errors.Is(err, redis.ErrNil) {
 					log.Error("storage: Redis EXEC failure", log.Fields{
 						"group":    group,
 						"infohash": ihStr,
@@ -796,7 +798,7 @@ func (ps *peerStore) collectGarbage(cutoff time.Time) error {
 					})
 				}
 			} else {
-				if _, err = conn.Do("UNWATCH"); err != nil && err != redis.ErrNil {
+				if _, err = conn.Do("UNWATCH"); err != nil && !errors.Is(err, redis.ErrNil) {
 					log.Error("storage: Redis UNWATCH failure", log.Fields{"error": err})
 				}
 			}

@@ -164,6 +164,7 @@ func NewFrontend(logic frontend.TrackerLogic, provided Config) (*Frontend, error
 	if cfg.TLSCertPath != "" && cfg.TLSKeyPath != "" {
 		var err error
 		f.tlsCfg = &tls.Config{
+			MinVersion:   tls.VersionTLS12,
 			Certificates: make([]tls.Certificate, 1),
 		}
 		f.tlsCfg.Certificates[0], err = tls.LoadX509KeyPair(cfg.TLSCertPath, cfg.TLSKeyPath)
@@ -265,7 +266,7 @@ func (f *Frontend) serveHTTP(l net.Listener) error {
 	f.srv.SetKeepAlivesEnabled(f.EnableKeepAlive)
 
 	// Start the HTTP server.
-	if err := f.srv.Serve(l); err != http.ErrServerClosed {
+	if err := f.srv.Serve(l); !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
 	return nil
@@ -285,7 +286,7 @@ func (f *Frontend) serveHTTPS(l net.Listener) error {
 	f.tlsSrv.SetKeepAlivesEnabled(f.EnableKeepAlive)
 
 	// Start the HTTP server.
-	if err := f.tlsSrv.ServeTLS(l, "", ""); err != http.ErrServerClosed {
+	if err := f.tlsSrv.ServeTLS(l, "", ""); !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
 	return nil
@@ -317,7 +318,7 @@ func (f *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, ps http
 
 	req, err := ParseAnnounce(r, f.ParseOptions)
 	if err != nil {
-		WriteError(w, err)
+		_ = WriteError(w, err)
 		return
 	}
 	af = new(bittorrent.AddressFamily)
@@ -326,14 +327,14 @@ func (f *Frontend) announceRoute(w http.ResponseWriter, r *http.Request, ps http
 	ctx := injectRouteParamsToContext(context.Background(), ps)
 	ctx, resp, err := f.logic.HandleAnnounce(ctx, req)
 	if err != nil {
-		WriteError(w, err)
+		_ = WriteError(w, err)
 		return
 	}
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	err = WriteAnnounceResponse(w, resp)
 	if err != nil {
-		WriteError(w, err)
+		_ = WriteError(w, err)
 		return
 	}
 
@@ -358,14 +359,14 @@ func (f *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, ps httpro
 
 	req, err := ParseScrape(r, f.ParseOptions)
 	if err != nil {
-		WriteError(w, err)
+		_ = WriteError(w, err)
 		return
 	}
 
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		log.Error("http: unable to determine remote address for scrape", log.Err(err))
-		WriteError(w, err)
+		_ = WriteError(w, err)
 		return
 	}
 
@@ -376,7 +377,7 @@ func (f *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, ps httpro
 		req.AddressFamily = bittorrent.IPv6
 	} else {
 		log.Error("http: invalid IP: neither v4 nor v6", log.Fields{"RemoteAddr": r.RemoteAddr})
-		WriteError(w, bittorrent.ErrInvalidIP)
+		_ = WriteError(w, bittorrent.ErrInvalidIP)
 		return
 	}
 	af = new(bittorrent.AddressFamily)
@@ -385,14 +386,14 @@ func (f *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, ps httpro
 	ctx := injectRouteParamsToContext(context.Background(), ps)
 	ctx, resp, err := f.logic.HandleScrape(ctx, req)
 	if err != nil {
-		WriteError(w, err)
+		_ = WriteError(w, err)
 		return
 	}
 
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	err = WriteScrapeResponse(w, resp)
 	if err != nil {
-		WriteError(w, err)
+		_ = WriteError(w, err)
 		return
 	}
 

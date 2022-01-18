@@ -1,7 +1,7 @@
 # Chihaya
 
-[![Build Status](https://github.com/chihaya/chihaya/workflows/CI/badge.svg)](https://github.com/chihaya/chihaya/actions)
-[![Docker Repository on Quay.io](https://quay.io/repository/jzelinskie/chihaya/status "Docker Repository on Quay.io")](https://quay.io/repository/jzelinskie/chihaya)
+[![Build Status](https://github.com/chihaya/chihaya/workflows/Build%20&%20Test/badge.svg)](https://github.com/chihaya/chihaya/actions)
+[![Container Image](https://img.shields.io/github/v/release/chihaya/chihaya?color=%232496ED&label=container&logo=docker "Container Image")](https://quay.io/repository/jzelinskie/chihaya?tab=tags)
 [![GoDoc](https://godoc.org/github.com/chihaya/chihaya?status.svg)](https://godoc.org/github.com/chihaya/chihaya)
 [![License](https://img.shields.io/badge/license-BSD-blue.svg)](https://en.wikipedia.org/wiki/BSD_licenses#2-clause_license_.28.22Simplified_BSD_License.22_or_.22FreeBSD_License.22.29)
 [![IRC Channel](https://img.shields.io/badge/IRC-%23chihaya-%235555ff.svg "IRC Channel")](https://web.libera.chat/#chihaya)
@@ -57,10 +57,10 @@ For more information read [CONTRIBUTING.md].
 In order to compile the project, the [latest stable version of Go] and knowledge of a [working Go environment] are required.
 
 ```sh
-$ git clone git@github.com:chihaya/chihaya.git
-$ cd chihaya
-$ go build ./cmd/chihaya
-$ ./chihaya --help
+git clone git@github.com:chihaya/chihaya.git
+cd chihaya
+go build ./cmd/chihaya
+./chihaya --help
 ```
 
 [latest stable version of Go]: https://golang.org/dl
@@ -79,15 +79,15 @@ The following will run all tests and benchmarks.
 Removing `-bench` will just run unit tests.
 
 ```sh
-$ go test -bench $(go list ./...)
+go test -bench $(go list ./...)
 ```
 
 The Chihaya executable contains a command to end-to-end test a BitTorrent tracker.
 See
 
 ```sh
-$ chihaya --help
-``` 
+chihaya --help
+```
 
 ### Configuration
 

@@ -11,7 +11,7 @@ import (
 )
 
 func TestWriteError(t *testing.T) {
-	var table = []struct {
+	table := []struct {
 		reason, expected string
 	}{
 		{"hello world", "d14:failure reason11:hello worlde"},
@@ -29,7 +29,7 @@ func TestWriteError(t *testing.T) {
 }
 
 func TestWriteStatus(t *testing.T) {
-	var table = []struct {
+	table := []struct {
 		reason, expected string
 	}{
 		{"something is missing", "d14:failure reason20:something is missinge"},

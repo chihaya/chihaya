@@ -4,6 +4,7 @@ package metrics
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/pprof"
 
@@ -49,7 +50,7 @@ func NewServer(addr string) *Server {
 	}
 
 	go func() {
-		if err := s.srv.ListenAndServe(); err != http.ErrServerClosed {
+		if err := s.srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			log.Fatal("failed while serving prometheus", log.Err(err))
 		}
 	}()

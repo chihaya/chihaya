@@ -1,0 +1,11 @@
+# vim: ft=yaml
+---
+yaml-files:
+  - "*.yaml"
+  - "*.yml"
+  - ".yamllint"
+ignore: "dist/helm/"
+extends: "default"
+rules:
+  quoted-strings: "enable"
+  line-length: "disable"

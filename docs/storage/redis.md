@@ -59,7 +59,7 @@ All the InfoHashes (swarms) are also stored in a redis hash, with IP family as t
 
 Here is an example:
 
-```
+```yaml
 - IPv4
   - IPv4_S_<infohash 1>: <modification time>
   - IPv4_L_<infohash 1>: <modification time>
@@ -73,15 +73,14 @@ Here is an example:
   - <peer 3 key>: <modification time>
 ```
 
-
 In this case, prometheus would record two swarms, three seeders, and one leecher.
 These three keys per address family are used to record the count of swarms, seeders, and leechers.
 
-```
+```yaml
 - IPv4_infohash_count: 2
 - IPv4_S_count: 3
 - IPv4_L_count: 1
 ```
 
-Note: IPv4_infohash_count has a different meaning compared to the `memory` storage:
+Note: `IPv4_infohash_count` has a different meaning compared to the `memory` storage:
 It represents the number of infohashes reported by seeder, meaning that infohashes without seeders are not counted.

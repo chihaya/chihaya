@@ -28,7 +28,7 @@ func (d driver) NewHook(optionBytes []byte) (middleware.Hook, error) {
 	var cfg Config
 	err := yaml.Unmarshal(optionBytes, &cfg)
 	if err != nil {
-		return nil, fmt.Errorf("invalid options for middleware %s: %s", Name, err)
+		return nil, fmt.Errorf("invalid options for middleware %s: %w", Name, err)
 	}
 
 	return NewHook(cfg)

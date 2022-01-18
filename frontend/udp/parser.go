@@ -24,8 +24,8 @@ const (
 // Option-Types as described in BEP 41 and BEP 45.
 const (
 	optionEndOfOptions byte = 0x0
-	optionNOP               = 0x1
-	optionURLData           = 0x2
+	optionNOP          byte = 0x1
+	optionURLData      byte = 0x2
 )
 
 var (
@@ -115,7 +115,7 @@ func ParseAnnounce(r Request, v6Action bool, opts ParseOptions) (*bittorrent.Ann
 	request := &bittorrent.AnnounceRequest{
 		Event:           eventIDs[eventID],
 		InfoHash:        bittorrent.InfoHashFromBytes(infohash),
-		NumWant:         uint32(numWant),
+		NumWant:         numWant,
 		Left:            left,
 		Downloaded:      downloaded,
 		Uploaded:        uploaded,
@@ -161,7 +161,7 @@ func handleOptionalParameters(packet []byte) (bittorrent.Params, error) {
 		return bittorrent.ParseURLData("")
 	}
 
-	var buf = newBuffer()
+	buf := newBuffer()
 	defer buf.free()
 
 	for i := 0; i < len(packet); {

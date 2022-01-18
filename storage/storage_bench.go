@@ -53,8 +53,10 @@ func generatePeers() (a [1000]bittorrent.Peer) {
 	return
 }
 
-type executionFunc func(int, PeerStore, *benchData) error
-type setupFunc func(PeerStore, *benchData) error
+type (
+	executionFunc func(int, PeerStore, *benchData) error
+	setupFunc     func(PeerStore, *benchData) error
+)
 
 func runBenchmark(b *testing.B, ps PeerStore, parallel bool, sf setupFunc, ef executionFunc) {
 	bd := &benchData{generateInfohashes(), generatePeers()}
@@ -185,6 +187,7 @@ func PutDelete1kInfohash(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, false, nil, func(i int, ps PeerStore, bd *benchData) error {
 		err := ps.PutSeeder(bd.infohashes[i%1000], bd.peers[0])
 		if err != nil {
+			return err
 		}
 		return ps.DeleteSeeder(bd.infohashes[i%1000], bd.peers[0])
 	})
@@ -211,7 +214,7 @@ func PutDelete1kInfohash1k(b *testing.B, ps PeerStore) {
 // DeleteNonexist can run in parallel.
 func DeleteNonexist(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, nil, func(i int, ps PeerStore, bd *benchData) error {
-		ps.DeleteSeeder(bd.infohashes[0], bd.peers[0])
+		_ = ps.DeleteSeeder(bd.infohashes[0], bd.peers[0])
 		return nil
 	})
 }
@@ -222,7 +225,7 @@ func DeleteNonexist(b *testing.B, ps PeerStore) {
 // DeleteNonexist can run in parallel.
 func DeleteNonexist1k(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, nil, func(i int, ps PeerStore, bd *benchData) error {
-		ps.DeleteSeeder(bd.infohashes[0], bd.peers[i%1000])
+		_ = ps.DeleteSeeder(bd.infohashes[0], bd.peers[i%1000])
 		return nil
 	})
 }
@@ -233,7 +236,7 @@ func DeleteNonexist1k(b *testing.B, ps PeerStore) {
 // DeleteNonexist1kInfohash can run in parallel.
 func DeleteNonexist1kInfohash(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, nil, func(i int, ps PeerStore, bd *benchData) error {
-		ps.DeleteSeeder(bd.infohashes[i%1000], bd.peers[0])
+		_ = ps.DeleteSeeder(bd.infohashes[i%1000], bd.peers[0])
 		return nil
 	})
 }
@@ -244,7 +247,7 @@ func DeleteNonexist1kInfohash(b *testing.B, ps PeerStore) {
 // DeleteNonexist1kInfohash1k can run in parallel.
 func DeleteNonexist1kInfohash1k(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, nil, func(i int, ps PeerStore, bd *benchData) error {
-		ps.DeleteSeeder(bd.infohashes[i%1000], bd.peers[(i*3)%1000])
+		_ = ps.DeleteSeeder(bd.infohashes[i%1000], bd.peers[(i*3)%1000])
 		return nil
 	})
 }
@@ -255,7 +258,7 @@ func DeleteNonexist1kInfohash1k(b *testing.B, ps PeerStore) {
 // GradNonexist can run in parallel.
 func GradNonexist(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, nil, func(i int, ps PeerStore, bd *benchData) error {
-		ps.GraduateLeecher(bd.infohashes[0], bd.peers[0])
+		_ = ps.GraduateLeecher(bd.infohashes[0], bd.peers[0])
 		return nil
 	})
 }
@@ -266,7 +269,7 @@ func GradNonexist(b *testing.B, ps PeerStore) {
 // GradNonexist1k can run in parallel.
 func GradNonexist1k(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, nil, func(i int, ps PeerStore, bd *benchData) error {
-		ps.GraduateLeecher(bd.infohashes[0], bd.peers[i%1000])
+		_ = ps.GraduateLeecher(bd.infohashes[0], bd.peers[i%1000])
 		return nil
 	})
 }
@@ -277,7 +280,7 @@ func GradNonexist1k(b *testing.B, ps PeerStore) {
 // GradNonexist1kInfohash can run in parallel.
 func GradNonexist1kInfohash(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, nil, func(i int, ps PeerStore, bd *benchData) error {
-		ps.GraduateLeecher(bd.infohashes[i%1000], bd.peers[0])
+		_ = ps.GraduateLeecher(bd.infohashes[i%1000], bd.peers[0])
 		return nil
 	})
 }
@@ -289,7 +292,7 @@ func GradNonexist1kInfohash(b *testing.B, ps PeerStore) {
 // GradNonexist1kInfohash1k can run in parallel.
 func GradNonexist1kInfohash1k(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, nil, func(i int, ps PeerStore, bd *benchData) error {
-		ps.GraduateLeecher(bd.infohashes[i%1000], bd.peers[(i*3)%1000])
+		_ = ps.GraduateLeecher(bd.infohashes[i%1000], bd.peers[(i*3)%1000])
 		return nil
 	})
 }

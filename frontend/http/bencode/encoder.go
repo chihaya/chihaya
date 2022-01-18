@@ -66,7 +66,7 @@ func marshal(w io.Writer, data interface{}) (err error) {
 		err = marshalInt(w, int64(v))
 
 	case int64:
-		err = marshalInt(w, int64(v))
+		err = marshalInt(w, v)
 
 	case uint:
 		err = marshalUint(w, uint64(v))
@@ -78,7 +78,7 @@ func marshal(w io.Writer, data interface{}) (err error) {
 		err = marshalUint(w, uint64(v))
 
 	case uint64:
-		err = marshalUint(w, uint64(v))
+		err = marshalUint(w, v)
 
 	case time.Duration: // Assume seconds
 		err = marshalInt(w, int64(v/time.Second))
@@ -90,7 +90,7 @@ func marshal(w io.Writer, data interface{}) (err error) {
 		err = marshalList(w, v)
 
 	case []Dict:
-		var interfaceSlice = make([]interface{}, len(v))
+		interfaceSlice := make([]interface{}, len(v))
 		for i, d := range v {
 			interfaceSlice[i] = d
 		}
