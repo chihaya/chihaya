@@ -61,7 +61,7 @@ jobs:
       - uses: "bewuethr/yamllint-action@v1.1.1"
         with:
           config-file: ".yamllint"
-      - uses: "nosborn/github-action-markdown-cli@v2.0.0"
+      - uses: "nosborn/github-action-markdown-cli@v3.0.1"
         with:
           files: "."
           config_file: ".markdownlint.yaml"
