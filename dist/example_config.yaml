@@ -178,8 +178,12 @@ chihaya:
   #     peer_lifetime: "31m"
 
   #     # The interval at which metrics about the number of infohashes and peers
-  #     # are collected and posted to Prometheus.
+  #     # are collected and posted to Prometheus. Disabled by default.
   #     prometheus_reporting_interval: "1s"
+
+  #     # In lightweight mode, the announces and scrapes pretends there are no peers in the swarm.
+  #     # This is both an optimization and a privacy concious measure on some trackers.
+  #     lightweight_mode: false
 
   #     # DSN to connect to the database. Make sure it matches with the stroage driver selected.
   #     # Usually looks like one of the forms below:

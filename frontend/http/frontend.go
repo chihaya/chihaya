@@ -156,8 +156,8 @@ func NewFrontend(logic frontend.TrackerLogic, provided Config) (*Frontend, error
 		return nil, errors.New("must specify addr or https_addr or both")
 	}
 
-	if len(cfg.AnnounceRoutes) < 1 || len(cfg.ScrapeRoutes) < 1 {
-		return nil, errors.New("must specify routes")
+	if len(cfg.AnnounceRoutes) < 1 {
+		return nil, errors.New("must specify at least one announce route")
 	}
 
 	// If TLS is enabled, create a key pair.

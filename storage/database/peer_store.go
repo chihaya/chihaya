@@ -17,6 +17,7 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+	"gorm.io/gorm/logger"
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/pkg/log"
@@ -29,10 +30,11 @@ const Name = "database"
 
 // Default config constants.
 const (
-	defaultPrometheusReportingInterval = time.Second * 1
+	defaultPrometheusReportingInterval = 0
 	defaultGarbageCollectionInterval   = time.Minute * 3
 	defaultPeerLifetime                = time.Minute * 30
 	defaultDsn                         = "data/chihaya.sqlite"
+	defaultLightweight                 = "false"
 )
 
 func init() {
@@ -84,6 +86,7 @@ type Config struct {
 	PrometheusReportingInterval time.Duration `yaml:"prometheus_reporting_interval"`
 	PeerLifetime                time.Duration `yaml:"peer_lifetime"`
 	Dsn                         string        `yaml:"dsn"`
+	Lightweight                 bool          `yaml:"lightweight"`
 }
 
 // LogFields renders the current config as a set of Logrus fields.
@@ -94,6 +97,7 @@ func (cfg Config) LogFields() log.Fields {
 		"promReportInterval": cfg.PrometheusReportingInterval,
 		"peerLifetime":       cfg.PeerLifetime,
 		"dsn":                cfg.Dsn,
+		"lightweight":        cfg.Lightweight,
 	}
 }
 
@@ -147,7 +151,11 @@ func (cfg Config) Validate() Config {
 func NewPostgres(provided Config) (storage.PeerStore, error) {
 	cfg := provided.Validate()
 
-	db, err := gorm.Open(postgres.Open(provided.Dsn), nil)
+	db, err := gorm.Open(postgres.Open(provided.Dsn), &gorm.Config{
+		SkipDefaultTransaction: true,
+		Logger:                 logger.Default.LogMode(logger.Silent),
+	})
+
 	if err != nil {
 		log.Fatal("Unable to connect to Postgres database:", log.Fields{"reason": err})
 	}
@@ -180,22 +188,24 @@ func NewPostgres(provided Config) (storage.PeerStore, error) {
 	}()
 
 	// Start a goroutine for reporting statistics to Prometheus.
-	ps.wg.Add(1)
-	go func() {
-		defer ps.wg.Done()
-		t := time.NewTicker(cfg.PrometheusReportingInterval)
-		for {
-			select {
-			case <-ps.closed:
-				t.Stop()
-				return
-			case <-t.C:
-				before := time.Now()
-				ps.populateProm()
-				log.Debug("storage: populateProm() finished", log.Fields{"timeTaken": time.Since(before)})
+	if cfg.PrometheusReportingInterval > 0 {
+		ps.wg.Add(1)
+		go func() {
+			defer ps.wg.Done()
+			t := time.NewTicker(cfg.PrometheusReportingInterval)
+			for {
+				select {
+				case <-ps.closed:
+					t.Stop()
+					return
+				case <-t.C:
+					before := time.Now()
+					ps.populateProm()
+					log.Debug("storage: populateProm() finished", log.Fields{"timeTaken": time.Since(before)})
+				}
 			}
-		}
-	}()
+		}()
+	}
 
 	return ps, nil
 }
@@ -204,7 +214,10 @@ func NewPostgres(provided Config) (storage.PeerStore, error) {
 func NewSqlite(provided Config) (storage.PeerStore, error) {
 	cfg := provided.Validate()
 
-	db, err := gorm.Open(sqlite.Open(provided.Dsn), nil)
+	db, err := gorm.Open(sqlite.Open(provided.Dsn), &gorm.Config{
+		SkipDefaultTransaction: true,
+		Logger:                 logger.Default.LogMode(logger.Silent),
+	})
 
 	if err != nil {
 		log.Fatal("Unable to open the Sqlite database:", log.Fields{"reason": err})
@@ -292,10 +305,11 @@ func decodePeerKey(pk string) bittorrent.Peer {
 }
 
 type peerStore struct {
-	cfg    Config
-	db     *gorm.DB
-	closed chan struct{}
-	wg     sync.WaitGroup
+	cfg         Config
+	db          *gorm.DB
+	closed      chan struct{}
+	wg          sync.WaitGroup
+	lightweight bool
 }
 
 var _ storage.PeerStore = &peerStore{}
@@ -344,7 +358,7 @@ type peer struct {
 	PeerKey   string `gorm:"primary_key"`
 	InfoHash  string `gorm:"index"`
 	CreatedAt time.Time
-	UpdatedAt time.Time
+	UpdatedAt time.Time `gorm:"index"`
 }
 
 type ipv4Seeder peer
@@ -602,6 +616,10 @@ func (ps *peerStore) ScrapeSwarm(ih bittorrent.InfoHash, addressFamily bittorren
 	}
 
 	resp.InfoHash = ih
+
+	if ps.lightweight {
+		return
+	}
 
 	switch addressFamily {
 	case bittorrent.IPv4:
