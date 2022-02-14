@@ -111,7 +111,6 @@ chihaya:
     # The maximum number of infohashes that can be scraped in one request.
     max_scrape_infohashes: 50
 
-
   # This block defines configuration used for the storage of peer data.
   storage:
     name: "memory"
@@ -163,6 +162,30 @@ chihaya:
 
   #     # The timeout for connecting to redis server.
   #     redis_connect_timeout: "15s"
+
+  # This block defines configuration used for database storage.
+  # storage:
+  #   name: "sqlite" # "postgres" and "sqlite" currently supported.
+  #   config:
+  #     # The frequency which stale peers are removed.
+  #     # This balances between
+  #     # - collecting garbage more often, potentially using more CPU time, but potentially using less memory (lower value)
+  #     # - collecting garbage less frequently, saving CPU time, but keeping old peers long, thus using more memory (higher value).
+  #     gc_interval: "3m"
+
+  #     # The amount of time until a peer is considered stale.
+  #     # To avoid churn, keep this slightly larger than `announce_interval`
+  #     peer_lifetime: "31m"
+
+  #     # The interval at which metrics about the number of infohashes and peers
+  #     # are collected and posted to Prometheus.
+  #     prometheus_reporting_interval: "1s"
+
+  #     # DSN to connect to the database. Make sure it matches with the stroage driver selected.
+  #     # Usually looks like one of the forms below:
+  #     dsn: data/chihaya.sqlite
+  #     # dsn: postgresql://user@host:port/db?sslmode=disable
+  #     # dsn: postgresql://user@host:port/db?sslmode=verify-full&sslrootcert=ca.crt&sslcert=user.crt&sslkey=user.key
 
   # This block defines configuration used for middleware executed before a
   # response has been returned to a BitTorrent client.
