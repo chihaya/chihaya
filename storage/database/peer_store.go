@@ -356,9 +356,9 @@ func recordGCDuration(duration time.Duration) {
 
 type peer struct {
 	PeerKey   string `gorm:"primary_key"`
-	InfoHash  string `gorm:"index"`
+	InfoHash  string `gorm:"index:info_hash_idx"`
 	CreatedAt time.Time
-	UpdatedAt time.Time `gorm:"index"`
+	UpdatedAt time.Time `gorm:"index:updated_at_idx"`
 }
 
 type ipv4Seeder peer
