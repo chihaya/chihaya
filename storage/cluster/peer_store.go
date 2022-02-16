@@ -1,12 +1,14 @@
 // Package memory implements the storage interface for a Chihaya
 // BitTorrent tracker keeping peer data in memory.
-package memory
+package cluster
 
 import (
-	"encoding/binary"
+	"bytes"
+	"encoding/gob"
+	"errors"
+	"fmt"
+	"hash/fnv"
 	"math"
-	"net"
-	"runtime"
 	"sync"
 	"time"
 
@@ -15,12 +17,14 @@ import (
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/pkg/log"
 	"github.com/chihaya/chihaya/pkg/stop"
-	"github.com/chihaya/chihaya/pkg/timecache"
 	"github.com/chihaya/chihaya/storage"
+	"github.com/chihaya/chihaya/storage/memory"
+	"github.com/google/uuid"
+	"github.com/hashicorp/memberlist"
 )
 
 // Name is the name by which this peer store is registered with Chihaya.
-const Name = "memory"
+const Name = "cluster"
 
 // Default config constants.
 const (
@@ -28,11 +32,19 @@ const (
 	defaultPrometheusReportingInterval = time.Second * 1
 	defaultGarbageCollectionInterval   = time.Minute * 3
 	defaultPeerLifetime                = time.Minute * 30
+	defaultRelayTimeout                = time.Second * 5
+	defaultJoinAddr                    = "localhost"
+	defaultJoinPort                    = 7946
+	defaultBindAddr                    = "0.0.0.0"
+	defaultBindPort                    = 7946
+	defaultAdvertiseAddr               = ""
+	defaultAdvertisePort               = 7946
 )
 
 func init() {
 	// Register the storage driver.
 	storage.RegisterDriver(Name, driver{})
+	gob.Register(bittorrent.ClientError(""))
 }
 
 type driver struct{}
@@ -59,7 +71,14 @@ type Config struct {
 	GarbageCollectionInterval   time.Duration `yaml:"gc_interval"`
 	PrometheusReportingInterval time.Duration `yaml:"prometheus_reporting_interval"`
 	PeerLifetime                time.Duration `yaml:"peer_lifetime"`
+	RelayTimeout                time.Duration `yaml:"relay_timeout"`
 	ShardCount                  int           `yaml:"shard_count"`
+	JoinAddr                    string        `yaml:"join_addr"`
+	JoinPort                    int           `yaml:"join_port"`
+	BindAddr                    string        `yaml:"bind_addr"`
+	BindPort                    int           `yaml:"bind_port"`
+	AdvertiseAddr               string        `yaml:"advertise_addr"`
+	AdvertisePort               int           `yaml:"advertise_port"`
 }
 
 // LogFields renders the current config as a set of Logrus fields.
@@ -69,7 +88,14 @@ func (cfg Config) LogFields() log.Fields {
 		"gcInterval":         cfg.GarbageCollectionInterval,
 		"promReportInterval": cfg.PrometheusReportingInterval,
 		"peerLifetime":       cfg.PeerLifetime,
+		"relayTimeout":       cfg.RelayTimeout,
 		"shardCount":         cfg.ShardCount,
+		"joinAddr":           cfg.JoinAddr,
+		"joinPort":           cfg.JoinPort,
+		"bindAddr":           cfg.BindAddr,
+		"bindPort":           cfg.BindPort,
+		"advertiseAddr":      cfg.AdvertiseAddr,
+		"advertisePort":      cfg.AdvertisePort,
 	}
 }
 
@@ -79,6 +105,60 @@ func (cfg Config) LogFields() log.Fields {
 // This function warns to the logger when a value is changed.
 func (cfg Config) Validate() Config {
 	validcfg := cfg
+
+	if cfg.RelayTimeout == 0 {
+		validcfg.RelayTimeout = defaultRelayTimeout
+		log.Warn("falling back to default configuration", log.Fields{
+			"name":     Name + ".RelayTimeout",
+			"provided": cfg.RelayTimeout,
+			"default":  validcfg.RelayTimeout,
+		})
+	}
+
+	if cfg.AdvertisePort == 0 {
+		validcfg.AdvertisePort = defaultAdvertisePort
+		log.Warn("falling back to default configuration", log.Fields{
+			"name":     Name + ".AdvertisePort",
+			"provided": cfg.AdvertisePort,
+			"default":  validcfg.AdvertisePort,
+		})
+	}
+
+	if cfg.BindAddr == "" {
+		validcfg.BindAddr = defaultBindAddr
+		log.Warn("falling back to default configuration", log.Fields{
+			"name":     Name + ".BindAddr",
+			"provided": cfg.BindAddr,
+			"default":  validcfg.BindAddr,
+		})
+	}
+
+	if cfg.BindPort == 0 {
+		validcfg.BindPort = defaultBindPort
+		log.Warn("falling back to default configuration", log.Fields{
+			"name":     Name + ".BindPort",
+			"provided": cfg.BindPort,
+			"default":  validcfg.BindPort,
+		})
+	}
+
+	if cfg.JoinAddr == "" {
+		validcfg.JoinAddr = defaultJoinAddr
+		log.Warn("falling back to default configuration", log.Fields{
+			"name":     Name + ".JoinAddr",
+			"provided": cfg.JoinAddr,
+			"default":  validcfg.JoinAddr,
+		})
+	}
+
+	if cfg.JoinPort == 0 {
+		validcfg.JoinPort = defaultJoinPort
+		log.Warn("falling back to default configuration", log.Fields{
+			"name":     Name + ".JoinPort",
+			"provided": cfg.JoinPort,
+			"default":  validcfg.JoinPort,
+		})
+	}
 
 	if cfg.ShardCount <= 0 || cfg.ShardCount > (math.MaxInt/2) {
 		validcfg.ShardCount = defaultShardCount
@@ -119,145 +199,113 @@ func (cfg Config) Validate() Config {
 	return validcfg
 }
 
-// New creates a new PeerStore backed by memory.
+// New creates a new PeerStore backed by a cluster.
 func New(provided Config) (storage.PeerStore, error) {
 	cfg := provided.Validate()
+
+	// nodeName, _ := os.Hostname()
+	nodeName := uuid.New().String()
+
 	ps := &peerStore{
-		cfg:    cfg,
-		shards: make([]*peerShard, cfg.ShardCount*2),
-		closed: make(chan struct{}),
+		cfg:         cfg,
+		closed:      make(chan struct{}),
+		nodeName:    nodeName,
+		nodes:       make([]*memberlist.Node, 0),
+		nodesByName: make(map[string]*memberlist.Node),
 	}
 
-	for i := 0; i < cfg.ShardCount*2; i++ {
-		ps.shards[i] = &peerShard{swarms: make(map[bittorrent.InfoHash]swarm)}
+	ms, err := memory.New(memory.Config{
+		GarbageCollectionInterval:   cfg.GarbageCollectionInterval,
+		PrometheusReportingInterval: cfg.PrometheusReportingInterval,
+		PeerLifetime:                cfg.PeerLifetime,
+		ShardCount:                  cfg.ShardCount,
+	})
+
+	if err != nil {
+		return nil, err
 	}
 
-	// Start a goroutine for garbage collection.
+	ps.ms = ms
+
+	clusterCfg := memberlist.DefaultLANConfig()
+	clusterCfg.Name = ps.nodeName
+	clusterCfg.BindAddr = cfg.BindAddr
+	clusterCfg.BindPort = cfg.BindPort
+	clusterCfg.AdvertiseAddr = cfg.AdvertiseAddr
+	clusterCfg.AdvertisePort = cfg.AdvertisePort
+	clusterCfg.Delegate = ps
+	clusterCfg.Events = ps
+
+	cluster, err := memberlist.Create(clusterCfg)
+
+	if err != nil {
+		return nil, err
+	}
+
+	ps.cluster = cluster
+
+	// Start a goroutine for joining the cluster.
 	ps.wg.Add(1)
 	go func() {
 		defer ps.wg.Done()
-		for {
-			select {
-			case <-ps.closed:
-				return
-			case <-time.After(cfg.GarbageCollectionInterval):
-				before := time.Now().Add(-cfg.PeerLifetime)
-				log.Debug("storage: purging peers with no announces since", log.Fields{"before": before})
-				_ = ps.collectGarbage(before)
-			}
-		}
-	}()
-
-	// Start a goroutine for reporting statistics to Prometheus.
-	ps.wg.Add(1)
-	go func() {
-		defer ps.wg.Done()
-		t := time.NewTicker(cfg.PrometheusReportingInterval)
-		for {
-			select {
-			case <-ps.closed:
-				t.Stop()
-				return
-			case <-t.C:
-				before := time.Now()
-				ps.populateProm()
-				log.Debug("storage: populateProm() finished", log.Fields{"timeTaken": time.Since(before)})
-			}
-		}
+		ps.joinCluster()
 	}()
 
 	return ps, nil
 }
 
-type serializedPeer string
-
-func newPeerKey(p bittorrent.Peer) serializedPeer {
-	b := make([]byte, 20+2+len(p.IP.IP))
-	copy(b[:20], p.ID[:])
-	binary.BigEndian.PutUint16(b[20:22], p.Port)
-	copy(b[22:], p.IP.IP)
-
-	return serializedPeer(b)
-}
-
-func decodePeerKey(pk serializedPeer) bittorrent.Peer {
-	peer := bittorrent.Peer{
-		ID:   bittorrent.PeerIDFromString(string(pk[:20])),
-		Port: binary.BigEndian.Uint16([]byte(pk[20:22])),
-		IP:   bittorrent.IP{IP: net.IP(pk[22:])},
-	}
-
-	if ip := peer.IP.To4(); ip != nil {
-		peer.IP.IP = ip
-		peer.IP.AddressFamily = bittorrent.IPv4
-	} else if len(peer.IP.IP) == net.IPv6len { // implies toReturn.IP.To4() == nil
-		peer.IP.AddressFamily = bittorrent.IPv6
-	} else {
-		panic("IP is neither v4 nor v6")
-	}
-
-	return peer
-}
-
-type peerShard struct {
-	swarms      map[bittorrent.InfoHash]swarm
-	numSeeders  uint64
-	numLeechers uint64
-	sync.RWMutex
-}
-
-type swarm struct {
-	// map serialized peer to mtime
-	seeders  map[serializedPeer]int64
-	leechers map[serializedPeer]int64
-}
-
 type peerStore struct {
 	cfg    Config
-	shards []*peerShard
-
+	ms     storage.PeerStore
 	closed chan struct{}
 	wg     sync.WaitGroup
+
+	nodeName    string
+	nodes       []*memberlist.Node
+	nodesByName map[string]*memberlist.Node
+	mutex       sync.RWMutex
+
+	cluster *memberlist.Memberlist
+	pending sync.Map
 }
 
 var _ storage.PeerStore = &peerStore{}
 
-// populateProm aggregates metrics over all shards and then posts them to
-// prometheus.
-func (ps *peerStore) populateProm() {
-	var numInfohashes, numSeeders, numLeechers uint64
+func (ps *peerStore) responsibleNode(ih bittorrent.InfoHash) *memberlist.Node {
+	h := fnv.New32a()
+	h.Write(ih[:])
 
-	for _, s := range ps.shards {
-		s.RLock()
-		numInfohashes += uint64(len(s.swarms))
-		numSeeders += s.numSeeders
-		numLeechers += s.numLeechers
-		s.RUnlock()
+	ps.mutex.RLock()
+	idx := h.Sum32() % uint32(len(ps.nodes))
+	node := ps.nodes[idx]
+	ps.mutex.RUnlock()
+
+	return node
+}
+
+func (ps *peerStore) joinCluster() {
+	log.Info("Trying to join the cluster", log.Fields{
+		"addr": ps.cfg.JoinAddr,
+		"port": ps.cfg.JoinPort,
+	})
+
+	for {
+		select {
+		case <-ps.closed:
+			return
+		default:
+		}
+
+		_, err := ps.cluster.Join([]string{fmt.Sprintf("%s:%d", ps.cfg.JoinAddr, ps.cfg.JoinPort)})
+		if err != nil {
+			log.Error("Failed to join cluster, retrying...")
+			time.Sleep(time.Second) // Barely noticeable, just enough to avoid spinning.
+			continue
+		}
+
+		log.Info(fmt.Sprintf("Joined cluster (%d members)", ps.cluster.NumMembers()))
+		break
 	}
-
-	storage.PromInfohashesCount.Set(float64(numInfohashes))
-	storage.PromSeedersCount.Set(float64(numSeeders))
-	storage.PromLeechersCount.Set(float64(numLeechers))
-}
-
-// recordGCDuration records the duration of a GC sweep.
-func recordGCDuration(duration time.Duration) {
-	storage.PromGCDurationMilliseconds.Observe(float64(duration.Nanoseconds()) / float64(time.Millisecond))
-}
-
-func (ps *peerStore) getClock() int64 {
-	return timecache.NowUnixNano()
-}
-
-func (ps *peerStore) shardIndex(infoHash bittorrent.InfoHash, af bittorrent.AddressFamily) uint32 {
-	// There are twice the amount of shards specified by the user, the first
-	// half is dedicated to IPv4 swarms and the second half is dedicated to
-	// IPv6 swarms.
-	idx := binary.BigEndian.Uint32(infoHash[:4]) % (uint32(len(ps.shards)) / 2)
-	if af == bittorrent.IPv6 {
-		idx += uint32(len(ps.shards) / 2)
-	}
-	return idx
 }
 
 func (ps *peerStore) PutSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) error {
@@ -267,28 +315,16 @@ func (ps *peerStore) PutSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) error 
 	default:
 	}
 
-	pk := newPeerKey(p)
+	buffer := bytes.Buffer{}
+	encoder := gob.NewEncoder(&buffer)
 
-	shard := ps.shards[ps.shardIndex(ih, p.IP.AddressFamily)]
-	shard.Lock()
+	encoder.Encode(CmdPutSeeder)
 
-	if _, ok := shard.swarms[ih]; !ok {
-		shard.swarms[ih] = swarm{
-			seeders:  make(map[serializedPeer]int64),
-			leechers: make(map[serializedPeer]int64),
-		}
+	if err := encoder.Encode(&CmdPutSeederData{InfoHash: ih, Peer: p}); err != nil {
+		return err
 	}
 
-	// If this peer isn't already a seeder, update the stats for the swarm.
-	if _, ok := shard.swarms[ih].seeders[pk]; !ok {
-		shard.numSeeders++
-	}
-
-	// Update the peer in the swarm.
-	shard.swarms[ih].seeders[pk] = ps.getClock()
-
-	shard.Unlock()
-	return nil
+	return ps.cluster.SendReliable(ps.responsibleNode(ih), buffer.Bytes())
 }
 
 func (ps *peerStore) DeleteSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) error {
@@ -298,30 +334,16 @@ func (ps *peerStore) DeleteSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) err
 	default:
 	}
 
-	pk := newPeerKey(p)
+	buffer := bytes.Buffer{}
+	encoder := gob.NewEncoder(&buffer)
 
-	shard := ps.shards[ps.shardIndex(ih, p.IP.AddressFamily)]
-	shard.Lock()
+	encoder.Encode(CmdDeleteSeeder)
 
-	if _, ok := shard.swarms[ih]; !ok {
-		shard.Unlock()
-		return storage.ErrResourceDoesNotExist
+	if err := encoder.Encode(&CmdDeleteSeederData{InfoHash: ih, Peer: p}); err != nil {
+		return err
 	}
 
-	if _, ok := shard.swarms[ih].seeders[pk]; !ok {
-		shard.Unlock()
-		return storage.ErrResourceDoesNotExist
-	}
-
-	shard.numSeeders--
-	delete(shard.swarms[ih].seeders, pk)
-
-	if len(shard.swarms[ih].seeders)|len(shard.swarms[ih].leechers) == 0 {
-		delete(shard.swarms, ih)
-	}
-
-	shard.Unlock()
-	return nil
+	return ps.cluster.SendReliable(ps.responsibleNode(ih), buffer.Bytes())
 }
 
 func (ps *peerStore) PutLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) error {
@@ -331,28 +353,16 @@ func (ps *peerStore) PutLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) error
 	default:
 	}
 
-	pk := newPeerKey(p)
+	buffer := bytes.Buffer{}
+	encoder := gob.NewEncoder(&buffer)
 
-	shard := ps.shards[ps.shardIndex(ih, p.IP.AddressFamily)]
-	shard.Lock()
+	encoder.Encode(CmdPutLeecher)
 
-	if _, ok := shard.swarms[ih]; !ok {
-		shard.swarms[ih] = swarm{
-			seeders:  make(map[serializedPeer]int64),
-			leechers: make(map[serializedPeer]int64),
-		}
+	if err := encoder.Encode(&CmdPutLeecherData{InfoHash: ih, Peer: p}); err != nil {
+		return err
 	}
 
-	// If this peer isn't already a leecher, update the stats for the swarm.
-	if _, ok := shard.swarms[ih].leechers[pk]; !ok {
-		shard.numLeechers++
-	}
-
-	// Update the peer in the swarm.
-	shard.swarms[ih].leechers[pk] = ps.getClock()
-
-	shard.Unlock()
-	return nil
+	return ps.cluster.SendReliable(ps.responsibleNode(ih), buffer.Bytes())
 }
 
 func (ps *peerStore) DeleteLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) error {
@@ -362,30 +372,16 @@ func (ps *peerStore) DeleteLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) er
 	default:
 	}
 
-	pk := newPeerKey(p)
+	buffer := bytes.Buffer{}
+	encoder := gob.NewEncoder(&buffer)
 
-	shard := ps.shards[ps.shardIndex(ih, p.IP.AddressFamily)]
-	shard.Lock()
+	encoder.Encode(CmdDeleteLeecher)
 
-	if _, ok := shard.swarms[ih]; !ok {
-		shard.Unlock()
-		return storage.ErrResourceDoesNotExist
+	if err := encoder.Encode(&CmdDeleteLeecherData{InfoHash: ih, Peer: p}); err != nil {
+		return err
 	}
 
-	if _, ok := shard.swarms[ih].leechers[pk]; !ok {
-		shard.Unlock()
-		return storage.ErrResourceDoesNotExist
-	}
-
-	shard.numLeechers--
-	delete(shard.swarms[ih].leechers, pk)
-
-	if len(shard.swarms[ih].seeders)|len(shard.swarms[ih].leechers) == 0 {
-		delete(shard.swarms, ih)
-	}
-
-	shard.Unlock()
-	return nil
+	return ps.cluster.SendReliable(ps.responsibleNode(ih), buffer.Bytes())
 }
 
 func (ps *peerStore) GraduateLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) error {
@@ -395,34 +391,16 @@ func (ps *peerStore) GraduateLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) 
 	default:
 	}
 
-	pk := newPeerKey(p)
+	buffer := bytes.Buffer{}
+	encoder := gob.NewEncoder(&buffer)
 
-	shard := ps.shards[ps.shardIndex(ih, p.IP.AddressFamily)]
-	shard.Lock()
+	encoder.Encode(CmdGraduateLeecher)
 
-	if _, ok := shard.swarms[ih]; !ok {
-		shard.swarms[ih] = swarm{
-			seeders:  make(map[serializedPeer]int64),
-			leechers: make(map[serializedPeer]int64),
-		}
+	if err := encoder.Encode(&CmdGraduateLeecherData{InfoHash: ih, Peer: p}); err != nil {
+		return err
 	}
 
-	// If this peer is a leecher, update the stats for the swarm and remove them.
-	if _, ok := shard.swarms[ih].leechers[pk]; ok {
-		shard.numLeechers--
-		delete(shard.swarms[ih].leechers, pk)
-	}
-
-	// If this peer isn't already a seeder, update the stats for the swarm.
-	if _, ok := shard.swarms[ih].seeders[pk]; !ok {
-		shard.numSeeders++
-	}
-
-	// Update the peer in the swarm.
-	shard.swarms[ih].seeders[pk] = ps.getClock()
-
-	shard.Unlock()
-	return nil
+	return ps.cluster.SendReliable(ps.responsibleNode(ih), buffer.Bytes())
 }
 
 func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant int, announcer bittorrent.Peer) (peers []bittorrent.Peer, err error) {
@@ -432,58 +410,45 @@ func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant 
 	default:
 	}
 
-	shard := ps.shards[ps.shardIndex(ih, announcer.IP.AddressFamily)]
-	shard.RLock()
+	requestID := uuid.New()
+	buffer := bytes.Buffer{}
+	encoder := gob.NewEncoder(&buffer)
+	c := make(chan []bittorrent.Peer)
 
-	if _, ok := shard.swarms[ih]; !ok {
-		shard.RUnlock()
-		return nil, storage.ErrResourceDoesNotExist
+	if err := encoder.Encode(CmdAnnouncePeersRequest); err != nil {
+		return nil, err
 	}
 
-	if seeder {
-		// Append leechers as possible.
-		leechers := shard.swarms[ih].leechers
-		for pk := range leechers {
-			if numWant == 0 {
-				break
-			}
-
-			peers = append(peers, decodePeerKey(pk))
-			numWant--
-		}
-	} else {
-		// Append as many seeders as possible.
-		seeders := shard.swarms[ih].seeders
-		for pk := range seeders {
-			if numWant == 0 {
-				break
-			}
-
-			peers = append(peers, decodePeerKey(pk))
-			numWant--
-		}
-
-		// Append leechers until we reach numWant.
-		if numWant > 0 {
-			leechers := shard.swarms[ih].leechers
-			announcerPK := newPeerKey(announcer)
-			for pk := range leechers {
-				if pk == announcerPK {
-					continue
-				}
-
-				if numWant == 0 {
-					break
-				}
-
-				peers = append(peers, decodePeerKey(pk))
-				numWant--
-			}
-		}
+	data := CmdAnnouncePeersRequestData{
+		RequestID: requestID,
+		NodeName:  ps.nodeName,
+		InfoHash:  ih,
+		Seeder:    seeder,
+		NumWant:   numWant,
+		Announcer: announcer,
 	}
 
-	shard.RUnlock()
-	return
+	if err := encoder.Encode(data); err != nil {
+		return nil, err
+	}
+
+	ps.pending.Store(requestID, c)
+	ps.cluster.SendReliable(ps.responsibleNode(ih), buffer.Bytes())
+
+	select {
+	case peers := <-c:
+		close(c)
+		ps.pending.Delete(requestID)
+
+		return peers, nil
+	case <-time.After(ps.cfg.RelayTimeout):
+		log.Error("Timed out waiting on announce request response channel")
+
+		close(c)
+		ps.pending.Delete(requestID)
+
+		return nil, errors.New("no response from responsible node")
+	}
 }
 
 func (ps *peerStore) ScrapeSwarm(ih bittorrent.InfoHash, addressFamily bittorrent.AddressFamily) (resp bittorrent.Scrape) {
@@ -494,97 +459,65 @@ func (ps *peerStore) ScrapeSwarm(ih bittorrent.InfoHash, addressFamily bittorren
 	}
 
 	resp.InfoHash = ih
-	shard := ps.shards[ps.shardIndex(ih, addressFamily)]
-	shard.RLock()
 
-	swarm, ok := shard.swarms[ih]
-	if !ok {
-		shard.RUnlock()
+	requestID := uuid.New()
+	buffer := bytes.Buffer{}
+	encoder := gob.NewEncoder(&buffer)
+
+	c := make(chan bittorrent.Scrape)
+
+	if err := encoder.Encode(CmdScrapeSwarmRequest); err != nil {
 		return
 	}
 
-	resp.Incomplete = uint32(len(swarm.leechers))
-	resp.Complete = uint32(len(swarm.seeders))
-	shard.RUnlock()
+	data := CmdScrapeSwarmRequestData{
+		RequestID:     requestID,
+		NodeName:      ps.nodeName,
+		InfoHash:      ih,
+		AddressFamily: addressFamily,
+	}
 
-	return
-}
+	if err := encoder.Encode(data); err != nil {
+		return
+	}
 
-// collectGarbage deletes all Peers from the PeerStore which are older than the
-// cutoff time.
-//
-// This function must be able to execute while other methods on this interface
-// are being executed in parallel.
-func (ps *peerStore) collectGarbage(cutoff time.Time) error {
+	ps.pending.Store(requestID, c)
+	ps.cluster.SendReliable(ps.responsibleNode(ih), buffer.Bytes())
+
 	select {
-	case <-ps.closed:
-		return nil
-	default:
+	case scrape := <-c:
+		close(c)
+		ps.pending.Delete(requestID)
+
+		resp = scrape
+
+		return
+	case <-time.After(ps.cfg.RelayTimeout):
+		log.Error("Timed out waiting on scrape request response channel")
+
+		close(c)
+		ps.pending.Delete(requestID)
+
+		return
 	}
-
-	cutoffUnix := cutoff.UnixNano()
-	start := time.Now()
-
-	for _, shard := range ps.shards {
-		shard.RLock()
-		var infohashes []bittorrent.InfoHash
-		for ih := range shard.swarms {
-			infohashes = append(infohashes, ih)
-		}
-		shard.RUnlock()
-		runtime.Gosched()
-
-		for _, ih := range infohashes {
-			shard.Lock()
-
-			if _, stillExists := shard.swarms[ih]; !stillExists {
-				shard.Unlock()
-				runtime.Gosched()
-				continue
-			}
-
-			for pk, mtime := range shard.swarms[ih].leechers {
-				if mtime <= cutoffUnix {
-					shard.numLeechers--
-					delete(shard.swarms[ih].leechers, pk)
-				}
-			}
-
-			for pk, mtime := range shard.swarms[ih].seeders {
-				if mtime <= cutoffUnix {
-					shard.numSeeders--
-					delete(shard.swarms[ih].seeders, pk)
-				}
-			}
-
-			if len(shard.swarms[ih].seeders)|len(shard.swarms[ih].leechers) == 0 {
-				delete(shard.swarms, ih)
-			}
-
-			shard.Unlock()
-			runtime.Gosched()
-		}
-
-		runtime.Gosched()
-	}
-
-	recordGCDuration(time.Since(start))
-
-	return nil
 }
 
 func (ps *peerStore) Stop() stop.Result {
 	c := make(stop.Channel)
+
 	go func() {
+		// Attempt to gracefully leave the cluster.
+		ps.cluster.Leave(10 * time.Second)
+
+		// Stop everything else we were doing in other goroutines.
 		close(ps.closed)
 		ps.wg.Wait()
 
-		// Explicitly deallocate our storage.
-		shards := make([]*peerShard, len(ps.shards))
-		for i := 0; i < len(ps.shards); i++ {
-			shards[i] = &peerShard{swarms: make(map[bittorrent.InfoHash]swarm)}
-		}
-		ps.shards = shards
+		// Explicitly stop the memory store.
+		ps.ms.Stop()
+
+		// Forcefully quit the cluster.
+		ps.cluster.Shutdown()
 
 		c.Done()
 	}()

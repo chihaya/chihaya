@@ -18,6 +18,7 @@ import (
 	_ "github.com/chihaya/chihaya/middleware/varinterval"
 
 	// Imports to register storage drivers.
+	_ "github.com/chihaya/chihaya/storage/cluster"
 	_ "github.com/chihaya/chihaya/storage/memory"
 	_ "github.com/chihaya/chihaya/storage/redis"
 )
