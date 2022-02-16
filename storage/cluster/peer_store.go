@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"hash/fnv"
+	"io/ioutil"
+	golog "log"
 	"math"
 	"sync"
 	"time"
@@ -235,6 +237,7 @@ func New(provided Config) (storage.PeerStore, error) {
 	clusterCfg.AdvertisePort = cfg.AdvertisePort
 	clusterCfg.Delegate = ps
 	clusterCfg.Events = ps
+	clusterCfg.Logger = golog.New(ioutil.Discard, "", 0)
 
 	cluster, err := memberlist.Create(clusterCfg)
 

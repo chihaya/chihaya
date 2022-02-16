@@ -26,6 +26,13 @@ func (ps *peerStore) NotifyJoin(n *memberlist.Node) {
 	})
 
 	ps.nodes = nodes
+
+	if ps.nodeName != n.Name {
+		log.Info("A node joined the cluster", log.Fields{
+			"name":  n.Name,
+			"total": len(nodes),
+		})
+	}
 }
 
 func (ps *peerStore) NotifyLeave(n *memberlist.Node) {
@@ -44,6 +51,11 @@ func (ps *peerStore) NotifyLeave(n *memberlist.Node) {
 	})
 
 	ps.nodes = nodes
+
+	log.Info("A node left the cluster", log.Fields{
+		"name":  n.Name,
+		"total": len(nodes),
+	})
 }
 
 func (ps *peerStore) NotifyUpdate(n *memberlist.Node)            {}
