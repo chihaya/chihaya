@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	golog "log"
 	"math"
+	"sort"
 	"sync"
 	"time"
 
@@ -305,6 +306,25 @@ func (ps *peerStore) joinCluster() {
 			time.Sleep(time.Second) // Barely noticeable, just enough to avoid spinning.
 			continue
 		}
+
+		ps.mutex.Lock()
+
+		for _, n := range ps.cluster.Members() {
+			ps.nodesByName[n.Name] = n
+
+			nodes := make([]*memberlist.Node, 0)
+			for _, v := range ps.nodesByName {
+				nodes = append(nodes, v)
+			}
+
+			sort.SliceStable(nodes, func(i, j int) bool {
+				return nodes[i].Name < nodes[j].Name
+			})
+
+			ps.nodes = nodes
+		}
+
+		ps.mutex.Unlock()
 
 		log.Info(fmt.Sprintf("Joined cluster (%d members)", ps.cluster.NumMembers()))
 		break
