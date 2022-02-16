@@ -81,9 +81,7 @@ func (ps *peerStore) NotifyMsg(msg []byte) {
 			return
 		}
 
-		if err := ps.ms.PutSeeder(data.InfoHash, data.Peer); err != nil {
-			log.Error("Failed to put seeder into memory store", log.Err(err))
-		}
+		ps.ms.PutSeeder(data.InfoHash, data.Peer)
 
 	case CmdPutLeecher:
 		data := CmdPutLeecherData{}
@@ -92,9 +90,7 @@ func (ps *peerStore) NotifyMsg(msg []byte) {
 			return
 		}
 
-		if err := ps.ms.PutLeecher(data.InfoHash, data.Peer); err != nil {
-			log.Error("Failed to put leecher into memory store", log.Err(err))
-		}
+		ps.ms.PutLeecher(data.InfoHash, data.Peer)
 
 	case CmdDeleteSeeder:
 		data := CmdDeleteSeederData{}
@@ -103,9 +99,7 @@ func (ps *peerStore) NotifyMsg(msg []byte) {
 			return
 		}
 
-		if err := ps.ms.DeleteSeeder(data.InfoHash, data.Peer); err != nil {
-			log.Error("Failed to delete seeder from memory store", log.Err(err))
-		}
+		ps.ms.DeleteSeeder(data.InfoHash, data.Peer)
 
 	case CmdDeleteLeecher:
 		data := CmdDeleteLeecherData{}
@@ -114,9 +108,7 @@ func (ps *peerStore) NotifyMsg(msg []byte) {
 			return
 		}
 
-		if err := ps.ms.DeleteLeecher(data.InfoHash, data.Peer); err != nil {
-			log.Error("Failed to delete leecher from memory store", log.Err(err))
-		}
+		ps.ms.DeleteLeecher(data.InfoHash, data.Peer)
 
 	case CmdGraduateLeecher:
 		data := CmdGraduateLeecherData{}
@@ -125,9 +117,7 @@ func (ps *peerStore) NotifyMsg(msg []byte) {
 			return
 		}
 
-		if err := ps.ms.GraduateLeecher(data.InfoHash, data.Peer); err != nil {
-			log.Error("Failed to graduate leecher in memory store", log.Err(err))
-		}
+		ps.ms.GraduateLeecher(data.InfoHash, data.Peer)
 
 	case CmdAnnouncePeersRequest:
 		data := CmdAnnouncePeersRequestData{}
