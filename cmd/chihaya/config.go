@@ -13,6 +13,7 @@ import (
 
 	// Imports to register middleware drivers.
 	_ "github.com/chihaya/chihaya/middleware/clientapproval"
+	_ "github.com/chihaya/chihaya/middleware/fixedpeer"
 	_ "github.com/chihaya/chihaya/middleware/jwt"
 	_ "github.com/chihaya/chihaya/middleware/torrentapproval"
 	_ "github.com/chihaya/chihaya/middleware/varinterval"
