@@ -49,8 +49,8 @@ func WriteAnnounce(w io.Writer, txID []byte, resp *bittorrent.AnnounceResponse, 
 	}
 
 	for _, peer := range peers {
-		buf.Write(peer.IP.IP)
-		_ = binary.Write(buf, binary.BigEndian, peer.Port)
+		buf.Write(peer.AddrPort.Addr().AsSlice())
+		binary.Write(buf, binary.BigEndian, peer.AddrPort.Port())
 	}
 
 	_, _ = w.Write(buf.Bytes())

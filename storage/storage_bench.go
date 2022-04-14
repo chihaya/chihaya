@@ -2,7 +2,7 @@ package storage
 
 import (
 	"math/rand"
-	"net"
+	"net/netip"
 	"runtime"
 	"sync/atomic"
 	"testing"
@@ -42,11 +42,14 @@ func generatePeers() (a [1000]bittorrent.Peer) {
 		if err != nil || n != 20 {
 			panic("unable to create random bytes")
 		}
+		addr, ok := netip.AddrFromSlice(ip)
+		if !ok {
+			panic("unable to create ip from random bytes")
+		}
 		port := uint16(r.Uint32())
 		a[i] = bittorrent.Peer{
-			ID:   bittorrent.PeerID(id),
-			IP:   bittorrent.IP{IP: net.IP(ip), AddressFamily: bittorrent.IPv4},
-			Port: port,
+			ID:       bittorrent.PeerID(id),
+			AddrPort: netip.AddrPortFrom(addr, port),
 		}
 	}
 
@@ -438,7 +441,7 @@ func AnnounceSeeder1kInfohash(b *testing.B, ps PeerStore) {
 // ScrapeSwarm can run in parallel.
 func ScrapeSwarm(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, putPeers, func(i int, ps PeerStore, bd *benchData) error {
-		ps.ScrapeSwarm(bd.infohashes[0], bittorrent.IPv4)
+		ps.ScrapeSwarm(bd.infohashes[0], bd.peers[0])
 		return nil
 	})
 }
@@ -448,7 +451,7 @@ func ScrapeSwarm(b *testing.B, ps PeerStore) {
 // ScrapeSwarm1kInfohash can run in parallel.
 func ScrapeSwarm1kInfohash(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, putPeers, func(i int, ps PeerStore, bd *benchData) error {
-		ps.ScrapeSwarm(bd.infohashes[i%1000], bittorrent.IPv4)
+		ps.ScrapeSwarm(bd.infohashes[i%1000], bd.peers[0])
 		return nil
 	})
 }

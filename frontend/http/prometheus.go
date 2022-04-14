@@ -2,11 +2,13 @@ package http
 
 import (
 	"errors"
+	"net/netip"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/chihaya/chihaya/bittorrent"
+	"github.com/chihaya/chihaya/pkg/metrics"
 )
 
 func init() {
@@ -24,7 +26,7 @@ var promResponseDurationMilliseconds = prometheus.NewHistogramVec(
 
 // recordResponseDuration records the duration of time to respond to a Request
 // in milliseconds.
-func recordResponseDuration(action string, af *bittorrent.AddressFamily, err error, duration time.Duration) {
+func recordResponseDuration(action string, addr netip.Addr, err error, duration time.Duration) {
 	var errString string
 	if err != nil {
 		var clientErr bittorrent.ClientError
@@ -35,16 +37,7 @@ func recordResponseDuration(action string, af *bittorrent.AddressFamily, err err
 		}
 	}
 
-	var afString string
-	if af == nil {
-		afString = "Unknown"
-	} else if *af == bittorrent.IPv4 {
-		afString = "IPv4"
-	} else if *af == bittorrent.IPv6 {
-		afString = "IPv6"
-	}
-
 	promResponseDurationMilliseconds.
-		WithLabelValues(action, afString, errString).
+		WithLabelValues(action, metrics.AddressFamily(addr), errString).
 		Observe(float64(duration.Nanoseconds()) / float64(time.Millisecond))
 }

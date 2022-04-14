@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net"
+	"net/netip"
 	"sync"
 
 	"github.com/chihaya/chihaya/bittorrent"
@@ -93,13 +94,16 @@ func ParseAnnounce(r Request, v6Action bool, opts ParseOptions) (*bittorrent.Ann
 
 	ip := r.IP
 	ipProvided := false
-	ipbytes := r.Packet[84:ipEnd]
 	if opts.AllowIPSpoofing {
-		// Make sure the bytes are copied to a new slice.
-		copy(ip, net.IP(ipbytes))
+		ipbytes := r.Packet[84:ipEnd]
+		spoofed, ok := netip.AddrFromSlice(ipbytes)
+		if !ok {
+			return nil, errMalformedIP
+		}
 		ipProvided = true
+		ip = spoofed
 	}
-	if !opts.AllowIPSpoofing && r.IP == nil {
+	if !opts.AllowIPSpoofing && r.IP.IsUnspecified() {
 		// We have no IP address to fallback on.
 		return nil, errMalformedIP
 	}
@@ -123,9 +127,8 @@ func ParseAnnounce(r Request, v6Action bool, opts ParseOptions) (*bittorrent.Ann
 		NumWantProvided: true,
 		EventProvided:   true,
 		Peer: bittorrent.Peer{
-			ID:   bittorrent.PeerIDFromBytes(peerID),
-			IP:   bittorrent.IP{IP: ip},
-			Port: port,
+			ID:       bittorrent.PeerIDFromBytes(peerID),
+			AddrPort: netip.AddrPortFrom(ip, port),
 		},
 		Params: params,
 	}

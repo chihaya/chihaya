@@ -1,7 +1,7 @@
 package bittorrent
 
 import (
-	"net"
+	"net/netip"
 
 	"github.com/chihaya/chihaya/pkg/log"
 )
@@ -15,7 +15,7 @@ var ErrInvalidPort = ClientError("invalid port")
 // SanitizeAnnounce enforces a max and default NumWant and coerces the peer's
 // IP address into the proper format.
 func SanitizeAnnounce(r *AnnounceRequest, maxNumWant, defaultNumWant uint32) error {
-	if r.Port == 0 {
+	if r.AddrPort.Port() == 0 {
 		return ErrInvalidPort
 	}
 
@@ -25,12 +25,8 @@ func SanitizeAnnounce(r *AnnounceRequest, maxNumWant, defaultNumWant uint32) err
 		r.NumWant = maxNumWant
 	}
 
-	if ip := r.Peer.IP.To4(); ip != nil {
-		r.Peer.IP.IP = ip
-		r.Peer.IP.AddressFamily = IPv4
-	} else if len(r.Peer.IP.IP) == net.IPv6len { // implies r.Peer.IP.To4() == nil
-		r.Peer.IP.AddressFamily = IPv6
-	} else {
+	r.AddrPort = netip.AddrPortFrom(r.AddrPort.Addr().Unmap(), r.AddrPort.Port())
+	if !r.AddrPort.Addr().IsValid() || r.AddrPort.Addr().IsUnspecified() {
 		return ErrInvalidIP
 	}
 

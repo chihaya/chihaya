@@ -4,19 +4,27 @@
 package bittorrent
 
 import (
+	"encoding/binary"
 	"fmt"
-	"net"
+	"net/netip"
 	"time"
 
+	"github.com/chihaya/chihaya/pkg/iputil"
 	"github.com/chihaya/chihaya/pkg/log"
 )
 
 // PeerID represents a peer ID.
 type PeerID [20]byte
 
-// PeerIDFromBytes creates a PeerID from a byte slice.
+// String implements fmt.Stringer, returning the base16 encoded PeerID.
+func (p PeerID) String() string { return fmt.Sprintf("%x", p[:]) }
+
+// MarshalBinary returns a 20-byte string of the raw bytes of the ID.
+func (p PeerID) MarshalBinary() []byte { return p[:] }
+
+// PeerIDFromBytes creates a PeerID from bytes.
 //
-// It panics if b is not 20 bytes long.
+// It panics if s is not 20 bytes long.
 func PeerIDFromBytes(b []byte) PeerID {
 	if len(b) != 20 {
 		panic("peer ID must be 20 bytes")
@@ -24,29 +32,6 @@ func PeerIDFromBytes(b []byte) PeerID {
 
 	var buf [20]byte
 	copy(buf[:], b)
-	return PeerID(buf)
-}
-
-// String implements fmt.Stringer, returning the base16 encoded PeerID.
-func (p PeerID) String() string {
-	return fmt.Sprintf("%x", p[:])
-}
-
-// RawString returns a 20-byte string of the raw bytes of the ID.
-func (p PeerID) RawString() string {
-	return string(p[:])
-}
-
-// PeerIDFromString creates a PeerID from a string.
-//
-// It panics if s is not 20 bytes long.
-func PeerIDFromString(s string) PeerID {
-	if len(s) != 20 {
-		panic("peer ID must be 20 bytes")
-	}
-
-	var buf [20]byte
-	copy(buf[:], s)
 	return PeerID(buf)
 }
 
@@ -80,14 +65,10 @@ func InfoHashFromString(s string) InfoHash {
 }
 
 // String implements fmt.Stringer, returning the base16 encoded InfoHash.
-func (i InfoHash) String() string {
-	return fmt.Sprintf("%x", i[:])
-}
+func (i InfoHash) String() string { return fmt.Sprintf("%x", i[:]) }
 
-// RawString returns a 20-byte string of the raw bytes of the InfoHash.
-func (i InfoHash) RawString() string {
-	return string(i[:])
-}
+// MarshalBinary returns a 20-byte string of the raw bytes of the InfoHash.
+func (i InfoHash) MarshalBinary() []byte { return i[:] }
 
 // AnnounceRequest represents the parsed parameters from an announce request.
 type AnnounceRequest struct {
@@ -150,17 +131,17 @@ func (r AnnounceResponse) LogFields() log.Fields {
 
 // ScrapeRequest represents the parsed parameters from a scrape request.
 type ScrapeRequest struct {
-	AddressFamily AddressFamily
-	InfoHashes    []InfoHash
-	Params        Params
+	Peer
+	InfoHashes []InfoHash
+	Params     Params
 }
 
 // LogFields renders the current response as a set of log fields.
 func (r ScrapeRequest) LogFields() log.Fields {
 	return log.Fields{
-		"addressFamily": r.AddressFamily,
-		"infoHashes":    r.InfoHashes,
-		"params":        r.Params,
+		"peer":       r.Peer,
+		"infoHashes": r.InfoHashes,
+		"params":     r.Params,
 	}
 }
 
@@ -187,57 +168,52 @@ type Scrape struct {
 	Incomplete uint32
 }
 
-// AddressFamily is the address family of an IP address.
-type AddressFamily uint8
-
-func (af AddressFamily) String() string {
-	switch af {
-	case IPv4:
-		return "IPv4"
-	case IPv6:
-		return "IPv6"
-	default:
-		panic("tried to print unknown AddressFamily")
-	}
-}
-
-// AddressFamily constants.
-const (
-	IPv4 AddressFamily = iota
-	IPv6
-)
-
-// IP is a net.IP with an AddressFamily.
-type IP struct {
-	net.IP
-	AddressFamily
-}
-
-func (ip IP) String() string {
-	return ip.IP.String()
-}
-
 // Peer represents the connection details of a peer that is returned in an
 // announce response.
 type Peer struct {
-	ID   PeerID
-	IP   IP
-	Port uint16
+	ID       PeerID
+	AddrPort netip.AddrPort
 }
 
 // String implements fmt.Stringer to return a human-readable representation.
 // The string will have the format <PeerID>@[<IP>]:<port>, for example
 // "0102030405060708090a0b0c0d0e0f1011121314@[10.11.12.13]:1234"
 func (p Peer) String() string {
-	return fmt.Sprintf("%s@[%s]:%d", p.ID.String(), p.IP.String(), p.Port)
+	return fmt.Sprintf("%s@[%s]:%d", p.ID, p.AddrPort.Addr(), p.AddrPort.Port())
+}
+
+// MarshalBinary encodes a Peer into a memory-efficient byte representation.
+//
+// The format is:
+//    20-byte PeerID
+//    2-byte Big Endian Port
+//    4-byte or 16-byte IP address
+func (p Peer) MarshalBinary() []byte {
+	ip := p.AddrPort.Addr().Unmap()
+	b := make([]byte, 20+2+(ip.BitLen()/8))
+	copy(b[:20], p.ID[:])
+	binary.BigEndian.PutUint16(b[20:22], p.AddrPort.Port())
+	copy(b[22:], ip.AsSlice())
+	return b
+}
+
+// PeerFromBytes parses a Peer from its raw representation.
+func PeerFromBytes(b []byte) Peer {
+	return Peer{
+		ID: PeerIDFromBytes(b[:20]),
+		AddrPort: netip.AddrPortFrom(
+			iputil.MustAddrFromSlice(b[22:]).Unmap(),
+			binary.BigEndian.Uint16(b[20:22]),
+		),
+	}
 }
 
 // LogFields renders the current peer as a set of Logrus fields.
 func (p Peer) LogFields() log.Fields {
 	return log.Fields{
 		"ID":   p.ID,
-		"IP":   p.IP,
-		"port": p.Port,
+		"IP":   p.AddrPort.Addr().String(),
+		"port": p.AddrPort.Port(),
 	}
 }
 
@@ -245,7 +221,10 @@ func (p Peer) LogFields() log.Fields {
 func (p Peer) Equal(x Peer) bool { return p.EqualEndpoint(x) && p.ID == x.ID }
 
 // EqualEndpoint reports whether p and x have the same endpoint.
-func (p Peer) EqualEndpoint(x Peer) bool { return p.Port == x.Port && p.IP.Equal(x.IP.IP) }
+func (p Peer) EqualEndpoint(x Peer) bool {
+	return p.AddrPort.Port() == x.AddrPort.Port() &&
+		p.AddrPort.Addr().Compare(x.AddrPort.Addr()) == 0
+}
 
 // ClientError represents an error that should be exposed to the client over
 // the BitTorrent protocol implementation.

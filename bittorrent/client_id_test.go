@@ -46,7 +46,7 @@ func TestClientID(t *testing.T) {
 		t.Run(tt.peerID, func(t *testing.T) {
 			var clientID ClientID
 			copy(clientID[:], []byte(tt.clientID))
-			parsedID := NewClientID(PeerIDFromString(tt.peerID))
+			parsedID := NewClientID(PeerIDFromBytes([]byte(tt.peerID)))
 			if parsedID != clientID {
 				t.Error("Incorrectly parsed peer ID", tt.peerID, "as", parsedID)
 			}

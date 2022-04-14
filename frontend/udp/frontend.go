@@ -7,9 +7,9 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"math/rand"
 	"net"
+	"net/netip"
 	"sync"
 	"time"
 
@@ -185,7 +185,7 @@ func (t *Frontend) serve() error {
 
 		// Read a UDP packet into a reusable buffer.
 		buffer := pool.Get()
-		n, addr, err := t.socket.ReadFromUDP(*buffer)
+		n, addrPort, err := t.socket.ReadFromUDPAddrPort(*buffer)
 		if err != nil {
 			pool.Put(buffer)
 			var netErr net.Error
@@ -207,24 +207,20 @@ func (t *Frontend) serve() error {
 			defer t.wg.Done()
 			defer pool.Put(buffer)
 
-			if ip := addr.IP.To4(); ip != nil {
-				addr.IP = ip
-			}
-
 			// Handle the request.
+			addr := addrPort.Addr()
 			var start time.Time
 			if t.EnableRequestTiming {
 				start = time.Now()
 			}
-			action, af, err := t.handleRequest(
-				// Make sure the IP is copied, not referenced.
-				Request{(*buffer)[:n], append([]byte{}, addr.IP...)},
-				ResponseWriter{t.socket, addr},
+			action, err := t.handleRequest(
+				Request{(*buffer)[:n], addr},
+				ResponseWriter{t.socket, addrPort},
 			)
 			if t.EnableRequestTiming {
-				recordResponseDuration(action, af, err, time.Since(start))
+				recordResponseDuration(action, addr, err, time.Since(start))
 			} else {
-				recordResponseDuration(action, af, err, time.Duration(0))
+				recordResponseDuration(action, addr, err, time.Duration(0))
 			}
 		}()
 	}
@@ -233,24 +229,24 @@ func (t *Frontend) serve() error {
 // Request represents a UDP payload received by a Tracker.
 type Request struct {
 	Packet []byte
-	IP     net.IP
+	IP     netip.Addr
 }
 
 // ResponseWriter implements the ability to respond to a Request via the
 // io.Writer interface.
 type ResponseWriter struct {
-	socket *net.UDPConn
-	addr   *net.UDPAddr
+	socket   *net.UDPConn
+	addrPort netip.AddrPort
 }
 
 // Write implements the io.Writer interface for a ResponseWriter.
 func (w ResponseWriter) Write(b []byte) (int, error) {
-	_, _ = w.socket.WriteToUDP(b, w.addr)
+	_, _ = w.socket.WriteToUDPAddrPort(b, w.addrPort)
 	return len(b), nil
 }
 
 // handleRequest parses and responds to a UDP Request.
-func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string, af *bittorrent.AddressFamily, err error) {
+func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string, err error) {
 	if len(r.Packet) < 16 {
 		// Malformed, no client packets are less than 16 bytes.
 		// We explicitly return nothing in case this is a DoS attempt.
@@ -285,16 +281,6 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 			return
 		}
 
-		af = new(bittorrent.AddressFamily)
-		if r.IP.To4() != nil {
-			*af = bittorrent.IPv4
-		} else if len(r.IP) == net.IPv6len { // implies r.IP.To4() == nil
-			*af = bittorrent.IPv6
-		} else {
-			// Should never happen - we got the IP straight from the UDP packet.
-			panic(fmt.Sprintf("udp: invalid IP: neither v4 nor v6, IP: %#v", r.IP))
-		}
-
 		WriteConnectionID(w, txID, gen.Generate(r.IP, timecache.Now()))
 
 	case announceActionID, announceV6ActionID:
@@ -306,8 +292,6 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 			WriteError(w, txID, err)
 			return
 		}
-		af = new(bittorrent.AddressFamily)
-		*af = req.IP.AddressFamily
 
 		var ctx context.Context
 		var resp *bittorrent.AnnounceResponse
@@ -317,7 +301,7 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 			return
 		}
 
-		WriteAnnounce(w, txID, resp, actionID == announceV6ActionID, req.IP.AddressFamily == bittorrent.IPv6)
+		WriteAnnounce(w, txID, resp, actionID == announceV6ActionID, r.IP.Is6())
 
 		go t.logic.AfterAnnounce(ctx, req, resp)
 
@@ -330,17 +314,6 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 			WriteError(w, txID, err)
 			return
 		}
-
-		if r.IP.To4() != nil {
-			req.AddressFamily = bittorrent.IPv4
-		} else if len(r.IP) == net.IPv6len { // implies r.IP.To4() == nil
-			req.AddressFamily = bittorrent.IPv6
-		} else {
-			// Should never happen - we got the IP straight from the UDP packet.
-			panic(fmt.Sprintf("udp: invalid IP: neither v4 nor v6, IP: %#v", r.IP))
-		}
-		af = new(bittorrent.AddressFamily)
-		*af = req.AddressFamily
 
 		var ctx context.Context
 		var resp *bittorrent.ScrapeResponse

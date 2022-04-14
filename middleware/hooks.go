@@ -96,7 +96,7 @@ func (h *responseHook) HandleAnnounce(ctx context.Context, req *bittorrent.Annou
 	}
 
 	// Add the Scrape data to the response.
-	s := h.store.ScrapeSwarm(req.InfoHash, req.IP.AddressFamily)
+	s := h.store.ScrapeSwarm(req.InfoHash, req.Peer)
 	resp.Incomplete = s.Incomplete
 	resp.Complete = s.Complete
 
@@ -122,10 +122,10 @@ func (h *responseHook) appendPeers(req *bittorrent.AnnounceRequest, resp *bittor
 		peers = append(peers, req.Peer)
 	}
 
-	switch req.IP.AddressFamily {
-	case bittorrent.IPv4:
+	switch addr := req.Peer.AddrPort.Addr(); {
+	case addr.Is4(), addr.Is4In6():
 		resp.IPv4Peers = peers
-	case bittorrent.IPv6:
+	case addr.Is6():
 		resp.IPv6Peers = peers
 	default:
 		panic("attempted to append peer that is neither IPv4 nor IPv6")
@@ -140,7 +140,7 @@ func (h *responseHook) HandleScrape(ctx context.Context, req *bittorrent.ScrapeR
 	}
 
 	for _, infoHash := range req.InfoHashes {
-		resp.Files = append(resp.Files, h.store.ScrapeSwarm(infoHash, req.AddressFamily))
+		resp.Files = append(resp.Files, h.store.ScrapeSwarm(infoHash, req.Peer))
 	}
 
 	return ctx, nil
