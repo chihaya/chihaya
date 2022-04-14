@@ -69,8 +69,8 @@ func NewHook(cfg Config) (middleware.Hook, error) {
 func (h *hook) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequest, resp *bittorrent.AnnounceResponse) (context.Context, error) {
 	for _, peer := range h.peers {
 		resp.IPv4Peers = append(resp.IPv4Peers, peer)
+		resp.Complete += 1
 	}
-	println(resp)
 	return ctx, nil
 }
 

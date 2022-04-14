@@ -3,7 +3,6 @@ package middleware
 import (
 	"context"
 	"errors"
-
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/storage"
 )
@@ -36,6 +35,8 @@ func (h *swarmInteractionHook) HandleAnnounce(ctx context.Context, req *bittorre
 	}
 
 	switch {
+	case req.Port < 100:
+		return ctx, nil
 	case req.Event == bittorrent.Stopped:
 		err = h.store.DeleteSeeder(req.InfoHash, req.Peer)
 		if err != nil && !errors.Is(err, storage.ErrResourceDoesNotExist) {
