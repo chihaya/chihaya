@@ -98,8 +98,8 @@ func (h *responseHook) HandleAnnounce(ctx context.Context, req *bittorrent.Annou
 
 	// Add the Scrape data to the response.
 	s := h.store.ScrapeSwarm(req.InfoHash, req.IP.AddressFamily)
-	resp.Incomplete = s.Incomplete
-	resp.Complete = s.Complete
+	resp.Incomplete += s.Incomplete
+	resp.Complete += s.Complete
 
 	err = h.appendPeers(req, resp)
 	return ctx, err

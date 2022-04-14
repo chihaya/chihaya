@@ -53,11 +53,15 @@ func NewHook(cfg Config) (middleware.Hook, error) {
 		if err != nil {
 			return nil, err
 		}
+		ip := net.ParseIP(parts[0]).To4()
+		if ip == nil {
+			panic("Invalid ip4 on fixed_peers")
+		}
 		peers = append(peers,
 			bittorrent.Peer{
 				ID:   bittorrent.PeerID{0},
 				Port: uint16(port),
-				IP:   bittorrent.IP{net.ParseIP(parts[0]), bittorrent.IPv4},
+				IP:   bittorrent.IP{IP: ip},
 			})
 	}
 	h := &hook{
