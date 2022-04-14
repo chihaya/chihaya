@@ -303,7 +303,7 @@ func (ps *peerStore) populateProm() {
 
 	for _, af := range addressFamilies {
 		infohashCountKey := "I" + af
-		if n, err := redis.Int64(conn.Do("GET", infohashCountKey)); err != nil && err != redis.ErrNil {
+		if n, err := redis.Int64(conn.Do("GET", infohashCountKey)); err != nil && !errors.Is(err, redis.ErrNil) {
 			log.Error("storage: GET counter failure", log.Fields{
 				"key":   infohashCountKey,
 				"error": err,
@@ -313,7 +313,7 @@ func (ps *peerStore) populateProm() {
 		}
 
 		seederCountKey := af + "S"
-		if n, err := redis.Int64(conn.Do("GET", seederCountKey)); err != nil && err != redis.ErrNil {
+		if n, err := redis.Int64(conn.Do("GET", seederCountKey)); err != nil && !errors.Is(err, redis.ErrNil) {
 			log.Error("storage: GET counter failure", log.Fields{
 				"key":   seederCountKey,
 				"error": err,
@@ -323,7 +323,7 @@ func (ps *peerStore) populateProm() {
 		}
 
 		leecherCountKey := af + "L"
-		if n, err := redis.Int64(conn.Do("GET", leecherCountKey)); err != nil && err != redis.ErrNil {
+		if n, err := redis.Int64(conn.Do("GET", leecherCountKey)); err != nil && !errors.Is(err, redis.ErrNil) {
 			log.Error("storage: GET counter failure", log.Fields{
 				"key":   leecherCountKey,
 				"error": err,
@@ -509,9 +509,9 @@ func (ps *peerStore) GraduateLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) 
 	defer conn.Close()
 
 	_ = conn.Send("MULTI")
-	conn.Send("HDEL", leecherSK, peerBytes)
-	conn.Send("HSET", seederSK, peerBytes, ct)
-	conn.Send("HSET", ihKey, seederSK, ct)
+	_ = conn.Send("HDEL", leecherSK, peerBytes)
+	_ = conn.Send("HSET", seederSK, peerBytes, ct)
+	_ = conn.Send("HSET", ihKey, seederSK, ct)
 	reply, err := redis.Int64s(conn.Do("EXEC"))
 	if err != nil {
 		return err
@@ -600,7 +600,7 @@ func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant 
 		if numWant > 0 {
 			announcerStr := string(announcer.MarshalBinary())
 			for _, sk := range conLeechers {
-				if sk == string(announcerStr) {
+				if sk == announcerStr {
 					continue
 				}
 

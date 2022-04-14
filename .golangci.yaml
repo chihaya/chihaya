@@ -6,6 +6,10 @@ output:
 linters-settings:
   goimports:
     local-prefixes: "github.com/chihaya/chihaya"
+  staticcheck:
+    checks:
+      - "all"
+      - "-SA1019"  # Allow netErr.Temporary
   gosec:
     excludes:
       - "G404"  # Allow the usage of math/rand
