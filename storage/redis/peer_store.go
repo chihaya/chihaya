@@ -773,7 +773,7 @@ func (ps *peerStore) collectGarbage(cutoff time.Time) error {
 				//_, err := conn.Do("DEL", ihStr)
 
 				_ = conn.Send("MULTI")
-				_ = conn.Send("HDEL", "I"+af, ihStr)
+				_ = conn.Send("HDEL", af, ihStr)
 				if isSeeder {
 					_ = conn.Send("DECR", "I"+af)
 				}
