@@ -208,14 +208,14 @@ func (t *Frontend) serve() error {
 			defer pool.Put(buffer)
 
 			// Handle the request.
-			addr := addrPort.Addr()
+			addr := addrPort.Addr().Unmap()
 			var start time.Time
 			if t.EnableRequestTiming {
 				start = time.Now()
 			}
 			action, err := t.handleRequest(
 				Request{(*buffer)[:n], addr},
-				ResponseWriter{t.socket, addrPort},
+				ResponseWriter{t.socket, addrPort}, // Explicitly use the unmapped addr
 			)
 			if t.EnableRequestTiming {
 				recordResponseDuration(action, addr, err, time.Since(start))
@@ -241,8 +241,7 @@ type ResponseWriter struct {
 
 // Write implements the io.Writer interface for a ResponseWriter.
 func (w ResponseWriter) Write(b []byte) (int, error) {
-	_, _ = w.socket.WriteToUDPAddrPort(b, w.addrPort)
-	return len(b), nil
+	return w.socket.WriteToUDPAddrPort(b, w.addrPort)
 }
 
 // handleRequest parses and responds to a UDP Request.
@@ -301,7 +300,7 @@ func (t *Frontend) handleRequest(r Request, w ResponseWriter) (actionName string
 			return
 		}
 
-		WriteAnnounce(w, txID, resp, actionID == announceV6ActionID, r.IP.Is6())
+		WriteAnnounce(w, txID, resp, actionID == announceV6ActionID, r.IP.Unmap().Is6())
 
 		go t.logic.AfterAnnounce(ctx, req, resp)
 
