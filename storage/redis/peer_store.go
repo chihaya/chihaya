@@ -236,7 +236,25 @@ type peerStore struct {
 	wg     sync.WaitGroup
 }
 
-var addressFamilies = [2]string{"4", "6"}
+type addressFamily string
+
+func (af addressFamily) InfoHashKey() string {
+	return string(af)
+}
+
+func (af addressFamily) InfoHashCountKey() string {
+	return "I" + string(af)
+}
+
+func (af addressFamily) SeederCountKey() string {
+	return string(af) + "S"
+}
+
+func (af addressFamily) LeecherCountKey() string {
+	return string(af) + "L"
+}
+
+var addressFamilies = [2]addressFamily{addressFamily("4"), addressFamily("6")}
 
 // Key that stores the peers for an InfoHash.
 //
@@ -299,30 +317,27 @@ func (ps *peerStore) populateProm() {
 	defer conn.Close()
 
 	for _, af := range addressFamilies {
-		infohashCountKey := "I" + af
-		if n, err := redis.Int64(conn.Do("GET", infohashCountKey)); err != nil && !errors.Is(err, redis.ErrNil) {
+		if n, err := redis.Int64(conn.Do("GET", af.InfoHashCountKey())); err != nil && !errors.Is(err, redis.ErrNil) {
 			log.Error("storage: GET counter failure", log.Fields{
-				"key":   infohashCountKey,
+				"key":   af.InfoHashCountKey(),
 				"error": err,
 			})
 		} else {
 			numInfohashes += n
 		}
 
-		seederCountKey := af + "S"
-		if n, err := redis.Int64(conn.Do("GET", seederCountKey)); err != nil && !errors.Is(err, redis.ErrNil) {
+		if n, err := redis.Int64(conn.Do("GET", af.SeederCountKey())); err != nil && !errors.Is(err, redis.ErrNil) {
 			log.Error("storage: GET counter failure", log.Fields{
-				"key":   seederCountKey,
+				"key":   af.SeederCountKey(),
 				"error": err,
 			})
 		} else {
 			numSeeders += n
 		}
 
-		leecherCountKey := af + "L"
-		if n, err := redis.Int64(conn.Do("GET", leecherCountKey)); err != nil && !errors.Is(err, redis.ErrNil) {
+		if n, err := redis.Int64(conn.Do("GET", af.LeecherCountKey())); err != nil && !errors.Is(err, redis.ErrNil) {
 			log.Error("storage: GET counter failure", log.Fields{
-				"key":   leecherCountKey,
+				"key":   af.LeecherCountKey(),
 				"error": err,
 			})
 		} else {
@@ -709,7 +724,7 @@ func (ps *peerStore) collectGarbage(cutoff time.Time) error {
 
 	for _, af := range addressFamilies {
 		// list all infohashes in the group
-		infohashesList, err := redis.Strings(conn.Do("HKEYS", "I"+af))
+		infohashesList, err := redis.Strings(conn.Do("HKEYS", af.InfoHashKey()))
 		if err != nil {
 			return err
 		}
@@ -747,9 +762,9 @@ func (ps *peerStore) collectGarbage(cutoff time.Time) error {
 				}
 			}
 			// DECR seeder/leecher counter
-			decrCounter := af + "L"
+			decrCounter := af.LeecherCountKey()
 			if isSeeder {
-				decrCounter = af + "S"
+				decrCounter = af.SeederCountKey()
 			}
 			if removedPeerCount > 0 {
 				if _, err := conn.Do("DECRBY", decrCounter, removedPeerCount); err != nil {
@@ -773,9 +788,9 @@ func (ps *peerStore) collectGarbage(cutoff time.Time) error {
 				//_, err := conn.Do("DEL", ihStr)
 
 				_ = conn.Send("MULTI")
-				_ = conn.Send("HDEL", af, ihStr)
+				_ = conn.Send("HDEL", af.InfoHashKey(), ihStr)
 				if isSeeder {
-					_ = conn.Send("DECR", "I"+af)
+					_ = conn.Send("DECR", af.InfoHashCountKey())
 				}
 				_, err = redis.Values(conn.Do("EXEC"))
 				if err != nil && !errors.Is(err, redis.ErrNil) {
