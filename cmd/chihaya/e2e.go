@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/anacrolix/torrent/tracker"
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/chihaya/chihaya/bittorrent"
@@ -92,7 +91,7 @@ func testWithInfohash(infoHash [20]byte, url string, delay time.Duration) error 
 		UserAgent:  "chihaya-e2e",
 	}.Do()
 	if err != nil {
-		return errors.Wrap(err, "announce failed")
+		return fmt.Errorf("announce failed: %w", err)
 	}
 
 	if len(resp.Peers) != 1 {
@@ -119,7 +118,7 @@ func testWithInfohash(infoHash [20]byte, url string, delay time.Duration) error 
 		UserAgent:  "chihaya-e2e",
 	}.Do()
 	if err != nil {
-		return errors.Wrap(err, "announce failed")
+		return fmt.Errorf("announce failed: %w", err)
 	}
 
 	if len(resp.Peers) != 1 {
