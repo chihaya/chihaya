@@ -24,7 +24,7 @@ func (p PeerID) MarshalBinary() []byte { return p[:] }
 
 // PeerIDFromBytes creates a PeerID from bytes.
 //
-// It panics if s is not 20 bytes long.
+// It panics if b is not 20 bytes long.
 func PeerIDFromBytes(b []byte) PeerID {
 	if len(b) != 20 {
 		panic("peer ID must be 20 bytes")

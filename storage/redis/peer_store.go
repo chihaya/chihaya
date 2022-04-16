@@ -1,26 +1,23 @@
 // Package redis implements the storage interface for a Chihaya
 // BitTorrent tracker keeping peer data in redis with hash.
-// There two categories of hash:
 //
-// - IPv{4,6}_{L,S}_infohash
-//	To save peers that hold the infohash, used for fast searching,
-//  deleting, and timeout handling
+// Hash keys are used in two different ways:
+// - Swarm Keys
+//   "(4|6)(L|S)(<infohash>)"
+//   Stores peers in the swarm for the infohash.
+//   Primarily used for responding to requests.
+// - Infohash Keys
+//   "(4|6)"
+//   Stores the infohashes for which a swarm exists.
+//   Primarily used for garbage collection and metrics.
 //
-// - IPv{4,6}
-//  To save all the infohashes, used for garbage collection,
-//	metrics aggregation and leecher graduation
-//
-// Tree keys are used to record the count of swarms, seeders
-// and leechers for each group (IPv4, IPv6).
-//
-// - IPv{4,6}_infohash_count
-//	To record the number of infohashes.
-//
-// - IPv{4,6}_S_count
-//	To record the number of seeders.
-//
-// - IPv{4,6}_L_count
-//	To record the number of leechers.
+// Tree keys are used to record the count of swarms and peers:
+// - Infohash Count Key
+//   "I(4|6)"
+//   Stores the number of infohashes grouped by IP protocol.
+// - Peer Count Keys
+//   (4|6)(L|S)
+//   Stores the number of peers grouped by IP protocol and download status.
 package redis
 
 import (
@@ -367,16 +364,14 @@ func (ps *peerStore) PutSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) error 
 		return err
 	}
 
-	if reply[0] == 1 { // The Swarm Key (and thus the peer) was new.
-		_, err = conn.Do("INCR", peerCountKey(true, addr))
-		if err != nil {
+	if reply[0] == 1 { // The swarm or the peer was new.
+		if _, err := conn.Do("INCR", peerCountKey(true, addr)); err != nil {
 			return err
 		}
 	}
 
-	if reply[1] == 1 { // The Infohash Key (and thus the infohash) was new.
-		_, err = conn.Do("INCR", infohashCountKey(addr))
-		if err != nil {
+	if reply[1] == 1 { // The infohash or the swarm was new.
+		if _, err := conn.Do("INCR", infohashCountKey(addr)); err != nil {
 			return err
 		}
 	}
@@ -445,9 +440,8 @@ func (ps *peerStore) PutLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) error
 		return err
 	}
 
-	if reply[0] == 1 { // The swarmKey (and thus the peer) was new.
-		_, err = conn.Do("INCR", peerCountKey(false, addr))
-		if err != nil {
+	if reply[0] == 1 { // The swarm or the peer was new.
+		if _, err := conn.Do("INCR", peerCountKey(false, addr)); err != nil {
 			return err
 		}
 	}
