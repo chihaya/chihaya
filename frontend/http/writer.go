@@ -19,7 +19,6 @@ func WriteError(w http.ResponseWriter, err error) error {
 		log.Error("http: internal error", log.Err(err))
 	}
 
-	w.WriteHeader(http.StatusOK)
 	return bencode.NewEncoder(w).Encode(bencode.Dict{
 		"failure reason": message,
 	})
@@ -37,22 +36,22 @@ func WriteAnnounceResponse(w http.ResponseWriter, resp *bittorrent.AnnounceRespo
 
 	// Add the peers to the dictionary in the compact format.
 	if resp.Compact {
-		var IPv4CompactDict, IPv6CompactDict []byte
-
 		// Add the IPv4 peers to the dictionary.
+		ipv4CompactDict := make([]byte, 0, compact4PeerLen*len(resp.IPv4Peers))
 		for _, peer := range resp.IPv4Peers {
-			IPv4CompactDict = append(IPv4CompactDict, compact4(peer)...)
+			ipv4CompactDict = append(ipv4CompactDict, compact4(peer)...)
 		}
-		if len(IPv4CompactDict) > 0 {
-			bdict["peers"] = IPv4CompactDict
+		if len(ipv4CompactDict) > 0 {
+			bdict["peers"] = ipv4CompactDict
 		}
 
 		// Add the IPv6 peers to the dictionary.
+		ipv6CompactDict := make([]byte, 0, compact6PeerLen*len(resp.IPv6Peers))
 		for _, peer := range resp.IPv6Peers {
-			IPv6CompactDict = append(IPv6CompactDict, compact6(peer)...)
+			ipv6CompactDict = append(ipv6CompactDict, compact6(peer)...)
 		}
-		if len(IPv6CompactDict) > 0 {
-			bdict["peers6"] = IPv6CompactDict
+		if len(ipv6CompactDict) > 0 {
+			bdict["peers6"] = ipv6CompactDict
 		}
 
 		return bencode.NewEncoder(w).Encode(bdict)
@@ -87,32 +86,33 @@ func WriteScrapeResponse(w http.ResponseWriter, resp *bittorrent.ScrapeResponse)
 	})
 }
 
+const (
+	compact4PeerLen = 4 + 2  // IPv4 + Port
+	compact6PeerLen = 16 + 2 // IPv6 + Port
+)
+
 func compact4(peer bittorrent.Peer) (buf []byte) {
-	if ip := peer.IP.To4(); ip == nil {
-		panic("non-IPv4 IP for Peer in IPv4Peers")
-	} else {
-		buf = []byte(ip)
-	}
-	buf = append(buf, byte(peer.Port>>8))
-	buf = append(buf, byte(peer.Port&0xff))
+	ip := peer.AddrPort.Addr().As4()
+	buf = append(buf, ip[:]...)
+	port := peer.AddrPort.Port()
+	buf = append(buf, byte(port>>8))
+	buf = append(buf, byte(port&0xff))
 	return
 }
 
 func compact6(peer bittorrent.Peer) (buf []byte) {
-	if ip := peer.IP.To16(); ip == nil {
-		panic("non-IPv6 IP for Peer in IPv6Peers")
-	} else {
-		buf = []byte(ip)
-	}
-	buf = append(buf, byte(peer.Port>>8))
-	buf = append(buf, byte(peer.Port&0xff))
+	ip := peer.AddrPort.Addr().As16()
+	buf = append(buf, ip[:]...)
+	port := peer.AddrPort.Port()
+	buf = append(buf, byte(port>>8))
+	buf = append(buf, byte(port&0xff))
 	return
 }
 
 func dict(peer bittorrent.Peer) bencode.Dict {
 	return bencode.Dict{
 		"peer id": string(peer.ID[:]),
-		"ip":      peer.IP.String(),
-		"port":    peer.Port,
+		"ip":      peer.AddrPort.Addr().String(),
+		"port":    peer.AddrPort.Port(),
 	}
 }

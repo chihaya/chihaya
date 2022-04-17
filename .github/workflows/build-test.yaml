@@ -1,43 +1,49 @@
 ---
 name: "Build & Test"
-on:
+on:  # yamllint disable-line rule:truthy
   push:
     branches:
       - "!dependabot/*"
-      - "main"
+      - "*"
   pull_request:
-    branches: ["*"]
+    branches:
+      - "*"
 jobs:
   build:
-    name: "Go Build"
+    name: "Build Binary"
     runs-on: "ubuntu-latest"
     steps:
-      - uses: "actions/checkout@v2"
-      - uses: "actions/setup-go@v2"
+      - uses: "actions/checkout@v3"
+      - uses: "actions/setup-go@v3"
         with:
           go-version: "^1.17"
-      - name: "Build"
-        run: "go build ./cmd/..."
+      - uses: "authzed/actions/go-build@main"
+
+  image-build:
+    name: "Build Container Image"
+    runs-on: "ubuntu-latest"
+    steps:
+      - uses: "actions/checkout@v3"
+      - uses: "authzed/actions/docker-build@main"
 
   unit:
     name: "Run Unit Tests"
     runs-on: "ubuntu-latest"
     steps:
-      - uses: "actions/checkout@v2"
-      - uses: "actions/setup-go@v2"
+      - uses: "actions/checkout@v3"
+      - uses: "actions/setup-go@v3"
         with:
-          go-version: "^1.17"
-      - name: "Run `go test`"
-        run: "go test -race ./..."
+          go-version: "^1.18"
+      - uses: "authzed/actions/go-test@main"
 
   e2e-mem:
     name: "E2E Memory Tests"
     runs-on: "ubuntu-latest"
     steps:
-      - uses: "actions/checkout@v2"
-      - uses: "actions/setup-go@v2"
+      - uses: "actions/checkout@v3"
+      - uses: "actions/setup-go@v3"
         with:
-          go-version: "^1.17"
+          go-version: "^1.18"
       - name: "Install and configure chihaya"
         run: |
           go install ./cmd/chihaya
@@ -59,10 +65,10 @@ jobs:
         ports: ["6379:6379"]
         options: "--entrypoint redis-server"
     steps:
-      - uses: "actions/checkout@v2"
-      - uses: "actions/setup-go@v2"
+      - uses: "actions/checkout@v3"
+      - uses: "actions/setup-go@v3"
         with:
-          go-version: "^1.17"
+          go-version: "^1.18"
       - name: "Install and configure chihaya"
         run: |
           go install ./cmd/chihaya
@@ -77,20 +83,6 @@ jobs:
           sleep 2
           chihaya e2e --debug
           kill $pid
-
-  image-build:
-    name: "Docker Build"
-    runs-on: "ubuntu-latest"
-    steps:
-      - uses: "actions/checkout@v2"
-      - uses: "docker/setup-qemu-action@v1"
-      - uses: "docker/setup-buildx-action@v1"
-        with:
-          driver-opts: "image=moby/buildkit:master"
-      - uses: "docker/build-push-action@v1"
-        with:
-          push: false
-          tags: "latest"
 
   helm:
     name: "Helm Template"
