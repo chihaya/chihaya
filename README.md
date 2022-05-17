@@ -47,7 +47,7 @@ Contributions to this project are welcome, encouraged, and compensated. For more
 
 ## License
 
-This project is MIT licensed. For the full license, see [LICENSE](LICENSE).
+LBRY's code changes are MIT licensed, and the upstream Chihaya code is licensed under a BSD 2-Clause license. For the full license, see [LICENSE](LICENSE).
 
 ## Security
 
