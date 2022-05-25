@@ -67,6 +67,68 @@ tracker:
       prometheus_reporting_interval: "1s"
 ```
 
+# Running from Docker
+
+This section assumes `docker` and `docker-compose` to be installed on a Linux distro. Please check official docs on how to install [Docker Engine](https://docs.docker.com/engine/install/) and [Docker Compose](https://docs.docker.com/compose/install/).
+
+## Docker Compose from lbry/tracker
+In order to define a tracker service and let Docker Compose manage it, create a file named `docker-compose.yml` with:
+```
+version: "3"
+services:
+  tracker:
+    image: lbry/tracker
+    command: --config /config/conf.yml
+    volumes:
+      - .:/config
+    network_mode: host
+    restart: always
+```
+Unfortunately the tracker does not work without `network_mode: host` due some bug with UDP on Docker. In this mode, firewall configuration needs to be done manually. If using `ufw`, try `ufw allow 6969`.
+
+Now, move the configuration to the same directory as `docker-compose.yml`, naming it `conf.yml`. If it is not ready, check the configuration section above.
+
+Start the tracker by running the following in the same directory as the compose file:
+`docker-compose up -d`
+Logs can be read with:
+`docker-compose logs`
+To stop:
+`docker-compose down`
+
+## Building the containter
+A Dockerfile is provided within the repo. To build the container locally, run this command on the same directory the repo was cloned:
+`sudo docker build -f Dockerfile . -t some_name/tracker:latest`
+It will produce an image called `some_name/tracker`, which can be used in the Docker Compose section.
+
+# Running from source as a service
+
+For ease of maintenance, it is recommended to run the tracker as a service.
+
+This is an example for running it under as the current user using `systemd`:
+```
+[Unit]
+Description=Chihaya BT tracker
+After=network.target
+[Service]
+Type=simple
+#User=chihaya
+#Group=chihaya
+WorkingDirectory=/home/user/github/tracker
+ExecStart=/home/user/github/tracker/chihaya --config dist/example_config.yaml
+Restart=on-failure
+[Install]
+WantedBy=multi-user.target
+```
+
+To try it, change `/home/user/github/tracker` to where the code was cloned and run:
+```bash=
+mkdir -p ~/.config/systemd/user
+# PASTE FILE IN ~/.config/systemd/user/tracker.service
+systemctl --user enable tracker
+systemctl --user start tracker
+systemctl --user status tracker
+```
+
 ## Contributing
 
 Contributions to this project are welcome, encouraged, and compensated. For more details, please check [this](https://lbry.tech/contribute) link.
