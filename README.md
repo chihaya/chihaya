@@ -41,6 +41,32 @@ Configuration of the tracker is done via one YAML configuration file.
 The `dist/` directory contains an example configuration file.
 Files and directories under `docs/` contain detailed information about configuring middleware, storage implementations, architecture etc.
 
+This is an example for an UDP server running on 6969 with metrics enabled. Remember to **change the private key** to some random string.
+
+```
+---
+tracker:
+  announce_interval: "30m"
+  min_announce_interval: "15m"
+  metrics_addr: "0.0.0.0:6880"
+  udp:
+    addr: "0.0.0.0:6969"
+    max_clock_skew: "10s"
+    private_key: ">>>>CHANGE THIS TO SOME RANDOM THING<<<<"
+    enable_request_timing: false
+    allow_ip_spoofing: false
+    max_numwant: 100
+    default_numwant: 50
+    max_scrape_infohashes: 50
+  storage:
+    name: "memory"
+    config:
+      gc_interval: "3m"
+      peer_lifetime: "31m"
+      shard_count: 1024
+      prometheus_reporting_interval: "1s"
+```
+
 ## Contributing
 
 Contributions to this project are welcome, encouraged, and compensated. For more details, please check [this](https://lbry.tech/contribute) link.
