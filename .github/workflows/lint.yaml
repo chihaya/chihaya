@@ -12,7 +12,7 @@ jobs:
     name: "Lint Go Modules"
     runs-on: "ubuntu-latest"
     steps:
-      - uses: "actions/checkout@v2"
+      - uses: "actions/checkout@v3"
       - uses: "actions/setup-go@v2"
         with:
           go-version: "^1.17"
@@ -23,7 +23,7 @@ jobs:
     name: "Format Go"
     runs-on: "ubuntu-latest"
     steps:
-      - uses: "actions/checkout@v2"
+      - uses: "actions/checkout@v3"
       - uses: "actions/setup-go@v2"
         with:
           go-version: "^1.17"
@@ -42,7 +42,7 @@ jobs:
     name: "Lint Go"
     runs-on: "ubuntu-latest"
     steps:
-      - uses: "actions/checkout@v2"
+      - uses: "actions/checkout@v3"
       - uses: "actions/setup-go@v2"
         with:
           go-version: "^1.17"
@@ -57,7 +57,7 @@ jobs:
     name: "Lint YAML & Markdown"
     runs-on: "ubuntu-latest"
     steps:
-      - uses: "actions/checkout@v2"
+      - uses: "actions/checkout@v3"
       - uses: "bewuethr/yamllint-action@v1.1.1"
         with:
           config-file: ".yamllint"
@@ -78,7 +78,7 @@ jobs:
       matrix:
         language: ["go"]
     steps:
-      - uses: "actions/checkout@v2"
+      - uses: "actions/checkout@v3"
       - uses: "github/codeql-action/init@v1"
         with:
           languages: "${{ matrix.language }}"
