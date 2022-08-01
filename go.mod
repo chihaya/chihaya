@@ -10,7 +10,7 @@ require (
 	github.com/anacrolix/missinggo/v2 v2.5.3 // indirect
 	github.com/anacrolix/torrent v1.40.0
 	github.com/go-redsync/redsync/v4 v4.5.0
-	github.com/gomodule/redigo v1.8.8
+	github.com/gomodule/redigo v1.8.9
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/mendsley/gojwk v0.0.0-20141217222730-4d5ec6e58103
