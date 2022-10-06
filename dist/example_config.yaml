@@ -174,12 +174,12 @@ chihaya:
   #     jwk_set_url: "https://issuer.com/keys"
   #     jwk_set_update_interval: "5m"
 
-  # - name: "client approval"
-  #   options:
+   - name: "client approval"
+     options:
   #     whitelist:
   #       - "OP1011"
-  #     blacklist:
-  #       - "OP1012"
+       blacklist:
+         - "XL0018"
 
   # - name: "interval variation"
   #   options:
