@@ -103,10 +103,12 @@ func (rc *redisConnector) open() (redigolib.Conn, error) {
 // The general form represented is:
 //
 //	redis://[password@]host][/][db]
+//	redis-socket://[password@]path[?db=db]
 type redisURL struct {
-	Host     string
-	Password string
-	DB       int
+	Host       string
+	SocketPath string
+	Password   string
+	DB         int
 }
 
 // parseRedisURL parse rawurl into redisURL
@@ -116,21 +118,40 @@ func parseRedisURL(target string) (*redisURL, error) {
 	if err != nil {
 		return nil, err
 	}
-	if u.Scheme != "redis" {
+	if u.Scheme != "redis" && u.Scheme != "redis-socket" {
 		return nil, errors.New("no redis scheme found")
 	}
 
 	db := 0 // default redis db
-	parts := strings.Split(u.Path, "/")
-	if len(parts) != 1 {
-		db, err = strconv.Atoi(parts[1])
+
+	if u.Scheme == "redis" {
+		parts := strings.Split(u.Path, "/")
+		if len(parts) != 1 {
+			db, err = strconv.Atoi(parts[1])
+			if err != nil {
+				return nil, err
+			}
+		}
+		u.Path = ""
+	}
+	if u.Scheme == "redis-socket" {
+		opts, err := url.ParseQuery(u.RawQuery)
 		if err != nil {
 			return nil, err
 		}
+		dbval := opts.Get("db")
+		if len(dbval) != 0 {
+			db, err = strconv.Atoi(dbval)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
+
 	return &redisURL{
-		Host:     u.Host,
-		Password: u.User.String(),
-		DB:       db,
+		Host:       u.Host,
+		SocketPath: u.Path,
+		Password:   u.User.String(),
+		DB:         db,
 	}, nil
 }
