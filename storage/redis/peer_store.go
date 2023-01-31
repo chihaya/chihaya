@@ -541,7 +541,7 @@ func (ps *peerStore) GraduateLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) 
 	return nil
 }
 
-func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant int, announcer bittorrent.Peer) (peers []bittorrent.Peer, err error) {
+func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant int, announcer bittorrent.Peer, peers []bittorrent.Peer) ([]bittorrent.Peer, error) {
 	addressFamily := announcer.IP.AddressFamily.String()
 	log.Debug("storage: AnnouncePeers", log.Fields{
 		"InfoHash": ih.String(),
@@ -618,7 +618,7 @@ func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant 
 		}
 	}
 
-	return
+	return peers, nil
 }
 
 func (ps *peerStore) ScrapeSwarm(ih bittorrent.InfoHash, af bittorrent.AddressFamily) (resp bittorrent.Scrape) {
