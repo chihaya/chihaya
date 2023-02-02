@@ -1,3 +1,5 @@
+// Package frontend provides implementations and abstractions for tracker logic,
+// parsing and request handling over multiple protocols, such as UDP and HTTP.
 package frontend
 
 import (
