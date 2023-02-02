@@ -1,3 +1,4 @@
+// Package main provides argument parsing and execution logic for the command line tool.
 package main
 
 import (
