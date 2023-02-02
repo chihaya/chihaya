@@ -1,3 +1,4 @@
+// Package storage provides abstractions and implementations for storing and retrieving peers from their announced infohashes.
 package storage
 
 import (
