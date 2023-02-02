@@ -1,3 +1,5 @@
+// Package bytepool implements an optimization for byte slice allocations
+// by caching those slices for later reuse.
 package bytepool
 
 import "sync"
