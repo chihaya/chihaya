@@ -2,25 +2,25 @@
 // BitTorrent tracker keeping peer data in redis with hash.
 // There two categories of hash:
 //
-// - IPv{4,6}_{L,S}_infohash
-//	To save peers that hold the infohash, used for fast searching,
-//  deleting, and timeout handling
+//   - IPv{4,6}_{L,S}_infohash
+//     To save peers that hold the infohash, used for fast searching,
+//     deleting, and timeout handling
 //
-// - IPv{4,6}
-//  To save all the infohashes, used for garbage collection,
-//	metrics aggregation and leecher graduation
+//   - IPv{4,6}
+//     To save all the infohashes, used for garbage collection,
+//     metrics aggregation and leecher graduation
 //
 // Tree keys are used to record the count of swarms, seeders
 // and leechers for each group (IPv4, IPv6).
 //
-// - IPv{4,6}_infohash_count
-//	To record the number of infohashes.
+//   - IPv{4,6}_infohash_count
+//     To record the number of infohashes.
 //
-// - IPv{4,6}_S_count
-//	To record the number of seeders.
+//   - IPv{4,6}_S_count
+//     To record the number of seeders.
 //
-// - IPv{4,6}_L_count
-//	To record the number of leechers.
+//   - IPv{4,6}_L_count
+//     To record the number of leechers.
 package redis
 
 import (
@@ -667,45 +667,45 @@ func (ps *peerStore) ScrapeSwarm(ih bittorrent.InfoHash, af bittorrent.AddressFa
 // This function must be able to execute while other methods on this interface
 // are being executed in parallel.
 //
-// - The Delete(Seeder|Leecher) and GraduateLeecher methods never delete an
-//	 infohash key from an addressFamily hash. They also never decrement the
-//	 infohash counter.
-// - The Put(Seeder|Leecher) and GraduateLeecher methods only ever add infohash
-//	 keys to addressFamily hashes and increment the infohash counter.
-// - The only method that deletes from the addressFamily hashes is
-//	 collectGarbage, which also decrements the counters. That means that,
-//	 even if a Delete(Seeder|Leecher) call removes the last peer from a swarm,
-//	 the infohash counter is not changed and the infohash is left in the
-//	 addressFamily hash until it will be cleaned up by collectGarbage.
-// - collectGarbage must run regularly.
-// - A WATCH ... MULTI ... EXEC block fails, if between the WATCH and the 'EXEC'
-// 	 any of the watched keys have changed. The location of the 'MULTI' doesn't
-//	 matter.
+//   - The Delete(Seeder|Leecher) and GraduateLeecher methods never delete an
+//     infohash key from an addressFamily hash. They also never decrement the
+//     infohash counter.
+//   - The Put(Seeder|Leecher) and GraduateLeecher methods only ever add infohash
+//     keys to addressFamily hashes and increment the infohash counter.
+//   - The only method that deletes from the addressFamily hashes is
+//     collectGarbage, which also decrements the counters. That means that,
+//     even if a Delete(Seeder|Leecher) call removes the last peer from a swarm,
+//     the infohash counter is not changed and the infohash is left in the
+//     addressFamily hash until it will be cleaned up by collectGarbage.
+//   - collectGarbage must run regularly.
+//   - A WATCH ... MULTI ... EXEC block fails, if between the WATCH and the 'EXEC'
+//     any of the watched keys have changed. The location of the 'MULTI' doesn't
+//     matter.
 //
 // We have to analyze four cases to prove our algorithm works. I'll characterize
 // them by a tuple (number of peers in a swarm before WATCH, number of peers in
 // the swarm during the transaction).
 //
-// 1. (0,0), the easy case: The swarm is empty, we watch the key, we execute
-//	  HLEN and find it empty. We remove it and decrement the counter. It stays
-//	  empty the entire time, the transaction goes through.
-// 2. (1,n > 0): The swarm is not empty, we watch the key, we find it non-empty,
-//	  we unwatch the key. All good. No transaction is made, no transaction fails.
-// 3. (0,1): We have to analyze this in two ways.
-// - If the change happens before the HLEN call, we will see that the swarm is
-//	 not empty and start no transaction.
-// - If the change happens after the HLEN, we will attempt a transaction and it
-//   will fail. This is okay, the swarm is not empty, we will try cleaning it up
-//   next time collectGarbage runs.
-// 4. (1,0): Again, two ways:
-// - If the change happens before the HLEN, we will see an empty swarm. This
-//   situation happens if a call to Delete(Seeder|Leecher) removed the last
-//	 peer asynchronously. We will attempt a transaction, but the transaction
-//	 will fail. This is okay, the infohash key will remain in the addressFamily
-//   hash, we will attempt to clean it up the next time 'collectGarbage` runs.
-// - If the change happens after the HLEN, we will not even attempt to make the
-//	 transaction. The infohash key will remain in the addressFamil hash and
-//	 we'll attempt to clean it up the next time collectGarbage runs.
+//  1. (0,0), the easy case: The swarm is empty, we watch the key, we execute
+//     HLEN and find it empty. We remove it and decrement the counter. It stays
+//     empty the entire time, the transaction goes through.
+//  2. (1,n > 0): The swarm is not empty, we watch the key, we find it non-empty,
+//     we unwatch the key. All good. No transaction is made, no transaction fails.
+//  3. (0,1): We have to analyze this in two ways.
+//     - If the change happens before the HLEN call, we will see that the swarm is
+//     not empty and start no transaction.
+//     - If the change happens after the HLEN, we will attempt a transaction and it
+//     will fail. This is okay, the swarm is not empty, we will try cleaning it up
+//     next time collectGarbage runs.
+//  4. (1,0): Again, two ways:
+//     - If the change happens before the HLEN, we will see an empty swarm. This
+//     situation happens if a call to Delete(Seeder|Leecher) removed the last
+//     peer asynchronously. We will attempt a transaction, but the transaction
+//     will fail. This is okay, the infohash key will remain in the addressFamily
+//     hash, we will attempt to clean it up the next time 'collectGarbage` runs.
+//     - If the change happens after the HLEN, we will not even attempt to make the
+//     transaction. The infohash key will remain in the addressFamil hash and
+//     we'll attempt to clean it up the next time collectGarbage runs.
 func (ps *peerStore) collectGarbage(cutoff time.Time) error {
 	select {
 	case <-ps.closed:

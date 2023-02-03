@@ -1,3 +1,6 @@
+// Package varinterval provides a middleware implementation that handles
+// announcement intervals according to configured ranges,
+// giving different values for each peer so they don't re-announce at the same time.
 package varinterval
 
 import (

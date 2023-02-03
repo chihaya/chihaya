@@ -1,3 +1,4 @@
+// Package storage provides abstractions and implementations for storing and retrieving peers from their announced infohashes.
 package storage
 
 import (
@@ -34,12 +35,12 @@ var ErrDriverDoesNotExist = errors.New("peer store driver with that name does no
 // Implementations of the PeerStore interface must do the following in addition
 // to implementing the methods of the interface in the way documented:
 //
-// - Implement a garbage-collection strategy that ensures stale data is removed.
+//   - Implement a garbage-collection strategy that ensures stale data is removed.
 //     For example, a timestamp on each InfoHash/Peer combination can be used
 //     to track the last activity for that Peer. The entire database can then
 //     be scanned periodically and too old Peers removed. The intervals and
 //     durations involved should be configurable.
-// - IPv4 and IPv6 swarms must be isolated from each other.
+//   - IPv4 and IPv6 swarms must be isolated from each other.
 //     A PeerStore must be able to transparently handle IPv4 and IPv6 Peers, but
 //     must separate them. AnnouncePeers and ScrapeSwarm must return information
 //     about the Swarm matching the given AddressFamily only.
