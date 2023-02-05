@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"strings"
 
 	"github.com/chihaya/chihaya/bittorrent"
 )
@@ -162,10 +163,15 @@ func requestedIP(r *http.Request, p bittorrent.Params, opts ParseOptions) (ip ne
 
 	if opts.RealIPHeader != "" {
 		if ip := r.Header.Get(opts.RealIPHeader); ip != "" {
+			ip = removePort(strings.TrimSpace(strings.Split(ip, ",")[0]))
 			return net.ParseIP(ip), false
 		}
 	}
 
 	host, _, _ := net.SplitHostPort(r.RemoteAddr)
 	return net.ParseIP(host), false
+}
+
+func removePort(ip string) string {
+	return strings.Split(ip, ":")[0]
 }
