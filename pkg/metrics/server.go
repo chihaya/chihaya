@@ -7,6 +7,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/pprof"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
@@ -46,7 +47,7 @@ func NewServer(addr string) *Server {
 		srv: &http.Server{
 			Addr:              addr,
 			Handler:           mux,
-			ReadHeaderTimeout: 60,
+			ReadHeaderTimeout: time.Second * 60,
 		},
 	}
 
