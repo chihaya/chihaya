@@ -38,6 +38,9 @@ chihaya:
       peer_lifetime: 31m
 
       # The address of redis storage.
+      # The general form represented is:
+      #    redis://[password@]host][/][db]
+      #    redis-socket://[password@]path[?db=db]
       redis_broker: "redis://pwd@127.0.0.1:6379/0"
 
       # The timeout for reading a command reply from redis.

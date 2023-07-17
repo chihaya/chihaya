@@ -152,8 +152,10 @@ chihaya:
   #     # To avoid churn, keep this slightly larger than `announce_interval`
   #     peer_lifetime: "31m"
 
-  #     # The address of redis storage.
+  #     # The address of redis storage for TCP connection
   #     redis_broker: "redis://pwd@127.0.0.1:6379/0"
+  #     # or for Redis local unix socket
+  #     redis_broker: "redis-socket://pwd@/run/redis/redis.sock?db=0"
 
   #     # The timeout for reading a command reply from redis.
   #     redis_read_timeout: "15s"
