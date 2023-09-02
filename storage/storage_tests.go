@@ -47,7 +47,7 @@ func TestPeerStore(t *testing.T, p PeerStore) {
 		err = p.DeleteSeeder(c.ih, c.peer)
 		require.Equal(t, ErrResourceDoesNotExist, err)
 
-		_, err = p.AnnouncePeers(c.ih, false, 50, peer)
+		_, err = p.AnnouncePeers(c.ih, false, 50, peer, nil)
 		require.Equal(t, ErrResourceDoesNotExist, err)
 
 		// Test empty scrape response for non-existent swarms.
@@ -70,12 +70,12 @@ func TestPeerStore(t *testing.T, p PeerStore) {
 		err = p.PutLeecher(c.ih, c.peer)
 		require.Nil(t, err)
 
-		peers, err := p.AnnouncePeers(c.ih, true, 50, peer)
+		peers, err := p.AnnouncePeers(c.ih, true, 50, peer, nil)
 		require.Nil(t, err)
 		require.True(t, containsPeer(peers, c.peer))
 
 		// non-seeder announce should still return the leecher
-		peers, err = p.AnnouncePeers(c.ih, false, 50, peer)
+		peers, err = p.AnnouncePeers(c.ih, false, 50, peer, nil)
 		require.Nil(t, err)
 		require.True(t, containsPeer(peers, c.peer))
 
@@ -86,7 +86,7 @@ func TestPeerStore(t *testing.T, p PeerStore) {
 		err = p.DeleteLeecher(c.ih, c.peer)
 		require.Nil(t, err)
 
-		peers, err = p.AnnouncePeers(c.ih, true, 50, peer)
+		peers, err = p.AnnouncePeers(c.ih, true, 50, peer, nil)
 		require.Nil(t, err)
 		require.False(t, containsPeer(peers, c.peer))
 
@@ -96,7 +96,7 @@ func TestPeerStore(t *testing.T, p PeerStore) {
 		require.Nil(t, err)
 
 		// Should be leecher to see the seeder
-		peers, err = p.AnnouncePeers(c.ih, false, 50, peer)
+		peers, err = p.AnnouncePeers(c.ih, false, 50, peer, nil)
 		require.Nil(t, err)
 		require.True(t, containsPeer(peers, c.peer))
 
@@ -107,7 +107,7 @@ func TestPeerStore(t *testing.T, p PeerStore) {
 		err = p.DeleteSeeder(c.ih, c.peer)
 		require.Nil(t, err)
 
-		peers, err = p.AnnouncePeers(c.ih, false, 50, peer)
+		peers, err = p.AnnouncePeers(c.ih, false, 50, peer, nil)
 		require.Nil(t, err)
 		require.False(t, containsPeer(peers, c.peer))
 
@@ -120,7 +120,7 @@ func TestPeerStore(t *testing.T, p PeerStore) {
 		require.Nil(t, err)
 
 		// Has to be leecher to see the graduated seeder
-		peers, err = p.AnnouncePeers(c.ih, false, 50, peer)
+		peers, err = p.AnnouncePeers(c.ih, false, 50, peer, nil)
 		require.Nil(t, err)
 		require.True(t, containsPeer(peers, c.peer))
 
@@ -129,7 +129,7 @@ func TestPeerStore(t *testing.T, p PeerStore) {
 		require.Equal(t, ErrResourceDoesNotExist, err)
 
 		// Verify it's still there
-		peers, err = p.AnnouncePeers(c.ih, false, 50, peer)
+		peers, err = p.AnnouncePeers(c.ih, false, 50, peer, nil)
 		require.Nil(t, err)
 		require.True(t, containsPeer(peers, c.peer))
 

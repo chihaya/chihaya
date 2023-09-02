@@ -82,7 +82,8 @@ type PeerStore interface {
 	// identified by the provided InfoHash.
 	// The numWant parameter indicates the number of peers requested by the
 	// announcing Peer p. The seeder flag determines whether the Peer announced
-	// as a Seeder.
+	// as a Seeder. The optional peers parameter is used to pass an existing
+	// slice for peers to be appended.
 	// The returned Peers are required to be either all IPv4 or all IPv6.
 	//
 	// The returned Peers should strive be:
@@ -93,7 +94,7 @@ type PeerStore interface {
 	//   leechers
 	//
 	// Returns ErrResourceDoesNotExist if the provided InfoHash is not tracked.
-	AnnouncePeers(infoHash bittorrent.InfoHash, seeder bool, numWant int, p bittorrent.Peer) (peers []bittorrent.Peer, err error)
+	AnnouncePeers(infoHash bittorrent.InfoHash, seeder bool, numWant int, p bittorrent.Peer, peers []bittorrent.Peer) ([]bittorrent.Peer, error)
 
 	// ScrapeSwarm returns information required to answer a Scrape request
 	// about a Swarm identified by the given InfoHash.

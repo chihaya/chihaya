@@ -105,8 +105,9 @@ func (h *responseHook) HandleAnnounce(ctx context.Context, req *bittorrent.Annou
 }
 
 func (h *responseHook) appendPeers(req *bittorrent.AnnounceRequest, resp *bittorrent.AnnounceResponse) error {
+	var peers []bittorrent.Peer
 	seeding := req.Left == 0
-	peers, err := h.store.AnnouncePeers(req.InfoHash, seeding, int(req.NumWant), req.Peer)
+	peers, err := h.store.AnnouncePeers(req.InfoHash, seeding, int(req.NumWant), req.Peer, peers)
 	if err != nil && !errors.Is(err, storage.ErrResourceDoesNotExist) {
 		return err
 	}

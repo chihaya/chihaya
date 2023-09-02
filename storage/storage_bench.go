@@ -394,7 +394,7 @@ func putPeers(ps PeerStore, bd *benchData) error {
 // AnnounceLeecher can run in parallel.
 func AnnounceLeecher(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, putPeers, func(i int, ps PeerStore, bd *benchData) error {
-		_, err := ps.AnnouncePeers(bd.infohashes[0], false, 50, bd.peers[0])
+		_, err := ps.AnnouncePeers(bd.infohashes[0], false, 50, bd.peers[0], nil)
 		return err
 	})
 }
@@ -405,7 +405,7 @@ func AnnounceLeecher(b *testing.B, ps PeerStore) {
 // AnnounceLeecher1kInfohash can run in parallel.
 func AnnounceLeecher1kInfohash(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, putPeers, func(i int, ps PeerStore, bd *benchData) error {
-		_, err := ps.AnnouncePeers(bd.infohashes[i%1000], false, 50, bd.peers[0])
+		_, err := ps.AnnouncePeers(bd.infohashes[i%1000], false, 50, bd.peers[0], nil)
 		return err
 	})
 }
@@ -416,7 +416,7 @@ func AnnounceLeecher1kInfohash(b *testing.B, ps PeerStore) {
 // AnnounceSeeder can run in parallel.
 func AnnounceSeeder(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, putPeers, func(i int, ps PeerStore, bd *benchData) error {
-		_, err := ps.AnnouncePeers(bd.infohashes[0], true, 50, bd.peers[0])
+		_, err := ps.AnnouncePeers(bd.infohashes[0], true, 50, bd.peers[0], nil)
 		return err
 	})
 }
@@ -427,7 +427,7 @@ func AnnounceSeeder(b *testing.B, ps PeerStore) {
 // AnnounceSeeder1kInfohash can run in parallel.
 func AnnounceSeeder1kInfohash(b *testing.B, ps PeerStore) {
 	runBenchmark(b, ps, true, putPeers, func(i int, ps PeerStore, bd *benchData) error {
-		_, err := ps.AnnouncePeers(bd.infohashes[i%1000], true, 50, bd.peers[0])
+		_, err := ps.AnnouncePeers(bd.infohashes[i%1000], true, 50, bd.peers[0], nil)
 		return err
 	})
 }
