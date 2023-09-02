@@ -90,7 +90,7 @@ jobs:
     steps:
       - uses: "actions/checkout@v3"
       - name: "Install Helm"
-        uses: "engineerd/configurator@v0.0.5"
+        uses: "engineerd/configurator@v0.0.10"
         with:
           name: "helm"
           pathInArchive: "linux-amd64/helm"
