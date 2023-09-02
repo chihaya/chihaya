@@ -166,6 +166,12 @@ func (t *Frontend) listen() error {
 	return err
 }
 
+type task struct {
+	buffer *[]byte
+	sender *net.UDPAddr
+	size   int
+}
+
 // serve blocks while listening and serving UDP BitTorrent requests
 // until Stop() is called or an error is returned.
 func (t *Frontend) serve() error {
@@ -173,6 +179,33 @@ func (t *Frontend) serve() error {
 
 	t.wg.Add(1)
 	defer t.wg.Done()
+	cInput := make(chan *task)
+	for i := 0; i < 128; i++ {
+		go func() {
+			for task := range cInput {
+				if ip := task.sender.IP.To4(); ip != nil {
+					task.sender.IP = ip
+				}
+
+				// Handle the request.
+				var start time.Time
+				if t.EnableRequestTiming {
+					start = time.Now()
+				}
+				action, af, err := t.handleRequest(
+					// Make sure the IP is copied, not referenced.
+					Request{(*task.buffer)[:task.size], append([]byte{}, task.sender.IP...)},
+					ResponseWriter{t.socket, task.sender},
+				)
+				if t.EnableRequestTiming {
+					recordResponseDuration(action, af, err, time.Since(start))
+				} else {
+					recordResponseDuration(action, af, err, time.Duration(0))
+				}
+				pool.Put(task.buffer)
+			}
+		}()
+	}
 
 	for {
 		// Check to see if we need to shutdown.
@@ -202,31 +235,7 @@ func (t *Frontend) serve() error {
 			continue
 		}
 
-		t.wg.Add(1)
-		go func() {
-			defer t.wg.Done()
-			defer pool.Put(buffer)
-
-			if ip := addr.IP.To4(); ip != nil {
-				addr.IP = ip
-			}
-
-			// Handle the request.
-			var start time.Time
-			if t.EnableRequestTiming {
-				start = time.Now()
-			}
-			action, af, err := t.handleRequest(
-				// Make sure the IP is copied, not referenced.
-				Request{(*buffer)[:n], append([]byte{}, addr.IP...)},
-				ResponseWriter{t.socket, addr},
-			)
-			if t.EnableRequestTiming {
-				recordResponseDuration(action, af, err, time.Since(start))
-			} else {
-				recordResponseDuration(action, af, err, time.Duration(0))
-			}
-		}()
+		cInput <- &task{sender: addr, size: n, buffer: buffer}
 	}
 }
 
