@@ -98,9 +98,18 @@ func (cfg Config) Validate() Config {
 
 // Frontend holds the state of a UDP BitTorrent Frontend.
 type Frontend struct {
-	socket  *net.UDPConn
+	socket *net.UDPConn
+
+	// A mutex for the closing channel, to make sure concurrent calls to Stop
+	// are thread-safe.
+	closingM sync.Mutex
+	// A channel to indicate we are shutting down.
 	closing chan struct{}
-	wg      sync.WaitGroup
+	// A channel that is closed once serve exits. Ensures clean shutdown.
+	serveShutdown chan struct{}
+	// A wait group for all goroutines spawned by the frontend.
+	// After serveShutdown is closed, no more calls to Add can be made.
+	wg sync.WaitGroup
 
 	genPool *sync.Pool
 
@@ -114,9 +123,10 @@ func NewFrontend(logic frontend.TrackerLogic, provided Config) (*Frontend, error
 	cfg := provided.Validate()
 
 	f := &Frontend{
-		closing: make(chan struct{}),
-		logic:   logic,
-		Config:  cfg,
+		closing:       make(chan struct{}),
+		serveShutdown: make(chan struct{}),
+		logic:         logic,
+		Config:        cfg,
 		genPool: &sync.Pool{
 			New: func() interface{} {
 				return NewConnectionIDGenerator(cfg.PrivateKey)
@@ -128,7 +138,9 @@ func NewFrontend(logic frontend.TrackerLogic, provided Config) (*Frontend, error
 		return nil, err
 	}
 
+	f.wg.Add(1)
 	go func() {
+		defer f.wg.Done()
 		if err := f.serve(); err != nil {
 			log.Fatal("failed while serving udp", log.Err(err))
 		}
@@ -137,18 +149,34 @@ func NewFrontend(logic frontend.TrackerLogic, provided Config) (*Frontend, error
 	return f, nil
 }
 
-// Stop provides a thread-safe way to shutdown a currently running Frontend.
+// Stop provides a thread-safe way to shut down a currently running Frontend.
 func (t *Frontend) Stop() stop.Result {
+	t.closingM.Lock()
 	select {
 	case <-t.closing:
+		t.closingM.Unlock()
 		return stop.AlreadyStopped
 	default:
+		close(t.closing)
 	}
+	t.closingM.Unlock()
 
+	// Set socket read deadline to zero.
+	// This will cancel any pending reads on the socket.
+	_ = t.socket.SetReadDeadline(time.Now())
+
+	// Depending on where the goroutine handling serve() currently is,
+	// it may still launch a goroutine on previously-read data.
+	// It will eventually realize we're closing and, after that, close
+	// serveShutdown.
+	// In order to avoid a race condition on the WaitGroup, we must ensure
+	// that Add is never called after Wait. To do that, we wait for serve
+	// to exit using above mechanism.
+	<-t.serveShutdown
+
+	// Finally, wait for outstanding work and close the socket.
 	c := make(stop.Channel)
 	go func() {
-		close(t.closing)
-		_ = t.socket.SetReadDeadline(time.Now())
 		t.wg.Wait()
 		c.Done(t.socket.Close())
 	}()
@@ -169,10 +197,8 @@ func (t *Frontend) listen() error {
 // serve blocks while listening and serving UDP BitTorrent requests
 // until Stop() is called or an error is returned.
 func (t *Frontend) serve() error {
+	defer func() { close(t.serveShutdown) }()
 	pool := bytepool.New(2048)
-
-	t.wg.Add(1)
-	defer t.wg.Done()
 
 	for {
 		// Check to see if we need to shutdown.
