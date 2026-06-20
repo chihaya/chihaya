@@ -2,7 +2,7 @@ package main
 
 import (
 	"errors"
-	"io/ioutil"
+	"io"
 	"os"
 
 	yaml "gopkg.in/yaml.v2"
@@ -76,7 +76,7 @@ func ParseConfigFile(path string) (*ConfigFile, error) {
 	}
 	defer f.Close()
 
-	contents, err := ioutil.ReadAll(f)
+	contents, err := io.ReadAll(f)
 	if err != nil {
 		return nil, err
 	}

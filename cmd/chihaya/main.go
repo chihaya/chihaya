@@ -134,7 +134,7 @@ func (r *Run) Stop(keepPeerStore bool) (storage.PeerStore, error) {
 
 // RootRunCmdFunc implements a Cobra command that runs an instance of Chihaya
 // and handles reloading and shutdown via process signals.
-func RootRunCmdFunc(cmd *cobra.Command, args []string) error {
+func RootRunCmdFunc(cmd *cobra.Command, _ []string) error {
 	configFilePath, err := cmd.Flags().GetString("config")
 	if err != nil {
 		return err
@@ -172,7 +172,7 @@ func RootRunCmdFunc(cmd *cobra.Command, args []string) error {
 }
 
 // RootPreRunCmdFunc handles command line flags for the Run command.
-func RootPreRunCmdFunc(cmd *cobra.Command, args []string) error {
+func RootPreRunCmdFunc(cmd *cobra.Command, _ []string) error {
 	noColors, err := cmd.Flags().GetBool("nocolors")
 	if err != nil {
 		return err
@@ -204,7 +204,7 @@ func RootPreRunCmdFunc(cmd *cobra.Command, args []string) error {
 
 // RootPostRunCmdFunc handles clean up of any state initialized by command line
 // flags.
-func RootPostRunCmdFunc(cmd *cobra.Command, args []string) error {
+func RootPostRunCmdFunc(_ *cobra.Command, _ []string) error {
 	return nil
 }
 

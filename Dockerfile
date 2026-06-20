@@ -1,5 +1,5 @@
 FROM golang:alpine AS build-env
-LABEL maintainer "Jimmy Zelinskie <jimmyzelinskie+git@gmail.com>"
+LABEL maintainer="Jimmy Zelinskie <jimmyzelinskie+git@gmail.com>"
 
 # Install OS-level dependencies.
 RUN apk add --no-cache curl git

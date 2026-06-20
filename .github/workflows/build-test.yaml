@@ -1,6 +1,5 @@
----
 name: "Build & Test"
-on:  # yamllint disable-line rule:truthy
+on:
   push:
     branches:
       - "!dependabot/*"
@@ -13,82 +12,45 @@ jobs:
     name: "Build Binary"
     runs-on: "ubuntu-latest"
     steps:
-      - uses: "actions/checkout@v3"
-      - uses: "actions/setup-go@v3"
+      - uses: "actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd" # v6.0.2
+      - uses: "actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c" # v6.4.0
         with:
-          go-version: "^1.17"
-      - uses: "authzed/actions/go-build@main"
-
+          go-version-file: "go.mod"
+      - name: "Run Go Build"
+        run: "VERBOSE=1 make build"
   image-build:
     name: "Build Container Image"
     runs-on: "ubuntu-latest"
     steps:
-      - uses: "actions/checkout@v3"
-      - uses: "authzed/actions/docker-build@main"
-
+      - uses: "actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd" # v6.0.2
+      - uses: "docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf" # v7.2.0
   unit:
     name: "Run Unit Tests"
     runs-on: "ubuntu-latest"
     steps:
-      - uses: "actions/checkout@v3"
-      - uses: "actions/setup-go@v3"
+      - uses: "actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd" # v6.0.2
+      - uses: "actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c" # v6.4.0
         with:
-          go-version: "^1.18"
-      - uses: "authzed/actions/go-test@main"
-
-  e2e-mem:
-    name: "E2E Memory Tests"
+          go-version-file: "go.mod"
+      - name: "Run Go Test"
+        run: "VERBOSE=1 make test-unit"
+  e2e:
+    name: "E2E Tests"
     runs-on: "ubuntu-latest"
     steps:
-      - uses: "actions/checkout@v3"
-      - uses: "actions/setup-go@v3"
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
-          go-version: "^1.18"
-      - name: "Install and configure chihaya"
-        run: |
-          go install ./cmd/chihaya
-          cat ./dist/example_config.yaml
+          go-version-file: go.mod
+      - name: "Install redis"
+        run: "sudo apt-get update && sudo apt-get install redis"
       - name: "Run end-to-end tests"
-        run: |
-          chihaya --config=./dist/example_config.yaml --debug &
-          pid=$!
-          sleep 2
-          chihaya e2e --debug
-          kill $pid
-
-  e2e-redis:
-    name: "E2E Redis Tests"
-    runs-on: "ubuntu-latest"
-    services:
-      redis:
-        image: "redis"
-        ports: ["6379:6379"]
-        options: "--entrypoint redis-server"
-    steps:
-      - uses: "actions/checkout@v3"
-      - uses: "actions/setup-go@v3"
-        with:
-          go-version: "^1.18"
-      - name: "Install and configure chihaya"
-        run: |
-          go install ./cmd/chihaya
-          curl -LO https://github.com/jzelinskie/faq/releases/download/0.0.6/faq-linux-amd64
-          chmod +x faq-linux-amd64
-          ./faq-linux-amd64 '.chihaya.storage = {"config":{"gc_interval":"3m","peer_lifetime":"31m","prometheus_reporting_interval":"1s","redis_broker":"redis://127.0.0.1:6379/0","redis_connect_timeout":"15s","redis_read_timeout":"15s","redis_write_timeout":"15s"},"name":"redis"}' ./dist/example_config.yaml > ./dist/example_redis_config.yaml
-          cat ./dist/example_redis_config.yaml
-      - name: "Run end-to-end tests"
-        run: |
-          chihaya --config=./dist/example_redis_config.yaml --debug &
-          pid=$!
-          sleep 2
-          chihaya e2e --debug
-          kill $pid
-
+        run: "make test-e2e"
   helm:
     name: "Helm Template"
     runs-on: "ubuntu-latest"
     steps:
-      - uses: "actions/checkout@v3"
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: "Install Helm"
         uses: "engineerd/configurator@v0.0.5"
         with:
@@ -100,5 +62,4 @@ jobs:
           urlTemplate: "https://get.helm.sh/helm-{{version}}-linux-amd64.tar.gz"
           token: "${{ secrets.GITHUB_TOKEN }}"
       - name: "Run `helm template`"
-        working-directory: "./dist/helm/chihaya"
-        run: "helm template . --debug"
+        run: "make test-helm"

@@ -1,54 +1,52 @@
----
-run:
-  timeout: "5m"
-output:
-  sort-results: true
-linters-settings:
-  goimports:
-    local-prefixes: "github.com/chihaya/chihaya"
-  staticcheck:
-    checks:
-      - "all"
-      - "-SA1019"  # Allow netErr.Temporary
-  gosec:
-    excludes:
-      - "G404"  # Allow the usage of math/rand
+version: "2"
 linters:
   enable:
-    - "bidichk"
-    - "bodyclose"
-    - "deadcode"
-    - "errcheck"
-    - "errname"
-    - "errorlint"
-    - "gofumpt"
-    - "goimports"
-    - "goprintffuncname"
-    - "gosec"
-    - "gosimple"
-    - "govet"
-    - "ifshort"
-    - "importas"
-    - "ineffassign"
-    - "makezero"
-    - "prealloc"
-    - "predeclared"
-    - "revive"
-    - "rowserrcheck"
-    - "staticcheck"
-    - "structcheck"
-    - "stylecheck"
-    - "tenv"
-    - "typecheck"
-    - "unconvert"
-    - "unused"
-    - "varcheck"
-    - "wastedassign"
-    - "whitespace"
-issues:
-  include:
-    - "EXC0012"  # Exported should have comment
-    - "EXC0012"  # Exported should have comment
-    - "EXC0013"  # Package comment should be of form
-    - "EXC0014"  # Comment on exported should be of form
-    - "EXC0015"  # Should have a package comment
+    - bidichk
+    - bodyclose
+    - errname
+    - errorlint
+    - goprintffuncname
+    - gosec
+    - importas
+    - makezero
+    - prealloc
+    - predeclared
+    - revive
+    - rowserrcheck
+    - staticcheck
+    - unconvert
+    - wastedassign
+    - whitespace
+  settings:
+    gosec:
+      excludes:
+        - G404
+        - G115
+    staticcheck:
+      checks:
+        - all
+        - -SA1019
+  exclusions:
+    generated: lax
+    presets:
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/chihaya/chihaya
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

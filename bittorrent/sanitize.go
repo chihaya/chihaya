@@ -25,11 +25,11 @@ func SanitizeAnnounce(r *AnnounceRequest, maxNumWant, defaultNumWant uint32) err
 		r.NumWant = maxNumWant
 	}
 
-	if ip := r.Peer.IP.To4(); ip != nil {
-		r.Peer.IP.IP = ip
-		r.Peer.IP.AddressFamily = IPv4
-	} else if len(r.Peer.IP.IP) == net.IPv6len { // implies r.Peer.IP.To4() == nil
-		r.Peer.IP.AddressFamily = IPv6
+	if ip := r.IP.To4(); ip != nil {
+		r.IP.IP = ip
+		r.IP.AddressFamily = IPv4
+	} else if len(r.IP.IP) == net.IPv6len { // implies r.IP.To4() == nil
+		r.IP.AddressFamily = IPv6
 	} else {
 		return ErrInvalidIP
 	}
