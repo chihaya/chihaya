@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"slices"
 	"strings"
@@ -26,7 +27,6 @@ import (
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/middleware"
-	"github.com/chihaya/chihaya/pkg/log"
 	"github.com/chihaya/chihaya/pkg/stop"
 )
 
@@ -68,14 +68,14 @@ type Config struct {
 	JWKUpdateInterval time.Duration `yaml:"jwk_set_update_interval"`
 }
 
-// LogFields implements log.Fielder for a Config.
-func (cfg Config) LogFields() log.Fields {
-	return log.Fields{
-		"issuer":            cfg.Issuer,
-		"audience":          cfg.Audience,
-		"JWKSetURL":         cfg.JWKSetURL,
-		"JWKUpdateInterval": cfg.JWKUpdateInterval,
-	}
+// LogValue renders the config as a set of log fields.
+func (cfg Config) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("issuer", cfg.Issuer),
+		slog.String("audience", cfg.Audience),
+		slog.String("jwkSetURL", cfg.JWKSetURL),
+		slog.Duration("jwkUpdateInterval", cfg.JWKUpdateInterval),
+	)
 }
 
 type hook struct {
@@ -86,14 +86,14 @@ type hook struct {
 
 // NewHook returns an instance of the JWT middleware.
 func NewHook(cfg Config) (middleware.Hook, error) {
-	log.Debug("creating new JWT middleware", cfg)
+	slog.Debug("creating new JWT middleware", slog.Any("config", &cfg))
 	h := &hook{
 		cfg:        cfg,
 		publicKeys: map[string]crypto.PublicKey{},
 		closing:    make(chan struct{}),
 	}
 
-	log.Debug("performing initial fetch of JWKs")
+	slog.Debug("performing initial fetch of JWKs")
 	if err := h.updateKeys(); err != nil {
 		return nil, errors.New("failed to fetch initial JWK Set: " + err.Error())
 	}
@@ -104,7 +104,7 @@ func NewHook(cfg Config) (middleware.Hook, error) {
 			case <-h.closing:
 				return
 			case <-time.After(cfg.JWKUpdateInterval):
-				log.Debug("performing fetch of JWKs")
+				slog.Debug("performing fetch of JWKs")
 				_ = h.updateKeys()
 			}
 		}
@@ -116,7 +116,7 @@ func NewHook(cfg Config) (middleware.Hook, error) {
 func (h *hook) updateKeys() error {
 	resp, err := http.Get(h.cfg.JWKSetURL)
 	if err != nil {
-		log.Error("failed to fetch JWK Set", log.Err(err))
+		slog.Error("failed to fetch JWK Set", slog.Any("error", err))
 		return err
 	}
 
@@ -124,7 +124,7 @@ func (h *hook) updateKeys() error {
 	err = json.NewDecoder(resp.Body).Decode(&parsedJWKs)
 	if err != nil {
 		resp.Body.Close()
-		log.Error("failed to decode JWK JSON", log.Err(err))
+		slog.Error("failed to decode JWK JSON", slog.Any("error", err))
 		return err
 	}
 	resp.Body.Close()
@@ -133,19 +133,19 @@ func (h *hook) updateKeys() error {
 	for _, parsedJWK := range parsedJWKs.Keys {
 		publicKey, err := parsedJWK.DecodePublicKey()
 		if err != nil {
-			log.Error("failed to decode JWK into public key", log.Err(err))
+			slog.Error("failed to decode JWK into public key", slog.Any("error", err))
 			return err
 		}
 		keys[parsedJWK.Kid] = publicKey
 	}
 	h.publicKeys = keys
 
-	log.Debug("successfully fetched JWK Set")
+	slog.Debug("successfully fetched JWK Set")
 	return nil
 }
 
 func (h *hook) Stop() stop.Result {
-	log.Debug("attempting to shutdown JWT middleware")
+	slog.Debug("attempting to shutdown JWT middleware")
 	select {
 	case <-h.closing:
 		return stop.AlreadyStopped
@@ -182,6 +182,7 @@ func (h *hook) HandleScrape(ctx context.Context, _ *bittorrent.ScrapeRequest, _ 
 }
 
 func validateJWT(ih bittorrent.InfoHash, jwtBytes []byte, cfgIss, cfgAud string, publicKeys map[string]crypto.PublicKey) error {
+	ctx := context.TODO()
 	parsedJWT, err := jws.ParseJWT(jwtBytes)
 	if err != nil {
 		return err
@@ -189,59 +190,87 @@ func validateJWT(ih bittorrent.InfoHash, jwtBytes []byte, cfgIss, cfgAud string,
 
 	claims := parsedJWT.Claims()
 	if iss, ok := claims.Issuer(); !ok || iss != cfgIss {
-		log.Debug("unequal or missing issuer when validating JWT", log.Fields{
-			"exists": ok,
-			"claim":  iss,
-			"config": cfgIss,
-		})
+		if slog.Default().Enabled(ctx, slog.LevelDebug) {
+			slog.LogAttrs(
+				ctx,
+				slog.LevelDebug,
+				"unequal or missing issuer when validating JWT",
+				slog.Bool("exists", ok),
+				slog.String("claim", iss),
+				slog.String("config", cfgIss),
+			)
+		}
 		return jwt.ErrInvalidISSClaim
 	}
 
-	if auds, ok := claims.Audience(); !ok || !in(cfgAud, auds) {
-		log.Debug("unequal or missing audience when validating JWT", log.Fields{
-			"exists": ok,
-			"claim":  strings.Join(auds, ","),
-			"config": cfgAud,
-		})
+	if auds, ok := claims.Audience(); !ok || !slices.Contains(auds, cfgAud) {
+		if slog.Default().Enabled(ctx, slog.LevelDebug) {
+			slog.LogAttrs(
+				ctx,
+				slog.LevelDebug,
+				"unequal or missing audience when validating JWT",
+				slog.Bool("exists", ok),
+				slog.String("claim", strings.Join(auds, ",")),
+				slog.String("config", cfgAud),
+			)
+		}
 		return jwt.ErrInvalidAUDClaim
 	}
 
 	ihHex := hex.EncodeToString(ih[:])
 	if ihClaim, ok := claims.Get("infohash").(string); !ok || ihClaim != ihHex {
-		log.Debug("unequal or missing infohash when validating JWT", log.Fields{
-			"exists":  ok,
-			"claim":   ihClaim,
-			"request": ihHex,
-		})
+		if slog.Default().Enabled(ctx, slog.LevelDebug) {
+			slog.LogAttrs(
+				ctx,
+				slog.LevelDebug,
+				"unequal or missing infohash when validating JWT",
+				slog.Bool("exists", ok),
+				slog.String("claim", ihClaim),
+				slog.String("request", ihHex),
+			)
+		}
 		return errors.New("claim \"infohash\" is invalid")
 	}
 
 	parsedJWS := parsedJWT.(jws.JWS)
 	kid, ok := parsedJWS.Protected().Get("kid").(string)
 	if !ok {
-		log.Debug("missing kid when validating JWT", log.Fields{
-			"exists": ok,
-			"claim":  kid,
-		})
+		if slog.Default().Enabled(ctx, slog.LevelDebug) {
+			slog.LogAttrs(
+				ctx,
+				slog.LevelDebug,
+				"missing kid when validating JWT",
+				slog.Bool("exists", ok),
+				slog.String("claim", kid),
+			)
+		}
 		return errors.New("invalid kid")
 	}
 	publicKey, ok := publicKeys[kid]
 	if !ok {
-		log.Debug("missing public key forkid when validating JWT", log.Fields{
-			"kid": kid,
-		})
+		if slog.Default().Enabled(ctx, slog.LevelDebug) {
+			slog.LogAttrs(
+				ctx,
+				slog.LevelDebug,
+				"missing public key forkid when validating JWT",
+				slog.String("kid", kid),
+			)
+		}
 		return errors.New("signed by unknown kid")
 	}
 
 	err = parsedJWS.Verify(publicKey, jc.SigningMethodRS256)
 	if err != nil {
-		log.Debug("failed to verify signature of JWT", log.Err(err))
+		if slog.Default().Enabled(ctx, slog.LevelDebug) {
+			slog.LogAttrs(
+				ctx,
+				slog.LevelDebug,
+				"failed to verify signature of JWT",
+				slog.Any("error", err),
+			)
+		}
 		return err
 	}
 
 	return nil
-}
-
-func in(x string, xs []string) bool {
-	return slices.Contains(xs, x)
 }

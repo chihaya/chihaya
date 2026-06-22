@@ -3,10 +3,10 @@ package storage
 
 import (
 	"errors"
+	"log/slog"
 	"sync"
 
 	"github.com/chihaya/chihaya/bittorrent"
-	"github.com/chihaya/chihaya/pkg/log"
 	"github.com/chihaya/chihaya/pkg/stop"
 )
 
@@ -110,9 +110,9 @@ type PeerStore interface {
 	// For more details see the documentation in the stop package.
 	stop.Stopper
 
-	// log.Fielder returns a loggable version of the data used to configure and
-	// operate a particular PeerStore.
-	log.Fielder
+	// log.LogValuer returns a loggable version of the data used to configure
+	// and operate a particular PeerStore.
+	slog.LogValuer
 }
 
 // RegisterDriver makes a Driver available by the provided name.

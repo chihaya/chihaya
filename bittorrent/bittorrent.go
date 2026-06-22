@@ -5,10 +5,9 @@ package bittorrent
 
 import (
 	"fmt"
+	"log/slog"
 	"net"
 	"time"
-
-	"github.com/chihaya/chihaya/pkg/log"
 )
 
 // PeerID represents a peer ID.
@@ -106,22 +105,22 @@ type AnnounceRequest struct {
 	Params
 }
 
-// LogFields renders the current response as a set of log fields.
-func (r AnnounceRequest) LogFields() log.Fields {
-	return log.Fields{
-		"event":           r.Event,
-		"infoHash":        r.InfoHash,
-		"compact":         r.Compact,
-		"eventProvided":   r.EventProvided,
-		"numWantProvided": r.NumWantProvided,
-		"ipProvided":      r.IPProvided,
-		"numWant":         r.NumWant,
-		"left":            r.Left,
-		"downloaded":      r.Downloaded,
-		"uploaded":        r.Uploaded,
-		"peer":            r.Peer,
-		"params":          r.Params,
-	}
+// LogValue renders the current request as a set of log fields.
+func (r AnnounceRequest) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("event", r.Event.String()),
+		slog.String("infoHash", r.InfoHash.String()),
+		slog.Bool("compact", r.Compact),
+		slog.Bool("eventProvided", r.EventProvided),
+		slog.Bool("numWantProvided", r.NumWantProvided),
+		slog.Bool("ipProvided", r.IPProvided),
+		slog.Uint64("numWant", uint64(r.NumWant)),
+		slog.Uint64("left", r.Left),
+		slog.Uint64("downloaded", r.Downloaded),
+		slog.Uint64("uploaded", r.Uploaded),
+		slog.Any("peer", &r.Peer),
+		slog.String("params", r.RawQuery()),
+	)
 }
 
 // AnnounceResponse represents the parameters used to create an announce
@@ -136,16 +135,28 @@ type AnnounceResponse struct {
 	IPv6Peers   []Peer
 }
 
-// LogFields renders the current response as a set of log fields.
-func (r AnnounceResponse) LogFields() log.Fields {
-	return log.Fields{
-		"compact":     r.Compact,
-		"complete":    r.Complete,
-		"interval":    r.Interval,
-		"minInterval": r.MinInterval,
-		"ipv4Peers":   r.IPv4Peers,
-		"ipv6Peers":   r.IPv6Peers,
+// LogValue renders the current response as a set of log fields.
+func (r AnnounceResponse) LogValue() slog.Value {
+	ipv4s := make([]slog.Value, 0, len(r.IPv4Peers))
+	for _, p := range r.IPv4Peers {
+		ipv4s = append(ipv4s, p.LogValue())
 	}
+
+	ipv6s := make([]slog.Value, 0, len(r.IPv6Peers))
+	for _, p := range r.IPv6Peers {
+		ipv6s = append(ipv6s, p.LogValue())
+	}
+
+	return slog.GroupValue(
+		slog.Bool("compact", r.Compact),
+		slog.Uint64("complete", uint64(r.Complete)),
+		slog.Uint64("incomplete", uint64(r.Incomplete)),
+		slog.Duration("interval", r.Interval),
+		slog.Duration("minInterval", r.MinInterval),
+		// TODO(jzelinskie): avoid reflection for these
+		slog.Any("ipv4Peers", ipv4s),
+		slog.Any("ipv6Peers", ipv6s),
+	)
 }
 
 // ScrapeRequest represents the parsed parameters from a scrape request.
@@ -155,13 +166,13 @@ type ScrapeRequest struct {
 	Params        Params
 }
 
-// LogFields renders the current response as a set of log fields.
-func (r ScrapeRequest) LogFields() log.Fields {
-	return log.Fields{
-		"addressFamily": r.AddressFamily,
-		"infoHashes":    r.InfoHashes,
-		"params":        r.Params,
-	}
+// LogValue renders the request as a set of log fields.
+func (r ScrapeRequest) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("addressFamily", r.AddressFamily.String()),
+		slog.Any("infoHashes", r.InfoHashes), // TODO(jzelinskie): avoid reflection for this
+		slog.String("params", r.Params.RawQuery()),
+	)
 }
 
 // ScrapeResponse represents the parameters used to create a scrape response.
@@ -172,11 +183,14 @@ type ScrapeResponse struct {
 	Files []Scrape
 }
 
-// LogFields renders the current response as a set of Logrus fields.
-func (sr ScrapeResponse) LogFields() log.Fields {
-	return log.Fields{
-		"files": sr.Files,
+// LogValue renders the response as a set of log fields.
+func (sr ScrapeResponse) LogValue() slog.Value {
+	files := make([]slog.Value, 0, len(sr.Files))
+	for _, f := range sr.Files {
+		files = append(files, f.LogValue())
 	}
+
+	return slog.GroupValue(slog.Any("files", files))
 }
 
 // Scrape represents the state of a swarm that is returned in a scrape response.
@@ -185,6 +199,16 @@ type Scrape struct {
 	Snatches   uint32
 	Complete   uint32
 	Incomplete uint32
+}
+
+// LogValue renders the current swarm as a set of log fields.
+func (s Scrape) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("infoHash", s.InfoHash.String()),
+		slog.Uint64("snatches", uint64(s.Snatches)),
+		slog.Uint64("complete", uint64(s.Complete)),
+		slog.Uint64("incomplete", uint64(s.Incomplete)),
+	)
 }
 
 // AddressFamily is the address family of an IP address.
@@ -232,13 +256,13 @@ func (p Peer) String() string {
 	return fmt.Sprintf("%s@[%s]:%d", p.ID.String(), p.IP.String(), p.Port)
 }
 
-// LogFields renders the current peer as a set of Logrus fields.
-func (p Peer) LogFields() log.Fields {
-	return log.Fields{
-		"ID":   p.ID,
-		"IP":   p.IP,
-		"port": p.Port,
-	}
+// LogValue renders the Peer as a set of log fields.
+func (p Peer) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("ID", p.ID.String()),
+		slog.String("IP", p.IP.String()),
+		slog.Int("port", int(p.Port)),
+	)
 }
 
 // Equal reports whether p and x are the same.

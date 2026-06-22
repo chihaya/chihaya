@@ -1,9 +1,9 @@
 package bittorrent
 
 import (
+	"context"
+	"log/slog"
 	"net"
-
-	"github.com/chihaya/chihaya/pkg/log"
 )
 
 // ErrInvalidIP indicates an invalid IP for an Announce.
@@ -34,10 +34,16 @@ func SanitizeAnnounce(r *AnnounceRequest, maxNumWant, defaultNumWant uint32) err
 		return ErrInvalidIP
 	}
 
-	log.Debug("sanitized announce", r, log.Fields{
-		"maxNumWant":     maxNumWant,
-		"defaultNumWant": defaultNumWant,
-	})
+	if slog.Default().Enabled(context.TODO(), slog.LevelDebug) {
+		slog.LogAttrs(
+			context.TODO(),
+			slog.LevelDebug,
+			"sanitized announce",
+			slog.Any("request", r),
+			slog.Uint64("maxNumWant", uint64(maxNumWant)),
+			slog.Uint64("defaultNumWant", uint64(defaultNumWant)),
+		)
+	}
 	return nil
 }
 
@@ -48,8 +54,14 @@ func SanitizeScrape(r *ScrapeRequest, maxScrapeInfoHashes uint32) error {
 		r.InfoHashes = r.InfoHashes[:maxScrapeInfoHashes]
 	}
 
-	log.Debug("sanitized scrape", r, log.Fields{
-		"maxScrapeInfoHashes": maxScrapeInfoHashes,
-	})
+	if slog.Default().Enabled(context.TODO(), slog.LevelDebug) {
+		slog.LogAttrs(
+			context.TODO(),
+			slog.LevelDebug,
+			"sanitized scrape",
+			slog.Any("request", r),
+			slog.Uint64("maxScrapeInfoHashes", uint64(maxScrapeInfoHashes)),
+		)
+	}
 	return nil
 }

@@ -3,7 +3,9 @@
 package memory
 
 import (
+	"context"
 	"encoding/binary"
+	"log/slog"
 	"math"
 	"net"
 	"runtime"
@@ -13,7 +15,6 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/chihaya/chihaya/bittorrent"
-	"github.com/chihaya/chihaya/pkg/log"
 	"github.com/chihaya/chihaya/pkg/stop"
 	"github.com/chihaya/chihaya/pkg/timecache"
 	"github.com/chihaya/chihaya/storage"
@@ -62,15 +63,15 @@ type Config struct {
 	ShardCount                  int           `yaml:"shard_count"`
 }
 
-// LogFields renders the current config as a set of Logrus fields.
-func (cfg Config) LogFields() log.Fields {
-	return log.Fields{
-		"name":               Name,
-		"gcInterval":         cfg.GarbageCollectionInterval,
-		"promReportInterval": cfg.PrometheusReportingInterval,
-		"peerLifetime":       cfg.PeerLifetime,
-		"shardCount":         cfg.ShardCount,
-	}
+// LogValue renders a config as a set of log fields.
+func (cfg Config) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("name", Name),
+		slog.Duration("gcInterval", cfg.GarbageCollectionInterval),
+		slog.Duration("promReportInterval", cfg.PrometheusReportingInterval),
+		slog.Duration("peerLifetime", cfg.PeerLifetime),
+		slog.Int("shardCount", cfg.ShardCount),
+	)
 }
 
 // Validate sanity checks values set in a config and returns a new config with
@@ -82,38 +83,42 @@ func (cfg Config) Validate() Config {
 
 	if cfg.ShardCount <= 0 || cfg.ShardCount > (math.MaxInt/2) {
 		validcfg.ShardCount = defaultShardCount
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     Name + ".ShardCount",
-			"provided": cfg.ShardCount,
-			"default":  validcfg.ShardCount,
-		})
+		slog.Warn(
+			"falling back to default configuration",
+			slog.String("name", Name+".ShardCount"),
+			slog.Int("provided", cfg.ShardCount),
+			slog.Int("default", validcfg.ShardCount),
+		)
 	}
 
 	if cfg.GarbageCollectionInterval <= 0 {
 		validcfg.GarbageCollectionInterval = defaultGarbageCollectionInterval
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     Name + ".GarbageCollectionInterval",
-			"provided": cfg.GarbageCollectionInterval,
-			"default":  validcfg.GarbageCollectionInterval,
-		})
+		slog.Warn(
+			"falling back to default configuration",
+			slog.String("name", Name+".GarbageCollectionInterval"),
+			slog.Duration("provided", cfg.GarbageCollectionInterval),
+			slog.Duration("default", validcfg.GarbageCollectionInterval),
+		)
 	}
 
 	if cfg.PrometheusReportingInterval <= 0 {
 		validcfg.PrometheusReportingInterval = defaultPrometheusReportingInterval
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     Name + ".PrometheusReportingInterval",
-			"provided": cfg.PrometheusReportingInterval,
-			"default":  validcfg.PrometheusReportingInterval,
-		})
+		slog.Warn(
+			"falling back to default configuration",
+			slog.String("name", Name+".PrometheusReportingInterval"),
+			slog.Duration("provided", cfg.PrometheusReportingInterval),
+			slog.Duration("default", validcfg.PrometheusReportingInterval),
+		)
 	}
 
 	if cfg.PeerLifetime <= 0 {
 		validcfg.PeerLifetime = defaultPeerLifetime
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     Name + ".PeerLifetime",
-			"provided": cfg.PeerLifetime,
-			"default":  validcfg.PeerLifetime,
-		})
+		slog.Warn(
+			"falling back to default configuration",
+			slog.String("name", Name+".PeerLifetime"),
+			slog.Duration("provided", cfg.PeerLifetime),
+			slog.Duration("default", validcfg.PeerLifetime),
+		)
 	}
 
 	return validcfg
@@ -142,7 +147,14 @@ func New(provided Config) (storage.PeerStore, error) {
 				return
 			case <-time.After(cfg.GarbageCollectionInterval):
 				before := time.Now().Add(-cfg.PeerLifetime)
-				log.Debug("storage: purging peers with no announces since", log.Fields{"before": before})
+				if slog.Default().Enabled(context.TODO(), slog.LevelDebug) {
+					slog.LogAttrs(
+						context.TODO(),
+						slog.LevelDebug,
+						"storage: purging peers with no announces since",
+						slog.Time("before", before),
+					)
+				}
 				_ = ps.collectGarbage(before)
 			}
 		}
@@ -161,7 +173,10 @@ func New(provided Config) (storage.PeerStore, error) {
 			case <-t.C:
 				before := time.Now()
 				ps.populateProm()
-				log.Debug("storage: populateProm() finished", log.Fields{"timeTaken": time.Since(before)})
+				slog.Debug(
+					"storage: populateProm() finished",
+					slog.Duration("timeTaken", time.Since(before)),
+				)
 			}
 		}
 	}()
@@ -592,6 +607,4 @@ func (ps *peerStore) Stop() stop.Result {
 	return c.Result()
 }
 
-func (ps *peerStore) LogFields() log.Fields {
-	return ps.cfg.LogFields()
-}
+func (ps *peerStore) LogValue() slog.Value { return ps.cfg.LogValue() }

@@ -4,19 +4,21 @@ package main
 import (
 	"context"
 	"errors"
+	"log/slog"
+	"os"
 	"os/signal"
 	"runtime"
 	"strings"
 	"syscall"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"github.com/lmittmann/tint"
+	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
 	"github.com/chihaya/chihaya/frontend/http"
 	"github.com/chihaya/chihaya/frontend/udp"
 	"github.com/chihaya/chihaya/middleware"
-	"github.com/chihaya/chihaya/pkg/log"
 	"github.com/chihaya/chihaya/pkg/metrics"
 	"github.com/chihaya/chihaya/pkg/stop"
 	"github.com/chihaya/chihaya/storage"
@@ -51,16 +53,16 @@ func (r *Run) Start(ps storage.PeerStore) error {
 
 	r.sg = stop.NewGroup()
 
-	log.Info("starting metrics server", log.Fields{"addr": cfg.MetricsAddr})
+	slog.Info("starting metrics server", slog.String("addr", cfg.MetricsAddr))
 	r.sg.Add(metrics.NewServer(cfg.MetricsAddr))
 
 	if ps == nil {
-		log.Info("starting storage", log.Fields{"name": cfg.Storage.Name})
+		slog.Info("starting storage", slog.String("name", cfg.Storage.Name))
 		ps, err = storage.NewPeerStore(cfg.Storage.Name, cfg.Storage.Config)
 		if err != nil {
 			return errors.New("failed to create storage: " + err.Error())
 		}
-		log.Info("started storage", ps)
+		slog.Info("started storage", slog.Any("peerStore", ps))
 	}
 	r.peerStore = ps
 
@@ -73,14 +75,15 @@ func (r *Run) Start(ps storage.PeerStore) error {
 		return errors.New("failed to validate hook config: " + err.Error())
 	}
 
-	log.Info("starting tracker logic", log.Fields{
-		"prehooks":  cfg.PreHookNames(),
-		"posthooks": cfg.PostHookNames(),
-	})
+	slog.Info(
+		"starting tracker logic",
+		slog.Any("prehooks", cfg.PreHookNames()),
+		slog.Any("posthooks", cfg.PostHookNames()),
+	)
 	r.logic = middleware.NewLogic(cfg.ResponseConfig, r.peerStore, preHooks, postHooks)
 
 	if cfg.HTTPConfig.Addr != "" {
-		log.Info("starting HTTP frontend", cfg.HTTPConfig)
+		slog.Info("starting HTTP frontend", slog.Any("config", cfg.HTTPConfig))
 		httpfe, err := http.NewFrontend(r.logic, cfg.HTTPConfig)
 		if err != nil {
 			return err
@@ -89,7 +92,7 @@ func (r *Run) Start(ps storage.PeerStore) error {
 	}
 
 	if cfg.UDPConfig.Addr != "" {
-		log.Info("starting UDP frontend", cfg.UDPConfig)
+		slog.Info("starting UDP frontend", slog.Any("config", cfg.UDPConfig))
 		udpfe, err := udp.NewFrontend(r.logic, cfg.UDPConfig)
 		if err != nil {
 			return err
@@ -111,18 +114,18 @@ func combineErrors(prefix string, errs []error) error {
 
 // Stop shuts down an instance of Chihaya.
 func (r *Run) Stop(keepPeerStore bool) (storage.PeerStore, error) {
-	log.Debug("stopping frontends and metrics server")
+	slog.Debug("stopping frontends and metrics server")
 	if errs := r.sg.Stop().Wait(); len(errs) != 0 {
 		return nil, combineErrors("failed while shutting down frontends", errs)
 	}
 
-	log.Debug("stopping logic")
+	slog.Debug("stopping logic")
 	if errs := r.logic.Stop().Wait(); len(errs) != 0 {
 		return nil, combineErrors("failed while shutting down middleware", errs)
 	}
 
 	if !keepPeerStore {
-		log.Debug("stopping peer store")
+		slog.Debug("stopping peer store")
 		if errs := r.peerStore.Stop().Wait(); len(errs) != 0 {
 			return nil, combineErrors("failed while shutting down peer store", errs)
 		}
@@ -151,7 +154,7 @@ func RootRunCmdFunc(cmd *cobra.Command, _ []string) error {
 	for {
 		select {
 		case <-reload.Done():
-			log.Info("reloading; received reload signal")
+			slog.Info("reloading; received reload signal")
 			peerStore, err := r.Stop(true)
 			if err != nil {
 				return err
@@ -161,7 +164,7 @@ func RootRunCmdFunc(cmd *cobra.Command, _ []string) error {
 				return err
 			}
 		case <-ctx.Done():
-			log.Info("shutting down; received shutdown signal")
+			slog.Info("shutting down; received shutdown signal")
 			if _, err := r.Stop(false); err != nil {
 				return err
 			}
@@ -173,40 +176,42 @@ func RootRunCmdFunc(cmd *cobra.Command, _ []string) error {
 
 // RootPreRunCmdFunc handles command line flags for the Run command.
 func RootPreRunCmdFunc(cmd *cobra.Command, _ []string) error {
-	noColors, err := cmd.Flags().GetBool("nocolors")
-	if err != nil {
+	defer slog.Debug("logging configured")
+	level := slog.LevelInfo
+	if debugLog, err := cmd.Flags().GetBool("debug"); err != nil {
 		return err
-	}
-	if noColors {
-		log.SetFormatter(&logrus.TextFormatter{DisableColors: true})
+	} else if debugLog {
+		level = slog.LevelDebug
 	}
 
-	jsonLog, err := cmd.Flags().GetBool("json")
-	if err != nil {
+	if jsonLog, err := cmd.Flags().GetBool("json"); err != nil {
 		return err
-	}
-	if jsonLog {
-		log.SetFormatter(&logrus.JSONFormatter{})
-		log.Info("enabled JSON logging")
+	} else if jsonLog {
+		slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
+			Level: level,
+		})))
+		return nil
 	}
 
-	debugLog, err := cmd.Flags().GetBool("debug")
-	if err != nil {
+	noColor := !isatty.IsTerminal(os.Stderr.Fd())
+	if noColorsFlag, err := cmd.Flags().GetBool("nocolors"); err != nil {
 		return err
+	} else if noColorsFlag {
+		noColor = true
 	}
-	if debugLog {
-		log.SetDebug(true)
-		log.Info("enabled debug logging")
-	}
+
+	slog.SetDefault(slog.New(tint.NewHandler(os.Stderr, &tint.Options{
+		Level:      level,
+		TimeFormat: time.RFC3339,
+		NoColor:    noColor,
+	})))
 
 	return nil
 }
 
 // RootPostRunCmdFunc handles clean up of any state initialized by command line
 // flags.
-func RootPostRunCmdFunc(_ *cobra.Command, _ []string) error {
-	return nil
-}
+func RootPostRunCmdFunc(_ *cobra.Command, _ []string) error { return nil }
 
 func main() {
 	rootCmd := &cobra.Command{
@@ -242,6 +247,7 @@ func main() {
 	rootCmd.AddCommand(e2eCmd)
 
 	if err := rootCmd.Execute(); err != nil {
-		log.Fatal("failed when executing root cobra command: " + err.Error())
+		slog.Error("failed when executing root cobra command", slog.Any("error", err))
+		os.Exit(1)
 	}
 }

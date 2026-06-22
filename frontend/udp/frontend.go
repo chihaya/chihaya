@@ -8,15 +8,16 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math/rand"
 	"net"
+	"os"
 	"sync"
 	"time"
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/frontend"
 	"github.com/chihaya/chihaya/frontend/udp/bytepool"
-	"github.com/chihaya/chihaya/pkg/log"
 	"github.com/chihaya/chihaya/pkg/stop"
 	"github.com/chihaya/chihaya/pkg/timecache"
 )
@@ -33,18 +34,15 @@ type Config struct {
 	ParseOptions        `yaml:",inline"`
 }
 
-// LogFields renders the current config as a set of Logrus fields.
-func (cfg Config) LogFields() log.Fields {
-	return log.Fields{
-		"addr":                cfg.Addr,
-		"privateKey":          cfg.PrivateKey,
-		"maxClockSkew":        cfg.MaxClockSkew,
-		"enableRequestTiming": cfg.EnableRequestTiming,
-		"allowIPSpoofing":     cfg.AllowIPSpoofing,
-		"maxNumWant":          cfg.MaxNumWant,
-		"defaultNumWant":      cfg.DefaultNumWant,
-		"maxScrapeInfoHashes": cfg.MaxScrapeInfoHashes,
-	}
+// LogValue renders a config as a set of log fields.
+func (cfg Config) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("addr", cfg.Addr),
+		slog.String("privateKey", "REDACTED"),
+		slog.Duration("maxClockSkew", cfg.MaxClockSkew),
+		slog.Bool("enableRequestTiming", cfg.EnableRequestTiming),
+		slog.Any("parseOptions", &cfg.ParseOptions),
+	)
 }
 
 // Validate sanity checks values set in a config and returns a new config with
@@ -63,34 +61,40 @@ func (cfg Config) Validate() Config {
 		}
 		validcfg.PrivateKey = string(pkeyRunes)
 
-		log.Warn("UDP private key was not provided, using generated key", log.Fields{"key": validcfg.PrivateKey})
+		slog.Warn(
+			"UDP private key was not provided, using generated key",
+			slog.String("key", validcfg.PrivateKey),
+		)
 	}
 
 	if cfg.MaxNumWant <= 0 {
 		validcfg.MaxNumWant = defaultMaxNumWant
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     "udp.MaxNumWant",
-			"provided": cfg.MaxNumWant,
-			"default":  validcfg.MaxNumWant,
-		})
+		slog.Warn(
+			"falling back to default configuration",
+			slog.String("name", "udp.MaxNumWant"),
+			slog.Uint64("provided", uint64(cfg.MaxNumWant)),
+			slog.Uint64("default", uint64(validcfg.MaxNumWant)),
+		)
 	}
 
 	if cfg.DefaultNumWant <= 0 {
 		validcfg.DefaultNumWant = defaultDefaultNumWant
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     "udp.DefaultNumWant",
-			"provided": cfg.DefaultNumWant,
-			"default":  validcfg.DefaultNumWant,
-		})
+		slog.Warn(
+			"falling back to default configuration",
+			slog.String("name", "udp.DefaultNumWant"),
+			slog.Uint64("provided", uint64(cfg.DefaultNumWant)),
+			slog.Uint64("default", uint64(validcfg.DefaultNumWant)),
+		)
 	}
 
 	if cfg.MaxScrapeInfoHashes <= 0 {
 		validcfg.MaxScrapeInfoHashes = defaultMaxScrapeInfoHashes
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     "udp.MaxScrapeInfoHashes",
-			"provided": cfg.MaxScrapeInfoHashes,
-			"default":  validcfg.MaxScrapeInfoHashes,
-		})
+		slog.Warn(
+			"falling back to default configuration",
+			slog.String("name", "udp.MaxScrapeInfoHashes"),
+			slog.Uint64("provided", uint64(cfg.MaxScrapeInfoHashes)),
+			slog.Uint64("default", uint64(validcfg.MaxScrapeInfoHashes)),
+		)
 	}
 
 	return validcfg
@@ -142,7 +146,8 @@ func NewFrontend(logic frontend.TrackerLogic, provided Config) (*Frontend, error
 	go func() {
 		defer f.wg.Done()
 		if err := f.serve(); err != nil {
-			log.Fatal("failed while serving udp", log.Err(err))
+			slog.Error("failed while serving udp", slog.Any("error", err))
+			os.Exit(1)
 		}
 	}()
 
@@ -204,7 +209,7 @@ func (t *Frontend) serve() error {
 		// Check to see if we need to shutdown.
 		select {
 		case <-t.closing:
-			log.Debug("udp serve() received shutdown signal")
+			slog.Debug("udp serve() received shutdown signal")
 			return nil
 		default:
 		}

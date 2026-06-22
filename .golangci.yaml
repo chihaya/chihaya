@@ -13,6 +13,7 @@ linters:
     - predeclared
     - revive
     - rowserrcheck
+    - sloglint
     - staticcheck
     - unconvert
     - wastedassign
@@ -26,6 +27,8 @@ linters:
       checks:
         - all
         - -SA1019
+    sloglint:
+      attr-only: true
   exclusions:
     generated: lax
     presets:

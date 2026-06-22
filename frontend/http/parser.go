@@ -2,6 +2,7 @@ package http
 
 import (
 	"errors"
+	"log/slog"
 	"net"
 	"net/http"
 
@@ -19,6 +20,17 @@ type ParseOptions struct {
 	MaxNumWant          uint32 `yaml:"max_numwant"`
 	DefaultNumWant      uint32 `yaml:"default_numwant"`
 	MaxScrapeInfoHashes uint32 `yaml:"max_scrape_infohashes"`
+}
+
+// LogValue renders these options as log fields.
+func (opts *ParseOptions) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.Bool("allowIPSpoofing", opts.AllowIPSpoofing),
+		slog.String("realIPHeader", opts.RealIPHeader),
+		slog.Uint64("maxNumWant", uint64(opts.MaxNumWant)),
+		slog.Uint64("defaultNumWant", uint64(opts.DefaultNumWant)),
+		slog.Uint64("maxScrapeInfoHashes", uint64(opts.MaxScrapeInfoHashes)),
+	)
 }
 
 // Default parser config constants.
