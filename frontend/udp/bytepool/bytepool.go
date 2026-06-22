@@ -12,7 +12,7 @@ type BytePool struct {
 // New allocates a new BytePool with slices of equal length and capacity.
 func New(length int) *BytePool {
 	var bp BytePool
-	bp.Pool.New = func() interface{} {
+	bp.New = func() any {
 		b := make([]byte, length)
 		return &b
 	}

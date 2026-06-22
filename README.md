@@ -59,8 +59,8 @@ In order to compile the project, the [latest stable version of Go] and knowledge
 ```sh
 git clone git@github.com:chihaya/chihaya.git
 cd chihaya
-go build ./cmd/chihaya
-./chihaya --help
+make build
+./bin/chihaya --help
 ```
 
 [latest stable version of Go]: https://golang.org/dl
@@ -75,24 +75,25 @@ Docker containers are available for [HEAD] and [stable] releases.
 
 #### Testing
 
-The following will run all tests and benchmarks.
-Removing `-bench` will just run unit tests.
+[Make] is used to simplify execution of various development tasks.
+Linting, benchmarking, and testing can be done with these commands:
 
 ```sh
-go test -bench $(go list ./...)
+make lint
+make bench
+make test
 ```
 
-The Chihaya executable contains a command to end-to-end test a BitTorrent tracker.
-See
+You can find more granular tasks (e.g. "run just the unit tests") by inspecting the [Makefile].
 
-```sh
-chihaya --help
-```
+
+[Make]: https://makefiletutorial.com
+[Makefile]: Makefile
 
 ### Configuration
 
 Configuration of Chihaya is done via one YAML configuration file.
-The `dist/` directory contains an example configuration file.
+The `dist/` directory contains example configuration files.
 Files and directories under `docs/` contain detailed information about configuring middleware, storage implementations, architecture etc.
 
 ## Related projects

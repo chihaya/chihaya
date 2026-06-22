@@ -90,40 +90,44 @@ func TestParseInvalidURLData(t *testing.T) {
 	}
 }
 
-func TestParseShouldNotPanicURLData(t *testing.T) {
+func TestParseShouldNotPanicURLData(_ *testing.T) {
 	for _, parseStr := range shouldNotPanicQueries {
 		_, _ = ParseURLData(parseStr)
 	}
 }
 
 func BenchmarkParseQuery(b *testing.B) {
-	announceStrings := make([]string, 0)
+	announceStrings := make([]string, 0, len(ValidAnnounceArguments))
 	for i := range ValidAnnounceArguments {
 		announceStrings = append(announceStrings, ValidAnnounceArguments[i].Encode())
 	}
+	bCount := 0
 	b.ResetTimer()
-	for bCount := 0; bCount < b.N; bCount++ {
+	for b.Loop() {
 		i := bCount % len(announceStrings)
 		parsedQueryObj, err := parseQuery(announceStrings[i])
 		if err != nil {
 			b.Error(err, i)
 			b.Log(parsedQueryObj)
 		}
+		bCount++
 	}
 }
 
 func BenchmarkURLParseQuery(b *testing.B) {
-	announceStrings := make([]string, 0)
+	announceStrings := make([]string, 0, len(ValidAnnounceArguments))
 	for i := range ValidAnnounceArguments {
 		announceStrings = append(announceStrings, ValidAnnounceArguments[i].Encode())
 	}
+	bCount := 0
 	b.ResetTimer()
-	for bCount := 0; bCount < b.N; bCount++ {
+	for b.Loop() {
 		i := bCount % len(announceStrings)
 		parsedQueryObj, err := url.ParseQuery(announceStrings[i])
 		if err != nil {
 			b.Error(err, i)
 			b.Log(parsedQueryObj)
 		}
+		bCount++
 	}
 }

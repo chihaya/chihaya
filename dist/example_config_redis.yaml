@@ -1,0 +1,43 @@
+chihaya:
+  announce_interval: 30m
+  http:
+    addr: 0.0.0.0:6969
+    allow_ip_spoofing: false
+    announce_routes:
+      - /announce
+    default_numwant: 50
+    enable_keepalive: false
+    enable_request_timing: false
+    https_addr: ""
+    idle_timeout: 30s
+    max_numwant: 100
+    max_scrape_infohashes: 50
+    read_timeout: 5s
+    real_ip_header: x-real-ip
+    scrape_routes:
+      - /scrape
+    tls_cert_path: ""
+    tls_key_path: ""
+    write_timeout: 5s
+  metrics_addr: 0.0.0.0:6880
+  min_announce_interval: 15m
+  prehooks: null
+  storage:
+    config:
+      gc_interval: 3m
+      peer_lifetime: 31m
+      prometheus_reporting_interval: 1s
+      redis_broker: redis://127.0.0.1:6379/0
+      redis_connect_timeout: 15s
+      redis_read_timeout: 15s
+      redis_write_timeout: 15s
+    name: redis
+  udp:
+    addr: 0.0.0.0:6969
+    allow_ip_spoofing: false
+    default_numwant: 50
+    enable_request_timing: false
+    max_clock_skew: 10s
+    max_numwant: 100
+    max_scrape_infohashes: 50
+    private_key: paste a random string here that will be used to hmac connection IDs

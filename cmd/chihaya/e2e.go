@@ -15,7 +15,7 @@ import (
 
 // EndToEndRunCmdFunc implements a Cobra command that runs the end-to-end test
 // suite for a Chihaya build.
-func EndToEndRunCmdFunc(cmd *cobra.Command, args []string) error {
+func EndToEndRunCmdFunc(cmd *cobra.Command, _ []string) error {
 	delay, err := cmd.Flags().GetDuration("delay")
 	if err != nil {
 		return err

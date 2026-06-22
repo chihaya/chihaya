@@ -30,7 +30,7 @@ type swarmInteractionHook struct {
 	store storage.PeerStore
 }
 
-func (h *swarmInteractionHook) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequest, resp *bittorrent.AnnounceResponse) (_ context.Context, err error) {
+func (h *swarmInteractionHook) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequest, _ *bittorrent.AnnounceResponse) (_ context.Context, err error) {
 	if ctx.Value(SkipSwarmInteractionKey) != nil {
 		return ctx, nil
 	}

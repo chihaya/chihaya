@@ -293,7 +293,7 @@ func (f *Frontend) serveHTTPS(l net.Listener) error {
 }
 
 func injectRouteParamsToContext(ctx context.Context, ps httprouter.Params) context.Context {
-	rp := bittorrent.RouteParams{}
+	rp := make(bittorrent.RouteParams, 0, len(ps))
 	for _, p := range ps {
 		rp = append(rp, bittorrent.RouteParam{Key: p.Key, Value: p.Value})
 	}
