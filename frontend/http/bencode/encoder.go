@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"sort"
 	"strconv"
 	"time"
 )
@@ -181,7 +182,14 @@ func marshalMap(w io.Writer, v map[string]interface{}) error {
 		return err
 	}
 
-	for key, val := range v {
+	var keys []string
+	for key, _ := range v {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		val := v[key]
 		if err := marshalString(w, key); err != nil {
 			return err
 		}
