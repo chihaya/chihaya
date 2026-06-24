@@ -188,7 +188,7 @@ func New(provided Config) (storage.PeerStore, error) {
 
 	ps := &peerStore{
 		cfg:    cfg,
-		rb:     newRedisBackend(&provided, u, ""),
+		rb:     newRedisBackend(&provided, u, u.SocketPath),
 		closed: make(chan struct{}),
 	}
 
