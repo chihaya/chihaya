@@ -18,6 +18,7 @@ import (
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/frontend"
 	"github.com/chihaya/chihaya/frontend/udp/bytepool"
+	"github.com/chihaya/chihaya/pkg/slogutil"
 	"github.com/chihaya/chihaya/pkg/stop"
 	"github.com/chihaya/chihaya/pkg/timecache"
 )
@@ -35,13 +36,13 @@ type Config struct {
 }
 
 // LogValue renders a config as a set of log fields.
-func (cfg Config) LogValue() slog.Value {
+func (cfg *Config) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("addr", cfg.Addr),
 		slog.String("privateKey", "REDACTED"),
 		slog.Duration("maxClockSkew", cfg.MaxClockSkew),
 		slog.Bool("enableRequestTiming", cfg.EnableRequestTiming),
-		slog.Any("parseOptions", &cfg.ParseOptions),
+		slogutil.Valuer("parseOptions", &cfg.ParseOptions),
 	)
 }
 

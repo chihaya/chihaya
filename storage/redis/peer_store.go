@@ -37,6 +37,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/chihaya/chihaya/bittorrent"
+	"github.com/chihaya/chihaya/pkg/slogutil"
 	"github.com/chihaya/chihaya/pkg/stop"
 	"github.com/chihaya/chihaya/pkg/timecache"
 	"github.com/chihaya/chihaya/storage"
@@ -92,7 +93,7 @@ type Config struct {
 }
 
 // LogValue renders the config as a set of log fields.
-func (cfg Config) LogValue() slog.Value {
+func (cfg *Config) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("name", Name),
 		slog.Duration("gcInterval", cfg.GarbageCollectionInterval),
@@ -373,7 +374,7 @@ func (ps *peerStore) PutSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) error 
 			slog.LevelDebug,
 			"storage: PutSeeder",
 			slog.String("infoHash", ih.String()),
-			slog.Any("peer", &p),
+			slogutil.Valuer("peer", &p),
 		)
 	}
 
@@ -425,7 +426,7 @@ func (ps *peerStore) DeleteSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) err
 			slog.LevelDebug,
 			"storage: DeleteSeeder",
 			slog.String("infoHash", ih.String()),
-			slog.Any("peer", &p),
+			slogutil.Valuer("peer", &p),
 		)
 	}
 
@@ -464,7 +465,7 @@ func (ps *peerStore) PutLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) error
 			slog.LevelDebug,
 			"storage: PutLeecher",
 			slog.String("infoHash", ih.String()),
-			slog.Any("peer", &p),
+			slogutil.Valuer("peer", &p),
 		)
 	}
 
@@ -507,7 +508,7 @@ func (ps *peerStore) DeleteLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) er
 			slog.LevelDebug,
 			"storage: DeleteLeecher",
 			slog.String("infoHash", ih.String()),
-			slog.Any("peer", &p),
+			slogutil.Valuer("peer", &p),
 		)
 	}
 
@@ -545,7 +546,7 @@ func (ps *peerStore) GraduateLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) 
 			slog.LevelDebug,
 			"storage: GraduateLeecher",
 			slog.String("infoHash", ih.String()),
-			slog.Any("peer", &p),
+			slogutil.Valuer("peer", &p),
 		)
 	}
 
@@ -604,7 +605,7 @@ func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant 
 			slog.String("infoHash", ih.String()),
 			slog.Bool("seeder", seeder),
 			slog.Int("numWant", numWant),
-			slog.Any("peer", &announcer),
+			slogutil.Valuer("peer", &announcer),
 		)
 	}
 
@@ -813,11 +814,12 @@ func (ps *peerStore) collectGarbage(cutoff time.Time) error {
 					}
 					if mtime <= cutoffUnix {
 						if slog.Default().Enabled(context.TODO(), slog.LevelDebug) {
+							p := decodePeerKey(pk)
 							slog.LogAttrs(
 								context.TODO(),
 								slog.LevelDebug,
 								"storage: deleting peer",
-								slog.String("peer", decodePeerKey(pk).String()),
+								slogutil.Valuer("peer", &p),
 							)
 						}
 						ret, err := redis.Int64(conn.Do("HDEL", ihStr, pk))

@@ -20,6 +20,7 @@ import (
 	"github.com/chihaya/chihaya/frontend/udp"
 	"github.com/chihaya/chihaya/middleware"
 	"github.com/chihaya/chihaya/pkg/metrics"
+	"github.com/chihaya/chihaya/pkg/slogutil"
 	"github.com/chihaya/chihaya/pkg/stop"
 	"github.com/chihaya/chihaya/storage"
 )
@@ -62,7 +63,7 @@ func (r *Run) Start(ps storage.PeerStore) error {
 		if err != nil {
 			return errors.New("failed to create storage: " + err.Error())
 		}
-		slog.Info("started storage", slog.Any("peerStore", ps))
+		slog.Info("started storage", slogutil.Valuer("peerStore", ps))
 	}
 	r.peerStore = ps
 
@@ -83,7 +84,7 @@ func (r *Run) Start(ps storage.PeerStore) error {
 	r.logic = middleware.NewLogic(cfg.ResponseConfig, r.peerStore, preHooks, postHooks)
 
 	if cfg.HTTPConfig.Addr != "" {
-		slog.Info("starting HTTP frontend", slog.Any("config", cfg.HTTPConfig))
+		slog.Info("starting HTTP frontend", slogutil.Valuer("config", &cfg.HTTPConfig))
 		httpfe, err := http.NewFrontend(r.logic, cfg.HTTPConfig)
 		if err != nil {
 			return err
@@ -92,7 +93,7 @@ func (r *Run) Start(ps storage.PeerStore) error {
 	}
 
 	if cfg.UDPConfig.Addr != "" {
-		slog.Info("starting UDP frontend", slog.Any("config", cfg.UDPConfig))
+		slog.Info("starting UDP frontend", slogutil.Valuer("config", &cfg.UDPConfig))
 		udpfe, err := udp.NewFrontend(r.logic, cfg.UDPConfig)
 		if err != nil {
 			return err

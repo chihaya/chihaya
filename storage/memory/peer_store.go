@@ -64,7 +64,7 @@ type Config struct {
 }
 
 // LogValue renders a config as a set of log fields.
-func (cfg Config) LogValue() slog.Value {
+func (cfg *Config) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("name", Name),
 		slog.Duration("gcInterval", cfg.GarbageCollectionInterval),

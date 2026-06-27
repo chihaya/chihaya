@@ -7,6 +7,7 @@ import (
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/frontend"
+	"github.com/chihaya/chihaya/pkg/slogutil"
 	"github.com/chihaya/chihaya/pkg/stop"
 	"github.com/chihaya/chihaya/storage"
 )
@@ -60,7 +61,7 @@ func (l *Logic) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequ
 	}
 
 	if slog.Default().Enabled(ctx, slog.LevelDebug) {
-		slog.LogAttrs(ctx, slog.LevelDebug, "generated announce response", slog.Any("response", resp))
+		slog.LogAttrs(ctx, slog.LevelDebug, "generated announce response", slogutil.Valuer("response", resp))
 	}
 	return ctx, resp, nil
 }
@@ -91,7 +92,7 @@ func (l *Logic) HandleScrape(ctx context.Context, req *bittorrent.ScrapeRequest)
 	}
 
 	if slog.Default().Enabled(ctx, slog.LevelDebug) {
-		slog.LogAttrs(ctx, slog.LevelDebug, "generated scrape response", slog.Any("response", resp))
+		slog.LogAttrs(ctx, slog.LevelDebug, "generated scrape response", slogutil.Valuer("response", resp))
 	}
 	return ctx, resp, nil
 }

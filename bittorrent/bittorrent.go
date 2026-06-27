@@ -8,6 +8,8 @@ import (
 	"log/slog"
 	"net"
 	"time"
+
+	"github.com/chihaya/chihaya/pkg/slogutil"
 )
 
 // PeerID represents a peer ID.
@@ -106,7 +108,7 @@ type AnnounceRequest struct {
 }
 
 // LogValue renders the current request as a set of log fields.
-func (r AnnounceRequest) LogValue() slog.Value {
+func (r *AnnounceRequest) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("event", r.Event.String()),
 		slog.String("infoHash", r.InfoHash.String()),
@@ -118,7 +120,7 @@ func (r AnnounceRequest) LogValue() slog.Value {
 		slog.Uint64("left", r.Left),
 		slog.Uint64("downloaded", r.Downloaded),
 		slog.Uint64("uploaded", r.Uploaded),
-		slog.Any("peer", &r.Peer),
+		slogutil.Valuer("peer", &r.Peer),
 		slog.String("params", r.RawQuery()),
 	)
 }
@@ -136,7 +138,7 @@ type AnnounceResponse struct {
 }
 
 // LogValue renders the current response as a set of log fields.
-func (r AnnounceResponse) LogValue() slog.Value {
+func (r *AnnounceResponse) LogValue() slog.Value {
 	ipv4s := make([]slog.Value, 0, len(r.IPv4Peers))
 	for _, p := range r.IPv4Peers {
 		ipv4s = append(ipv4s, p.LogValue())
@@ -167,7 +169,7 @@ type ScrapeRequest struct {
 }
 
 // LogValue renders the request as a set of log fields.
-func (r ScrapeRequest) LogValue() slog.Value {
+func (r *ScrapeRequest) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("addressFamily", r.AddressFamily.String()),
 		slog.Any("infoHashes", r.InfoHashes), // TODO(jzelinskie): avoid reflection for this
@@ -184,7 +186,7 @@ type ScrapeResponse struct {
 }
 
 // LogValue renders the response as a set of log fields.
-func (sr ScrapeResponse) LogValue() slog.Value {
+func (sr *ScrapeResponse) LogValue() slog.Value {
 	files := make([]slog.Value, 0, len(sr.Files))
 	for _, f := range sr.Files {
 		files = append(files, f.LogValue())
@@ -202,7 +204,7 @@ type Scrape struct {
 }
 
 // LogValue renders the current swarm as a set of log fields.
-func (s Scrape) LogValue() slog.Value {
+func (s *Scrape) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("infoHash", s.InfoHash.String()),
 		slog.Uint64("snatches", uint64(s.Snatches)),
@@ -257,7 +259,7 @@ func (p Peer) String() string {
 }
 
 // LogValue renders the Peer as a set of log fields.
-func (p Peer) LogValue() slog.Value {
+func (p *Peer) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("ID", p.ID.String()),
 		slog.String("IP", p.IP.String()),

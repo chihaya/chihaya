@@ -27,6 +27,7 @@ import (
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/middleware"
+	"github.com/chihaya/chihaya/pkg/slogutil"
 	"github.com/chihaya/chihaya/pkg/stop"
 )
 
@@ -69,7 +70,7 @@ type Config struct {
 }
 
 // LogValue renders the config as a set of log fields.
-func (cfg Config) LogValue() slog.Value {
+func (cfg *Config) LogValue() slog.Value {
 	return slog.GroupValue(
 		slog.String("issuer", cfg.Issuer),
 		slog.String("audience", cfg.Audience),
@@ -86,7 +87,7 @@ type hook struct {
 
 // NewHook returns an instance of the JWT middleware.
 func NewHook(cfg Config) (middleware.Hook, error) {
-	slog.Debug("creating new JWT middleware", slog.Any("config", &cfg))
+	slog.Debug("creating new JWT middleware", slogutil.Valuer("config", &cfg))
 	h := &hook{
 		cfg:        cfg,
 		publicKeys: map[string]crypto.PublicKey{},

@@ -4,6 +4,8 @@ import (
 	"context"
 	"log/slog"
 	"net"
+
+	"github.com/chihaya/chihaya/pkg/slogutil"
 )
 
 // ErrInvalidIP indicates an invalid IP for an Announce.
@@ -39,7 +41,7 @@ func SanitizeAnnounce(r *AnnounceRequest, maxNumWant, defaultNumWant uint32) err
 			context.TODO(),
 			slog.LevelDebug,
 			"sanitized announce",
-			slog.Any("request", r),
+			slogutil.Valuer("request", r),
 			slog.Uint64("maxNumWant", uint64(maxNumWant)),
 			slog.Uint64("defaultNumWant", uint64(defaultNumWant)),
 		)
@@ -59,7 +61,7 @@ func SanitizeScrape(r *ScrapeRequest, maxScrapeInfoHashes uint32) error {
 			context.TODO(),
 			slog.LevelDebug,
 			"sanitized scrape",
-			slog.Any("request", r),
+			slogutil.Valuer("request", r),
 			slog.Uint64("maxScrapeInfoHashes", uint64(maxScrapeInfoHashes)),
 		)
 	}
