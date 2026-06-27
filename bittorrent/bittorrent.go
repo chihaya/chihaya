@@ -5,11 +5,10 @@ package bittorrent
 
 import (
 	"fmt"
-	"log/slog"
 	"net"
 	"time"
 
-	"github.com/chihaya/chihaya/pkg/slogutil"
+	"github.com/chihaya/chihaya/pkg/slog"
 )
 
 // PeerID represents a peer ID.
@@ -120,7 +119,7 @@ func (r *AnnounceRequest) LogValue() slog.Value {
 		slog.Uint64("left", r.Left),
 		slog.Uint64("downloaded", r.Downloaded),
 		slog.Uint64("uploaded", r.Uploaded),
-		slogutil.Valuer("peer", &r.Peer),
+		slog.Valuer("peer", &r.Peer),
 		slog.String("params", r.RawQuery()),
 	)
 }

@@ -4,7 +4,6 @@ package main
 import (
 	"context"
 	"errors"
-	"log/slog"
 	"os"
 	"os/signal"
 	"runtime"
@@ -12,7 +11,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/lmittmann/tint"
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 
@@ -20,7 +18,7 @@ import (
 	"github.com/chihaya/chihaya/frontend/udp"
 	"github.com/chihaya/chihaya/middleware"
 	"github.com/chihaya/chihaya/pkg/metrics"
-	"github.com/chihaya/chihaya/pkg/slogutil"
+	"github.com/chihaya/chihaya/pkg/slog"
 	"github.com/chihaya/chihaya/pkg/stop"
 	"github.com/chihaya/chihaya/storage"
 )
@@ -63,7 +61,7 @@ func (r *Run) Start(ps storage.PeerStore) error {
 		if err != nil {
 			return errors.New("failed to create storage: " + err.Error())
 		}
-		slog.Info("started storage", slogutil.Valuer("peerStore", ps))
+		slog.Info("started storage", slog.Valuer("peerStore", ps))
 	}
 	r.peerStore = ps
 
@@ -84,7 +82,7 @@ func (r *Run) Start(ps storage.PeerStore) error {
 	r.logic = middleware.NewLogic(cfg.ResponseConfig, r.peerStore, preHooks, postHooks)
 
 	if cfg.HTTPConfig.Addr != "" {
-		slog.Info("starting HTTP frontend", slogutil.Valuer("config", &cfg.HTTPConfig))
+		slog.Info("starting HTTP frontend", slog.Valuer("config", &cfg.HTTPConfig))
 		httpfe, err := http.NewFrontend(r.logic, cfg.HTTPConfig)
 		if err != nil {
 			return err
@@ -93,7 +91,7 @@ func (r *Run) Start(ps storage.PeerStore) error {
 	}
 
 	if cfg.UDPConfig.Addr != "" {
-		slog.Info("starting UDP frontend", slogutil.Valuer("config", &cfg.UDPConfig))
+		slog.Info("starting UDP frontend", slog.Valuer("config", &cfg.UDPConfig))
 		udpfe, err := udp.NewFrontend(r.logic, cfg.UDPConfig)
 		if err != nil {
 			return err
@@ -188,9 +186,7 @@ func RootPreRunCmdFunc(cmd *cobra.Command, _ []string) error {
 	if jsonLog, err := cmd.Flags().GetBool("json"); err != nil {
 		return err
 	} else if jsonLog {
-		slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
-			Level: level,
-		})))
+		slog.SetDefaultHandler(slog.NewJSONHandler(os.Stderr, level))
 		return nil
 	}
 
@@ -201,12 +197,7 @@ func RootPreRunCmdFunc(cmd *cobra.Command, _ []string) error {
 		noColor = true
 	}
 
-	slog.SetDefault(slog.New(tint.NewHandler(os.Stderr, &tint.Options{
-		Level:      level,
-		TimeFormat: time.RFC3339,
-		NoColor:    noColor,
-	})))
-
+	slog.SetDefaultHandler(slog.NewTextHandler(os.Stderr, level, noColor))
 	return nil
 }
 
@@ -248,7 +239,7 @@ func main() {
 	rootCmd.AddCommand(e2eCmd)
 
 	if err := rootCmd.Execute(); err != nil {
-		slog.Error("failed when executing root cobra command", slog.Any("error", err))
+		slog.Error("failed when executing root cobra command", slog.Err(err))
 		os.Exit(1)
 	}
 }

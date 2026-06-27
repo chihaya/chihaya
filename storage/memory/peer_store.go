@@ -3,9 +3,7 @@
 package memory
 
 import (
-	"context"
 	"encoding/binary"
-	"log/slog"
 	"math"
 	"net"
 	"runtime"
@@ -15,6 +13,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/chihaya/chihaya/bittorrent"
+	"github.com/chihaya/chihaya/pkg/slog"
 	"github.com/chihaya/chihaya/pkg/stop"
 	"github.com/chihaya/chihaya/pkg/timecache"
 	"github.com/chihaya/chihaya/storage"
@@ -147,10 +146,8 @@ func New(provided Config) (storage.PeerStore, error) {
 				return
 			case <-time.After(cfg.GarbageCollectionInterval):
 				before := time.Now().Add(-cfg.PeerLifetime)
-				if slog.Default().Enabled(context.TODO(), slog.LevelDebug) {
-					slog.LogAttrs(
-						context.TODO(),
-						slog.LevelDebug,
+				if slog.DebugEnabled() {
+					slog.Debug(
 						"storage: purging peers with no announces since",
 						slog.Time("before", before),
 					)

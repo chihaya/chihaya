@@ -24,10 +24,8 @@
 package redis
 
 import (
-	"context"
 	"encoding/binary"
 	"errors"
-	"log/slog"
 	"net"
 	"strconv"
 	"sync"
@@ -37,7 +35,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/chihaya/chihaya/bittorrent"
-	"github.com/chihaya/chihaya/pkg/slogutil"
+	"github.com/chihaya/chihaya/pkg/slog"
 	"github.com/chihaya/chihaya/pkg/stop"
 	"github.com/chihaya/chihaya/pkg/timecache"
 	"github.com/chihaya/chihaya/storage"
@@ -211,22 +209,18 @@ func New(provided Config) (storage.PeerStore, error) {
 				return
 			case <-time.After(cfg.GarbageCollectionInterval):
 				before := time.Now().Add(-cfg.PeerLifetime)
-				if slog.Default().Enabled(context.TODO(), slog.LevelDebug) {
-					slog.LogAttrs(
-						context.TODO(),
-						slog.LevelDebug,
+				if slog.DebugEnabled() {
+					slog.Debug(
 						"storage: purging peers with no announces since",
 						slog.Time("before", before),
 					)
 				}
 				err := ps.collectGarbage(before)
-				if err != nil && slog.Default().Enabled(context.TODO(), slog.LevelError) {
-					slog.LogAttrs(
-						context.TODO(),
-						slog.LevelError,
+				if err != nil && slog.ErrorEnabled() {
+					slog.Error(
 						"storage: collectGarbage error",
 						slog.Time("before", before),
-						slog.Any("error", err),
+						slog.Err(err),
 					)
 				}
 			}
@@ -332,7 +326,7 @@ func (ps *peerStore) populateProm() {
 			slog.Error(
 				"storage: GET counter failure",
 				slog.String("key", ps.infohashCountKey(group)),
-				slog.Any("error", err),
+				slog.Err(err),
 			)
 		} else {
 			numInfohashes += n
@@ -341,7 +335,7 @@ func (ps *peerStore) populateProm() {
 			slog.Error(
 				"storage: GET counter failure",
 				slog.String("key", ps.seederCountKey(group)),
-				slog.Any("error", err),
+				slog.Err(err),
 			)
 		} else {
 			numSeeders += n
@@ -350,7 +344,7 @@ func (ps *peerStore) populateProm() {
 			slog.Error(
 				"storage: GET counter failure",
 				slog.String("key", ps.leecherCountKey(group)),
-				slog.Any("error", err),
+				slog.Err(err),
 			)
 		} else {
 			numLeechers += n
@@ -368,13 +362,11 @@ func (ps *peerStore) getClock() int64 {
 
 func (ps *peerStore) PutSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) error {
 	addressFamily := p.IP.AddressFamily.String()
-	if slog.Default().Enabled(context.TODO(), slog.LevelDebug) {
-		slog.LogAttrs(
-			context.TODO(),
-			slog.LevelDebug,
+	if slog.DebugEnabled() {
+		slog.Debug(
 			"storage: PutSeeder",
 			slog.String("infoHash", ih.String()),
-			slogutil.Valuer("peer", &p),
+			slog.Valuer("peer", &p),
 		)
 	}
 
@@ -420,13 +412,11 @@ func (ps *peerStore) PutSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) error 
 
 func (ps *peerStore) DeleteSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) error {
 	addressFamily := p.IP.AddressFamily.String()
-	if slog.Default().Enabled(context.TODO(), slog.LevelDebug) {
-		slog.LogAttrs(
-			context.TODO(),
-			slog.LevelDebug,
+	if slog.DebugEnabled() {
+		slog.Debug(
 			"storage: DeleteSeeder",
 			slog.String("infoHash", ih.String()),
-			slogutil.Valuer("peer", &p),
+			slog.Valuer("peer", &p),
 		)
 	}
 
@@ -459,13 +449,11 @@ func (ps *peerStore) DeleteSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) err
 
 func (ps *peerStore) PutLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) error {
 	addressFamily := p.IP.AddressFamily.String()
-	if slog.Default().Enabled(context.TODO(), slog.LevelDebug) {
-		slog.LogAttrs(
-			context.TODO(),
-			slog.LevelDebug,
+	if slog.DebugEnabled() {
+		slog.Debug(
 			"storage: PutLeecher",
 			slog.String("infoHash", ih.String()),
-			slogutil.Valuer("peer", &p),
+			slog.Valuer("peer", &p),
 		)
 	}
 
@@ -502,13 +490,11 @@ func (ps *peerStore) PutLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) error
 
 func (ps *peerStore) DeleteLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) error {
 	addressFamily := p.IP.AddressFamily.String()
-	if slog.Default().Enabled(context.TODO(), slog.LevelDebug) {
-		slog.LogAttrs(
-			context.TODO(),
-			slog.LevelDebug,
+	if slog.DebugEnabled() {
+		slog.Debug(
 			"storage: DeleteLeecher",
 			slog.String("infoHash", ih.String()),
-			slogutil.Valuer("peer", &p),
+			slog.Valuer("peer", &p),
 		)
 	}
 
@@ -540,13 +526,11 @@ func (ps *peerStore) DeleteLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) er
 
 func (ps *peerStore) GraduateLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) error {
 	addressFamily := p.IP.AddressFamily.String()
-	if slog.Default().Enabled(context.TODO(), slog.LevelDebug) {
-		slog.LogAttrs(
-			context.TODO(),
-			slog.LevelDebug,
+	if slog.DebugEnabled() {
+		slog.Debug(
 			"storage: GraduateLeecher",
 			slog.String("infoHash", ih.String()),
-			slogutil.Valuer("peer", &p),
+			slog.Valuer("peer", &p),
 		)
 	}
 
@@ -597,15 +581,13 @@ func (ps *peerStore) GraduateLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) 
 
 func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant int, announcer bittorrent.Peer) (peers []bittorrent.Peer, err error) {
 	addressFamily := announcer.IP.AddressFamily.String()
-	if slog.Default().Enabled(context.TODO(), slog.LevelDebug) {
-		slog.LogAttrs(
-			context.TODO(),
-			slog.LevelDebug,
+	if slog.DebugEnabled() {
+		slog.Debug(
 			"storage: AnnouncePeers",
 			slog.String("infoHash", ih.String()),
 			slog.Bool("seeder", seeder),
 			slog.Int("numWant", numWant),
-			slogutil.Valuer("peer", &announcer),
+			slog.Valuer("peer", &announcer),
 		)
 	}
 
@@ -698,13 +680,11 @@ func (ps *peerStore) ScrapeSwarm(ih bittorrent.InfoHash, af bittorrent.AddressFa
 
 	leechersLen, err := redis.Int64(conn.Do("HLEN", encodedLeecherInfoHash))
 	if err != nil {
-		if slog.Default().Enabled(context.TODO(), slog.LevelError) {
-			slog.LogAttrs(
-				context.TODO(),
-				slog.LevelError,
+		if slog.ErrorEnabled() {
+			slog.Error(
 				"storage: Redis HLEN failure",
 				slog.String("hkey", encodedLeecherInfoHash),
-				slog.Any("error", err),
+				slog.Err(err),
 			)
 		}
 		return
@@ -712,13 +692,11 @@ func (ps *peerStore) ScrapeSwarm(ih bittorrent.InfoHash, af bittorrent.AddressFa
 
 	seedersLen, err := redis.Int64(conn.Do("HLEN", encodedSeederInfoHash))
 	if err != nil {
-		if slog.Default().Enabled(context.TODO(), slog.LevelError) {
-			slog.LogAttrs(
-				context.TODO(),
-				slog.LevelError,
+		if slog.ErrorEnabled() {
+			slog.Error(
 				"storage: Redis HLEN failure",
 				slog.String("hkey", encodedSeederInfoHash),
-				slog.Any("error", err),
+				slog.Err(err),
 			)
 		}
 		return
@@ -813,13 +791,11 @@ func (ps *peerStore) collectGarbage(cutoff time.Time) error {
 						return err
 					}
 					if mtime <= cutoffUnix {
-						if slog.Default().Enabled(context.TODO(), slog.LevelDebug) {
+						if slog.DebugEnabled() {
 							p := decodePeerKey(pk)
-							slog.LogAttrs(
-								context.TODO(),
-								slog.LevelDebug,
+							slog.Debug(
 								"storage: deleting peer",
-								slogutil.Valuer("peer", &p),
+								slog.Valuer("peer", &p),
 							)
 						}
 						ret, err := redis.Int64(conn.Do("HDEL", ihStr, pk))
@@ -866,25 +842,21 @@ func (ps *peerStore) collectGarbage(cutoff time.Time) error {
 				}
 				_, err = redis.Values(conn.Do("EXEC"))
 				if err != nil && !errors.Is(err, redis.ErrNil) {
-					if slog.Default().Enabled(context.TODO(), slog.LevelError) {
-						slog.LogAttrs(
-							context.TODO(),
-							slog.LevelError,
+					if slog.ErrorEnabled() {
+						slog.Error(
 							"storage: Redis EXEC failure",
 							slog.String("group", group),
 							slog.String("infohash", ihStr),
-							slog.Any("error", err),
+							slog.Err(err),
 						)
 					}
 				}
 			} else {
 				if _, err = conn.Do("UNWATCH"); err != nil && !errors.Is(err, redis.ErrNil) {
-					if slog.Default().Enabled(context.TODO(), slog.LevelError) {
-						slog.LogAttrs(
-							context.TODO(),
-							slog.LevelError,
+					if slog.ErrorEnabled() {
+						slog.Error(
 							"storage: Redis UNWATCH failure",
-							slog.Any("error", err),
+							slog.Err(err),
 						)
 					}
 				}
@@ -893,12 +865,10 @@ func (ps *peerStore) collectGarbage(cutoff time.Time) error {
 	}
 
 	duration := float64(time.Since(start).Nanoseconds()) / float64(time.Millisecond)
-	if slog.Default().Enabled(context.TODO(), slog.LevelDebug) {
-		slog.LogAttrs(
-			context.TODO(),
-			slog.LevelDebug,
+	if slog.DebugEnabled() {
+		slog.Debug(
 			"storage: recordGCDuration",
-			slog.Float64("timeTaken(ms)", duration),
+			slog.Float64("timeTakenMs", duration),
 		)
 	}
 	storage.PromGCDurationMilliseconds.Observe(duration)
@@ -912,8 +882,9 @@ func (ps *peerStore) Stop() stop.Result {
 		close(ps.closed)
 		ps.wg.Wait()
 		slog.Info(
-			"storage: exiting. chihaya does not clear data in redis when exiting. " +
-				"chihaya keys have prefix 'IPv{4,6}_'.",
+			"storage: exiting." +
+				" chihaya does not clear data in redis when exiting." +
+				" chihaya keys have prefix 'IPv{4,6}_'.",
 		)
 		c.Done()
 	}()

@@ -3,10 +3,10 @@ package storage
 
 import (
 	"errors"
-	"log/slog"
 	"sync"
 
 	"github.com/chihaya/chihaya/bittorrent"
+	"github.com/chihaya/chihaya/pkg/slog"
 	"github.com/chihaya/chihaya/pkg/stop"
 )
 
@@ -110,7 +110,7 @@ type PeerStore interface {
 	// For more details see the documentation in the stop package.
 	stop.Stopper
 
-	// log.LogValuer returns a loggable version of the data used to configure
+	// slog.LogValuer returns a loggable version of the data used to configure
 	// and operate a particular PeerStore.
 	slog.LogValuer
 }

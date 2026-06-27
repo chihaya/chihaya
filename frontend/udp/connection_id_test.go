@@ -1,11 +1,9 @@
 package udp
 
 import (
-	"context"
 	"crypto/hmac"
 	"encoding/binary"
 	"fmt"
-	"log/slog"
 	"net"
 	"sync"
 	"testing"
@@ -13,6 +11,8 @@ import (
 
 	sha256 "github.com/minio/sha256-simd"
 	"github.com/stretchr/testify/require"
+
+	"github.com/chihaya/chihaya/pkg/slog"
 )
 
 var golden = []struct {
@@ -41,10 +41,8 @@ func simpleNewConnectionID(ip net.IP, now time.Time, key string) []byte {
 
 	// this is just in here because logging impacts performance and we benchmark
 	// this version too.
-	if slog.Default().Enabled(context.TODO(), slog.LevelDebug) {
-		slog.LogAttrs(
-			context.TODO(),
-			slog.LevelDebug,
+	if slog.DebugEnabled() {
+		slog.Debug(
 			"manually generated connection ID",
 			slog.String("ip", ip.String()),
 			slog.Time("now", now),

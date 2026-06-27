@@ -1,15 +1,15 @@
 package udp
 
 import (
-	"context"
 	"crypto/hmac"
 	"encoding/binary"
 	"hash"
-	"log/slog"
 	"net"
 	"time"
 
 	sha256 "github.com/minio/sha256-simd"
+
+	"github.com/chihaya/chihaya/pkg/slog"
 )
 
 // ttl is the duration a connection ID should be valid according to BEP 15.
@@ -95,10 +95,8 @@ func (g *ConnectionIDGenerator) Generate(ip net.IP, now time.Time) []byte {
 	g.scratch = g.mac.Sum(g.scratch)
 	copy(g.connID[4:8], g.scratch[:4])
 
-	if slog.Default().Enabled(context.TODO(), slog.LevelDebug) {
-		slog.LogAttrs(
-			context.TODO(),
-			slog.LevelDebug,
+	if slog.DebugEnabled() {
+		slog.Debug(
 			"generated connection ID",
 			slog.String("ip", ip.String()),
 			slog.Time("now", now),
@@ -111,10 +109,8 @@ func (g *ConnectionIDGenerator) Generate(ip net.IP, now time.Time) []byte {
 // Validate validates the given connection ID for an IP and the current time.
 func (g *ConnectionIDGenerator) Validate(connectionID []byte, ip net.IP, now time.Time, maxClockSkew time.Duration) bool {
 	ts := time.Unix(int64(binary.BigEndian.Uint32(connectionID[:4])), 0)
-	if slog.Default().Enabled(context.TODO(), slog.LevelDebug) {
-		slog.LogAttrs(
-			context.TODO(),
-			slog.LevelDebug,
+	if slog.DebugEnabled() {
+		slog.Debug(
 			"validating connection ID",
 			slog.String("connID", string(connectionID)),
 			slog.String("ip", ip.String()),
