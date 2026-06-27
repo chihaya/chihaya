@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/chihaya/chihaya/pkg/log"
+	"github.com/chihaya/chihaya/pkg/slog"
 )
 
 // Params is used to fetch (optional) request parameters from an Announce.
@@ -154,7 +154,12 @@ func parseQuery(query string) (q *QueryParams, err error) {
 			// But frontends record these errors to prometheus, which generates
 			// a lot of time series.
 			// We log it here for debugging instead.
-			log.Debug("failed to unescape query param key", log.Err(err))
+			if slog.DebugEnabled() {
+				slog.Debug(
+					"failed to unescape query param key",
+					slog.Err(err),
+				)
+			}
 			return nil, ErrInvalidQueryEscape
 		}
 		value, err = url.QueryUnescape(value)
@@ -163,7 +168,12 @@ func parseQuery(query string) (q *QueryParams, err error) {
 			// But frontends record these errors to prometheus, which generates
 			// a lot of time series.
 			// We log it here for debugging instead.
-			log.Debug("failed to unescape query param value", log.Err(err))
+			if slog.DebugEnabled() {
+				slog.Debug(
+					"failed to unescape query param value",
+					slog.Err(err),
+				)
+			}
 			return nil, ErrInvalidQueryEscape
 		}
 

@@ -6,7 +6,7 @@ import (
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/frontend"
-	"github.com/chihaya/chihaya/pkg/log"
+	"github.com/chihaya/chihaya/pkg/slog"
 	"github.com/chihaya/chihaya/pkg/stop"
 	"github.com/chihaya/chihaya/storage"
 )
@@ -59,7 +59,9 @@ func (l *Logic) HandleAnnounce(ctx context.Context, req *bittorrent.AnnounceRequ
 		}
 	}
 
-	log.Debug("generated announce response", resp)
+	if slog.DebugEnabled() {
+		slog.Debug("generated announce response", slog.Valuer("response", resp))
+	}
 	return ctx, resp, nil
 }
 
@@ -69,7 +71,9 @@ func (l *Logic) AfterAnnounce(ctx context.Context, req *bittorrent.AnnounceReque
 	var err error
 	for _, h := range l.postHooks {
 		if ctx, err = h.HandleAnnounce(ctx, req, resp); err != nil {
-			log.Error("post-announce hooks failed", log.Err(err))
+			if slog.ErrorEnabled() {
+				slog.Error("post-announce hooks failed", slog.Err(err))
+			}
 			return
 		}
 	}
@@ -86,7 +90,9 @@ func (l *Logic) HandleScrape(ctx context.Context, req *bittorrent.ScrapeRequest)
 		}
 	}
 
-	log.Debug("generated scrape response", resp)
+	if slog.DebugEnabled() {
+		slog.Debug("generated scrape response", slog.Valuer("response", resp))
+	}
 	return ctx, resp, nil
 }
 
@@ -96,7 +102,9 @@ func (l *Logic) AfterScrape(ctx context.Context, req *bittorrent.ScrapeRequest, 
 	var err error
 	for _, h := range l.postHooks {
 		if ctx, err = h.HandleScrape(ctx, req, resp); err != nil {
-			log.Error("post-scrape hooks failed", log.Err(err))
+			if slog.ErrorEnabled() {
+				slog.Error("post-scrape hooks failed", slog.Err(err))
+			}
 			return
 		}
 	}

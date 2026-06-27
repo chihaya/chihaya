@@ -8,13 +8,14 @@ import (
 	"errors"
 	"net"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/frontend"
-	"github.com/chihaya/chihaya/pkg/log"
+	"github.com/chihaya/chihaya/pkg/slog"
 	"github.com/chihaya/chihaya/pkg/stop"
 )
 
@@ -35,26 +36,22 @@ type Config struct {
 	ParseOptions        `yaml:",inline"`
 }
 
-// LogFields renders the current config as a set of Logrus fields.
-func (cfg Config) LogFields() log.Fields {
-	return log.Fields{
-		"addr":                cfg.Addr,
-		"httpsAddr":           cfg.HTTPSAddr,
-		"readTimeout":         cfg.ReadTimeout,
-		"writeTimeout":        cfg.WriteTimeout,
-		"idleTimeout":         cfg.IdleTimeout,
-		"enableKeepAlive":     cfg.EnableKeepAlive,
-		"tlsCertPath":         cfg.TLSCertPath,
-		"tlsKeyPath":          cfg.TLSKeyPath,
-		"announceRoutes":      cfg.AnnounceRoutes,
-		"scrapeRoutes":        cfg.ScrapeRoutes,
-		"enableRequestTiming": cfg.EnableRequestTiming,
-		"allowIPSpoofing":     cfg.AllowIPSpoofing,
-		"realIPHeader":        cfg.RealIPHeader,
-		"maxNumWant":          cfg.MaxNumWant,
-		"defaultNumWant":      cfg.DefaultNumWant,
-		"maxScrapeInfoHashes": cfg.MaxScrapeInfoHashes,
-	}
+// LogValue renders a config as a set of log fields.
+func (cfg *Config) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("addr", cfg.Addr),
+		slog.String("httpsAddr", cfg.HTTPSAddr),
+		slog.Duration("readTimeout", cfg.ReadTimeout),
+		slog.Duration("writeTimeout", cfg.WriteTimeout),
+		slog.Duration("idleTimeout", cfg.IdleTimeout),
+		slog.Bool("enableKeepAlive", cfg.EnableKeepAlive),
+		slog.String("tlsCertPath", cfg.TLSCertPath),
+		slog.String("tlsKeyPath", cfg.TLSKeyPath),
+		slog.Any("announceRoutes", cfg.AnnounceRoutes),
+		slog.Any("scrapeRoutes", cfg.ScrapeRoutes),
+		slog.Bool("enableRequestTiming", cfg.EnableRequestTiming),
+		slog.Any("parseOptions", &cfg.ParseOptions),
+	)
 }
 
 // Default config constants.
@@ -73,20 +70,22 @@ func (cfg Config) Validate() Config {
 
 	if cfg.ReadTimeout <= 0 {
 		validcfg.ReadTimeout = defaultReadTimeout
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     "http.ReadTimeout",
-			"provided": cfg.ReadTimeout,
-			"default":  validcfg.ReadTimeout,
-		})
+		slog.Warn(
+			"falling back to default configuration",
+			slog.String("name", "http.ReadTimeout"),
+			slog.Duration("provided", cfg.ReadTimeout),
+			slog.Duration("default", validcfg.ReadTimeout),
+		)
 	}
 
 	if cfg.WriteTimeout <= 0 {
 		validcfg.WriteTimeout = defaultWriteTimeout
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     "http.WriteTimeout",
-			"provided": cfg.WriteTimeout,
-			"default":  validcfg.WriteTimeout,
-		})
+		slog.Warn(
+			"falling back to default configuration",
+			slog.String("name", "http.WriteTimeout"),
+			slog.Duration("provided", cfg.WriteTimeout),
+			slog.Duration("default", validcfg.WriteTimeout),
+		)
 	}
 
 	if cfg.IdleTimeout <= 0 {
@@ -94,39 +93,43 @@ func (cfg Config) Validate() Config {
 
 		if cfg.EnableKeepAlive {
 			// If keepalive is disabled, this configuration isn't used anyway.
-			log.Warn("falling back to default configuration", log.Fields{
-				"name":     "http.IdleTimeout",
-				"provided": cfg.IdleTimeout,
-				"default":  validcfg.IdleTimeout,
-			})
+			slog.Warn(
+				"falling back to default configuration",
+				slog.String("name", "http.IdleTimeout"),
+				slog.Duration("provided", cfg.IdleTimeout),
+				slog.Duration("default", validcfg.IdleTimeout),
+			)
 		}
 	}
 
 	if cfg.MaxNumWant <= 0 {
 		validcfg.MaxNumWant = defaultMaxNumWant
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     "http.MaxNumWant",
-			"provided": cfg.MaxNumWant,
-			"default":  validcfg.MaxNumWant,
-		})
+		slog.Warn(
+			"falling back to default configuration",
+			slog.String("name", "http.MaxNumWant"),
+			slog.Uint64("provided", uint64(cfg.MaxNumWant)),
+			slog.Uint64("default", uint64(validcfg.MaxNumWant)),
+		)
 	}
 
 	if cfg.DefaultNumWant <= 0 {
 		validcfg.DefaultNumWant = defaultDefaultNumWant
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     "http.DefaultNumWant",
-			"provided": cfg.DefaultNumWant,
-			"default":  validcfg.DefaultNumWant,
-		})
+		slog.Warn(
+			"falling back to default configuration",
+			slog.String("name", "http.DefaultNumWant"),
+			slog.Uint64("provided", uint64(cfg.DefaultNumWant)),
+			slog.Uint64("default", uint64(validcfg.DefaultNumWant)),
+		)
 	}
 
 	if cfg.MaxScrapeInfoHashes <= 0 {
 		validcfg.MaxScrapeInfoHashes = defaultMaxScrapeInfoHashes
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     "http.MaxScrapeInfoHashes",
-			"provided": cfg.MaxScrapeInfoHashes,
-			"default":  validcfg.MaxScrapeInfoHashes,
-		})
+		slog.Warn(
+			"falling back to default configuration",
+			slog.String("name", "http.MaxScrapeInfoHashes"),
+			slog.Uint64("provided", uint64(cfg.MaxScrapeInfoHashes)),
+			slog.Uint64("default", uint64(validcfg.MaxScrapeInfoHashes)),
+		)
 	}
 
 	return validcfg
@@ -201,7 +204,8 @@ func NewFrontend(logic frontend.TrackerLogic, provided Config) (*Frontend, error
 	if cfg.Addr != "" {
 		go func() {
 			if err := f.serveHTTP(listenerHTTP); err != nil {
-				log.Fatal("failed while serving http", log.Err(err))
+				slog.Error("failed while serving http", slog.Err(err))
+				os.Exit(1)
 			}
 		}()
 	}
@@ -209,7 +213,8 @@ func NewFrontend(logic frontend.TrackerLogic, provided Config) (*Frontend, error
 	if cfg.HTTPSAddr != "" {
 		go func() {
 			if err := f.serveHTTPS(listenerHTTPS); err != nil {
-				log.Fatal("failed while serving https", log.Err(err))
+				slog.Error("failed while serving https", slog.Err(err))
+				os.Exit(1)
 			}
 		}()
 	}
@@ -365,7 +370,10 @@ func (f *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, ps httpro
 
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
-		log.Error("http: unable to determine remote address for scrape", log.Err(err))
+		slog.Error(
+			"http: unable to determine remote address for scrape",
+			slog.Err(err),
+		)
 		_ = WriteError(w, err)
 		return
 	}
@@ -376,7 +384,10 @@ func (f *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, ps httpro
 	} else if len(reqIP) == net.IPv6len { // implies reqIP.To4() == nil
 		req.AddressFamily = bittorrent.IPv6
 	} else {
-		log.Error("http: invalid IP: neither v4 nor v6", log.Fields{"RemoteAddr": r.RemoteAddr})
+		slog.Error(
+			"http: invalid IP: neither v4 nor v6",
+			slog.String("remoteAddr", r.RemoteAddr),
+		)
 		_ = WriteError(w, bittorrent.ErrInvalidIP)
 		return
 	}
