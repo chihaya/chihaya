@@ -2,11 +2,11 @@ package http
 
 import (
 	"errors"
-	"log/slog"
 	"net"
 	"net/http"
 
 	"github.com/chihaya/chihaya/bittorrent"
+	"github.com/chihaya/chihaya/pkg/slog"
 )
 
 // ParseOptions is the configuration used to parse an Announce Request.

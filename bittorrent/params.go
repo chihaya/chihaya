@@ -1,12 +1,12 @@
 package bittorrent
 
 import (
-	"context"
 	"errors"
-	"log/slog"
 	"net/url"
 	"strconv"
 	"strings"
+
+	"github.com/chihaya/chihaya/pkg/slog"
 )
 
 // Params is used to fetch (optional) request parameters from an Announce.
@@ -154,12 +154,10 @@ func parseQuery(query string) (q *QueryParams, err error) {
 			// But frontends record these errors to prometheus, which generates
 			// a lot of time series.
 			// We log it here for debugging instead.
-			if slog.Default().Enabled(context.TODO(), slog.LevelDebug) {
-				slog.LogAttrs(
-					context.TODO(),
-					slog.LevelDebug,
+			if slog.DebugEnabled() {
+				slog.Debug(
 					"failed to unescape query param key",
-					slog.Any("error", err),
+					slog.Err(err),
 				)
 			}
 			return nil, ErrInvalidQueryEscape
@@ -170,12 +168,10 @@ func parseQuery(query string) (q *QueryParams, err error) {
 			// But frontends record these errors to prometheus, which generates
 			// a lot of time series.
 			// We log it here for debugging instead.
-			if slog.Default().Enabled(context.TODO(), slog.LevelDebug) {
-				slog.LogAttrs(
-					context.TODO(),
-					slog.LevelDebug,
+			if slog.DebugEnabled() {
+				slog.Debug(
 					"failed to unescape query param value",
-					slog.Any("error", err),
+					slog.Err(err),
 				)
 			}
 			return nil, ErrInvalidQueryEscape

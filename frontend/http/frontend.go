@@ -6,7 +6,6 @@ import (
 	"context"
 	"crypto/tls"
 	"errors"
-	"log/slog"
 	"net"
 	"net/http"
 	"os"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/frontend"
+	"github.com/chihaya/chihaya/pkg/slog"
 	"github.com/chihaya/chihaya/pkg/stop"
 )
 
@@ -204,7 +204,7 @@ func NewFrontend(logic frontend.TrackerLogic, provided Config) (*Frontend, error
 	if cfg.Addr != "" {
 		go func() {
 			if err := f.serveHTTP(listenerHTTP); err != nil {
-				slog.Error("failed while serving http", slog.Any("error", err))
+				slog.Error("failed while serving http", slog.Err(err))
 				os.Exit(1)
 			}
 		}()
@@ -213,7 +213,7 @@ func NewFrontend(logic frontend.TrackerLogic, provided Config) (*Frontend, error
 	if cfg.HTTPSAddr != "" {
 		go func() {
 			if err := f.serveHTTPS(listenerHTTPS); err != nil {
-				slog.Error("failed while serving https", slog.Any("error", err))
+				slog.Error("failed while serving https", slog.Err(err))
 				os.Exit(1)
 			}
 		}()
@@ -372,7 +372,7 @@ func (f *Frontend) scrapeRoute(w http.ResponseWriter, r *http.Request, ps httpro
 	if err != nil {
 		slog.Error(
 			"http: unable to determine remote address for scrape",
-			slog.Any("error", err),
+			slog.Err(err),
 		)
 		_ = WriteError(w, err)
 		return

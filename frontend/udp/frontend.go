@@ -8,7 +8,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"log/slog"
 	"math/rand"
 	"net"
 	"os"
@@ -18,7 +17,7 @@ import (
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/frontend"
 	"github.com/chihaya/chihaya/frontend/udp/bytepool"
-	"github.com/chihaya/chihaya/pkg/slogutil"
+	"github.com/chihaya/chihaya/pkg/slog"
 	"github.com/chihaya/chihaya/pkg/stop"
 	"github.com/chihaya/chihaya/pkg/timecache"
 )
@@ -42,7 +41,7 @@ func (cfg *Config) LogValue() slog.Value {
 		slog.String("privateKey", "REDACTED"),
 		slog.Duration("maxClockSkew", cfg.MaxClockSkew),
 		slog.Bool("enableRequestTiming", cfg.EnableRequestTiming),
-		slogutil.Valuer("parseOptions", &cfg.ParseOptions),
+		slog.Valuer("parseOptions", &cfg.ParseOptions),
 	)
 }
 
@@ -147,7 +146,7 @@ func NewFrontend(logic frontend.TrackerLogic, provided Config) (*Frontend, error
 	go func() {
 		defer f.wg.Done()
 		if err := f.serve(); err != nil {
-			slog.Error("failed while serving udp", slog.Any("error", err))
+			slog.Error("failed while serving udp", slog.Err(err))
 			os.Exit(1)
 		}
 	}()

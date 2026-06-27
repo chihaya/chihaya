@@ -3,10 +3,10 @@ package storage
 
 import (
 	"errors"
-	"log/slog"
 	"sync"
 
 	"github.com/chihaya/chihaya/bittorrent"
+	"github.com/chihaya/chihaya/pkg/slog"
 	"github.com/chihaya/chihaya/pkg/stop"
 )
 

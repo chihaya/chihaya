@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"log/slog"
 	"net"
 	"sync"
 
 	"github.com/chihaya/chihaya/bittorrent"
+	"github.com/chihaya/chihaya/pkg/slog"
 )
 
 const (

@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/rand"
 	"fmt"
-	"log/slog"
 	"time"
 
 	"github.com/anacrolix/torrent/tracker"
@@ -11,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/chihaya/chihaya/bittorrent"
+	"github.com/chihaya/chihaya/pkg/slog"
 )
 
 // EndToEndRunCmdFunc implements a Cobra command that runs the end-to-end test
