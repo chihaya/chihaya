@@ -35,7 +35,7 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/chihaya/chihaya/bittorrent"
-	"github.com/chihaya/chihaya/pkg/log"
+	"github.com/chihaya/chihaya/pkg/slog"
 	"github.com/chihaya/chihaya/pkg/stop"
 	"github.com/chihaya/chihaya/pkg/timecache"
 	"github.com/chihaya/chihaya/storage"
@@ -90,18 +90,18 @@ type Config struct {
 	RedisConnectTimeout         time.Duration `yaml:"redis_connect_timeout"`
 }
 
-// LogFields renders the current config as a set of Logrus fields.
-func (cfg Config) LogFields() log.Fields {
-	return log.Fields{
-		"name":                Name,
-		"gcInterval":          cfg.GarbageCollectionInterval,
-		"promReportInterval":  cfg.PrometheusReportingInterval,
-		"peerLifetime":        cfg.PeerLifetime,
-		"redisBroker":         cfg.RedisBroker,
-		"redisReadTimeout":    cfg.RedisReadTimeout,
-		"redisWriteTimeout":   cfg.RedisWriteTimeout,
-		"redisConnectTimeout": cfg.RedisConnectTimeout,
-	}
+// LogValue renders the config as a set of log fields.
+func (cfg *Config) LogValue() slog.Value {
+	return slog.GroupValue(
+		slog.String("name", Name),
+		slog.Duration("gcInterval", cfg.GarbageCollectionInterval),
+		slog.Duration("promReportInterval", cfg.PrometheusReportingInterval),
+		slog.Duration("peerLifetime", cfg.PeerLifetime),
+		slog.String("redisBroker", cfg.RedisBroker),
+		slog.Duration("redisReadTimeout", cfg.RedisReadTimeout),
+		slog.Duration("redisWriteTimeout", cfg.RedisWriteTimeout),
+		slog.Duration("redisConnectTimeout", cfg.RedisConnectTimeout),
+	)
 }
 
 // Validate sanity checks values set in a config and returns a new config with
@@ -113,65 +113,72 @@ func (cfg Config) Validate() Config {
 
 	if cfg.RedisBroker == "" {
 		validcfg.RedisBroker = defaultRedisBroker
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     Name + ".RedisBroker",
-			"provided": cfg.RedisBroker,
-			"default":  validcfg.RedisBroker,
-		})
+		slog.Warn(
+			"falling back to default configuration",
+			slog.String("name", Name+".RedisBroker"),
+			slog.String("provided", cfg.RedisBroker),
+			slog.String("default", validcfg.RedisBroker),
+		)
 	}
 
 	if cfg.RedisReadTimeout <= 0 {
 		validcfg.RedisReadTimeout = defaultRedisReadTimeout
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     Name + ".RedisReadTimeout",
-			"provided": cfg.RedisReadTimeout,
-			"default":  validcfg.RedisReadTimeout,
-		})
+		slog.Warn(
+			"falling back to default configuration",
+			slog.String("name", Name+".RedisReadTimeout"),
+			slog.Duration("provided", cfg.RedisReadTimeout),
+			slog.Duration("default", validcfg.RedisReadTimeout),
+		)
 	}
 
 	if cfg.RedisWriteTimeout <= 0 {
 		validcfg.RedisWriteTimeout = defaultRedisWriteTimeout
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     Name + ".RedisWriteTimeout",
-			"provided": cfg.RedisWriteTimeout,
-			"default":  validcfg.RedisWriteTimeout,
-		})
+		slog.Warn(
+			"falling back to default configuration",
+			slog.String("name", Name+".RedisWriteTimeout"),
+			slog.Duration("provided", cfg.RedisWriteTimeout),
+			slog.Duration("default", validcfg.RedisWriteTimeout),
+		)
 	}
 
 	if cfg.RedisConnectTimeout <= 0 {
 		validcfg.RedisConnectTimeout = defaultRedisConnectTimeout
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     Name + ".RedisConnectTimeout",
-			"provided": cfg.RedisConnectTimeout,
-			"default":  validcfg.RedisConnectTimeout,
-		})
+		slog.Warn(
+			"falling back to default configuration",
+			slog.String("name", Name+".RedisConnectTimeout"),
+			slog.Duration("provided", cfg.RedisConnectTimeout),
+			slog.Duration("default", validcfg.RedisConnectTimeout),
+		)
 	}
 
 	if cfg.GarbageCollectionInterval <= 0 {
 		validcfg.GarbageCollectionInterval = defaultGarbageCollectionInterval
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     Name + ".GarbageCollectionInterval",
-			"provided": cfg.GarbageCollectionInterval,
-			"default":  validcfg.GarbageCollectionInterval,
-		})
+		slog.Warn(
+			"falling back to default configuration",
+			slog.String("name", Name+".GarbageCollectionInterval"),
+			slog.Duration("provided", cfg.GarbageCollectionInterval),
+			slog.Duration("default", validcfg.GarbageCollectionInterval),
+		)
 	}
 
 	if cfg.PrometheusReportingInterval <= 0 {
 		validcfg.PrometheusReportingInterval = defaultPrometheusReportingInterval
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     Name + ".PrometheusReportingInterval",
-			"provided": cfg.PrometheusReportingInterval,
-			"default":  validcfg.PrometheusReportingInterval,
-		})
+		slog.Warn(
+			"falling back to default configuration",
+			slog.String("name", Name+".PrometheusReportingInterval"),
+			slog.Duration("provided", cfg.PrometheusReportingInterval),
+			slog.Duration("default", validcfg.PrometheusReportingInterval),
+		)
 	}
 
 	if cfg.PeerLifetime <= 0 {
 		validcfg.PeerLifetime = defaultPeerLifetime
-		log.Warn("falling back to default configuration", log.Fields{
-			"name":     Name + ".PeerLifetime",
-			"provided": cfg.PeerLifetime,
-			"default":  validcfg.PeerLifetime,
-		})
+		slog.Warn(
+			"falling back to default configuration",
+			slog.String("name", Name+".PeerLifetime"),
+			slog.Duration("provided", cfg.PeerLifetime),
+			slog.Duration("default", validcfg.PeerLifetime),
+		)
 	}
 
 	return validcfg
@@ -202,9 +209,19 @@ func New(provided Config) (storage.PeerStore, error) {
 				return
 			case <-time.After(cfg.GarbageCollectionInterval):
 				before := time.Now().Add(-cfg.PeerLifetime)
-				log.Debug("storage: purging peers with no announces since", log.Fields{"before": before})
-				if err = ps.collectGarbage(before); err != nil {
-					log.Error("storage: collectGarbage error", log.Fields{"before": before, "error": err})
+				if slog.DebugEnabled() {
+					slog.Debug(
+						"storage: purging peers with no announces since",
+						slog.Time("before", before),
+					)
+				}
+				err := ps.collectGarbage(before)
+				if err != nil && slog.ErrorEnabled() {
+					slog.Error(
+						"storage: collectGarbage error",
+						slog.Time("before", before),
+						slog.Err(err),
+					)
 				}
 			}
 		}
@@ -223,7 +240,10 @@ func New(provided Config) (storage.PeerStore, error) {
 			case <-t.C:
 				before := time.Now()
 				ps.populateProm()
-				log.Debug("storage: populateProm() finished", log.Fields{"timeTaken": time.Since(before)})
+				slog.Debug(
+					"storage: populateProm() finished",
+					slog.Duration("timeTaken", time.Since(before)),
+				)
 			}
 		}
 	}()
@@ -303,26 +323,29 @@ func (ps *peerStore) populateProm() {
 
 	for _, group := range ps.groups() {
 		if n, err := redis.Int64(conn.Do("GET", ps.infohashCountKey(group))); err != nil && !errors.Is(err, redis.ErrNil) {
-			log.Error("storage: GET counter failure", log.Fields{
-				"key":   ps.infohashCountKey(group),
-				"error": err,
-			})
+			slog.Error(
+				"storage: GET counter failure",
+				slog.String("key", ps.infohashCountKey(group)),
+				slog.Err(err),
+			)
 		} else {
 			numInfohashes += n
 		}
 		if n, err := redis.Int64(conn.Do("GET", ps.seederCountKey(group))); err != nil && !errors.Is(err, redis.ErrNil) {
-			log.Error("storage: GET counter failure", log.Fields{
-				"key":   ps.seederCountKey(group),
-				"error": err,
-			})
+			slog.Error(
+				"storage: GET counter failure",
+				slog.String("key", ps.seederCountKey(group)),
+				slog.Err(err),
+			)
 		} else {
 			numSeeders += n
 		}
 		if n, err := redis.Int64(conn.Do("GET", ps.leecherCountKey(group))); err != nil && !errors.Is(err, redis.ErrNil) {
-			log.Error("storage: GET counter failure", log.Fields{
-				"key":   ps.leecherCountKey(group),
-				"error": err,
-			})
+			slog.Error(
+				"storage: GET counter failure",
+				slog.String("key", ps.leecherCountKey(group)),
+				slog.Err(err),
+			)
 		} else {
 			numLeechers += n
 		}
@@ -339,10 +362,13 @@ func (ps *peerStore) getClock() int64 {
 
 func (ps *peerStore) PutSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) error {
 	addressFamily := p.IP.AddressFamily.String()
-	log.Debug("storage: PutSeeder", log.Fields{
-		"InfoHash": ih.String(),
-		"Peer":     p,
-	})
+	if slog.DebugEnabled() {
+		slog.Debug(
+			"storage: PutSeeder",
+			slog.String("infoHash", ih.String()),
+			slog.Valuer("peer", &p),
+		)
+	}
 
 	select {
 	case <-ps.closed:
@@ -386,10 +412,13 @@ func (ps *peerStore) PutSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) error 
 
 func (ps *peerStore) DeleteSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) error {
 	addressFamily := p.IP.AddressFamily.String()
-	log.Debug("storage: DeleteSeeder", log.Fields{
-		"InfoHash": ih.String(),
-		"Peer":     p,
-	})
+	if slog.DebugEnabled() {
+		slog.Debug(
+			"storage: DeleteSeeder",
+			slog.String("infoHash", ih.String()),
+			slog.Valuer("peer", &p),
+		)
+	}
 
 	select {
 	case <-ps.closed:
@@ -420,10 +449,13 @@ func (ps *peerStore) DeleteSeeder(ih bittorrent.InfoHash, p bittorrent.Peer) err
 
 func (ps *peerStore) PutLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) error {
 	addressFamily := p.IP.AddressFamily.String()
-	log.Debug("storage: PutLeecher", log.Fields{
-		"InfoHash": ih.String(),
-		"Peer":     p,
-	})
+	if slog.DebugEnabled() {
+		slog.Debug(
+			"storage: PutLeecher",
+			slog.String("infoHash", ih.String()),
+			slog.Valuer("peer", &p),
+		)
+	}
 
 	select {
 	case <-ps.closed:
@@ -458,10 +490,13 @@ func (ps *peerStore) PutLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) error
 
 func (ps *peerStore) DeleteLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) error {
 	addressFamily := p.IP.AddressFamily.String()
-	log.Debug("storage: DeleteLeecher", log.Fields{
-		"InfoHash": ih.String(),
-		"Peer":     p,
-	})
+	if slog.DebugEnabled() {
+		slog.Debug(
+			"storage: DeleteLeecher",
+			slog.String("infoHash", ih.String()),
+			slog.Valuer("peer", &p),
+		)
+	}
 
 	select {
 	case <-ps.closed:
@@ -491,10 +526,13 @@ func (ps *peerStore) DeleteLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) er
 
 func (ps *peerStore) GraduateLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) error {
 	addressFamily := p.IP.AddressFamily.String()
-	log.Debug("storage: GraduateLeecher", log.Fields{
-		"InfoHash": ih.String(),
-		"Peer":     p,
-	})
+	if slog.DebugEnabled() {
+		slog.Debug(
+			"storage: GraduateLeecher",
+			slog.String("infoHash", ih.String()),
+			slog.Valuer("peer", &p),
+		)
+	}
 
 	select {
 	case <-ps.closed:
@@ -543,12 +581,15 @@ func (ps *peerStore) GraduateLeecher(ih bittorrent.InfoHash, p bittorrent.Peer) 
 
 func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant int, announcer bittorrent.Peer) (peers []bittorrent.Peer, err error) {
 	addressFamily := announcer.IP.AddressFamily.String()
-	log.Debug("storage: AnnouncePeers", log.Fields{
-		"InfoHash": ih.String(),
-		"seeder":   seeder,
-		"numWant":  numWant,
-		"Peer":     announcer,
-	})
+	if slog.DebugEnabled() {
+		slog.Debug(
+			"storage: AnnouncePeers",
+			slog.String("infoHash", ih.String()),
+			slog.Bool("seeder", seeder),
+			slog.Int("numWant", numWant),
+			slog.Valuer("peer", &announcer),
+		)
+	}
 
 	select {
 	case <-ps.closed:
@@ -567,13 +608,13 @@ func (ps *peerStore) AnnouncePeers(ih bittorrent.InfoHash, seeder bool, numWant 
 	if err != nil {
 		return nil, err
 	}
-	conLeechers := leechers.([]interface{})
+	conLeechers := leechers.([]any)
 
 	seeders, err := conn.Do("HKEYS", encodedSeederInfoHash)
 	if err != nil {
 		return nil, err
 	}
-	conSeeders := seeders.([]interface{})
+	conSeeders := seeders.([]any)
 
 	if len(conLeechers) == 0 && len(conSeeders) == 0 {
 		return nil, storage.ErrResourceDoesNotExist
@@ -639,19 +680,25 @@ func (ps *peerStore) ScrapeSwarm(ih bittorrent.InfoHash, af bittorrent.AddressFa
 
 	leechersLen, err := redis.Int64(conn.Do("HLEN", encodedLeecherInfoHash))
 	if err != nil {
-		log.Error("storage: Redis HLEN failure", log.Fields{
-			"Hkey":  encodedLeecherInfoHash,
-			"error": err,
-		})
+		if slog.ErrorEnabled() {
+			slog.Error(
+				"storage: Redis HLEN failure",
+				slog.String("hkey", encodedLeecherInfoHash),
+				slog.Err(err),
+			)
+		}
 		return
 	}
 
 	seedersLen, err := redis.Int64(conn.Do("HLEN", encodedSeederInfoHash))
 	if err != nil {
-		log.Error("storage: Redis HLEN failure", log.Fields{
-			"Hkey":  encodedSeederInfoHash,
-			"error": err,
-		})
+		if slog.ErrorEnabled() {
+			slog.Error(
+				"storage: Redis HLEN failure",
+				slog.String("hkey", encodedSeederInfoHash),
+				slog.Err(err),
+			)
+		}
 		return
 	}
 
@@ -744,9 +791,13 @@ func (ps *peerStore) collectGarbage(cutoff time.Time) error {
 						return err
 					}
 					if mtime <= cutoffUnix {
-						log.Debug("storage: deleting peer", log.Fields{
-							"Peer": decodePeerKey(pk).String(),
-						})
+						if slog.DebugEnabled() {
+							p := decodePeerKey(pk)
+							slog.Debug(
+								"storage: deleting peer",
+								slog.Valuer("peer", &p),
+							)
+						}
 						ret, err := redis.Int64(conn.Do("HDEL", ihStr, pk))
 						if err != nil {
 							return err
@@ -791,22 +842,35 @@ func (ps *peerStore) collectGarbage(cutoff time.Time) error {
 				}
 				_, err = redis.Values(conn.Do("EXEC"))
 				if err != nil && !errors.Is(err, redis.ErrNil) {
-					log.Error("storage: Redis EXEC failure", log.Fields{
-						"group":    group,
-						"infohash": ihStr,
-						"error":    err,
-					})
+					if slog.ErrorEnabled() {
+						slog.Error(
+							"storage: Redis EXEC failure",
+							slog.String("group", group),
+							slog.String("infohash", ihStr),
+							slog.Err(err),
+						)
+					}
 				}
 			} else {
 				if _, err = conn.Do("UNWATCH"); err != nil && !errors.Is(err, redis.ErrNil) {
-					log.Error("storage: Redis UNWATCH failure", log.Fields{"error": err})
+					if slog.ErrorEnabled() {
+						slog.Error(
+							"storage: Redis UNWATCH failure",
+							slog.Err(err),
+						)
+					}
 				}
 			}
 		}
 	}
 
 	duration := float64(time.Since(start).Nanoseconds()) / float64(time.Millisecond)
-	log.Debug("storage: recordGCDuration", log.Fields{"timeTaken(ms)": duration})
+	if slog.DebugEnabled() {
+		slog.Debug(
+			"storage: recordGCDuration",
+			slog.Float64("timeTakenMs", duration),
+		)
+	}
 	storage.PromGCDurationMilliseconds.Observe(duration)
 
 	return nil
@@ -817,13 +881,15 @@ func (ps *peerStore) Stop() stop.Result {
 	go func() {
 		close(ps.closed)
 		ps.wg.Wait()
-		log.Info("storage: exiting. chihaya does not clear data in redis when exiting. chihaya keys have prefix 'IPv{4,6}_'.")
+		slog.Info(
+			"storage: exiting." +
+				" chihaya does not clear data in redis when exiting." +
+				" chihaya keys have prefix 'IPv{4,6}_'.",
+		)
 		c.Done()
 	}()
 
 	return c.Result()
 }
 
-func (ps *peerStore) LogFields() log.Fields {
-	return ps.cfg.LogFields()
-}
+func (ps *peerStore) LogValue() slog.Value { return ps.cfg.LogValue() }

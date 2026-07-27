@@ -34,9 +34,9 @@ test-e2e-mem:
 
 test-e2e-redis:
 	@tmpdir=$$(mktemp -d); \
-	trap 'kill $$rpid 2>/dev/null; kill $$cpid 2>/dev/null; rm -rf "$$tmpdir"' EXIT; \
+	trap 'kill $$rpid 2>/dev/null; kill $$cpid 2>/dev/null; rm -rf "$$tmpdir"; sleep 2' EXIT; \
 	go build -o "$$tmpdir/chihaya" ./cmd/chihaya; \
-	redis-server & \
+	redis-server --save "" & \
 	rpid=$$!; \
 	$$tmpdir/chihaya --config="./dist/example_config_redis.yaml" --debug & \
 	cpid=$$!; \

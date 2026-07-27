@@ -9,7 +9,7 @@ import (
 
 	sha256 "github.com/minio/sha256-simd"
 
-	"github.com/chihaya/chihaya/pkg/log"
+	"github.com/chihaya/chihaya/pkg/slog"
 )
 
 // ttl is the duration a connection ID should be valid according to BEP 15.
@@ -95,14 +95,29 @@ func (g *ConnectionIDGenerator) Generate(ip net.IP, now time.Time) []byte {
 	g.scratch = g.mac.Sum(g.scratch)
 	copy(g.connID[4:8], g.scratch[:4])
 
-	log.Debug("generated connection ID", log.Fields{"ip": ip, "now": now, "connID": g.connID})
+	if slog.DebugEnabled() {
+		slog.Debug(
+			"generated connection ID",
+			slog.String("ip", ip.String()),
+			slog.Time("now", now),
+			slog.String("connID", string(g.connID)),
+		)
+	}
 	return g.connID
 }
 
 // Validate validates the given connection ID for an IP and the current time.
 func (g *ConnectionIDGenerator) Validate(connectionID []byte, ip net.IP, now time.Time, maxClockSkew time.Duration) bool {
 	ts := time.Unix(int64(binary.BigEndian.Uint32(connectionID[:4])), 0)
-	log.Debug("validating connection ID", log.Fields{"connID": connectionID, "ip": ip, "ts": ts, "now": now})
+	if slog.DebugEnabled() {
+		slog.Debug(
+			"validating connection ID",
+			slog.String("connID", string(connectionID)),
+			slog.String("ip", ip.String()),
+			slog.Time("ts", ts),
+			slog.Time("now", now),
+		)
+	}
 	if now.After(ts.Add(ttl)) || ts.After(now.Add(maxClockSkew)) {
 		return false
 	}

@@ -6,7 +6,7 @@ import (
 
 	"github.com/chihaya/chihaya/bittorrent"
 	"github.com/chihaya/chihaya/frontend/http/bencode"
-	"github.com/chihaya/chihaya/pkg/log"
+	"github.com/chihaya/chihaya/pkg/slog"
 )
 
 // WriteError communicates an error to a BitTorrent client over HTTP.
@@ -16,7 +16,7 @@ func WriteError(w http.ResponseWriter, err error) error {
 	if errors.As(err, &clientErr) {
 		message = clientErr.Error()
 	} else {
-		log.Error("http: internal error", log.Err(err))
+		slog.Error("http: internal error", slog.Err(err))
 	}
 
 	w.WriteHeader(http.StatusOK)

@@ -12,7 +12,7 @@ import (
 	sha256 "github.com/minio/sha256-simd"
 	"github.com/stretchr/testify/require"
 
-	"github.com/chihaya/chihaya/pkg/log"
+	"github.com/chihaya/chihaya/pkg/slog"
 )
 
 var golden = []struct {
@@ -41,7 +41,14 @@ func simpleNewConnectionID(ip net.IP, now time.Time, key string) []byte {
 
 	// this is just in here because logging impacts performance and we benchmark
 	// this version too.
-	log.Debug("manually generated connection ID", log.Fields{"ip": ip, "now": now, "connID": buf})
+	if slog.DebugEnabled() {
+		slog.Debug(
+			"manually generated connection ID",
+			slog.String("ip", ip.String()),
+			slog.Time("now", now),
+			slog.Any("connID", buf),
+		)
+	}
 	return buf
 }
 
