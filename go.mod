@@ -17,7 +17,7 @@ require (
 	github.com/go-redsync/redsync/v4 v4.16.0
 	github.com/gomodule/redigo v1.9.3
 	github.com/julienschmidt/httprouter v1.3.0
-	github.com/lmittmann/tint v1.1.3
+	github.com/lmittmann/tint v1.2.0
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mendsley/gojwk v0.0.0-20141217222730-4d5ec6e58103
 	github.com/minio/sha256-simd v1.0.1
