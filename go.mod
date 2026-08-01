@@ -18,7 +18,7 @@ require (
 	github.com/gomodule/redigo v1.9.3
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/lmittmann/tint v1.1.3
-	github.com/mattn/go-isatty v0.0.20
+	github.com/mattn/go-isatty v0.0.24
 	github.com/mendsley/gojwk v0.0.0-20141217222730-4d5ec6e58103
 	github.com/minio/sha256-simd v1.0.1
 	github.com/pkg/errors v0.9.1
