@@ -124,9 +124,9 @@ func (h *responseHook) appendPeers(req *bittorrent.AnnounceRequest, resp *bittor
 
 	switch req.IP.AddressFamily {
 	case bittorrent.IPv4:
-		resp.IPv4Peers = peers
+		resp.IPv4Peers = append(resp.IPv4Peers, peers...)
 	case bittorrent.IPv6:
-		resp.IPv6Peers = peers
+		resp.IPv6Peers = append(resp.IPv6Peers, peers...)
 	default:
 		panic("attempted to append peer that is neither IPv4 nor IPv6")
 	}
